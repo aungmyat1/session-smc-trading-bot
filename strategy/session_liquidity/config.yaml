@@ -1,0 +1,10 @@
+rr: 3.0
+sl_buffer_pips: 2.0
+displacement_mult: 1.2
+atr_period: 14
+sweep_timeout_bars: 4
+min_sl_pips: 5.0
+
+min_range_pips:
+  EURUSD: 15.0
+  GBPUSD: 20.0

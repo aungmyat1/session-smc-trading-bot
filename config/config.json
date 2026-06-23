@@ -1,0 +1,47 @@
+{
+  "bot_name": "SMC-Forex-Bot",
+  "pairs": ["EURUSD", "GBPUSD"],
+  "poll_interval_seconds": 60,
+
+  "sessions": {
+    "london": { "start": "07:00", "end": "10:00" },
+    "newyork": { "start": "13:00", "end": "16:00" }
+  },
+
+  "risk": {
+    "risk_per_trade_pct": 0.5,
+    "max_open_trades": 2,
+    "max_pair_exposure": 1,
+    "max_daily_loss_r": 3.0,
+    "max_weekly_loss_r": 8.0,
+    "max_consecutive_losses": 5,
+    "min_lot": 0.01,
+    "max_lot": 10.0
+  },
+
+  "stop_loss": {
+    "range_pct": 0.25,
+    "buffer_pips": 3
+  },
+
+  "take_profit": {
+    "tp1_r": 4.0,
+    "tp1_close_pct": 0.75,
+    "tp2_r": 5.0
+  },
+
+  "magic_numbers": {
+    "EURUSD": 21001,
+    "GBPUSD": 21002
+  },
+
+  "spread_pips": {
+    "EURUSD": 0.8,
+    "GBPUSD": 1.2
+  },
+
+  "pip_value_per_lot": {
+    "EURUSD": 10.0,
+    "GBPUSD": 10.0
+  }
+}
