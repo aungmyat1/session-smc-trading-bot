@@ -32,6 +32,7 @@ _PIP: dict[str, float] = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
     "USDJPY": 0.01,
+    "XAUUSD": 0.1,    # Gold: 1 pip = $0.10 (price quoted to 2 decimals, e.g. 2340.50)
 }
 
 _TF_MAP = {

@@ -1,351 +1,262 @@
-#!/usr/bin/env python3
 """
-OPS-01A Health check script.
+ST-A2 System Health Check — deployment readiness status.
 
-Checks bot process, tmux session, heartbeat age, log freshness,
-disk space, and memory. Exits non-zero if any WARNING or CRITICAL.
+Checks:
+  Runner      — log file exists and has recent activity
+  Broker      — MetaAPI connection, heartbeat, latency
+  Data Feed   — live price fetch for each pair
+  Risk Engine — daily limits, open positions, loss guards
+  Portfolio   — portfolio manager loss limits
+  Execution   — TRADING_MODE, DEMO_ONLY guard, LIVE_TRADING block
+
+Output:
+  SYSTEM STATUS
+  Runner:           PASS / WARN / FAIL
+  Broker:           PASS / WARN / FAIL
+  Data Feed:        PASS / WARN / FAIL
+  Risk Engine:      PASS / FAIL
+  Portfolio:        PASS / FAIL
+  Execution:        READY / SHADOW / BLOCKED
 
 Usage:
-    python3 scripts/health_check.py          # human-readable
-    python3 scripts/health_check.py --json   # JSON output
-
-Alert thresholds:
-    heartbeat age   > 10 min  → WARNING
-    memory RSS      > 500 MB  → WARNING
-    disk free       < 10 %    → WARNING
-    MetaAPI status  DISCONNECTED → WARNING
-    bot process     missing   → CRITICAL
+    python3 scripts/health_check.py
+    python3 scripts/health_check.py --no-broker   (skip live connection)
+    python3 scripts/health_check.py --json         (machine-readable)
 """
 
+from __future__ import annotations
+
 import argparse
+import asyncio
 import json
 import os
-import re
-import shutil
-import subprocess
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
-_UTC = timezone.utc
+sys.path.insert(0, str(_ROOT))
 
-# ── Thresholds ────────────────────────────────────────────────────────────────
-_MAX_HEARTBEAT_AGE_S = 600      # 10 minutes
-_MAX_MEMORY_MB = 500
-_MIN_DISK_FREE_PCT = 10.0
-_TMUX_SESSION = "bot"
-_BOT_SCRIPT = "bot.py"
-_LOG_FILE = _ROOT / "logs" / "bot.log"
-_TRADE_LOG = _ROOT / "logs" / "trades.jsonl"
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_ROOT / ".env")
+except ImportError:
+    pass
 
+_RUNNER_LOG  = _ROOT / "logs" / "st_a2_runner.log"
+_PAIRS       = ["EURUSD", "XAUUSD"]
+_STALE_S     = 300   # runner log is stale if no entry within 5 min
 
-# ── Result accumulator ────────────────────────────────────────────────────────
-
-class Health:
-    OK = "OK"
-    WARN = "WARNING"
-    CRIT = "CRITICAL"
-
-    def __init__(self) -> None:
-        self._checks: list[dict] = []
-
-    def add(self, name: str, level: str, value: str, detail: str = "") -> None:
-        self._checks.append({"name": name, "level": level, "value": value, "detail": detail})
-        icon = "✅" if level == self.OK else ("⚠️ " if level == self.WARN else "🔴")
-        suffix = f"  ({detail})" if detail else ""
-        print(f"  {icon}  [{level:<8}]  {name}: {value}{suffix}")
-
-    def worst(self) -> str:
-        levels = {self.OK: 0, self.WARN: 1, self.CRIT: 2}
-        return max(self._checks, key=lambda c: levels.get(c["level"], 0))["level"] \
-            if self._checks else self.OK
-
-    def checks(self) -> list[dict]:
-        return list(self._checks)
-
-    def exit_code(self) -> int:
-        w = self.worst()
-        return 0 if w == self.OK else (1 if w == self.WARN else 2)
+# ── Individual checks ──────────────────────────────────────────────────────────
 
 
-# ── Individual checks ─────────────────────────────────────────────────────────
+def check_runner() -> dict:
+    if not _RUNNER_LOG.exists():
+        return {"status": "FAIL", "detail": "logs/st_a2_runner.log not found"}
 
-def check_tmux(h: Health) -> bool:
-    """Is the tmux session named 'bot' running?"""
-    result = subprocess.run(
-        ["tmux", "ls"], capture_output=True, text=True
-    )
-    sessions = result.stdout
-    running = _TMUX_SESSION in sessions
-    if running:
-        h.add("tmux session 'bot'", Health.OK, "running")
-    else:
-        h.add("tmux session 'bot'", Health.CRIT, "NOT FOUND",
-              f"start: tmux new-session -d -s {_TMUX_SESSION} 'python3 bot.py 2>&1 | tee logs/bot.log'")
-    return running
-
-
-def check_bot_process(h: Health) -> bool:
-    """Is python3 bot.py running as a process?"""
-    result = subprocess.run(
-        ["pgrep", "-f", _BOT_SCRIPT], capture_output=True, text=True
-    )
-    pids = result.stdout.strip().splitlines()
-    if pids:
-        h.add("bot process", Health.OK, f"running (pid={pids[0]})")
-        return True
-    else:
-        h.add("bot process", Health.CRIT, "NOT RUNNING",
-              "run: tmux new-session -d -s bot 'python3 bot.py 2>&1 | tee logs/bot.log'")
-        return False
-
-
-def check_heartbeat_age(h: Health) -> None:
-    """How old is the last HEARTBEAT line in bot.log?"""
-    if not _LOG_FILE.exists():
-        h.add("heartbeat age", Health.WARN, "no log file yet", "bot may not have started")
-        return
-
-    last_hb_ts: "datetime | None" = None
+    age_s = datetime.now().timestamp() - _RUNNER_LOG.stat().st_mtime
     try:
-        with open(_LOG_FILE) as f:
-            for line in f:
-                if "HEARTBEAT" in line:
-                    # Line format: 2026-06-21 08:05:00,123  INFO  bot  [HEARTBEAT]…
-                    m = re.match(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", line)
-                    if m:
-                        last_hb_ts = datetime.strptime(
-                            m.group(1), "%Y-%m-%d %H:%M:%S"
-                        ).replace(tzinfo=_UTC)
-    except Exception as e:
-        h.add("heartbeat age", Health.WARN, f"parse error: {e}")
-        return
+        lines    = _RUNNER_LOG.read_text(errors="replace").splitlines()
+        last_line = next((l for l in reversed(lines) if l.strip()), "")
+    except OSError:
+        last_line = ""
 
-    if last_hb_ts is None:
-        h.add("heartbeat age", Health.WARN, "no heartbeat found yet",
-              "bot started <5 min ago, or off-hours sleep")
-        return
-
-    age_s = int((datetime.now(_UTC) - last_hb_ts).total_seconds())
-    age_min = age_s // 60
-    if age_s <= _MAX_HEARTBEAT_AGE_S:
-        h.add("heartbeat age", Health.OK, f"{age_min}m {age_s%60}s ago",
-              last_hb_ts.strftime("%H:%M UTC"))
-    else:
-        h.add("heartbeat age", Health.WARN, f"{age_min}m old (> 10m threshold)",
-              f"last: {last_hb_ts.strftime('%H:%M UTC')}")
+    if age_s > _STALE_S:
+        return {
+            "status": "WARN",
+            "detail": f"last activity {int(age_s)}s ago (>{_STALE_S}s)",
+            "last_line": last_line[-120:],
+        }
+    return {"status": "PASS", "detail": f"active ({int(age_s)}s ago)", "last_line": last_line[-120:]}
 
 
-def check_log_freshness(h: Health) -> None:
-    """When was bot.log last written?"""
-    if not _LOG_FILE.exists():
-        h.add("log freshness", Health.WARN, "logs/bot.log does not exist")
-        return
-    mtime = _LOG_FILE.stat().st_mtime
-    age_s = int(time.time() - mtime)
-    age_min = age_s // 60
-    size_kb = _LOG_FILE.stat().st_size // 1024
-    if age_s < 600:
-        h.add("log freshness", Health.OK, f"updated {age_min}m ago  size={size_kb}KB")
-    else:
-        h.add("log freshness", Health.WARN, f"last write {age_min}m ago",
-              "bot may be stalled or off-hours sleeping")
-
-
-def check_metaapi_status(h: Health) -> None:
-    """Read connection status from the last HEARTBEAT block (multi-line)."""
-    if not _LOG_FILE.exists():
-        h.add("MetaAPI status", Health.WARN, "no log yet")
-        return
-
-    # Heartbeat is logged as a multi-line message (logger.info(msg) with \n).
-    # Collect all lines in the last heartbeat block by finding the last
-    # [HEARTBEAT] marker and joining the following lines until the next log entry.
-    lines: list[str] = []
+async def check_broker() -> dict:
     try:
-        with open(_LOG_FILE) as f:
-            lines = f.readlines()
-    except Exception:
-        pass
+        from execution.mt5_connector import MT5Connector
+        conn = MT5Connector(mode="demo")
+        await conn.connect()
+        hb = await conn.heartbeat()
+        await conn.disconnect()
+    except Exception as exc:
+        return {"status": "FAIL", "detail": str(exc)[:200]}
 
-    if not lines:
-        h.add("MetaAPI status", Health.WARN, "no heartbeat to read from")
-        return
-
-    # Find last occurrence of [HEARTBEAT] and collect until next dated log line
-    last_hb_block = ""
-    _ts_pattern = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
-    i = len(lines) - 1
-    while i >= 0:
-        if "[HEARTBEAT]" in lines[i]:
-            # Collect this line + following lines until next log timestamp
-            block_lines = [lines[i]]
-            j = i + 1
-            while j < len(lines) and not _ts_pattern.match(lines[j]):
-                block_lines.append(lines[j])
-                j += 1
-            last_hb_block = " ".join(block_lines)
-            break
-        i -= 1
-
-    if not last_hb_block:
-        h.add("MetaAPI status", Health.WARN, "no heartbeat to read from")
-        return
-
-    if "connection_status=CONNECTED" in last_hb_block:
-        h.add("MetaAPI status", Health.OK, "CONNECTED")
-    elif "connection_status=DISCONNECTED" in last_hb_block:
-        h.add("MetaAPI status", Health.WARN, "DISCONNECTED",
-              "SDK will auto-reconnect; check logs if persists >5 min")
-    else:
-        h.add("MetaAPI status", Health.WARN, "unknown (heartbeat format changed?)")
+    if not hb["connected"]:
+        return {"status": "FAIL", "detail": "heartbeat returned disconnected"}
+    lat = hb["latency_ms"]
+    if lat > 500:
+        return {"status": "WARN", "detail": f"high latency {lat}ms", "latency_ms": lat}
+    return {"status": "PASS", "detail": f"connected latency={lat}ms", "latency_ms": lat}
 
 
-def check_disk(h: Health) -> None:
-    """Check free disk space on /."""
-    total, used, free = shutil.disk_usage("/")
-    free_pct = free / total * 100
-    free_gb = free / (1024 ** 3)
-    if free_pct >= _MIN_DISK_FREE_PCT:
-        h.add("disk free", Health.OK, f"{free_gb:.1f} GB ({free_pct:.1f}%)")
-    else:
-        h.add("disk free", Health.WARN, f"{free_gb:.1f} GB ({free_pct:.1f}%) < 10% threshold",
-              "clean up logs or expand disk")
-
-
-def check_memory(h: Health) -> None:
-    """Check bot process memory (RSS) and system available RAM."""
-    # System available
+async def check_data_feed() -> dict:
+    _MAX_SP = {"EURUSD": 1.5, "XAUUSD": 3.0}
     try:
-        with open("/proc/meminfo") as f:
-            for line in f:
-                if line.startswith("MemAvailable:"):
-                    avail_mb = int(line.split()[1]) // 1024
-                    break
-            else:
-                avail_mb = -1
-    except Exception:
-        avail_mb = -1
+        from execution.mt5_connector import MT5Connector
+        from execution.vantage_demo_executor import VantageDemoExecutor
+        conn = MT5Connector(mode="demo")
+        await conn.connect()
+        ex   = VantageDemoExecutor(conn)
+        pairs: dict = {}
+        for sym in _PAIRS:
+            try:
+                px = await ex.get_price(sym)
+                pairs[sym] = {
+                    "bid": px["bid"],
+                    "spread_pips": px["spread_pips"],
+                    "within_limit": px["spread_pips"] <= _MAX_SP.get(sym, 2.0),
+                }
+            except Exception as exc:
+                pairs[sym] = {"error": str(exc)[:100]}
+        await conn.disconnect()
+    except Exception as exc:
+        return {"status": "FAIL", "detail": str(exc)[:200]}
 
-    # Bot process RSS
-    bot_rss_mb = -1
-    try:
-        result = subprocess.run(
-            ["pgrep", "-f", _BOT_SCRIPT], capture_output=True, text=True
-        )
-        pids = result.stdout.strip().splitlines()
-        if pids:
-            with open(f"/proc/{pids[0]}/status") as f:
-                for line in f:
-                    if line.startswith("VmRSS:"):
-                        bot_rss_mb = int(line.split()[1]) // 1024
-                        break
-    except Exception:
-        pass
-
-    if bot_rss_mb >= 0:
-        level = Health.OK if bot_rss_mb <= _MAX_MEMORY_MB else Health.WARN
-        detail = f"system available: {avail_mb}MB" if avail_mb >= 0 else ""
-        h.add("memory (bot RSS)", level,
-              f"{bot_rss_mb} MB" + (" > 500MB threshold" if bot_rss_mb > _MAX_MEMORY_MB else ""),
-              detail)
-    else:
-        h.add("memory (bot RSS)", Health.OK,
-              f"bot not running — system available: {avail_mb}MB" if avail_mb >= 0
-              else "could not read")
+    errors = [s for s, v in pairs.items() if "error" in v]
+    wide   = [s for s, v in pairs.items() if not v.get("within_limit", True)]
+    if errors:
+        return {"status": "FAIL", "detail": f"fetch failed: {errors}", "pairs": pairs}
+    if wide:
+        return {"status": "WARN", "detail": f"spread too wide: {wide}", "pairs": pairs}
+    return {"status": "PASS", "detail": "all pairs reachable", "pairs": pairs}
 
 
-def check_live_trading_guard(h: Health) -> None:
-    """Verify .env has LIVE_TRADING=false (last effective value)."""
-    env_path = _ROOT / ".env"
-    if not env_path.exists():
-        h.add("LIVE_TRADING guard", Health.WARN, ".env missing")
-        return
-    live = "false"
-    for line in env_path.read_text().splitlines():
-        stripped = line.strip()
-        if stripped.startswith("LIVE_TRADING="):
-            live = stripped.split("=", 1)[1].strip().lower()
-    if live == "false":
-        h.add("LIVE_TRADING guard", Health.OK, "false")
-    else:
-        h.add("LIVE_TRADING guard", Health.CRIT, f"LIVE_TRADING={live} — MUST be false",
-              "edit .env immediately and restart bot")
-
-
-def check_trade_log(h: Health) -> None:
-    """Verify trades.jsonl exists and is valid JSONL."""
-    if not _TRADE_LOG.exists():
-        h.add("trade log", Health.OK, "not yet created (no signals since start)")
-        return
-    lines = _TRADE_LOG.read_text().strip().splitlines()
-    bad = 0
-    for line in lines:
+def check_risk_engine() -> dict:
+    state_path = _ROOT / "logs" / "bot_state.json"
+    state: dict = {}
+    if state_path.exists():
         try:
-            json.loads(line)
+            state = json.loads(state_path.read_text())
         except Exception:
-            bad += 1
-    size_kb = _TRADE_LOG.stat().st_size // 1024
-    if bad == 0:
-        h.add("trade log", Health.OK, f"{len(lines)} events  {size_kb}KB  all valid JSON")
+            pass
+
+    from execution.demo_risk_manager import check_limits, LIMITS
+    result = check_limits(state)
+    if not result["approved"]:
+        return {"status": "FAIL", "detail": f"blocked: {result['reason']}", "state": state}
+
+    trades = state.get("trades_today", 0)
+    cap    = LIMITS["max_trades_per_day"]
+    return {
+        "status": "PASS",
+        "detail": (f"trades={trades}/{cap}  "
+                   f"consec_L={state.get('consecutive_losses', 0)}  "
+                   f"daily_loss={state.get('daily_loss_pct', 0.0):.2%}"),
+    }
+
+
+def check_portfolio() -> dict:
+    from core.portfolio_manager import PortfolioManager
+    pm    = PortfolioManager()
+    stats = pm.stats()
+    if pm.any_loss_limit_hit():
+        return {"status": "FAIL", "detail": "portfolio loss limit triggered", "stats": stats}
+    return {
+        "status": "PASS",
+        "detail": (f"daily={stats['daily_pnl_pct']:+.3f}%  "
+                   f"weekly={stats['weekly_pnl_pct']:+.3f}%"),
+    }
+
+
+def check_execution() -> dict:
+    mode      = os.environ.get("TRADING_MODE", "shadow").lower()
+    demo_only = os.environ.get("DEMO_ONLY", "true").lower() not in ("false", "0", "no")
+    live      = os.environ.get("LIVE_TRADING", "false").lower() in ("true", "1", "yes")
+
+    if live or mode == "live":
+        return {"status": "BLOCKED",
+                "detail": "LIVE_TRADING or TRADING_MODE=live — see CLAUDE.md §0"}
+    if mode == "shadow" or demo_only:
+        return {"status": "SHADOW",
+                "detail": f"mode={mode}  DEMO_ONLY={demo_only}  (no live orders)"}
+    return {"status": "READY",
+            "detail": f"mode={mode}  DEMO_ONLY={demo_only}  LIVE_TRADING={live}"}
+
+
+def check_journal() -> dict:
+    from core.trade_journal_db import TradeJournalDB
+    try:
+        s = TradeJournalDB().summary()
+        return {"status": "PASS", "summary": s,
+                "detail": (f"total={s['total']}  open={s['open']}  "
+                           f"closed={s['closed']}  W={s['wins']}  L={s['losses']}")}
+    except Exception as exc:
+        return {"status": "FAIL", "detail": str(exc)[:200]}
+
+
+# ── Output ─────────────────────────────────────────────────────────────────────
+
+_ICON = {"PASS": "✓", "WARN": "~", "FAIL": "✗",
+         "READY": "✓", "SHADOW": "~", "BLOCKED": "✗", "SKIP": "-"}
+
+
+def _fmt(label: str, r: dict, w: int = 14) -> str:
+    st   = r.get("status", "?")
+    icon = _ICON.get(st, "?")
+    return f"  {label:<{w}}  {icon} {st:<8}  {r.get('detail', '')}"
+
+
+async def _run_all(no_broker: bool) -> dict:
+    results: dict[str, dict] = {}
+    results["Runner"]      = check_runner()
+    results["Risk Engine"] = check_risk_engine()
+    results["Portfolio"]   = check_portfolio()
+    results["Execution"]   = check_execution()
+    results["Journal"]     = check_journal()
+    if not no_broker:
+        results["Broker"]    = await check_broker()
+        results["Data Feed"] = await check_data_feed()
     else:
-        h.add("trade log", Health.WARN, f"{bad}/{len(lines)} lines are malformed JSON",
-              "log may be corrupted — investigate before next restart")
+        results["Broker"]    = {"status": "SKIP", "detail": "--no-broker"}
+        results["Data Feed"] = {"status": "SKIP", "detail": "--no-broker"}
+    return results
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+def _verdict(results: dict) -> str:
+    statuses = {r["status"] for r in results.values()}
+    if "FAIL" in statuses or "BLOCKED" in statuses:
+        return "NOT READY"
+    if "WARN" in statuses or "SHADOW" in statuses:
+        return "READY (shadow mode)"
+    return "READY"
 
-def run() -> Health:
-    now = datetime.now(_UTC)
-    h = Health()
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="ST-A2 health check")
+    parser.add_argument("--no-broker", action="store_true",
+                        help="Skip broker connection (offline-safe)")
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args()
+
+    results = asyncio.run(_run_all(args.no_broker))
+    now     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    if args.as_json:
+        print(json.dumps({"timestamp": now, "checks": results,
+                          "verdict": _verdict(results)}, indent=2))
+        return
 
     print()
     print("=" * 62)
-    print(f"  Health Check  {now.strftime('%Y-%m-%dT%H:%M UTC')}")
-    print("=" * 62)
-
-    print("\n[Process]")
-    check_tmux(h)
-    check_bot_process(h)
-
-    print("\n[Connectivity]")
-    check_metaapi_status(h)
-    check_heartbeat_age(h)
-    check_log_freshness(h)
-
-    print("\n[Resources]")
-    check_disk(h)
-    check_memory(h)
-
-    print("\n[Safety]")
-    check_live_trading_guard(h)
-    check_trade_log(h)
-
-    worst = h.worst()
-    print()
-    print("=" * 62)
-    icon = "✅" if worst == Health.OK else ("⚠️ " if worst == Health.WARN else "🔴")
-    print(f"  VERDICT: {icon} {worst}")
+    print(f"  SYSTEM STATUS   {now}")
     print("=" * 62)
     print()
+    for label, r in results.items():
+        print(_fmt(label, r))
+    print()
+    v    = _verdict(results)
+    icon = "✓" if "READY" in v else "✗"
+    print(f"  Overall:  {icon} {v}")
+    print("=" * 62)
 
-    return h
+    j = results.get("Journal", {}).get("summary", {})
+    if j.get("total", 0) > 0:
+        print()
+        print(f"  Journal: {j['total']} records  "
+              f"open={j['open']}  closed={j['closed']}  "
+              f"W={j['wins']}  L={j['losses']}  "
+              f"avgR={j['avg_r']}  PF={j['profit_factor']}")
+    print()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--json", action="store_true", help="output JSON")
-    args = parser.parse_args()
-
-    h = run()
-
-    if args.json:
-        print(json.dumps({
-            "ts": datetime.now(_UTC).isoformat(),
-            "verdict": h.worst(),
-            "checks": h.checks(),
-        }, indent=2))
-
-    sys.exit(h.exit_code())
+    main()

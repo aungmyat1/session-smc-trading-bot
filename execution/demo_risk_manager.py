@@ -27,6 +27,7 @@ _PIP_VALUE_PER_LOT: dict[str, float] = {
     "EURUSD": 10.0,
     "GBPUSD": 10.0,
     "USDJPY": 9.09,   # approx at 110
+    "XAUUSD": 10.0,   # 100 oz/lot × $0.10/pip = $10/pip/lot
 }
 _MIN_LOT  = 0.01
 _MAX_LOT  = 0.5      # demo cap
