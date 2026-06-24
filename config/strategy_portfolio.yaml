@@ -1,53 +1,58 @@
 # Strategy Portfolio Configuration
-# All strategies share the demo account risk budget.
-# risk: percentage of account per trade (e.g. 0.25 = 0.25%)
+# execution_mode: demo = live demo orders | shadow = signal-only, no order
+# Risk tiers: tier1=0.30%, tier2=0.20%, tier3=0.10%
 
 portfolio:
-  max_trades_per_day:     8
-  max_open_positions:     3
-  daily_loss_limit_pct:   1.5      # % of account
-  min_confidence:         0.6      # signals below this are discarded
-
-pairs:
-  - EURUSD
-  - GBPUSD
+  max_trades_per_day:      6        # London ~3 + NY ~3 on active days
+  max_open_positions:      3
+  daily_loss_limit_pct:    2.0
+  weekly_loss_limit_pct:   5.0
+  monthly_loss_limit_pct:  8.0
+  min_confidence:          0.60
 
 correlation_groups:
-  # Signals in the same group + same direction = only highest-confidence passes
-  - [EURUSD, GBPUSD]
+  - [EURUSD, GBPUSD, EURGBP]       # EUR group
+  - [GBPUSD, GBPJPY, EURGBP]       # GBP group
+  - [USDJPY, EURJPY, GBPJPY]       # JPY group
 
 strategies:
+
   ST-A2:
-    enabled:     true
-    risk:        0.25
-    pairs:       [EURUSD, GBPUSD]
-    min_confidence: 0.7
-    description: "Session Liquidity + 15M SMC Confirmation"
+    enabled:        true
+    execution_mode: demo            # tier1 — backtest validated
+    risk:           0.30
+    pairs:          [EURUSD, GBPUSD]
+    min_confidence: 0.70
+    description:    "Session sweep + 15M CHoCH + BOS + FVG entry"
 
   LondonBreakout:
-    enabled:     true
-    risk:        0.25
-    pairs:       [EURUSD, GBPUSD]
-    min_confidence: 0.6
-    description: "Asian range breakout + retest during London open"
+    enabled:        true
+    execution_mode: demo            # tier2 — adaptive engine, demo phase
+    risk:           0.20
+    pairs:          [EURUSD, GBPUSD, USDJPY]
+    min_confidence: 0.60
+    description:    "Asian range breakout + London retest"
 
   NYMomentum:
-    enabled:     true
-    risk:        0.25
-    pairs:       [EURUSD, GBPUSD]
-    min_confidence: 0.6
-    description: "London H/L sweep + retest during NY session"
+    enabled:        true
+    execution_mode: demo            # tier2 — adaptive engine, demo phase
+    risk:           0.20
+    pairs:          [EURUSD, GBPUSD, USDJPY]
+    min_confidence: 0.60
+    description:    "NY sweep of London H/L + retest"
 
   AdaptiveSMC:
-    enabled:     false
-    risk:        0.25
-    pairs:       [EURUSD, GBPUSD]
-    min_confidence: 0.8
-    description: "Adaptive SMC with regime + score gate"
+    enabled:        true
+    execution_mode: shadow          # tier3 — observe only until validated
+    risk:           0.10
+    pairs:          [EURUSD, GBPUSD]
+    min_confidence: 0.80
+    description:    "Adaptive SMC session strategy (shadow)"
 
   VWAPBreakout:
-    enabled:     false
-    risk:        0.25
-    pairs:       [EURUSD, GBPUSD]
-    min_confidence: 0.65
-    description: "Session VWAP cross with volume confirmation"
+    enabled:        true
+    execution_mode: shadow          # tier3 — observe only until validated
+    risk:           0.10
+    pairs:          [EURUSD, GBPUSD]
+    min_confidence: 0.70
+    description:    "VWAP cross + volume confirmation (shadow)"

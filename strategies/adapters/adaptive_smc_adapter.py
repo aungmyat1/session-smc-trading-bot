@@ -11,6 +11,8 @@ from typing import Optional
 from core.base_strategy import BaseStrategy
 from core.signal import Signal
 
+_PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "USDJPY": 0.01, "XAUUSD": 0.1}
+
 
 class AdaptiveSMCAdapter(BaseStrategy):
 
@@ -45,8 +47,9 @@ class AdaptiveSMCAdapter(BaseStrategy):
         raw    = raw_list[-1]
         action = "BUY" if raw.direction == "LONG" else "SELL"
 
-        sl_pips = abs(raw.entry_price - raw.sl_price) / 0.0001
-        tp_pips = abs(raw.tp_price - raw.entry_price) / 0.0001
+        pip     = _PIP.get(symbol, 0.0001)
+        sl_pips = abs(raw.entry_price - raw.sl_price) / pip
+        tp_pips = abs(raw.tp_price - raw.entry_price) / pip
         rr      = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
 
         # Adaptive SMC requires both liquidity swept + structure confirmed
