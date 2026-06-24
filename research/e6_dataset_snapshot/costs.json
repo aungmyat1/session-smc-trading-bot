@@ -1,0 +1,31 @@
+{
+  "_comment": "Single source of truth for round-trip trading cost (spread + commission), in PIPS. Both backtests read this. At ST-A2's PF_2x=1.025 the verdict is dominated by these numbers, so they MUST match your actual Vantage account, measured at the killzone hours (07-10 and 13-16 UTC) where this strategy trades — NOT the broker's advertised headline spread.",
+
+  "active_profile": "PLACEHOLDER_vt_markets_assumption",
+
+  "profiles": {
+    "PLACEHOLDER_vt_markets_assumption": {
+      "_note": "The OLD assumption inherited from CLAUDE.md (VT Markets Standard). This is what ST-A2 PASS and EXP-05 FAIL were computed against. Kept only so nothing breaks until you measure the real Vantage cost. REPLACE active_profile once you have real numbers.",
+      "EURUSD": { "standard": 1.4, "stress2x": 2.8 },
+      "GBPUSD": { "standard": 1.8, "stress2x": 3.6 }
+    },
+
+    "vantage_raw_REFERENCE": {
+      "_note": "TYPICAL Vantage Raw ECN: ~0.0-0.3 pip spread + USD 3/lot/side commission (= ~0.6 pip-equiv round-trip). Net RT ~0.7-0.9 pip. If you are on Raw, ST-A2 likely looks BETTER than the placeholder. Fill with YOUR measured killzone numbers before trusting.",
+      "EURUSD": { "standard": 0.9, "stress2x": 1.8 },
+      "GBPUSD": { "standard": 1.1, "stress2x": 2.2 }
+    },
+
+    "vantage_standard_REFERENCE": {
+      "_note": "TYPICAL Vantage Standard STP: ~1.0-1.4 pip spread, no commission, but widens at session opens/news — the exact hours this strategy trades. Measure the killzone-hour average, it is usually wider than the headline. If you are on Standard, ST-A2 may look WORSE live.",
+      "EURUSD": { "standard": 1.4, "stress2x": 2.8 },
+      "GBPUSD": { "standard": 1.8, "stress2x": 3.6 }
+    },
+
+    "vantage_measured": {
+      "_note": "FILL THIS from scripts/capture_spreads.py output (killzone-hour average RT cost), then set active_profile to 'vantage_measured'. This is the only profile whose verdict means anything for your live account.",
+      "EURUSD": { "standard": null, "stress2x": null },
+      "GBPUSD": { "standard": null, "stress2x": null }
+    }
+  }
+}

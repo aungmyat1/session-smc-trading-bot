@@ -1,7 +1,27 @@
 # OPS02_ACTIVATION_CHECKLIST.md
 # Demo-Trading Activation Checklist
 # OPS-02 | Session SMC Trading Bot — ST-A2
-# Created: 2026-06-21 | Status: PENDING (OPS-01 in progress)
+# Created: 2026-06-21 | Status: PARTIALLY SUPERSEDED — see notice below
+
+---
+
+> **SUPERSEDED NOTICE — 2026-06-24**
+>
+> **Section 5 (Success Metrics) — the 30-day / 50-trade gate — has been REPLACED.**
+> Owner decision 2026-06-24: the original gate is mathematically incompatible with
+> ST-A2's observed frequency of ~2.88 trades/month (50 trades ≈ 17.4 months).
+>
+> The governing gate is now: **`docs/OPS02_REVISED_GATE.md`** (owner-approved).
+>
+> **Still operative in this document:**
+> - Section 1 (Preconditions: OPS-01, error checks, heartbeat, reconnect, strategy gate)
+> - Section 2 (Activation Procedure: backup, stop, LIVE_TRADING=true, restart, verify)
+> - Section 3 (Monitoring: first 24h, first order, first SL, first TP, session close)
+> - Section 4 (Rollback Procedure)
+>
+> **Superseded:**
+> - Section 5 (Success Metrics) — replaced by OPS02_REVISED_GATE.md E1–E6
+> - Section 6 (Current Blockers) — replaced by OPS02_REVISED_GATE.md Current Status table
 
 ---
 

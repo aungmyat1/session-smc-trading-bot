@@ -1,0 +1,67 @@
+{
+  "created_at": "2026-06-24T12:37:27Z",
+  "freeze_version": "1",
+  "gate_status": {
+    "collection_complete": false,
+    "exit_code": 1,
+    "summary": "Phase 2 Completion Check \u2014 2026-06-24 12:37 UTC\n\n  London sessions:  1/5  FAIL\n  NY sessions:      1/5  FAIL\n  Total rows:       1,840/7,000  FAIL\n\nNOT_READY\n\n  Remaining: 4 more London session(s), 4 more NY session(s), 5,160 more rows\n\n  Continue collecting. Expected gate: ~2026-06-30 14:00 UTC\n  Monitor: python3 scripts/daily_spread_report.py"
+  },
+  "source_files": {
+    "spread_samples.csv": {
+      "sha256": "dfe5efc5d7266331cad2f078f6883a5082031f263a7aa053f25ebb77b8f41233",
+      "rows": 1840,
+      "size_bytes": 104004
+    },
+    "cost_model.json": {
+      "sha256": "f63bda6f66ea32d39a1a0e46ace615de42558f1b04eb5477b381131f3edbc1fe",
+      "size_bytes": 2550
+    },
+    "costs.json": {
+      "sha256": "097cd8cbe44520198033f59d223894e03afd0af54f14bd29b5a78f53ebc8047a",
+      "active_profile": "PLACEHOLDER_vt_markets_assumption",
+      "size_bytes": 2094
+    }
+  },
+  "coverage": {
+    "symbols": [
+      "AUDUSD",
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY"
+    ],
+    "total_samples": 1840,
+    "earliest_timestamp": "2026-06-24T05:57:48Z",
+    "latest_timestamp": "2026-06-24T11:12:04Z",
+    "london_sessions": 1,
+    "ny_sessions": 1,
+    "sessions": {
+      "off": {
+        "samples": 424,
+        "dates": [
+          "2026-06-24"
+        ],
+        "session_count": 1
+      },
+      "london": {
+        "samples": 1320,
+        "dates": [
+          "2026-06-24"
+        ],
+        "session_count": 1
+      },
+      "new_york": {
+        "samples": 96,
+        "dates": [
+          "2026-06-24"
+        ],
+        "session_count": 1
+      }
+    },
+    "killzone_samples_by_symbol": {
+      "AUDUSD": 354,
+      "EURUSD": 354,
+      "GBPUSD": 354,
+      "USDJPY": 354
+    }
+  }
+}

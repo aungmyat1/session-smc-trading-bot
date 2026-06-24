@@ -4,6 +4,12 @@ SA-08 — Phase-0 backtest for Strategy A (Session Liquidity Reversal).
 
 Usage:
     python3 scripts/backtest_session_liquidity.py
+    python3 scripts/backtest_session_liquidity.py --costs-json config/costs.json
+
+--costs-json FILE
+    Load spread costs from FILE (a costs.json with active_profile set).
+    If omitted, the hardcoded SPREAD_PIPS defaults are used (original Phase-0 run).
+    Used by the E6 cost revalidation pipeline (run_e6_revalidation.sh).
 
 Outputs:
     docs/BACKTEST_RESULTS.md          — summary + per-year + per-session tables
@@ -17,7 +23,9 @@ Phase-0 gate (must ALL pass in same RR variant, combined EURUSD + GBPUSD):
 Measures only. No broker execution. No live trading.
 """
 
+import argparse
 import csv
+import json
 import re
 import sys
 import uuid
@@ -611,7 +619,54 @@ def _log_runs(run_id, rr, trades, all_rr_data, gate, today_utc, data_start, data
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _load_costs_from_json(path):
+    """
+    Load SPREAD_PIPS overrides from a costs.json file.
+
+    Reads active_profile → profiles[profile][sym] → {standard, stress2x}.
+    Mutates the module-level SPREAD_PIPS dict in place.
+    Aborts if any required symbol has null values (vantage_measured not yet filled).
+    """
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    profile_name = data.get("active_profile")
+    if not profile_name:
+        print(f"[ERROR] costs.json missing 'active_profile' key.")
+        raise SystemExit(1)
+    profile = data.get("profiles", {}).get(profile_name)
+    if profile is None:
+        print(f"[ERROR] Profile '{profile_name}' not found in costs.json.")
+        raise SystemExit(1)
+
+    print(f"[+] Cost profile: {profile_name}  (from {path})")
+    for sym in SYMBOLS:
+        sym_costs = profile.get(sym)
+        if sym_costs is None:
+            print(f"[ERROR] Symbol '{sym}' not in profile '{profile_name}'.")
+            raise SystemExit(1)
+        std_val    = sym_costs.get("standard")
+        stress_val = sym_costs.get("stress2x")
+        if std_val is None or stress_val is None:
+            print(
+                f"[ERROR] {sym} in profile '{profile_name}' has null costs. "
+                f"Run export_spread_limits.py first."
+            )
+            raise SystemExit(1)
+        SPREAD_PIPS[sym]["standard"] = float(std_val)
+        SPREAD_PIPS[sym]["2x"]       = float(stress_val)
+        print(f"    {sym}: std={SPREAD_PIPS[sym]['standard']} pip, 2x={SPREAD_PIPS[sym]['2x']} pip")
+
+
 def main():
+    parser = argparse.ArgumentParser(description="SA-08 Phase-0 backtest")
+    parser.add_argument(
+        "--costs-json", metavar="FILE",
+        help="Path to costs.json — overrides hardcoded SPREAD_PIPS using active_profile",
+    )
+    args = parser.parse_args()
+
+    if args.costs_json:
+        _load_costs_from_json(args.costs_json)
+
     today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     run_id    = generate_run_id()
     data_dir  = _ROOT / "data" / "historical"
