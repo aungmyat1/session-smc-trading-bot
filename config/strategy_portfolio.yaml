@@ -1,0 +1,53 @@
+# Strategy Portfolio Configuration
+# All strategies share the demo account risk budget.
+# risk: percentage of account per trade (e.g. 0.25 = 0.25%)
+
+portfolio:
+  max_trades_per_day:     8
+  max_open_positions:     3
+  daily_loss_limit_pct:   1.5      # % of account
+  min_confidence:         0.6      # signals below this are discarded
+
+pairs:
+  - EURUSD
+  - GBPUSD
+
+correlation_groups:
+  # Signals in the same group + same direction = only highest-confidence passes
+  - [EURUSD, GBPUSD]
+
+strategies:
+  ST-A2:
+    enabled:     true
+    risk:        0.25
+    pairs:       [EURUSD, GBPUSD]
+    min_confidence: 0.7
+    description: "Session Liquidity + 15M SMC Confirmation"
+
+  LondonBreakout:
+    enabled:     true
+    risk:        0.25
+    pairs:       [EURUSD, GBPUSD]
+    min_confidence: 0.6
+    description: "Asian range breakout + retest during London open"
+
+  NYMomentum:
+    enabled:     true
+    risk:        0.25
+    pairs:       [EURUSD, GBPUSD]
+    min_confidence: 0.6
+    description: "London H/L sweep + retest during NY session"
+
+  AdaptiveSMC:
+    enabled:     false
+    risk:        0.25
+    pairs:       [EURUSD, GBPUSD]
+    min_confidence: 0.8
+    description: "Adaptive SMC with regime + score gate"
+
+  VWAPBreakout:
+    enabled:     false
+    risk:        0.25
+    pairs:       [EURUSD, GBPUSD]
+    min_confidence: 0.65
+    description: "Session VWAP cross with volume confirmation"
