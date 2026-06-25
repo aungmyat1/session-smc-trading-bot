@@ -17,6 +17,7 @@ Uses strategy/session_liquidity/ components — same code that produced ST-A2.
 Usage:
     python3 scripts/replay_6m.py
     python3 scripts/replay_6m.py --symbols EURUSD --start 2025-07-01
+    python3 scripts/replay_6m.py --parquet --symbols EURUSD --start 2024-11-01 --end 2024-11-30
 """
 from __future__ import annotations
 
@@ -47,8 +48,10 @@ COSTS = {
 }
 PIP = 0.0001
 
-DATA_DIR = Path(__file__).parent.parent / "data" / "historical"
-OUT_DIR  = Path(__file__).parent.parent / "docs"
+DATA_DIR  = Path(__file__).parent.parent / "data" / "historical"
+DATA_PROC = Path(__file__).parent.parent / "data" / "processed"
+OUT_DIR   = Path(__file__).parent.parent / "docs"
+RPT_DIR   = Path(__file__).parent.parent / "reports"
 
 _UTC = timezone.utc
 
@@ -122,6 +125,32 @@ def load_csv(path: Path) -> list[dict]:
 
 def filter_range(candles: list[dict], start: str, end: str) -> list[dict]:
     return [c for c in candles if start <= c["time"] <= end]
+
+
+def load_parquet(symbol: str, tf: str, start: str | None = None, end: str | None = None) -> list[dict]:
+    try:
+        import pandas as pd
+    except ImportError:
+        print("pandas required for --parquet mode: pip install pandas pyarrow")
+        sys.exit(1)
+
+    path = DATA_PROC / symbol / f"{tf}.parquet"
+    if not path.exists():
+        print(f"[{symbol}] Parquet not found: {path}")
+        return []
+
+    df = pd.read_parquet(path, columns=["timestamp_utc", "open", "high", "low", "close"])
+    df["time"] = pd.to_datetime(df["timestamp_utc"], utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    df = df.sort_values("time")
+
+    if start:
+        s = start if "T" in start else start + "T00:00:00Z"
+        df = df[df["time"] >= s]
+    if end:
+        e = end if "T" in end else end + "T23:59:59Z"
+        df = df[df["time"] <= e]
+
+    return df[["time", "open", "high", "low", "close"]].to_dict("records")
 
 
 def _utc(t) -> datetime:
@@ -429,25 +458,48 @@ def save_csv(trades: list[Trade], path: Path) -> None:
 def main() -> None:
     p = argparse.ArgumentParser(description="6-month replay: ST-A2 baseline vs D2-combined")
     p.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    p.add_argument("--start",   default="2026-01-01T00:00:00Z")
-    p.add_argument("--end",     default="2026-06-19T23:59:59Z")
+    p.add_argument("--start",   default=None)
+    p.add_argument("--end",     default=None)
+    p.add_argument("--parquet", action="store_true",
+                   help="Load from data/processed/ Parquet files instead of CSV")
     args = p.parse_args()
+
+    # Set defaults based on mode
+    if args.parquet:
+        start = args.start or "2024-11-01"
+        end   = args.end   or "2024-11-30"
+    else:
+        start = args.start or "2026-01-01T00:00:00Z"
+        end   = args.end   or "2026-06-19T23:59:59Z"
+
+    print(f"\n{'═' * 64}")
+    print(f"  Mode: {'PARQUET (Dukascopy real ticks)' if args.parquet else 'CSV'}")
+    print(f"  Period: {start} → {end}")
+    print(f"  Symbols: {', '.join(args.symbols)}")
+    print(f"{'═' * 64}")
 
     all_base: list[Trade] = []
     all_comb: list[Trade] = []
 
     for sym in args.symbols:
-        instr = sym[:3] + "_" + sym[3:]
-        m15_path = DATA_DIR / f"{instr}_M15.csv"
-        h4_path  = DATA_DIR / f"{instr}_H4.csv"
+        if args.parquet:
+            print(f"\n[{sym}] Loading Parquet …")
+            c_m15 = load_parquet(sym, "M15", start, end)
+            c_h4  = load_parquet(sym, "H4")  # full H4 for bias warm-up
+            if not c_m15:
+                print(f"[{sym}] No M15 data for range {start}→{end}, skipping")
+                continue
+        else:
+            instr    = sym[:3] + "_" + sym[3:]
+            m15_path = DATA_DIR / f"{instr}_M15.csv"
+            h4_path  = DATA_DIR / f"{instr}_H4.csv"
+            if not m15_path.exists() or not h4_path.exists():
+                print(f"[{sym}] Missing CSV. Run: python3 scripts/fetch_data.py --symbols {sym}")
+                continue
+            print(f"\n[{sym}] Loading CSV …")
+            c_m15 = filter_range(load_csv(m15_path), start, end)
+            c_h4  = load_csv(h4_path)
 
-        if not m15_path.exists() or not h4_path.exists():
-            print(f"[{sym}] Missing data. Run: python3 scripts/fetch_data.py --symbols {sym}")
-            continue
-
-        print(f"\n[{sym}] Loading …")
-        c_m15 = filter_range(load_csv(m15_path), args.start, args.end)
-        c_h4  = load_csv(h4_path)   # full H4 history for daily context + bias warm-up
         print(f"[{sym}] M15={len(c_m15)} bars | H4_full={len(c_h4)} bars")
 
         print(f"[{sym}] Running BASELINE (ST-A2) …")
@@ -462,7 +514,8 @@ def main() -> None:
 
     compare(all_base, all_comb)
 
-    out = OUT_DIR / "replay_6m_trades.csv"
+    out_dir = RPT_DIR if args.parquet else OUT_DIR
+    out = out_dir / "replay_6m_trades.csv"
     save_csv(all_base + all_comb, out)
 
 
