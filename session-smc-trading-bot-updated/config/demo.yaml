@@ -1,0 +1,58 @@
+# ST-A2 Vantage Demo — Safety Configuration
+# Phase: Demo validation (Phase 1 of CLAUDE.md §3)
+# DO NOT use this file for live trading configuration.
+
+execution:
+  mode: demo                   # shadow | demo | live (live = blocked by CLAUDE.md §0)
+  broker: vantage_mt5
+  account_type: demo
+  demo_only: true              # redundant guard — DEMO_ONLY env var must also be false to send orders
+  magic_number: 21099          # ST-A2 demo orders only
+  order_comment: "ST-A2-demo"
+
+trading:
+  allowed_pairs:
+    - EURUSD
+    - GBPUSD
+  scan_interval_seconds: 60
+  max_spread_pips:
+    EURUSD: 1.5
+    GBPUSD: 2.0
+
+  # VT Markets demo uses -VIP suffix for forex symbols.
+  # Strategy and config use canonical names; executor translates at the API boundary.
+  # If broker changes symbol naming, update vantage_demo_executor._BROKER_SYMBOL only.
+  broker_symbol_map:
+    EURUSD: EURUSD-VIP
+    GBPUSD: GBPUSD-VIP
+    USDJPY: USDJPY-VIP
+    XAUUSD: XAUUSD-VIP
+
+risk:
+  risk_per_trade_pct: 0.25     # 0.25% of account per trade (conservative for demo phase)
+  max_trades_per_day: 2        # Phase 1: 1–2 trades/day, never burst
+  max_open_positions: 1        # One position at a time during first 30 trades
+  daily_loss_limit_pct: 1.5    # Halt the day at 1.5% loss (tighter than portfolio 2%)
+  weekly_loss_limit_pct: 4.0
+  monthly_loss_limit_pct: 7.0
+  max_consecutive_losses: 3    # Halt after 3 consecutive losses — review required
+  max_lot_size: 0.5            # Hard cap regardless of sizing formula
+
+disabled_behaviors:
+  unlimited_retries: true       # No infinite retry loops on order failure
+  aggressive_recovery: true     # No doubling up after a loss
+  martingale: true              # Explicitly prohibited
+  averaging_down: true          # Prohibited — one position per symbol always
+  auto_live_enable: true        # LIVE_TRADING=true is owner-only, never agent
+
+circuit_breaker:
+  max_signals_per_hour: 4       # ST-A2 signal rate limit per pair
+  max_trades_per_day: 2         # Per-strategy daily cap (shadows portfolio-level cap)
+  consecutive_loss_cooldown_hours: 4
+
+logging:
+  trade_journal_db: data/trade_journal.db
+  shadow_journal: logs/shadow_trades.jsonl
+  demo_journal: logs/st_a2_demo_trades.jsonl
+  runner_log: logs/st_a2_runner.log
+  demo_log: logs/st_a2_demo.log

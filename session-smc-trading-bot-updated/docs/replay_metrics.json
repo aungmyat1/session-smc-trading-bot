@@ -1,0 +1,40 @@
+{
+  "total_trades": 6,
+  "win_count": 3,
+  "loss_count": 3,
+  "timeout_count": 0,
+  "win_rate": 50.0,
+  "avg_win_r": 1.883,
+  "avg_loss_r": -1.078,
+  "avg_r": 0.402,
+  "total_net_r": 2.415,
+  "profit_factor": 1.747,
+  "max_drawdown_r": 2.144,
+  "best_win_streak": 2,
+  "worst_loss_streak": 2,
+  "expectancy_r": 0.4025,
+  "sessions": {
+    "london": {
+      "count": 4,
+      "win_rate": 50.0,
+      "avg_r": 0.4,
+      "pf": 1.747
+    },
+    "newyork": {
+      "count": 0,
+      "win_rate": 0,
+      "avg_r": 0,
+      "pf": 0
+    },
+    "other": {
+      "count": 2,
+      "win_rate": 50.0,
+      "avg_r": 0.407,
+      "pf": 1.747
+    }
+  },
+  "replay_period": "2026-01-01 to 2026-06-30",
+  "symbol": "EURUSD",
+  "spread_rt_pips": 1.4,
+  "rr_used": 2.0
+}

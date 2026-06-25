@@ -27,7 +27,6 @@ from .structure_detector import atr, detect_choch, detect_bos, detect_displaceme
 from .liquidity_detector import build_session_range, classify_session, detect_sweep
 from .poi_detector import find_fvg, check_fvg_retest
 from .swing_detector import last_swing_high, last_swing_low
-from .daily_bias import build_daily_context, classify_location
 
 Candle = dict
 PIP: float = 0.0001
@@ -70,14 +69,6 @@ DEFAULT_CONFIG: dict = {
     "tp1_r": 4.0,
     "tp2_r": 5.0,
     "atr_period": 14,
-    # ── D2 daily context gates (all default ON) ───────────────────────────────
-    # Gate A: 1D swing structure must not conflict with 4H+1H bias
-    "d2_structure_gate": True,
-    # Gate B: session open must be in discount (bullish) or premium (bearish)
-    "d2_location_gate": True,
-    # Gate C: swept session level must be within d2_poi_pips of PDL (bullish) or PDH (bearish)
-    "d2_poi_gate": True,
-    "d2_poi_pips": 30.0,
 }
 
 
@@ -117,33 +108,10 @@ def generate_signal_A(
     if n < range_bars + 6:
         return None
 
-    # ── Stage 0 — D2 Daily Context ───────────────────────────────────────────
-    # Build once from H4 data (no extra download needed).
-    # ctx is None when daily history is insufficient — all D2 gates are skipped.
-    d2_ctx = build_daily_context(candles_4h, session_candles[0]["time"], cfg["swing_n"])
-
     # ── Phase 2 — HTF Bias ───────────────────────────────────────────────────
     bias = htf_bias(candles_4h, candles_1h, cfg["swing_n"])
     if bias == "neutral":
         return None
-
-    # ── D2 Gate A — Daily structure must not conflict with 4H+1H bias ────────
-    if d2_ctx is not None and cfg.get("d2_structure_gate", True):
-        ds = d2_ctx["structure"]
-        if ds != "neutral" and ds != bias:
-            return None
-
-    # ── D2 Gate B — Price location (premium/discount) ─────────────────────────
-    # Session open price must be in the zone that supports the trade direction:
-    #   bullish trade → session opens in discount (below PDH/PDL midpoint)
-    #   bearish trade → session opens in premium  (above PDH/PDL midpoint)
-    if d2_ctx is not None and cfg.get("d2_location_gate", True):
-        session_open_price = float(session_candles[0]["open"])
-        location = classify_location(session_open_price, d2_ctx["pdh"], d2_ctx["pdl"])
-        if bias == "bullish" and location == "premium":
-            return None
-        if bias == "bearish" and location == "discount":
-            return None
 
     # ── Phase 3 — Session Range ───────────────────────────────────────────────
     sess_range = build_session_range(session_candles, range_bars, cfg["min_session_range_pips"])
@@ -162,19 +130,6 @@ def generate_signal_A(
     if sweep is None:
         return None
     si = sweep["index"]
-
-    # ── D2 Gate C — POI check (swept level must be near PDH or PDL) ──────────
-    # Ensures the session sweep targets a significant daily liquidity level,
-    # not just an intraday noise level.
-    if d2_ctx is not None and cfg.get("d2_poi_gate", True):
-        poi_threshold = cfg.get("d2_poi_pips", 30.0) * PIP
-        swept_level = sweep["sweep_price"]  # the session H or L that was swept
-        if bias == "bullish":
-            if abs(swept_level - d2_ctx["pdl"]) > poi_threshold:
-                return None
-        else:
-            if abs(swept_level - d2_ctx["pdh"]) > poi_threshold:
-                return None
 
     # ── Phase 6 — CHoCH ───────────────────────────────────────────────────────
     choch = detect_choch(session_candles, si, bias, cfg["choch_lookback"])

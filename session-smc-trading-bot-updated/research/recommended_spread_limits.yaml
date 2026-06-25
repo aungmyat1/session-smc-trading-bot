@@ -1,0 +1,26 @@
+# recommended_spread_limits.yaml
+# Generated:   2026-06-24T10:24:04Z
+# Source:      research/cost_model.json
+# Data rows:   1,472
+# Methodology: P95 of combined killzone (london + new_york),
+#              rounded UP to next 0.05 pip. stress2x = standard × 2.
+
+active_profile: vantage_measured
+generated_at:   2026-06-24T10:24:04Z
+
+symbols:
+  EURUSD:
+    killzone_n:       330
+    killzone_avg:     1.3488  pip
+    killzone_median:  1.3000  pip
+    killzone_p95:     1.4000  pip
+    standard:         1.4000  pip  # P95 ceil-0.05 — inject into backtest
+    stress2x:         2.8000  pip  # standard × 2
+
+  GBPUSD:
+    killzone_n:       330
+    killzone_avg:     1.5539  pip
+    killzone_median:  1.6000  pip
+    killzone_p95:     1.6000  pip
+    standard:         1.6000  pip  # P95 ceil-0.05 — inject into backtest
+    stress2x:         3.2000  pip  # standard × 2

@@ -1,0 +1,57 @@
+# Adaptive Session Engine v1 — Configuration
+# All values are demo-mode defaults. Review before any live deployment.
+
+mode: demo        # demo | live  (live requires CONFIRM-LIVE-ON per CLAUDE.md §6)
+
+pairs:
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+
+risk:
+  per_trade: 0.005          # 0.5% of account per trade
+  daily_loss_limit: 0.015   # 1.5% daily loss cap → halt
+  max_trades_per_day: 6
+  max_consecutive_losses: 3
+
+filters:
+  min_score: 7              # signal score threshold (0-10)
+  max_spread_pips:
+    EURUSD: 1.5
+    GBPUSD: 2.0
+    USDJPY: 2.0
+  blocked_regimes:
+    - UNSAFE
+  max_atr_pct: 0.008        # 0.8% of price
+  min_atr_pct: 0.001        # 0.1% of price
+
+sessions:
+  asian:
+    start: "00:00"
+    end: "06:00"
+  london:
+    start: "06:00"
+    end: "09:00"
+  new_york:
+    start: "11:00"
+    end: "15:00"
+
+london_breakout:
+  min_range_pips: 15
+  max_range_pips: 50
+  tp_rr: 1.5
+
+ny_momentum:
+  sweep_buffer_pips: 1
+  tp_rr: 2.0
+
+smc_session:
+  rr: 3.0
+  sl_buffer_pips: 2.0
+  displacement_mult: 1.2
+  atr_period: 14
+
+logging:
+  file: logs/adaptive_engine.log
+  format: json              # json | text
+  level: INFO
