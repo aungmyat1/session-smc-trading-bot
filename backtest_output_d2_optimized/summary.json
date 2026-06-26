@@ -1,0 +1,79 @@
+{
+  "selected_params": {
+    "session_start": 12,
+    "session_end": 17,
+    "confirm_bars": 12,
+    "entry_mode": "fifty_pullback",
+    "entry_wait": 3,
+    "rr": 2.0,
+    "target_mode": "fixed_rr",
+    "max_stop_pips": 25,
+    "min_stop_pips": 2.0,
+    "cooldown": 3,
+    "trend_filter": "none"
+  },
+  "train": {
+    "trades": 20,
+    "wins": 11,
+    "losses": 9,
+    "win_rate_pct": 55.0,
+    "total_R": 6.08,
+    "avg_R": 0.304,
+    "profit_factor_R": 1.776,
+    "max_drawdown_pct": -3.78,
+    "final_equity": 10605.45,
+    "return_pct": 6.05
+  },
+  "validation": {
+    "trades": 10,
+    "wins": 5,
+    "losses": 5,
+    "win_rate_pct": 50.0,
+    "total_R": 4.06,
+    "avg_R": 0.406,
+    "profit_factor_R": 2.32,
+    "max_drawdown_pct": -1.98,
+    "final_equity": 10403.42,
+    "return_pct": 4.03
+  },
+  "full_period_per_symbol": [
+    {
+      "trades": 16,
+      "wins": 7,
+      "losses": 9,
+      "win_rate_pct": 43.75,
+      "total_R": 2.0,
+      "avg_R": 0.125,
+      "profit_factor_R": 1.338,
+      "max_drawdown_pct": -3.78,
+      "final_equity": 10192.45,
+      "return_pct": 1.92,
+      "symbol": "EURUSD"
+    },
+    {
+      "trades": 15,
+      "wins": 9,
+      "losses": 6,
+      "win_rate_pct": 60.0,
+      "total_R": 8.02,
+      "avg_R": 0.535,
+      "profit_factor_R": 2.565,
+      "max_drawdown_pct": -3.09,
+      "final_equity": 10819.36,
+      "return_pct": 8.19,
+      "symbol": "GBPUSD"
+    }
+  ],
+  "full_period_portfolio": {
+    "trades": 31,
+    "wins": 16,
+    "losses": 15,
+    "win_rate_pct": 51.61,
+    "total_R": 10.02,
+    "avg_R": 0.323,
+    "profit_factor_R": 1.908,
+    "max_drawdown_pct": -3.59,
+    "final_equity": 11011.82,
+    "return_pct": 10.12
+  }
+}

@@ -179,3 +179,61 @@ Consistent with ST-D2-6M (68.8% removal, PF_2x 1.909→0.135).
 **Primary drag:** November 2025 (4 trades, 1W/3L, −1.549R net)
 
 **VERDICT: ⚠️ CONDITIONAL PASS — Phase-0 gate (authoritative) remains PASS. Single-year window result is within expected variability: WR virtually identical (31.2% vs 32.0%), PF_2x marginally fails (0.948 vs 1.0 gate) by ~1 trade outcome on n=16. MaxDD significantly better than baseline (6.89R vs 18.72R). No evidence of structural deterioration. Recommendation: continue demo trading per §3 Phase Plan. Do NOT redesign based on n=16 single-year sample.**
+
+---
+
+## ST-D2-E3-OPT — D2 E3 Standalone — Phase-0 Holdout (pre-registered 2026-06-26)
+
+**Trial ID:** ST-D2-E3-OPT
+**Runner:** `scripts/optimize_d2_rules.py` (optimization) + `scripts/backtest_d2_daily_bias.py` (holdout)
+**Strategy:** D2 E3 model — standalone, NOT a variant of ST-A2.
+  PDH/PDL liquidity sweep → M15 MSS confirmation (close beyond rolling pivot) → 50% pullback limit entry → fixed-RR exit.
+  No Asian range, no 4H bias gate, no CHoCH/BOS/FVG chain.
+**Params selected by:** grid search on Dec 2025–May 2026 (6-month in-sample, train/val split at Apr 2026)
+**Holdout period:** 2021-06-21 → 2025-11-30 (EURUSD) | 2023-03-13 → 2025-11-30 (GBPUSD)
+  Holdout is entirely outside the optimization window — zero leakage.
+**Cost model:** EURUSD 1.4pip std / 2.8pip 2× | GBPUSD 1.8pip std / 3.6pip 2×
+**Phase-0 gate:** n ≥ 50 AND net PF > 1.0 at BOTH std AND 2× stress
+
+**Selected parameters (locked):**
+```
+session: 12:00–17:00 UTC   confirm_bars: 12   entry_mode: fifty_pullback
+entry_wait: 3 bars          rr: 2.0            target_mode: fixed_rr
+max_stop_pips: 25           min_stop_pips: 2.0  sl_buffer: 2 pip
+trend_filter: none          cooldown: 3 bars
+```
+
+**In-sample result (6-month, reference only):**
+| Period | n | Gross PF | Net PF (std) | Net PF (2×) | WR% | MaxDD |
+|---|---|---|---|---|---|---|
+| Full 6mo portfolio | 31 | 1.908 | 1.484 | 1.164 | 51.6% | -3.59% |
+
+**Holdout results:** (run 2026-06-26)
+
+| Symbol | Period | n | Gross PF | Net PF (std) | Net PF (2×) | WR% | Avg SL pips | MaxDD |
+|---|---|---|---|---|---|---|---|---|
+| EURUSD | 2021-06-21→2025-11-30 | 131 | 0.959 | 0.780 | 0.639 | 40.5% | 15.9 | — |
+| GBPUSD | 2023-03-13→2025-11-30 | 72  | 0.745 | 0.575 | 0.448 | 37.5% | 15.6 | — |
+| **Portfolio** | | **203** | **0.875** | **0.699** | **0.563** | **39.4%** | — | **-26.1%** |
+
+Phase-0 gate check:
+- n ≥ 50: ✅ (n=203)
+- net PF (std) > 1.0: ❌ (0.699)
+- net PF (2×) > 1.0: ❌ (0.563)
+
+**VERDICT: ❌ FAIL — overfitting confirmed.**
+
+Root cause: The 6-month optimization window (Dec 2025–May 2026) was a favorable regime for the D2 E3 model.
+Gross PF on holdout is 0.875 — the model has no raw edge outside the search window, independent of fees.
+Win rate collapsed from 51.6% (in-sample) to 39.4% (holdout), indicating regime-specific overfitting,
+not a fee problem. The fifty_pullback entry and 3h MSS confirm window appear particularly regime-sensitive.
+
+Max drawdown on holdout (-26%) vs in-sample (-3.6%) — 7× degradation, confirming the in-sample result
+was not representative.
+
+**Conclusion:** D2 E3 as a standalone PDH/PDL sweep model has no persistent edge on EUR/GBP at these
+parameters. Do not proceed to demo. Do not re-run with modified params under this trial ID.
+
+**Key learning:** A 6-month optimization window is insufficient for D2 E3 style strategies.
+The sweep setup frequency (~30-40/month combined) means even 6 months can produce a locally
+consistent-looking result with high variance. Minimum search window for this style: 3+ years.

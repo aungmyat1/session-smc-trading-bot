@@ -1,0 +1,64 @@
+{
+  "trial": "ST-D2-E3-OPT",
+  "holdout": "2021-06-21 \u2192 2025-11-30",
+  "params": {
+    "session_start": 12,
+    "session_end": 17,
+    "confirm_bars": 12,
+    "entry_mode": "fifty_pullback",
+    "entry_wait": 3,
+    "rr": 2.0,
+    "target_mode": "fixed_rr",
+    "max_stop_pips": 25,
+    "min_stop_pips": 2.0,
+    "cooldown": 3,
+    "trend_filter": "none"
+  },
+  "per_symbol": {
+    "EURUSD": {
+      "n": 131,
+      "wins": 53,
+      "win_rate_pct": 40.5,
+      "gross_pf": 0.959,
+      "net_pf_std": 0.78,
+      "net_pf_2x": 0.639,
+      "avg_r_gross": -0.02,
+      "avg_r_net_std": -0.119,
+      "total_r_gross": -2.6,
+      "total_r_net_std": -15.6,
+      "avg_sl_pips": 15.9,
+      "avg_fee_r": 0.099
+    },
+    "GBPUSD": {
+      "n": 72,
+      "wins": 27,
+      "win_rate_pct": 37.5,
+      "gross_pf": 0.745,
+      "net_pf_std": 0.575,
+      "net_pf_2x": 0.448,
+      "avg_r_gross": -0.142,
+      "avg_r_net_std": -0.275,
+      "total_r_gross": -10.23,
+      "total_r_net_std": -19.78,
+      "avg_sl_pips": 15.6,
+      "avg_fee_r": 0.133
+    }
+  },
+  "portfolio": {
+    "n": 203,
+    "wins": 80,
+    "win_rate_pct": 39.4,
+    "gross_pf": 0.875,
+    "net_pf_std": 0.699,
+    "net_pf_2x": 0.563,
+    "avg_r_gross": -0.063,
+    "avg_r_net_std": -0.174,
+    "max_drawdown_pct": -26.06
+  },
+  "gate": {
+    "n_pass": true,
+    "net_pf_std_pass": false,
+    "net_pf_2x_pass": false,
+    "PASS": false
+  }
+}
