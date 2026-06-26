@@ -18,6 +18,8 @@ See `docs/E6_RUNBOOK.md` for full instructions.
 See `docs/OPS02_REVISED_GATE.md`. New sequence: E5 → E6 → E1 (7-day run) → E2/E3/E4.
 Fastest path to micro-live: ~14–21 days from capture start.
 
+**Recorded objective:** `docs/PROJECT_OBJECTIVE_FASTEST_PATH.md`
+
 Parallel track: OPS-01 stability run still in progress through 2026-06-28 (see below).
 
 ## Strategy Focus

@@ -455,18 +455,42 @@ class ValidationRunner:
 
     def run(
         self,
-        replay: ReplayValidationInput | dict[str, Any],
-        backtest: BacktestValidationInput | dict[str, Any],
-        latest_metrics: dict[str, float],
+        replay: ReplayValidationInput | dict[str, Any] | None = None,
+        backtest: BacktestValidationInput | dict[str, Any] | None = None,
+        latest_metrics: dict[str, float] | None = None,
         previous_metrics: dict[str, float] | None = None,
         current_stage: str = "backtest",
     ) -> ValidationReportBundle:
-        replay_result = self.gate.validate_replay(replay)
-        backtest_result = self.gate.validate_backtest(backtest)
-        regression_result = self.regression_engine.compare(latest_metrics, previous_metrics)
+        if replay is None:
+            replay_result = ValidationResult(
+                stage="replay",
+                status="SKIPPED",
+                summary="Replay validation was not requested.",
+            )
+        else:
+            replay_result = self.gate.validate_replay(replay)
+
+        if backtest is None:
+            backtest_result = ValidationResult(
+                stage="backtest",
+                status="SKIPPED",
+                summary="Backtest validation was not requested.",
+            )
+        else:
+            backtest_result = self.gate.validate_backtest(backtest)
+
+        if latest_metrics is None:
+            regression_result = RegressionResult(
+                status="PASS",
+                comparisons=[],
+                summary="Regression comparison skipped; no latest metrics provided.",
+                baseline_available=False,
+            )
+        else:
+            regression_result = self.regression_engine.compare(latest_metrics, previous_metrics)
 
         overall_status = "PASS"
-        if replay_result.status != "PASS" or backtest_result.status != "PASS" or regression_result.status == "FAIL":
+        if replay_result.status not in {"PASS", "SKIPPED"} or backtest_result.status not in {"PASS", "SKIPPED"} or regression_result.status == "FAIL":
             overall_status = "FAIL"
         elif regression_result.status == "WARNING":
             overall_status = "WARNING"
@@ -503,4 +527,3 @@ class ValidationRunner:
         (report_dir / "validation.md").write_text(bundle.to_markdown(), encoding="utf-8")
         (report_dir / "validation.json").write_text(bundle.to_json(), encoding="utf-8")
         (report_dir / "validation.html").write_text(bundle.to_html(), encoding="utf-8")
-

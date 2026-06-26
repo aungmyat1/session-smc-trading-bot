@@ -662,6 +662,11 @@ def main():
         "--costs-json", metavar="FILE",
         help="Path to costs.json — overrides hardcoded SPREAD_PIPS using active_profile",
     )
+    parser.add_argument(
+        "--json-out",
+        metavar="FILE",
+        help="Optional JSON summary output path",
+    )
     args = parser.parse_args()
 
     if args.costs_json:
@@ -807,6 +812,37 @@ def main():
 
     print(f"\nResults: docs/BACKTEST_RESULTS.md")
     print(f"Run ID:  {run_id}\n")
+
+    if args.json_out:
+        out_path = Path(args.json_out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "run_id": run_id,
+            "any_pass": any_pass,
+            "best_rr": float(best_rr),
+            "best_result": {
+                "trades": len(all_rr_data[best_rr]["trades"]),
+                "std_metrics": all_rr_data[best_rr]["std_metrics"],
+                "stress_metrics": all_rr_data[best_rr]["stress_metrics"],
+                "gross_pf": all_rr_data[best_rr]["gross_pf"],
+                "gate": all_rr_data[best_rr]["gate"],
+            },
+            "rr_results": {
+                str(rr): {
+                    "trade_count": d["std_metrics"]["trade_count"],
+                    "profit_factor": d["std_metrics"]["net_pf"],
+                    "win_rate": d["std_metrics"]["win_rate"],
+                    "expectancy": d["std_metrics"]["avg_r"],
+                    "max_drawdown": d["std_metrics"]["max_dd"],
+                    "net_return": d["std_metrics"]["total_net_r"],
+                    "stress_profit_factor": d["stress_metrics"]["net_pf"],
+                    "gate": d["gate"],
+                }
+                for rr, d in all_rr_data.items()
+            },
+        }
+        out_path.write_text(json.dumps(summary, indent=2, sort_keys=True, default=str), encoding="utf-8")
+        print(f"JSON summary → {out_path}")
 
 
 if __name__ == "__main__":

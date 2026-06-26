@@ -36,6 +36,24 @@ jobs:
           - "2026-03-01"
           - --end
           - "2026-05-31"
+          - --out
+          - ${JOB_DIR}/replay.md
+          - --json-out
+          - ${JOB_DIR}/replay.json
+      - name: replay_validation
+        command:
+          - python3
+          - scripts/run_validation_gate.py
+          - --mode
+          - replay
+          - --strategy
+          - ST-A2
+          - --replay-json
+          - ${JOB_DIR}/replay.json
+          - --stage
+          - replay
+          - --outdir
+          - ${JOB_DIR}/validation
       - name: quick_backtest_1y
         command:
           - python3
@@ -47,6 +65,8 @@ jobs:
           - "2024-01-01T00:00:00Z"
           - --end
           - "2024-12-31T23:59:59Z"
+          - --json-out
+          - ${JOB_DIR}/backtest_1y.json
       - name: full_backtest_5y
         command:
           - python3
@@ -54,6 +74,24 @@ jobs:
           - --symbols
           - EURUSD
           - GBPUSD
+          - --json-out
+          - ${JOB_DIR}/backtest_5y.json
+      - name: backtest_validation
+        command:
+          - python3
+          - scripts/run_validation_gate.py
+          - --mode
+          - backtest
+          - --strategy
+          - ST-A2
+          - --backtest-json
+          - ${JOB_DIR}/backtest_5y.json
+          - --latest-json
+          - ${JOB_DIR}/backtest_5y.json
+          - --stage
+          - backtest
+          - --outdir
+          - ${JOB_DIR}/validation
       - name: walk_forward
         command:
           - python3

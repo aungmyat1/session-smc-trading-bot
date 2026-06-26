@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
@@ -30,7 +31,7 @@ def main() -> int:
         output_dir=_ROOT / args.output_dir,
         dry_run=args.dry_run,
     )
-    print(json.dumps([result.__dict__ for result in results], indent=2, sort_keys=True))
+    print(json.dumps([asdict(result) for result in results], indent=2, sort_keys=True))
     return 0
 
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
-from dataclasses import dataclass, field
+from string import Template
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -117,13 +119,24 @@ def _write_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def _run_command(command: list[str], cwd: Path, stdout_path: Path, stderr_path: Path) -> int:
+def _expand_command(command: list[str], env: dict[str, str]) -> list[str]:
+    return [Template(part).safe_substitute(env) if isinstance(part, str) else str(part) for part in command]
+
+
+def _run_command(
+    command: list[str],
+    cwd: Path,
+    stdout_path: Path,
+    stderr_path: Path,
+    env: dict[str, str],
+) -> int:
     completed = subprocess.run(
-        command,
+        _expand_command(command, env),
         cwd=str(cwd),
         check=False,
         text=True,
         capture_output=True,
+        env={**os.environ, **env},
     )
     _write_text(stdout_path, completed.stdout or "")
     _write_text(stderr_path, completed.stderr or "")
@@ -160,17 +173,7 @@ def _render_report(job: ResearchJob, result: JobResult) -> str:
 
 
 def _result_payload(result: JobResult) -> dict[str, Any]:
-    return {
-        "job_id": result.job_id,
-        "strategy": result.strategy,
-        "status": result.status,
-        "started_at": result.started_at,
-        "finished_at": result.finished_at,
-        "manifest_status": result.manifest_status,
-        "manifest_approved": result.manifest_approved,
-        "steps": [step.__dict__ for step in result.steps],
-        "report_path": result.report_path,
-    }
+    return asdict(result)
 
 
 def run_research_job(
@@ -184,6 +187,11 @@ def run_research_job(
     out_dir = Path(output_dir) if output_dir is not None else _DEFAULT_OUTPUT_DIR
     job_dir = out_dir / job.job_id
     job_dir.mkdir(parents=True, exist_ok=True)
+    job_env = {
+        "JOB_ID": job.job_id,
+        "JOB_DIR": str(job_dir),
+        "REPORTS_DIR": str(out_dir),
+    }
 
     started_at = datetime.now(timezone.utc).isoformat()
     manifest = get_strategy_manifest(job.strategy)
@@ -241,7 +249,13 @@ def run_research_job(
                 StepResult(name=step.name, skipped=True, command=step.command, message="dry run")
             )
             continue
-        rc = _run_command(step.command, Path(step.cwd) if step.cwd else root_path, stdout_path, stderr_path)
+        rc = _run_command(
+            step.command,
+            Path(step.cwd) if step.cwd else root_path,
+            stdout_path,
+            stderr_path,
+            job_env,
+        )
         result.steps.append(
             StepResult(
                 name=step.name,
