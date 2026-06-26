@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from strategy.session_liquidity.session_builder import (
     AsianRange, build_asian_range, classify_session,
+    classify_session_v2,
 )
 from strategy.session_liquidity.bias_filter import htf_bias
 from strategy.session_liquidity.sweep_detector import detect_sweep
@@ -30,9 +31,11 @@ DEFAULT_CONFIG: dict = {
     "atr_period":          14,
     "sweep_timeout_bars":  4,
     "min_sl_pips":         5.0,
+    "session_mode":        "legacy",
     "min_range_pips": {
         "EURUSD": 15.0,
         "GBPUSD": 20.0,
+        "XAUUSD": 30.0,
     },
 }
 
@@ -64,6 +67,7 @@ def run_strategy(
     Displacement must appear within sweep_timeout_bars killzone bars of the sweep.
     """
     cfg          = {**DEFAULT_CONFIG, **(config or {})}
+    session_mode = str(cfg.get("session_mode", "legacy")).lower()
     rr           = float(cfg["rr"])
     sl_buf       = float(cfg["sl_buffer_pips"])
     mult         = float(cfg["displacement_mult"])
@@ -88,7 +92,7 @@ def run_strategy(
     _kz_by_date: dict = {}
     for _c in sorted_m15:
         _dt = _utc(_c["time"])
-        _s  = classify_session(_dt)
+        _s  = classify_session_v2(_dt) if session_mode == "v2" else classify_session(_dt)
         if _s is not None:
             _kz_by_date.setdefault(_dt.date(), []).append((_c, _s))
 
@@ -120,6 +124,12 @@ def run_strategy(
         for bar_idx, (candle, session) in enumerate(day_bars):
             bar_time  = _utc(candle["time"])
             bar_label = bar_time.strftime("%H:%M UTC")
+
+            if session_mode == "v2" and session == "asian":
+                continue
+
+            if session == "newyork":
+                session = "new_york"
 
             # ── Phase 10: one signal per session ──────────────────────────────
             if session in session_traded:
@@ -194,6 +204,18 @@ def run_strategy(
     if debug:
         return signals, events
     return signals
+
+
+def run_strategy_v2(
+    candles_m15: list,
+    candles_4h: list,
+    symbol: str,
+    config: "dict | None" = None,
+    debug: bool = False,
+) -> "list[Signal] | tuple[list[Signal], list[dict]]":
+    """Convenience wrapper that enables the V2 session window mode."""
+    cfg = {**(config or {}), "session_mode": "v2"}
+    return run_strategy(candles_m15, candles_4h, symbol, config=cfg, debug=debug)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

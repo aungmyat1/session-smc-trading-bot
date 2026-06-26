@@ -27,11 +27,14 @@ from execution.vantage_demo_executor import VantageDemoExecutor
 from execution.trade_manager         import TradeManager
 from execution.trade_journal         import DemoTradeJournal
 
+_CONNECT_TIMEOUT_S = 45
+_RPC_TIMEOUT_S = 20
+
 
 async def _status() -> None:
     connector = MT5Connector(mode="demo")
     try:
-        await connector.connect()
+        await asyncio.wait_for(connector.connect(), timeout=_CONNECT_TIMEOUT_S)
     except Exception as exc:
         print(f"\n[BLOCKED] Connection failed: {exc}")
         print("Check METAAPI_TOKEN and VANTAGE_ACCOUNT_ID in .env")
@@ -42,9 +45,9 @@ async def _status() -> None:
     journal  = DemoTradeJournal()
 
     try:
-        hb    = await connector.heartbeat()
-        acct  = await executor.get_account_info()
-        pos   = await manager.get_positions()
+        hb    = await asyncio.wait_for(connector.heartbeat(), timeout=_RPC_TIMEOUT_S)
+        acct  = await asyncio.wait_for(executor.get_account_info(), timeout=_RPC_TIMEOUT_S)
+        pos   = await asyncio.wait_for(manager.get_positions(), timeout=_RPC_TIMEOUT_S)
         summ  = journal.summary()
     except Exception as exc:
         print(f"[ERROR] Status fetch failed: {exc}")

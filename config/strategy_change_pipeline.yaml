@@ -1,0 +1,72 @@
+# Strategy Change Pipeline
+# Stop-on-fail promotion flow for a strategy update.
+
+jobs:
+  - job_id: ST-A2-change-flow
+    strategy: ST-A2
+    symbol: EURUSD
+    notes: "Promote a strategy change only after validation and backtesting gates pass."
+    steps:
+      - name: unit_tests
+        command:
+          - python3
+          - -m
+          - pytest
+          - -q
+          - tests/core/test_registry.py
+          - tests/test_research_queue.py
+      - name: golden_dataset
+        command:
+          - python3
+          - scripts/validate_dataset.py
+          - --symbols
+          - EURUSD
+          - GBPUSD
+          - --timeframes
+          - M15
+          - H1
+          - H4
+      - name: historical_replay_3m
+        command:
+          - python3
+          - scripts/historical_replay.py
+          - --symbol
+          - EURUSD
+          - --start
+          - "2026-03-01"
+          - --end
+          - "2026-05-31"
+      - name: quick_backtest_1y
+        command:
+          - python3
+          - scripts/backtest_session_liquidity.py
+          - --symbols
+          - EURUSD
+          - GBPUSD
+          - --start
+          - "2024-01-01T00:00:00Z"
+          - --end
+          - "2024-12-31T23:59:59Z"
+      - name: full_backtest_5y
+        command:
+          - python3
+          - scripts/backtest_session_liquidity.py
+          - --symbols
+          - EURUSD
+          - GBPUSD
+      - name: walk_forward
+        command:
+          - python3
+          - scripts/backtest.py
+          - --symbols
+          - EURUSD
+          - GBPUSD
+      - name: shadow
+        blocked: true
+        reason: "Shadow trading requires an approved deployment manifest and operator sign-off."
+      - name: demo
+        blocked: true
+        reason: "Demo trading requires approved strategy promotion and credentials."
+      - name: live
+        blocked: true
+        reason: "Live trading is owner-only and remains permanently blocked in automation."

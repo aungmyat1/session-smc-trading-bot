@@ -38,7 +38,7 @@ _HIST_DIR = _ROOT / "data" / "historical"
 PIP_SIZE: dict[str, float] = {"EURUSD": 0.0001, "GBPUSD": 0.0001}
 
 INITIAL_CAPITAL: float = 10_000.0
-RISK_PER_TRADE: float = 0.01          # 1 % per trade
+RISK_PER_TRADE: float = 0.005         # 0.5 % per trade (ST-D2-E3-OPT2 spec)
 SL_BUFFER_PIPS: dict[str, float] = {"EURUSD": 2.0, "GBPUSD": 2.0}
 SPREAD_FILTER_MULT: float = 2.5
 

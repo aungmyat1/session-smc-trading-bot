@@ -1,0 +1,17 @@
+[Unit]
+Description=D2E3 demo/research runner
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aungp
+WorkingDirectory=/opt/session-smc-trading-bot
+EnvironmentFile=/etc/session-smc-trading-bot/d2e3.env
+ExecStart=/opt/session-smc-trading-bot/deploy/gcp-vm1/run_d2e3.sh
+Restart=always
+RestartSec=10
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

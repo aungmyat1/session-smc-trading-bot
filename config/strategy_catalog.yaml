@@ -1,0 +1,101 @@
+strategies:
+  ST-A2:
+    status: demo
+    approved: true
+    version: '2.1'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    timeframes:
+    - M15
+    - H4
+    deployment_target: execution
+    description: Session liquidity reversal production candidate
+    requirements:
+      replay: pass
+      backtest: pass
+      walk_forward: pending
+  LondonBreakout:
+    status: research
+    approved: false
+    version: '0.3'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    - USDJPY
+    timeframes:
+    - M15
+    deployment_target: research
+    description: Asian range breakout and London retest
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
+  NYMomentum:
+    status: replay
+    approved: false
+    version: '0.3'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    - USDJPY
+    timeframes:
+    - M15
+    deployment_target: research
+    description: NY sweep of London levels
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
+  VWAPBreakout:
+    status: shadow
+    approved: false
+    version: '0.3'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    timeframes:
+    - M15
+    deployment_target: shadow
+    description: VWAP cross + volume confirmation
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
+  AdaptiveSMC:
+    status: research
+    approved: false
+    version: '0.1'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    timeframes:
+    - M15
+    - H4
+    deployment_target: research
+    description: Adaptive SMC session strategy
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
+  D2E3:
+    status: research
+    approved: false
+    version: '0.1'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    timeframes:
+    - M15
+    deployment_target: research
+    description: D2 E3 PDH/PDL sweep plus MSS research branch
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending

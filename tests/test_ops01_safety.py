@@ -152,6 +152,26 @@ class TestSignalDeduplication:
             seen.add(key)
         assert len(seen) == 3
 
+    def test_seen_signals_reload_from_trade_log(self, tmp_path):
+        from bot import _load_seen_signals
+
+        log_file = tmp_path / "trades.jsonl"
+        tl = TradeLogger(log_file)
+        tl.signal_created(
+            "EURUSD", "london", "long",
+            1.08, 1.07, 1.13, 10.0,
+            "ops-test", signal_ts="2026-01-15T07:30:00+00:00",
+        )
+        tl.signal_created(
+            "GBPUSD", "new_york", "short",
+            1.28, 1.29, 1.22, 10.0,
+            "ops-test", signal_ts="2026-01-15T13:30:00+00:00",
+        )
+
+        seen = _load_seen_signals(TradeLogger(log_file), ["EURUSD", "GBPUSD"])
+        assert "2026-01-15T07:30:00+00:00" in seen["EURUSD"]
+        assert "2026-01-15T13:30:00+00:00" in seen["GBPUSD"]
+
 
 # ── Heartbeat fields ──────────────────────────────────────────────────────────
 

@@ -9,12 +9,18 @@ No strategy logic. No position sizing. Pure broker interface.
 """
 
 import asyncio
+import inspect
 import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+
+try:
+    from metaapi_cloud_sdk.clients.timeout_exception import TimeoutException as MetaAPITimeoutException
+except Exception:  # pragma: no cover - SDK may not be installed in tests
+    MetaAPITimeoutException = None
 
 LIVE_TRADING: bool = os.getenv("LIVE_TRADING", "false").lower() == "true"
 
@@ -24,6 +30,15 @@ _MAX_SPREAD_PIPS: dict[str, float] = {"EURUSD": 3.0, "GBPUSD": 4.0}
 # Hard ceiling on any single MetaAPI RPC call. Prevents indefinite await when
 # the SDK is reconnecting and its internal request queue never flushes.
 RPC_TIMEOUT_S: int = 30
+
+
+def _is_metaapi_timeout(exc: Exception) -> bool:
+    """True for both asyncio and MetaApi SDK timeout exceptions."""
+    if isinstance(exc, asyncio.TimeoutError):
+        return True
+    if MetaAPITimeoutException is not None and isinstance(exc, MetaAPITimeoutException):
+        return True
+    return exc.__class__.__name__ == "TimeoutException"
 
 
 # ── Data types ────────────────────────────────────────────────────────────────
@@ -103,12 +118,32 @@ class MetaAPIClient:
         """
         try:
             return await asyncio.wait_for(coro, timeout=RPC_TIMEOUT_S)
-        except asyncio.TimeoutError:
+        except Exception as exc:
+            if not _is_metaapi_timeout(exc):
+                raise
             logger.error(
                 "MetaAPI RPC timeout after %ds — marking disconnected", RPC_TIMEOUT_S
             )
             self._connected = False
-            raise
+            raise asyncio.TimeoutError(str(exc)) from exc
+
+    async def _await_metaapi(self, coro, *, timeout_s: float, action: str) -> object:
+        """Await a MetaApi SDK call with timeout normalization.
+
+        Converts SDK TimeoutException or asyncio.TimeoutError into a plain
+        asyncio.TimeoutError so callers can handle reconnect/retry uniformly.
+        """
+        try:
+            return await asyncio.wait_for(coro, timeout=timeout_s)
+        except Exception as exc:
+            if not _is_metaapi_timeout(exc):
+                raise
+            logger.error(
+                "MetaAPI %s timeout after %.0fs — marking disconnected",
+                action, timeout_s,
+            )
+            self._connected = False
+            raise asyncio.TimeoutError(str(exc)) from exc
 
     # ── Connection ────────────────────────────────────────────────────────────
 
@@ -125,18 +160,26 @@ class MetaAPIClient:
             )
 
         self._api = MetaApi(self._token)
-        self._account = await self._api.metatrader_account_api.get_account(self._account_id)
+        self._account = await self._await_metaapi(
+            self._api.metatrader_account_api.get_account(self._account_id),
+            timeout_s=90.0,
+            action="get_account",
+        )
 
         if self._account.state not in ("DEPLOYING", "DEPLOYED"):
             logger.info("Deploying MetaAPI account…")
-            await self._account.deploy()
+            await self._await_metaapi(self._account.deploy(), timeout_s=90.0, action="deploy")
 
         logger.info("Waiting for broker connection…")
-        await self._account.wait_connected()
+        await self._await_metaapi(self._account.wait_connected(), timeout_s=90.0, action="wait_connected")
 
         self._connection = self._account.get_rpc_connection()
-        await self._connection.connect()
-        await self._connection.wait_synchronized(60)
+        await self._await_metaapi(self._connection.connect(), timeout_s=90.0, action="connect")
+        await self._await_metaapi(
+            self._connection.wait_synchronized(60),
+            timeout_s=90.0,
+            action="wait_synchronized",
+        )
 
         self._connected = True
         logger.info("MetaAPI connected (account=%s  live=%s)", self._account_id, LIVE_TRADING)
@@ -150,25 +193,61 @@ class MetaAPIClient:
         logger.info("MetaAPI disconnected")
 
     async def reconnect(self) -> bool:
-        """Re-synchronize the existing SDK connection after a drop.
+        """Full teardown + reconnect after a dropped connection.
 
-        Returns True if synchronized within 70 seconds, False otherwise.
-        Does not re-create the MetaApi or account objects — the SDK's own
-        reconnect loop has already re-established the WebSocket by the time
-        this is called; we just wait for synchronization to complete.
+        The previous implementation only called wait_synchronized() on the
+        existing connection object. When the SDK sends CLOSE (connection truly
+        dead), wait_synchronized() hangs for 60 s then times out every cycle.
+
+        This version closes the dead connection, re-creates the RPC connection
+        from the still-valid account object, and waits for synchronization.
+        Falls back to a full connect() if the account object is also gone.
         """
-        if self._connection is None:
-            logger.error("reconnect() called but no connection object exists")
-            return False
-        logger.info("MetaAPI reconnect: waiting for synchronization…")
         try:
-            await asyncio.wait_for(
+            self._connected = False
+
+            # Some tests and recovery paths only have a live RPC connection but
+            # no cached account object. In that case, preserve the old "wait for
+            # synchronization" behavior rather than attempting a full account
+            # rehydrate through MetaAPI.
+            if self._account is None:
+                if self._connection is None:
+                    logger.error("reconnect() called but no account or connection exists")
+                    return False
+                logger.info("MetaAPI reconnect: account object missing — reusing existing connection")
+                await self._await_metaapi(
+                    self._connection.wait_synchronized(60),
+                    timeout_s=90.0,
+                    action="wait_synchronized(existing)",
+                )
+                self._connected = True
+                logger.info("MetaAPI reconnected successfully (existing connection)")
+                return True
+
+            logger.info("MetaAPI reconnect: tearing down dead connection…")
+
+            if self._connection:
+                try:
+                    close_result = self._connection.close()
+                    if inspect.isawaitable(close_result):
+                        await close_result
+                except Exception:
+                    pass
+                self._connection = None
+
+            # Re-create RPC connection on existing (still valid) account object
+            await self._await_metaapi(self._account.wait_connected(), timeout_s=90.0, action="wait_connected")
+            self._connection = self._account.get_rpc_connection()
+            await self._await_metaapi(self._connection.connect(), timeout_s=90.0, action="connect")
+            await self._await_metaapi(
                 self._connection.wait_synchronized(60),
-                timeout=70.0,
+                timeout_s=90.0,
+                action="wait_synchronized",
             )
             self._connected = True
             logger.info("MetaAPI reconnected successfully")
             return True
+
         except Exception as exc:
             logger.error("MetaAPI reconnect failed: %s", exc)
             self._connected = False
@@ -246,10 +325,40 @@ class MetaAPIClient:
         if not self._connected:
             return []
         end_time = end_time or datetime.now(timezone.utc)
-        try:
-            raw = await self._rpc(self._connection.get_historical_candles(symbol, timeframe, end_time, count))
-        except AttributeError:
-            raw = await self._rpc(self._connection.get_candles(symbol, timeframe, end_time, count))
+        # Prefer the account-level historical candle API because that is the
+        # stable MetaApi surface used by the demo executor and documented
+        # connection checklist. Older SDK shapes may expose candle history on
+        # the RPC connection, so keep a narrow fallback for compatibility.
+        raw = None
+        if self._account is not None and hasattr(self._account, "get_historical_candles"):
+            try:
+                raw = await self._rpc(
+                    self._account.get_historical_candles(symbol, timeframe, end_time, count)
+                )
+            except AttributeError:
+                raw = None
+
+        if raw is None and self._connection is not None and hasattr(self._connection, "get_historical_candles"):
+            try:
+                raw = await self._rpc(
+                    self._connection.get_historical_candles(symbol, timeframe, end_time, count)
+                )
+            except AttributeError:
+                raw = None
+
+        if raw is None and self._connection is not None and hasattr(self._connection, "get_candles"):
+            try:
+                raw = await self._rpc(self._connection.get_candles(symbol, timeframe, end_time, count))
+            except AttributeError:
+                raw = None
+
+        if raw is None:
+            logger.error(
+                "MetaAPI candle fetch unavailable for %s %s — no historical candle method on account or connection",
+                symbol,
+                timeframe,
+            )
+            return []
         return [
             {
                 "time": c.get("time"),
@@ -345,6 +454,61 @@ class MetaAPIClient:
             sl=sl,
             tp=tp,
         )
+
+    async def place_limit_order(
+        self,
+        symbol: str,
+        direction: str,   # "long" | "short"
+        volume: float,
+        price: float,     # limit price
+        sl: float,
+        tp: float,
+        magic: int,
+        comment: str = "",
+    ) -> OrderResult:
+        """Place a limit (pending) order at the specified price."""
+        if not LIVE_TRADING:
+            logger.info(
+                "[DRY RUN] Would place LIMIT %s %s vol=%.2f price=%.5f sl=%.5f tp=%.5f",
+                direction.upper(), symbol, volume, price, sl, tp,
+            )
+            return OrderResult(
+                order_id="DRY_RUN_LIMIT",
+                symbol=symbol, direction=direction,
+                volume=volume, entry_price=price, sl=sl, tp=tp, dry_run=True,
+            )
+        if not self._connected:
+            raise RuntimeError("Not connected — cannot place limit order")
+        opts = {"magic": magic, "comment": comment}
+        if direction == "long":
+            result = await self._rpc(
+                self._connection.create_limit_buy_order(symbol, volume, price, sl, tp, opts)
+            )
+        else:
+            result = await self._rpc(
+                self._connection.create_limit_sell_order(symbol, volume, price, sl, tp, opts)
+            )
+        order_id = str(result.get("orderId", result.get("id", "unknown")))
+        logger.info("Limit order placed: %s %s id=%s price=%.5f", direction, symbol, order_id, price)
+        return OrderResult(
+            order_id=order_id, symbol=symbol, direction=direction,
+            volume=volume, entry_price=price, sl=sl, tp=tp,
+        )
+
+    async def cancel_order(self, order_id: str) -> bool:
+        """Cancel a pending limit order by ID."""
+        if not LIVE_TRADING:
+            logger.info("[DRY RUN] Would cancel order %s", order_id)
+            return True
+        if not self._connected:
+            return False
+        try:
+            await self._rpc(self._connection.cancel_order(order_id))
+            logger.info("Order cancelled: %s", order_id)
+            return True
+        except Exception as exc:
+            logger.error("cancel_order failed: %s", exc)
+            return False
 
     async def close_position(self, position_id: str) -> bool:
         """

@@ -1,0 +1,35 @@
+# Validation Gate Engine Configuration
+
+minimum_trade_count: 100
+minimum_profit_factor: 1.0
+maximum_drawdown: 10.0
+minimum_expectancy: 0.0
+
+regression_thresholds:
+  profit_factor:
+    warning_drop_pct: 0.05
+    fail_drop_pct: 0.10
+  win_rate:
+    warning_drop_pct: 0.05
+    fail_drop_pct: 0.10
+  expectancy:
+    warning_drop_pct: 0.10
+    fail_drop_pct: 0.20
+  max_drawdown:
+    warning_increase_pct: 0.10
+    fail_increase_pct: 0.20
+  trade_count:
+    warning_drop_pct: 0.10
+    fail_drop_pct: 0.25
+  net_return:
+    warning_drop_pct: 0.10
+    fail_drop_pct: 0.25
+
+promotion_map:
+  research: replay
+  replay: backtest
+  backtest: walk_forward
+  walk_forward: shadow
+  shadow: demo
+  demo: live
+

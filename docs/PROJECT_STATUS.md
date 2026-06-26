@@ -20,9 +20,24 @@ Fastest path to micro-live: ~14–21 days from capture start.
 
 Parallel track: OPS-01 stability run still in progress through 2026-06-28 (see below).
 
+## Strategy Focus
+
+- **Production path:** ST-A2 remains the validated strategy for demo/execution work.
+- **Research path:** D2 E3 is isolated behind a holdout gate and must not be treated as a production replacement.
+- **Rule:** Only strategies that clear their registered holdout and execution gates may move into the demo path.
+
 ---
 
 ## Research Infrastructure
+
+The repo is now organized as a quant research platform with a narrow execution
+layer. Replay, validation, and backtest paths are kept separate from broker
+connectivity, and D2 E3 is treated as a research branch rather than a production
+replacement.
+
+The new strategy catalog is the source of truth for lifecycle state and
+deployment approval. See `config/strategy_catalog.yaml` and
+`docs/QUANT_PLATFORM_ARCHITECTURE.md`.
 
 | ID | Task | Status |
 |---|---|---|
@@ -32,6 +47,11 @@ Parallel track: OPS-01 stability run still in progress through 2026-06-28 (see b
 | RESEARCH-08 | `docs/STRATEGY_PORTFOLIO_ROADMAP.md` — 4-strategy pipeline | [x] 2026-06-23 |
 | RESEARCH-09 | `docs/LIVE_CAPITAL_SCALING_PLAN.md` — Demo→$100→$500→$1k→Scale | [x] 2026-06-23 |
 | RESEARCH-10 | `research/live_vs_backtest_validator.py` — live execution vs ST-A2 backtest | [x] 2026-06-23 |
+| RESEARCH-11 | `docs/QUANT_PLATFORM_ARCHITECTURE.md` — research/execution split and strategy flow | [x] 2026-06-26 |
+| RESEARCH-12 | `config/strategy_catalog.yaml` + registry lifecycle helpers | [x] 2026-06-26 |
+| RESEARCH-13 | `config/research_queue.yaml` + `scripts/run_research_queue.py` | [x] 2026-06-26 |
+| RESEARCH-14 | `config/strategy_change_pipeline.yaml` + blocked promotion stages | [x] 2026-06-26 |
+| RESEARCH-15 | Validation gate engine + regression engine + promotion reports | [x] 2026-06-26 |
 | BUG-02 | Telegram parse_mode Markdown on raw heartbeat string → 400 errors | [x] fixed 2026-06-23 |
 
 ---

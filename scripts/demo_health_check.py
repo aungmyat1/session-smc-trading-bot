@@ -31,6 +31,8 @@ _JOURNAL_PATH  = _ROOT / "logs" / "st_a2_demo_trades.jsonl"
 _SIGNAL_LOG    = _ROOT / "logs" / "st_a2_demo.log"
 _DAILY_LOSS_LIMIT = 0.015
 _MAX_TRADES    = 4
+_CONNECT_TIMEOUT_S = 45
+_RPC_TIMEOUT_S = 20
 
 
 def _last_signal() -> str:
@@ -57,7 +59,7 @@ def _daily_pnl(journal: DemoTradeJournal) -> tuple[float, int]:
 async def _check() -> None:
     connector = MT5Connector(mode="demo")
     try:
-        await connector.connect()
+        await asyncio.wait_for(connector.connect(), timeout=_CONNECT_TIMEOUT_S)
     except Exception as exc:
         print(f"\n[BLOCKED] {exc}")
         return
@@ -67,9 +69,9 @@ async def _check() -> None:
     journal  = DemoTradeJournal()
 
     try:
-        hb   = await connector.heartbeat()
-        acct = await executor.get_account_info()
-        pos  = await manager.get_positions()
+        hb   = await asyncio.wait_for(connector.heartbeat(), timeout=_RPC_TIMEOUT_S)
+        acct = await asyncio.wait_for(executor.get_account_info(), timeout=_RPC_TIMEOUT_S)
+        pos  = await asyncio.wait_for(manager.get_positions(), timeout=_RPC_TIMEOUT_S)
         summ = journal.summary()
     except Exception as exc:
         print(f"[ERROR] {exc}")

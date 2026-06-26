@@ -11,6 +11,10 @@ targets a distinct market condition and occupies a non-overlapping position in t
 trade frequency / holding-time / setup-type space. This document is a planning spec
 only — no implementation until the prior strategy clears its gate.
 
+**Important distinction:** D2 E3 is a separate research branch tracked in
+`docs/VERDICT_LOG.md`. It is not part of the core A→B→C→D deployment ladder
+unless and until it clears its own holdout gate and is explicitly promoted.
+
 **Deployment constraint:** Each strategy below is BLOCKED until the strategy
 immediately before it has cleared Phase-0 gate AND completed a 30-day paper trade
 with n ≥ 50 trades and no critical execution failures. No two strategies share
@@ -22,7 +26,7 @@ backtest time periods or signal-chain logic.
 
 | Field | Detail |
 |---|---|
-| **Status** | Phase-0 PASS ✅ — OPS-01 / DEP-02 paper trade in progress |
+| **Status** | Phase-0 PASS ✅ — current production path; OPS-01 / DEP-02 paper trade in progress |
 | **Purpose** | Capture the institutional sweep-and-reverse pattern at session open liquidity pools |
 | **Signal chain** | 4H+1H bias → session range build → sweep detection → 15M displacement → FVG retest |
 | **Sessions** | London 07:00–10:00 UTC, New York 13:00–16:00 UTC |

@@ -18,7 +18,7 @@ from strategy.session_liquidity.displacement_detector import DisplacementResult
 
 _UTC = timezone.utc
 _PIP = 0.0001
-_VALID_SESSIONS = frozenset({"london", "new_york"})
+_VALID_SESSIONS = frozenset({"london", "new_york", "overlap", "newyork"})
 
 
 # ── Signal contract (execution layer reads exactly these fields) ───────────────

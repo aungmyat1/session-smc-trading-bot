@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-Phase-0 holdout run for ST-D2-E3-OPT.
+Phase-0 holdout run for ST-D2-E3-OPT2.
 
-Params are LOCKED from optimize_d2_rules.py grid search result.
-Holdout period: 2021-06-21 → 2025-11-30 (entirely outside the Dec 2025–May 2026 search window).
+Params locked per ST-D2-E3-OPT2 spec (docs/VERDICT_LOG.md):
+  - Session: 08:00–16:00 UTC
+  - Entry: fifty_pullback (limit at 50% of MSS candle, wait 3 bars)
+  - Target: liq_or_rr — PDL/PDH if reward ≥ 1.2R, else fixed 2R
+  - Stop: sweep extreme + 2pip buffer; 2–25pip gate
+  - Risk: 0.5% per trade | Max hold: 32 M15 bars (8h) | Cooldown: 3 bars
+
+Data note: M15 bars used as proxy (no 5M data).
+  confirm_bars=12 M15 = 3h confirm window (spec: 12×5M = 1h).
 """
 from __future__ import annotations
 import json, math
@@ -24,11 +31,11 @@ from optimize_d2_rules import backtest, summarize, Params
 OUTDIR = Path('backtest_output_d2_holdout')
 OUTDIR.mkdir(exist_ok=True)
 
-# ── LOCKED params (do not change) ─────────────────────────────────────────────
+# ── LOCKED params — ST-D2-E3-OPT2 (do not change) ────────────────────────────
 BEST = Params(
-    session_start=12, session_end=17,
+    session_start=8, session_end=16,
     confirm_bars=12, entry_mode='fifty_pullback', entry_wait=3,
-    rr=2.0, target_mode='fixed_rr',
+    rr=2.0, target_mode='liq_or_rr',
     max_stop_pips=25, min_stop_pips=2.0,
     cooldown=3, trend_filter='none',
 )
@@ -138,7 +145,7 @@ def main():
         portfolio = {}
 
     result = {
-        'trial': 'ST-D2-E3-OPT',
+        'trial': 'ST-D2-E3-OPT2',
         'holdout': f'{HOLDOUT_START} → {HOLDOUT_END}',
         'params': BEST.__dict__,
         'per_symbol': per_symbol,

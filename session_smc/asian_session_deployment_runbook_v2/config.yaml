@@ -1,0 +1,138 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# session-smc-trading-bot — config.yaml
+# Multi-session × Multi-instrument: EURUSD · GBPUSD · XAUUSD
+# Broker: Vantage MT5 via MetaAPI
+# Target: 2–3 quality trades/day
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Signal routing ─────────────────────────────────────────────────────────────
+# Values: smc_sniper | asian_session
+# Keep smc_sniper until P5 backtest PASSES and P6 demo is confirmed.
+signal_source: smc_sniper
+
+# ── MetaAPI / Vantage MT5 ──────────────────────────────────────────────────────
+metaapi:
+  token: ""             # populated from .env METAAPI_TOKEN
+  account_id: ""        # populated from .env METAAPI_ACCOUNT_ID
+  demo: true            # true = Vantage demo MT5 account; false = live (P7 only)
+  deploy_timeout: 300   # seconds to wait for MT5 deployment
+
+# ── Instruments ────────────────────────────────────────────────────────────────
+instruments:
+  EURUSD:
+    symbol: "EURUSD"
+    pip_size: 0.0001
+    atr_period: 14
+    sweep_beyond_pct: 0.008     # 0.8 pip beyond box extreme to confirm sweep
+    sl_pct_of_range: 0.25       # SL = 25% of session box range beyond extreme
+    spread_allowance_pips: 1.0  # skip if entry < 1.0 pip from box edge
+    sessions: [asian, london, overlap, newyork]
+    signal_weight: 1.0          # priority rank when capping max_concurrent_signals
+
+  GBPUSD:
+    symbol: "GBPUSD"
+    pip_size: 0.0001
+    atr_period: 14
+    sweep_beyond_pct: 0.010     # GBP wider spread, needs more wick confirmation
+    sl_pct_of_range: 0.25
+    spread_allowance_pips: 1.5
+    sessions: [london, overlap, newyork]   # EXCLUDED from Asian (too thin)
+    signal_weight: 0.9
+
+  XAUUSD:
+    symbol: "XAUUSD"
+    pip_size: 0.01              # gold point = $0.01
+    atr_period: 14
+    sweep_beyond_pct: 0.005     # 50 cents beyond box extreme
+    sl_pct_of_range: 0.20       # tighter stop — gold ranges are wider in $ terms
+    spread_allowance_pips: 3.0  # Vantage ECN gold spread is ~0.30 avg
+    sessions: [london, overlap, newyork]   # EXCLUDED from Asian (weak signal)
+    signal_weight: 1.0
+
+# ── Sessions ───────────────────────────────────────────────────────────────────
+sessions:
+  asian:
+    start_h: 0           # UTC box start hour (00:00)
+    end_h: 8             # UTC box end hour   (08:00)
+    label: "Asian"
+    range_thr: 0.50      # range/ATR < 0.50  → RANGE session
+    trend_thr: 0.70      # range/ATR > 0.70  → TREND session
+    first_close_pct: 0.75
+    first_close_target: "opposite_box_edge"   # close 75% at other side of box
+    trail_remainder: false
+
+  london:
+    start_h: 7
+    end_h: 12
+    label: "London"
+    range_thr: 0.55
+    trend_thr: 0.75
+    first_close_pct: 0.75
+    first_close_target: "opposite_box_edge"
+    trail_remainder: false
+
+  overlap:
+    start_h: 12
+    end_h: 15
+    label: "Overlap"
+    range_thr: 0.60
+    trend_thr: 0.80
+    first_close_pct: 0.75
+    first_close_target: "4R"      # overlap trends run further — close at 4R
+    trail_remainder: true         # trail remainder at 1×ATR
+
+  newyork:
+    start_h: 12
+    end_h: 17
+    label: "NewYork"
+    range_thr: 0.55
+    trend_thr: 0.75
+    first_close_pct: 0.75
+    first_close_target: "opposite_box_edge"
+    trail_remainder: false
+
+# ── Asian session shared params ────────────────────────────────────────────────
+# (reused by session_range.build_session_signal for all sessions)
+asian:
+  enabled: false              # flip true ONLY after P5 backtest PASSES
+  target_r: 5.0               # full TP in R-multiples
+  trend_first_close_r: 4.0    # close 75% at 4R on trend setups
+
+# ── Risk management ────────────────────────────────────────────────────────────
+risk:
+  # Use EITHER risk_usd (fixed) OR risk_pct_per_trade (% of equity) — not both.
+  # risk_usd takes priority if set > 0.
+  # During demo (P6): start at $25 fixed per trade.
+  risk_usd: 25                    # fixed USD risk per trade (0 = use % below)
+  risk_pct_per_trade: 0.01        # 1% of equity per trade (used if risk_usd=0)
+
+  max_lots_per_symbol: 0.50       # hard cap per instrument during demo/phase-1
+  max_open_positions: 3           # one per instrument maximum
+  max_concurrent_signals: 3       # cap from scan_all() per cycle
+  max_daily_loss_usd: 150         # bot halts new signals if today's loss hits this
+
+# ── Signal source backup (smc_sniper path — unchanged from v1) ─────────────────
+session:
+  htf: "4h"
+  ltf: "1h"
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+logging:
+  level: "INFO"
+  file: "logs/smc_bot.log"
+  max_bytes: 10485760   # 10 MB
+  backup_count: 5
+
+# ── Telegram alerts (optional) ────────────────────────────────────────────────
+telegram:
+  enabled: false
+  bot_token: ""          # populated from .env TELEGRAM_BOT_TOKEN
+  chat_id: ""            # populated from .env TELEGRAM_CHAT_ID
+  alert_on:
+    - signal_generated
+    - order_placed
+    - first_close
+    - sl_moved_to_be
+    - trail_sl_update
+    - daily_loss_limit_hit
+    - connection_error

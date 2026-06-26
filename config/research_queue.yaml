@@ -1,0 +1,45 @@
+# Research Queue
+# Manifest-driven jobs for replay/backtest/report workflows.
+
+jobs:
+  - job_id: ST-A2-validate
+    strategy: ST-A2
+    symbol: EURUSD
+    start: "2024-01-01"
+    end: "2024-12-31"
+    notes: "Validate ST-A2 execution path with replay followed by backtest."
+    steps:
+      - name: replay
+        command:
+          - python3
+          - scripts/historical_replay.py
+          - --symbol
+          - EURUSD
+          - --start
+          - "2024-01-01"
+          - --end
+          - "2024-12-31"
+      - name: backtest
+        command:
+          - python3
+          - scripts/backtest_session_liquidity.py
+      - name: report
+
+  - job_id: D2E3-research
+    strategy: D2E3
+    symbol: EURUSD
+    start: "2024-01-01"
+    end: "2024-12-31"
+    notes: "Research branch run on the dedicated research node."
+    steps:
+      - name: replay
+        command:
+          - python3
+          - scripts/historical_replay.py
+          - --symbol
+          - EURUSD
+          - --start
+          - "2024-01-01"
+          - --end
+          - "2024-12-31"
+      - name: report

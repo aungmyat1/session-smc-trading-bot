@@ -12,7 +12,10 @@ from datetime import date, datetime, timezone
 from strategy.session_liquidity.session_builder import (
     AsianRange,
     build_asian_range,
+    build_session_box,
+    active_sessions,
     classify_session,
+    classify_session_v2,
 )
 
 UTC = timezone.utc
@@ -251,6 +254,37 @@ class TestClassifySession(unittest.TestCase):
     def test_accepts_naive_datetime_assumed_utc(self):
         dt = datetime(2024, 1, 15, 7, 0, 0)  # no tzinfo
         self.assertEqual(classify_session(dt), "london")
+
+
+class TestV2SessionHelpers(unittest.TestCase):
+    def test_active_sessions_overlap_window(self):
+        dt = datetime(2024, 1, 15, 12, 30, tzinfo=timezone.utc)
+        self.assertEqual(active_sessions(dt), ["overlap", "newyork"])
+
+    def test_classify_session_v2_prioritises_overlap(self):
+        dt = datetime(2024, 1, 15, 12, 30, tzinfo=timezone.utc)
+        self.assertEqual(classify_session_v2(dt), "overlap")
+
+    def test_build_session_box(self):
+        candles = [
+            {"time": "2024-01-15T07:00:00Z", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05},
+            {"time": "2024-01-15T08:00:00Z", "open": 1.05, "high": 1.2, "low": 1.0, "close": 1.1},
+            {"time": "2024-01-15T09:00:00Z", "open": 1.1, "high": 1.15, "low": 0.95, "close": 1.0},
+            {"time": "2024-01-15T10:00:00Z", "open": 1.0, "high": 1.08, "low": 0.98, "close": 1.02},
+        ]
+        box = build_session_box(candles, 7, 11)
+        self.assertEqual(box["session_name"], "custom")
+        self.assertAlmostEqual(box["box_high"], 1.2, places=4)
+        self.assertAlmostEqual(box["box_low"], 0.9, places=4)
+        self.assertEqual(box["candle_count"], 4)
+
+    def test_build_session_box_requires_three_bars(self):
+        candles = [
+            {"time": "2024-01-15T07:00:00Z", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05},
+            {"time": "2024-01-15T08:00:00Z", "open": 1.05, "high": 1.2, "low": 1.0, "close": 1.1},
+        ]
+        with self.assertRaises(ValueError):
+            build_session_box(candles, 7, 11)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,24 @@ class TestRPCTimeoutMechanics:
         assert client.is_connected is False
 
     @pytest.mark.asyncio
+    async def test_rpc_metaapi_timeout_exception_is_normalized(self):
+        """MetaApi SDK TimeoutException is normalized to asyncio.TimeoutError."""
+        client = _connected_client()
+
+        class FakeMetaApiTimeout(Exception):
+            pass
+
+        client._connection.get_account_information = AsyncMock(
+            side_effect=FakeMetaApiTimeout("socket client failed to connect")
+        )
+
+        with patch("execution.metaapi_client.MetaAPITimeoutException", FakeMetaApiTimeout):
+            with pytest.raises(asyncio.TimeoutError):
+                await client.get_account_info()
+
+        assert client.is_connected is False
+
+    @pytest.mark.asyncio
     async def test_rpc_timeout_on_place_order_live(self):
         """place_order() timeout marks disconnected in live mode."""
         client = _connected_client()
@@ -224,6 +242,19 @@ class TestReconnectPath:
         """reconnect() sets _connected=True when wait_synchronized succeeds."""
         client = _connected_client()
         client._connected = False
+        client._connection.wait_synchronized = AsyncMock(return_value=None)
+
+        result = await client.reconnect()
+
+        assert result is True
+        assert client.is_connected is True
+
+    @pytest.mark.asyncio
+    async def test_reconnect_falls_back_when_account_missing(self):
+        """reconnect() keeps the legacy sync-only path when _account is absent."""
+        client = _connected_client()
+        client._connected = False
+        client._account = None
         client._connection.wait_synchronized = AsyncMock(return_value=None)
 
         result = await client.reconnect()

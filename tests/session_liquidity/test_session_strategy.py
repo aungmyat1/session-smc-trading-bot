@@ -615,5 +615,26 @@ class TestMinSlPipsFilter(unittest.TestCase):
         self.assertEqual(len(sigs_block), 0)
 
 
+class TestV2SessionMode(unittest.TestCase):
+    def test_overlap_session_signal_is_supported(self):
+        m15 = _asian_bars()
+        # Overlap sweep + displacement using the V2 session classifier.
+        m15.append(_london_bar(12, 15, high=1.0748, low=1.0682,
+                               open_=1.0725, close=1.0720))
+        m15.append(_london_bar(12, 30, high=1.0800, low=1.0695,
+                               open_=1.0700, close=1.0790))
+
+        sigs = run_strategy(
+            m15,
+            _h4_bullish(),
+            "EURUSD",
+            config={"session_mode": "v2"},
+        )
+
+        self.assertEqual(len(sigs), 1)
+        self.assertEqual(sigs[0].session, "overlap")
+        self.assertEqual(sigs[0].side, "long")
+
+
 if __name__ == "__main__":
     unittest.main()

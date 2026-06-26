@@ -46,6 +46,8 @@ except ImportError:
 _RUNNER_LOG  = _ROOT / "logs" / "st_a2_runner.log"
 _PAIRS       = ["EURUSD", "XAUUSD"]
 _STALE_S     = 300   # runner log is stale if no entry within 5 min
+_CONNECT_TIMEOUT_S = 45
+_RPC_TIMEOUT_S = 20
 
 # ── Individual checks ──────────────────────────────────────────────────────────
 
@@ -74,8 +76,8 @@ async def check_broker() -> dict:
     try:
         from execution.mt5_connector import MT5Connector
         conn = MT5Connector(mode="demo")
-        await conn.connect()
-        hb = await conn.heartbeat()
+        await asyncio.wait_for(conn.connect(), timeout=_CONNECT_TIMEOUT_S)
+        hb = await asyncio.wait_for(conn.heartbeat(), timeout=_RPC_TIMEOUT_S)
         await conn.disconnect()
     except Exception as exc:
         return {"status": "FAIL", "detail": str(exc)[:200]}
@@ -94,12 +96,12 @@ async def check_data_feed() -> dict:
         from execution.mt5_connector import MT5Connector
         from execution.vantage_demo_executor import VantageDemoExecutor
         conn = MT5Connector(mode="demo")
-        await conn.connect()
+        await asyncio.wait_for(conn.connect(), timeout=_CONNECT_TIMEOUT_S)
         ex   = VantageDemoExecutor(conn)
         pairs: dict = {}
         for sym in _PAIRS:
             try:
-                px = await ex.get_price(sym)
+                px = await asyncio.wait_for(ex.get_price(sym), timeout=_RPC_TIMEOUT_S)
                 pairs[sym] = {
                     "bid": px["bid"],
                     "spread_pips": px["spread_pips"],

@@ -105,6 +105,41 @@ class TestConnectedState:
         assert info.equity == 1050.0
         assert info.currency == "USD"
 
+    @pytest.mark.asyncio
+    async def test_get_candles_prefers_account_historical_candles(self):
+        client = _connected_client()
+        client._account = AsyncMock()
+        client._account.get_historical_candles = AsyncMock(return_value=[{
+            "time": "2026-06-26T00:00:00Z",
+            "open": 1.1,
+            "high": 1.2,
+            "low": 1.0,
+            "close": 1.15,
+            "tickVolume": 123,
+        }])
+        client._connection.get_historical_candles = AsyncMock(side_effect=AssertionError("should not use connection fallback"))
+        bars = await client.get_candles("EURUSD", "15m", count=1)
+        assert len(bars) == 1
+        assert bars[0]["close"] == 1.15
+        assert bars[0]["volume"] == 123
+
+    @pytest.mark.asyncio
+    async def test_get_candles_uses_connection_fallback_when_account_missing(self):
+        client = _connected_client()
+        client._account = None
+        client._connection.get_historical_candles = AsyncMock(side_effect=AttributeError("missing"))
+        client._connection.get_candles = AsyncMock(return_value=[{
+            "time": "2026-06-26T00:00:00Z",
+            "open": 1.1,
+            "high": 1.2,
+            "low": 1.0,
+            "close": 1.15,
+            "tickVolume": 55,
+        }])
+        bars = await client.get_candles("EURUSD", "15m", count=1)
+        assert len(bars) == 1
+        assert bars[0]["volume"] == 55
+
 
 # ── Category 3: DRY_RUN mode ──────────────────────────────────────────────────
 

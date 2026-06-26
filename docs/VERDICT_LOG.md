@@ -237,3 +237,39 @@ parameters. Do not proceed to demo. Do not re-run with modified params under thi
 **Key learning:** A 6-month optimization window is insufficient for D2 E3 style strategies.
 The sweep setup frequency (~30-40/month combined) means even 6 months can produce a locally
 consistent-looking result with high variance. Minimum search window for this style: 3+ years.
+
+---
+
+## ST-D2-E3-OPT2 — D2 E3 Optimized Execution — Pre-registered (2026-06-26)
+
+**Trial ID:** ST-D2-E3-OPT2
+**Runner:** `scripts/backtest_d2_holdout.py`
+**Status:** PRE-REGISTERED — holdout not yet run
+
+**Strategy:** D2 E3 Optimized Execution — standalone, NOT a variant of ST-A2.
+  PDH/PDL liquidity sweep (wick beyond, close back inside) → 12-bar MSS confirmation
+  → 50% MSS candle limit entry → PDH/PDL target if ≥1.2R, else 2R fixed.
+  No Asian range, no 4H bias gate, no CHoCH/BOS/FVG chain.
+
+**Changes from ST-D2-E3-OPT:**
+- Session: 08:00–16:00 UTC (was 12:00–17:00)
+- Target: `liq_or_rr` — PDL (bearish) / PDH (bullish) if reward ≥ 1.2R, else fixed 2R (was `fixed_rr`)
+- Risk per trade: 0.5% (was 1%)
+- All other params unchanged
+
+**Data note:** M15 bars used as proxy for 5M candles (no 5M data available).
+  confirm_bars=12 M15 = 3h window (spec: 12×5M = 1h). Entry_wait=3 M15 = 45min (spec: 3×5M = 15min).
+
+**Locked parameters:**
+```
+session: 08:00–16:00 UTC   confirm_bars: 12   entry_mode: fifty_pullback
+entry_wait: 3 bars          rr: 2.0            target_mode: liq_or_rr (≥1.2R PDH/PDL, else 2R)
+max_stop_pips: 25           min_stop_pips: 2.0  sl_buffer: 2 pip
+trend_filter: none          cooldown: 3 bars    risk_per_trade: 0.5%
+max_hold: 32 bars (8h on M15)
+```
+
+**Cost model:** EURUSD 1.4pip std / 2.8pip 2× | GBPUSD 1.8pip std / 3.6pip 2×
+**Phase-0 gate:** n ≥ 50 AND net PF > 1.0 at BOTH std AND 2× stress
+
+**Holdout results:** PENDING

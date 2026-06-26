@@ -93,6 +93,7 @@ class OrderManager:
             tp=signal.take_profit,
             sl_pips=sl_pips,
             reason=signal.reason,
+            signal_ts=signal.timestamp.isoformat(),
         )
 
         # ── Step 2: circuit breakers ──────────────────────────────────────────

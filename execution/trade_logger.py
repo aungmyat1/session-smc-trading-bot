@@ -64,11 +64,13 @@ class TradeLogger:
         self, symbol: str, session: str, side: str,
         entry: float, sl: float, tp: float,
         sl_pips: float, reason: str = "",
+        signal_ts: "str | None" = None,
     ) -> None:
         self._write("SIGNAL_CREATED", {
             "symbol": symbol, "session": session, "side": side,
             "entry": entry, "sl": sl, "tp": tp,
             "sl_pips": sl_pips, "reason": reason,
+            "signal_ts": signal_ts,
         })
 
     def order_submitted(

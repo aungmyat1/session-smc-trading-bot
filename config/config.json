@@ -43,5 +43,9 @@
   "pip_value_per_lot": {
     "EURUSD": 10.0,
     "GBPUSD": 10.0
+  },
+
+  "session_strategy": {
+    "session_mode": "v2"
   }
 }

@@ -75,9 +75,13 @@ TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
 HEARTBEAT_INTERVAL_S: int = 300   # 5 minutes
 WATCHDOG_TIMEOUT_S: int = 600     # 10 minutes — CRITICAL alert if no heartbeat fires
+_RECONNECT_BACKOFF_S: int = 120   # try reconnect every 2 min when disconnected
+_last_reconnect_attempt: "datetime | None" = None
 _BOT_START_TIME: datetime = datetime.now(timezone.utc)
 _LAST_SIGNAL_TIME: "datetime | None" = None
 _last_heartbeat_ts: datetime = datetime.now(timezone.utc)  # updated each time heartbeat logs
+_CONNECT_RETRY_MAX: int = 12
+_CONNECT_RETRY_BASE_S: int = 5
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
@@ -102,11 +106,11 @@ async def run_bot() -> None:
     order_manager = OrderManager(client, risk, trade_logger, CONFIG)
 
     # Dedup: track signal timestamps already processed, per symbol
-    global _BOT_START_TIME, _LAST_SIGNAL_TIME, _last_heartbeat_ts
+    global _BOT_START_TIME, _LAST_SIGNAL_TIME, _last_heartbeat_ts, _last_reconnect_attempt
     _BOT_START_TIME = datetime.now(timezone.utc)
     _last_heartbeat_ts = _BOT_START_TIME
 
-    seen_signals: dict[str, set[str]] = {sym: set() for sym in PAIRS}
+    seen_signals: dict[str, set[str]] = _load_seen_signals(trade_logger, PAIRS)
 
     last_session: "str | None" = None
     last_heartbeat: datetime = datetime.now(timezone.utc)
@@ -115,7 +119,7 @@ async def run_bot() -> None:
 
     try:
         logger.info("Connecting to MetaAPI (LIVE_TRADING=%s)…", LIVE_TRADING)
-        await client.connect()
+        await _connect_with_retry(client, telegram)
         logger.info("MetaAPI connected.")
 
         await telegram.send_startup(PAIRS, CONFIG["risk"]["risk_per_trade_pct"], LIVE_TRADING)
@@ -130,8 +134,14 @@ async def run_bot() -> None:
                 await _send_heartbeat(client, telegram, now)
                 last_heartbeat = now
                 if not client.is_connected:
-                    logger.info("Connection lost after heartbeat — attempting reconnect")
-                    await client.reconnect()
+                    if session:
+                        logger.info("Connection lost after heartbeat — attempting reconnect")
+                        if await client.reconnect():
+                            _last_reconnect_attempt = None
+                    else:
+                        logger.info(
+                            "Connection lost after heartbeat during off-hours — reconnect deferred until session opens"
+                        )
 
             # ── Session boundary ──────────────────────────────────────────────
             if session != last_session:
@@ -154,6 +164,24 @@ async def run_bot() -> None:
                 logger.info("Off-hours. Next session in %ds", wait)
                 await asyncio.sleep(min(wait, POLL_INTERVAL * 5))
                 continue
+
+            # ── Reconnect if disconnected (every 2 min, not just at heartbeat) ─
+            if not client.is_connected:
+                now2 = datetime.now(timezone.utc)
+                since = (now2 - _last_reconnect_attempt).total_seconds() if _last_reconnect_attempt else 999
+                if since >= _RECONNECT_BACKOFF_S:
+                    logger.info("Disconnected — attempting reconnect")
+                    _last_reconnect_attempt = now2
+                    ok = await client.reconnect()
+                    if ok:
+                        _last_reconnect_attempt = None
+                    else:
+                        await telegram.send_error("MetaAPI reconnect failed during active session")
+                        await asyncio.sleep(POLL_INTERVAL)
+                        continue
+                else:
+                    await asyncio.sleep(POLL_INTERVAL)
+                    continue
 
             # ── Active session: fetch equity then scan each pair ──────────────
             try:
@@ -200,8 +228,29 @@ async def run_bot() -> None:
         except asyncio.CancelledError:
             pass
         await client.disconnect()
-        await telegram.stop()
-        logger.info("Bot stopped")
+    await telegram.stop()
+    logger.info("Bot stopped")
+
+
+async def _connect_with_retry(client: MetaAPIClient, telegram: TelegramAlerter) -> None:
+    """Keep retrying initial MetaAPI connect through transient websocket failures."""
+    delay_s = _CONNECT_RETRY_BASE_S
+    for attempt in range(1, _CONNECT_RETRY_MAX + 1):
+        try:
+            await client.connect()
+            return
+        except Exception as exc:
+            logger.warning(
+                "MetaAPI connect attempt %d/%d failed: %s",
+                attempt, _CONNECT_RETRY_MAX, exc,
+            )
+            if attempt >= _CONNECT_RETRY_MAX:
+                raise
+            await telegram.send_error(
+                f"MetaAPI connect attempt {attempt} failed: {exc}"
+            )
+            await asyncio.sleep(delay_s)
+            delay_s = min(delay_s * 2, 60)
 
 
 # ── Pair scanner ──────────────────────────────────────────────────────────────
@@ -228,7 +277,12 @@ async def _scan_pair(
         logger.debug("[%s] Insufficient M15 candles (%d) — skipping", symbol, len(m15))
         return
 
-    signals = run_strategy(m15, h4, symbol)
+    signals = run_strategy(
+        m15,
+        h4,
+        symbol,
+        config=CONFIG.get("session_strategy", {}),
+    )
 
     for sig in signals:
         key = sig.timestamp.isoformat()
@@ -258,6 +312,19 @@ async def _scan_pair(
             )
         else:
             logger.info("[%s] Signal not actioned: %s", symbol, detail)
+
+
+def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str, set[str]]:
+    """Rebuild per-symbol signal dedup state from the append-only trade log."""
+    seen: dict[str, set[str]] = {sym: set() for sym in pairs}
+    for event in trade_logger.read_all():
+        if event.get("event") != "SIGNAL_CREATED":
+            continue
+        symbol = event.get("symbol")
+        signal_ts = event.get("signal_ts")
+        if symbol in seen and signal_ts:
+            seen[symbol].add(str(signal_ts))
+    return seen
 
 
 # ── Session-end position close ────────────────────────────────────────────────
