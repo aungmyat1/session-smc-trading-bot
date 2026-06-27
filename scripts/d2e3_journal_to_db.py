@@ -19,6 +19,7 @@ import argparse
 import json
 import math
 import os
+import logging
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -37,6 +38,7 @@ DEFAULT_DATABASE_URL = os.getenv(
 
 STRATEGY_NAME = "ST-D2-E3-OPT2"
 STRATEGY_VERSION = "1.0"
+log = logging.getLogger("d2e3_journal_to_db")
 
 
 def _parse_ts(raw: str | None) -> datetime | None:
@@ -212,6 +214,21 @@ def build_monthly_metrics(trades: list[dict]) -> list[dict]:
     return rows
 
 
+def _connect_database(database_url: str):
+    """Open a PostgreSQL connection if available, otherwise return None.
+
+    The D2E3 journal sync is a best-effort bridge from the local JSONL journal
+    into the research warehouse. If PostgreSQL is down or unreachable, the
+    timer should skip cleanly instead of turning an expected outage into a hard
+    failure.
+    """
+    try:
+        return psycopg2.connect(database_url)
+    except psycopg2.Error as exc:
+        log.warning("Research DB unavailable at %s: %s", database_url.split("@")[-1], exc)
+        return None
+
+
 def _get_strategy_id(cur) -> int:
     cur.execute(
         """
@@ -245,7 +262,17 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
         first_ts = events[0]["_ts"] if events else datetime.now(timezone.utc)
         run_id = f"d2e3_demo_{first_ts.strftime('%Y%m%dT%H%M%SZ')}"
 
-    with psycopg2.connect(database_url) as conn:
+    conn = _connect_database(database_url)
+    if conn is None:
+        return {
+            "run_id": run_id,
+            "trades": len(trades),
+            "events": len(events),
+            "skipped": True,
+            "reason": "research database unavailable",
+        }
+
+    with conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             strategy_id = _get_strategy_id(cur)
             symbol = trades[0]["symbol"] if trades else "EURUSD"
@@ -419,6 +446,9 @@ def main() -> None:
 
     result = sync_journal(args.database_url, args.log, args.run_id)
     print(json.dumps(result, indent=2))
+
+    if result.get("skipped"):
+        return
 
 
 if __name__ == "__main__":

@@ -1,0 +1,2 @@
+"""Research-grade backtesting framework."""
+
