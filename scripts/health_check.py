@@ -5,6 +5,7 @@ Checks:
   Runner      — log file exists and has recent activity
   Broker      — MetaAPI connection, heartbeat, latency
   Data Feed   — live price fetch for each pair
+  Research DB — optional PostgreSQL reachability for research services
   Risk Engine — daily limits, open positions, loss guards
   Portfolio   — portfolio manager loss limits
   Execution   — TRADING_MODE, DEMO_ONLY guard, LIVE_TRADING block
@@ -31,8 +32,10 @@ import asyncio
 import json
 import os
 import sys
+import socket
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -48,6 +51,7 @@ _PAIRS       = ["EURUSD", "XAUUSD"]
 _STALE_S     = 300   # runner log is stale if no entry within 5 min
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
+_DB_CONNECT_TIMEOUT_S = 3
 
 # ── Individual checks ──────────────────────────────────────────────────────────
 
@@ -120,6 +124,34 @@ async def check_data_feed() -> dict:
     if wide:
         return {"status": "WARN", "detail": f"spread too wide: {wide}", "pairs": pairs}
     return {"status": "PASS", "detail": "all pairs reachable", "pairs": pairs}
+
+
+def check_research_db() -> dict:
+    """
+    Probe the optional PostgreSQL research database.
+
+    This is intentionally a health warning, not a hard failure: the live bot
+    uses the local journal and must keep running even if the research stack is
+    offline.
+    """
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research",
+    )
+    parsed = urlparse(database_url)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+
+    try:
+        with socket.create_connection((host, port), timeout=_DB_CONNECT_TIMEOUT_S):
+            pass
+    except Exception as exc:
+        return {
+            "status": "WARN",
+            "detail": f"research DB unavailable at {host}:{port} ({exc.__class__.__name__})",
+        }
+
+    return {"status": "PASS", "detail": f"reachable at {host}:{port}"}
 
 
 def check_risk_engine() -> dict:
@@ -197,13 +229,14 @@ def _fmt(label: str, r: dict, w: int = 14) -> str:
     return f"  {label:<{w}}  {icon} {st:<8}  {r.get('detail', '')}"
 
 
-async def _run_all(no_broker: bool) -> dict:
+async def _run_all(no_broker: bool, no_db: bool) -> dict:
     results: dict[str, dict] = {}
     results["Runner"]      = check_runner()
     results["Risk Engine"] = check_risk_engine()
     results["Portfolio"]   = check_portfolio()
     results["Execution"]   = check_execution()
     results["Journal"]     = check_journal()
+    results["Research DB"] = {"status": "SKIP", "detail": "--no-db"} if no_db else check_research_db()
     if not no_broker:
         results["Broker"]    = await check_broker()
         results["Data Feed"] = await check_data_feed()
@@ -226,10 +259,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ST-A2 health check")
     parser.add_argument("--no-broker", action="store_true",
                         help="Skip broker connection (offline-safe)")
+    parser.add_argument("--no-db", action="store_true",
+                        help="Skip research database reachability probe")
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
 
-    results = asyncio.run(_run_all(args.no_broker))
+    results = asyncio.run(_run_all(args.no_broker, args.no_db))
     now     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if args.as_json:

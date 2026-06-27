@@ -26,6 +26,7 @@ _PIP_SIZE: dict[str, float] = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
     "USDJPY": 0.01,
+    "XAUUSD": 0.1,
 }
 
 ASIAN_START_HOUR = 0    # 00:00 UTC

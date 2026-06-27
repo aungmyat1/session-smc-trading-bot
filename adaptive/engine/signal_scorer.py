@@ -19,6 +19,7 @@ _MAX_SPREAD: dict[str, float] = {
     "EURUSD": 1.5,
     "GBPUSD": 2.0,
     "USDJPY": 2.0,
+    "XAUUSD": 3.0,
 }
 
 # Volatility: ATR% ceiling — too volatile is also penalised

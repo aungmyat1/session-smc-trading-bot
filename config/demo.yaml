@@ -16,15 +16,16 @@ trading:
     - EURUSD
     - GBPUSD
     - USDJPY
-  # XAUUSD: ST-A2 only on shadow until XAUUSD-specific backtest passes
+    - XAUUSD
   scan_interval_seconds: 60
   max_spread_pips:
     EURUSD: 1.5
     GBPUSD: 2.0
     USDJPY: 1.5                 # pips (0.01 per pip for JPY pairs)
+    XAUUSD: 3.0
 
 risk:
-  max_trades_per_day: 6         # 3 London + 3 NY slots across all strategies
+  max_trades_per_day: 4         # target 2-3 trades/day, with a small buffer
   max_open_positions: 3         # up to 3 uncorrelated positions simultaneously
   daily_loss_limit_pct: 2.0
   weekly_loss_limit_pct: 5.0

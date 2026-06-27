@@ -94,6 +94,10 @@ class TestRiskTiers:
         pm = _pm()
         assert pm.get_risk_pct("LondonBreakout") == 0.20
 
+    def test_vwap_mean_reversion_tier3(self):
+        pm = _pm()
+        assert pm.get_risk_pct("VWAPMeanReversion") == 0.10
+
     def test_tier3_unknown(self):
         pm = _pm()
         assert pm.get_risk_pct("NewUnknownStrategy") == 0.10

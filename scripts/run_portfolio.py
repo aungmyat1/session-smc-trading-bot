@@ -55,10 +55,19 @@ from strategies.adapters.st_a2_adapter      import ST2Adapter
 from strategies.adapters.london_breakout_adapter import LondonBreakoutAdapter
 from strategies.adapters.ny_momentum_adapter     import NYMomentumAdapter
 from strategies.adapters.adaptive_smc_adapter    import AdaptiveSMCAdapter
-from strategies.adapters.vwap_adapter            import VWAPBreakoutAdapter
+from strategies.adapters.vwap_adapter            import (
+    VWAPMeanReversionAdapter,
+    VWAPBreakoutAdapter,
+)
 
-for _adapter in [ST2Adapter(), LondonBreakoutAdapter(), NYMomentumAdapter(),
-                  AdaptiveSMCAdapter(), VWAPBreakoutAdapter()]:
+for _adapter in [
+    ST2Adapter(),
+    LondonBreakoutAdapter(),
+    NYMomentumAdapter(),
+    AdaptiveSMCAdapter(),
+    VWAPMeanReversionAdapter(),
+    VWAPBreakoutAdapter(),
+]:
     register_strategy(_adapter)
 
 # ── Portfolio control layer ───────────────────────────────────────────────────
@@ -102,17 +111,26 @@ _STRATEGY_MAP: dict[str, dict] = {
         "pairs": cfg.get("pairs", ["EURUSD", "GBPUSD"]),
         "mode":  cfg.get("execution_mode", "shadow"),
         "enabled": cfg.get("enabled", True),
+        "config": cfg,
     }
     for name, cfg in _STRAT_CFG.items()
     if cfg.get("enabled", True)
 } or {
     # Hardcoded fallback
-    "ST-A2":          {"pairs": ["EURUSD", "GBPUSD"],          "mode": "demo",   "enabled": True},
-    "LondonBreakout": {"pairs": ["EURUSD", "GBPUSD", "USDJPY"],"mode": "demo",   "enabled": True},
-    "NYMomentum":     {"pairs": ["EURUSD", "GBPUSD", "USDJPY"],"mode": "demo",   "enabled": True},
-    "AdaptiveSMC":    {"pairs": ["EURUSD", "GBPUSD"],          "mode": "shadow", "enabled": True},
-    "VWAPBreakout":   {"pairs": ["EURUSD", "GBPUSD"],          "mode": "shadow", "enabled": True},
+    "ST-A2":              {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "demo",   "enabled": True, "config": {}},
+    "LondonBreakout":     {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "demo",   "enabled": True, "config": {}},
+    "NYMomentum":         {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "demo",   "enabled": True, "config": {}},
+    "AdaptiveSMC":        {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "shadow", "enabled": True, "config": {}},
+    "VWAPMeanReversion":  {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "shadow", "enabled": True, "config": {}},
+    "VWAPBreakout":       {"pairs": ["EURUSD", "GBPUSD", "XAUUSD"], "mode": "shadow", "enabled": True, "config": {}},
 }
+
+if "VWAPMeanReversion" in _STRATEGY_MAP and "VWAPBreakout" not in _STRATEGY_MAP:
+    _STRATEGY_MAP["VWAPBreakout"] = {
+        **_STRATEGY_MAP["VWAPMeanReversion"],
+        "enabled": False,
+        "alias_for": "VWAPMeanReversion",
+    }
 
 _ALL_SYMBOLS: list[str] = sorted({
     sym for cfg in _STRATEGY_MAP.values() for sym in cfg["pairs"]
@@ -209,6 +227,8 @@ async def _tick(
     raw_signals = []
 
     for strategy_name, scfg in _STRATEGY_MAP.items():
+        if not scfg.get("enabled", True):
+            continue
         strategy = get_strategy(strategy_name)
         if strategy is None:
             continue
@@ -225,7 +245,7 @@ async def _tick(
             }
 
             try:
-                sig = strategy.generate_signal(data)
+                sig = strategy.generate_signal({**data, "config": scfg.get("config", {})})
             except Exception as exc:
                 _log.warning("%s/%s generate error: %s", strategy_name, symbol, exc)
                 continue
