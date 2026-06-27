@@ -52,6 +52,17 @@ tail -50 logs/bot.log | grep -E "DISCONNECTED|reconnect|RPC timeout"
 The bot attempts `reconnect()` after every heartbeat (every 5 min). No action needed
 if the heartbeat loop continues (check: `grep HEARTBEAT logs/bot.log | tail -5`).
 
+Since the current runtime now emits explicit reconnect alerts, a successful recovery
+should also appear in Telegram as:
+
+```text
+[MetaAPI reconnect] restored connection successfully
+```
+
+The startup alert now includes recovered state from `logs/bot_state.json` and
+the append-only trade journal, so after a restart you should see whether prior
+loss counters or open-state markers were loaded.
+
 ### Recovery — manual (if SDK stuck)
 
 ```bash
@@ -120,6 +131,16 @@ python3 scripts/health_check.py | grep memory
 # 4. Verify startup
 sleep 10 && tail -20 logs/bot.log
 python3 scripts/health_check.py
+```
+
+### Recovery evidence to confirm
+
+```bash
+# Health check now includes a Recovery probe
+python3 scripts/health_check.py | grep Recovery
+
+# Startup summary should show recovered state if bot_state.json and trades.jsonl exist
+grep "recovered_signals\|halt_state\|risk_state" logs/bot.log | tail -5
 ```
 
 ### Verification
