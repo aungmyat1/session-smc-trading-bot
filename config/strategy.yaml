@@ -1,0 +1,6 @@
+signal:
+  lookback_sweeps: 3
+  lookback_structure: 3
+  lookback_fvg: 5
+  lookback_ob: 5
+

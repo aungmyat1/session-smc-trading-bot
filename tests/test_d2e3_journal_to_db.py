@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+import scripts.d2e3_journal_to_db as sync_db
 from scripts.d2e3_journal_to_db import (
     build_daily_equity,
     build_metrics,
@@ -87,3 +88,52 @@ def test_build_daily_equity_and_metrics():
     assert metrics["losing_trades"] == 1
     assert metrics["net_r"] == 2.5
     assert metrics["profit_factor"] > 1.0
+
+
+def test_sync_journal_skips_when_database_unreachable(monkeypatch, tmp_path):
+    log_file = tmp_path / "d2e3_trades.jsonl"
+
+    monkeypatch.setattr(
+        sync_db,
+        "load_events",
+        lambda _path: [{ "_ts": datetime(2026, 6, 27, 9, 0, tzinfo=timezone.utc) }],
+    )
+    monkeypatch.setattr(
+        sync_db,
+        "build_trade_records",
+        lambda _events: [
+            {
+                "symbol": "EURUSD",
+                "session": "london",
+                "direction": "long",
+                "signal_ts": datetime(2026, 6, 27, 9, 0, tzinfo=timezone.utc),
+                "fill_ts": datetime(2026, 6, 27, 9, 1, tzinfo=timezone.utc),
+                "close_ts": datetime(2026, 6, 27, 9, 15, tzinfo=timezone.utc),
+                "entry_price": 1.1,
+                "stop_price": 1.095,
+                "take_profit": 1.11,
+                "sl_pips": 50.0,
+                "risk_reward": 2.0,
+                "volume": 0.01,
+                "order_id": "ord-1",
+                "dry_run": False,
+                "result_r": 1.5,
+                "exit_reason": "tp",
+                "signal_reason": "test",
+                "trade_id": "trade-1",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        sync_db.psycopg2,
+        "connect",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(sync_db.psycopg2.OperationalError("Connection refused")),
+    )
+
+    result = sync_db.sync_journal(
+        "postgresql://user:pass@127.0.0.1:5432/research",
+        log_file,
+    )
+
+    assert result["skipped"] is True
+    assert result["reason"] == "research database unavailable"

@@ -1,0 +1,7 @@
+raw_root: data/historical
+timeframe: M1
+symbols:
+  - EURUSD
+  - GBPUSD
+  - XAUUSD
+

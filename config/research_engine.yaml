@@ -1,0 +1,72 @@
+data:
+  raw_root: data/historical
+  parquet_root: research_engine
+  symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+
+signals:
+  lookback_sweeps: 3
+  lookback_structure: 3
+  lookback_fvg: 5
+  lookback_ob: 5
+  max_signals_per_day: 1
+  min_confluence: 2
+  strategy_name: ST-A2
+  allowed_sessions:
+    - london
+    - new_york
+
+risk:
+  initial_capital: 10000.0
+  risk_per_trade: 0.005
+  rr_multiple: 2.0
+  stop_lookback: 5
+  stop_buffer_pips: 1.0
+  spread_pips: 1.5
+  commission_pips: 0.6
+  slippage_pips: 0.2
+  execution_delay_bars: 1
+  max_hold_bars: 48
+
+analytics:
+  duckdb_path: research.db
+
+breakout:
+  enabled: false
+  asian_session_end_hour: 8
+  london_session_start_hour: 8
+  london_session_end_hour: 16
+  min_asian_range_pips: 15.0
+  max_asian_range_pips: 50.0
+  retest_tolerance_pips: 0.5
+  stop_buffer_pips: 1.0
+  rr_multiple: 2.0
+  max_signals_per_day: 1
+
+ny:
+  enabled: false
+  london_session_start_hour: 8
+  london_session_end_hour: 16
+  ny_session_start_hour: 13
+  ny_session_end_hour: 21
+  sweep_buffer_pips: 1.0
+  retest_tolerance_pips: 2.0
+  stop_buffer_pips: 1.0
+  rr_multiple: 2.0
+  max_signals_per_day: 1
+
+vwap:
+  enabled: false
+  london_session_start_hour: 8
+  london_session_end_hour: 16
+  new_york_session_start_hour: 13
+  new_york_session_end_hour: 21
+  min_session_bars: 8
+  min_bars: 12
+  sweep_buffer_mult: 0.35
+  extreme_atr_mult: 1.0
+  reclaim_atr_mult: 0.6
+  tp_rr: 1.8
+  max_signals_per_day: 1

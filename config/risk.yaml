@@ -1,0 +1,10 @@
+initial_capital: 10000.0
+risk_per_trade: 0.005
+rr_multiple: 2.0
+stop_lookback: 5
+stop_buffer_pips: 1.0
+spread_pips: 1.5
+commission_pips: 0.6
+slippage_pips: 0.2
+execution_delay_bars: 1
+
