@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SMC Trading Bot — Control Panel</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --green: #3fb950;
+    --green-dim: #1a3b22;
+    --red: #f85149;
+    --red-dim: #3b1a1a;
+    --yellow: #d29922;
+    --yellow-dim: #3b2e0e;
+    --blue: #58a6ff;
+    --blue-dim: #0d2044;
+    --purple: #bc8cff;
+    --purple-dim: #2d1f4e;
+    --accent: #238636;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* --- Layout --- */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-left h1 { font-size: 16px; font-weight: 600; }
+  .header-left .subtitle { color: var(--muted); font-size: 12px; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+
+  .system-status {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .system-status.online { border-color: var(--green); color: var(--green); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .live-badge {
+    font-size: 11px; font-weight: 700; padding: 3px 8px;
+    border-radius: 4px; letter-spacing: 0.5px;
+  }
+  .live-badge.paper { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+  .live-badge.live  { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); animation: pulse 1s infinite; }
+
+  .refresh-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); padding: 5px 10px; border-radius: var(--radius);
+    cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;
+  }
+  .refresh-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 24px 40px;
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto;
+  }
+
+  /* --- Status bar --- */
+  .status-bar {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; }
+  .stat-card .sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .green { color: var(--green); }
+  .red   { color: var(--red); }
+  .yellow { color: var(--yellow); }
+  .blue  { color: var(--blue); }
+  .purple { color: var(--purple); }
+  .muted { color: var(--muted); }
+
+  /* --- Panel --- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .panel.full-width { grid-column: 1 / -1; }
+
+  .panel-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .panel-header-left { display: flex; align-items: center; gap: 8px; }
+  .panel-title { font-size: 13px; font-weight: 600; }
+  .panel-subtitle { font-size: 11px; color: var(--muted); }
+
+  .panel-body { padding: 16px; }
+
+  /* --- Status badge --- */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-pass    { background: var(--green-dim);  color: var(--green);  border: 1px solid var(--green); }
+  .badge-fail    { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); }
+  .badge-pending { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-demo    { background: var(--blue-dim);   color: var(--blue);   border: 1px solid var(--blue); }
+  .badge-live    { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); }
+  .badge-research{ background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple); }
+  .badge-shadow  { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+  .badge-replay  { background: var(--blue-dim);   color: var(--blue);   border: 1px solid var(--blue); }
+  .badge-backtest{ background: #1a2b3b;            color: #79c0ff;       border: 1px solid #79c0ff; }
+  .badge-unknown { background: var(--surface2);   color: var(--muted);  border: 1px solid var(--border); }
+
+  /* --- SVOS Pipeline --- */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    position: relative;
+  }
+  .stage:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: 18px;
+    width: 2px;
+    height: 2px;
+    background: var(--border);
+  }
+  .stage-arrow {
+    color: var(--border);
+    font-size: 18px;
+    margin: 0 2px;
+    line-height: 1;
+    margin-top: -10px;
+  }
+  .stage-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    border: 2px solid;
+    margin-bottom: 6px;
+  }
+  .stage-dot.pass    { border-color: var(--green);  background: var(--green-dim);  color: var(--green); }
+  .stage-dot.fail    { border-color: var(--red);    background: var(--red-dim);    color: var(--red); }
+  .stage-dot.pending { border-color: var(--border); background: var(--surface2);   color: var(--muted); }
+  .stage-dot.active  { border-color: var(--blue);   background: var(--blue-dim);   color: var(--blue); animation: pulse 1.5s infinite; }
+  .stage-label { font-size: 10px; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* --- Strategy table --- */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; padding: 8px 10px;
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  tr.current-row td { background: rgba(88, 166, 255, 0.05); }
+  tr.current-row td:first-child { border-left: 3px solid var(--blue); }
+
+  .mono { font-family: var(--mono); }
+
+  /* --- EVF Checks grid --- */
+  .checks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .check-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .check-item.pass { border-color: #1a3b22; }
+  .check-item.fail { border-color: #3b1a1a; }
+  .check-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+  .check-name { font-size: 12px; font-weight: 500; }
+  .check-msg  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* --- Accuracy bars --- */
+  .accuracy-row { margin-bottom: 12px; }
+  .accuracy-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .accuracy-label span:last-child { font-weight: 600; }
+  .bar-track {
+    height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.6s ease;
+    background: var(--green);
+  }
+  .bar-fill.warn { background: var(--yellow); }
+  .bar-fill.danger { background: var(--red); }
+
+  /* --- Trade feed --- */
+  .trade-feed { max-height: 360px; overflow-y: auto; }
+  .trade-row {
+    display: grid;
+    grid-template-columns: 100px 70px 70px 70px 1fr 80px 70px;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    align-items: center;
+  }
+  .trade-row.header {
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.4px;
+    position: sticky; top: 0; background: var(--surface); z-index: 1;
+  }
+  .trade-row:last-child { border-bottom: none; }
+  .dir-long  { color: var(--green); font-weight: 600; }
+  .dir-short { color: var(--red);   font-weight: 600; }
+
+  /* --- Action panel --- */
+  .action-panel { padding: 16px; background: var(--surface2); border-top: 1px solid var(--border); }
+  .action-panel h4 { font-size: 12px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .action-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .token-input {
+    flex: 1; min-width: 200px;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 7px 10px; border-radius: var(--radius);
+    font-family: var(--mono); font-size: 12px;
+  }
+  .token-input:focus { outline: none; border-color: var(--blue); }
+  .action-btn {
+    padding: 7px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1px solid; transition: opacity 0.15s;
+  }
+  .action-btn:hover { opacity: 0.8; }
+  .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .action-btn.primary { background: var(--accent); border-color: var(--green); color: #fff; }
+  .action-btn.secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
+
+  .output-box {
+    margin-top: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    max-height: 200px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    display: none;
+  }
+  .output-box.visible { display: block; }
+
+  /* --- Score ring --- */
+  .score-container { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
+  .score-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .score-text {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+  .score-ring .score-text .score-num { font-size: 20px; }
+  .score-ring .score-text .score-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+  .score-meta { flex: 1; }
+  .score-meta .big-status { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .score-meta .meta-row { font-size: 12px; color: var(--muted); }
+
+  /* --- Loading --- */
+  .loading { color: var(--muted); font-size: 12px; padding: 20px; text-align: center; }
+  .error-msg { color: var(--red); font-size: 12px; padding: 10px; }
+
+  /* Scroll */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .timestamp { font-size: 11px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .panel.full-width { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <span style="font-size:20px;">📊</span>
+    <div>
+      <h1>SMC Trading Bot — Control Panel</h1>
+      <div class="subtitle">SVOS &bull; EVF &bull; Trade Status</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="live-badge" class="live-badge paper">PAPER</span>
+    <div id="system-status" class="system-status online">
+      <span class="dot"></span> ONLINE
+    </div>
+    <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+    <span id="last-update" class="timestamp"></span>
+  </div>
+</header>
+
+<main>
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="stat-card">
+      <div class="label">Current Strategy</div>
+      <div id="hdr-strategy" class="value blue mono" style="font-size:18px;">—</div>
+      <div id="hdr-strategy-status" class="sub">status: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">SVOS Gate</div>
+      <div id="hdr-svos" class="value">—</div>
+      <div id="hdr-svos-at" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">EVF Score</div>
+      <div id="hdr-evf-score" class="value">—</div>
+      <div id="hdr-evf-status" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Total Trades</div>
+      <div id="hdr-trades" class="value">—</div>
+      <div id="hdr-winrate" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg R / Total R</div>
+      <div id="hdr-avg-r" class="value">—</div>
+      <div id="hdr-total-r" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Live Trading</div>
+      <div id="hdr-live" class="value red">OFF</div>
+      <div class="sub">Manual flip only</div>
+    </div>
+  </div>
+
+  <!-- SVOS Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🔬</span>
+        <div>
+          <div class="panel-title">SVOS — Strategy Validation</div>
+          <div class="panel-subtitle">Stage-gate pipeline for all strategies</div>
+        </div>
+      </div>
+      <span id="svos-current-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <!-- Pipeline stages -->
+      <div id="svos-pipeline" class="pipeline">
+        <div class="loading">Loading SVOS data…</div>
+      </div>
+
+      <!-- Strategy table -->
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Symbols</th>
+              <th>Replay</th>
+              <th>Backtest</th>
+              <th>Last SVOS</th>
+            </tr>
+          </thead>
+          <tbody id="svos-table-body">
+            <tr><td colspan="7" class="loading">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SVOS Action -->
+    <div class="action-panel">
+      <h4>Run SVOS — requires confirm token</h4>
+      <div class="action-row">
+        <select id="svos-strategy-select" class="token-input" style="min-width:140px; flex:0;">
+          <option value="">Select strategy…</option>
+        </select>
+        <input id="svos-token" class="token-input" placeholder="CONFIRM-SVOS-{strategy}" />
+        <button class="action-btn primary" onclick="runSVOS()">▶ Run SVOS</button>
+      </div>
+      <div id="svos-output" class="output-box"></div>
+    </div>
+  </div>
+
+  <!-- EVF Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>⚡</span>
+        <div>
+          <div class="panel-title">EVF — Execution Validation</div>
+          <div class="panel-subtitle">Signal accuracy, slippage, broker rules</div>
+        </div>
+      </div>
+      <span id="evf-status-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <!-- Score ring + meta -->
+      <div class="score-container">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#1c2330" stroke-width="8"/>
+            <circle id="evf-ring" cx="40" cy="40" r="34" fill="none" stroke="#3fb950" stroke-width="8"
+              stroke-dasharray="213.6" stroke-dashoffset="213.6" stroke-linecap="round"/>
+          </svg>
+          <div class="score-text">
+            <span id="evf-score-num" class="score-num">—</span>
+            <span class="score-label">/ 100</span>
+          </div>
+        </div>
+        <div class="score-meta">
+          <div id="evf-big-status" class="big-status muted">NO REPORT</div>
+          <div id="evf-strategy-meta" class="meta-row">—</div>
+          <div id="evf-period-meta" class="meta-row">—</div>
+          <div id="evf-created-meta" class="meta-row timestamp">—</div>
+        </div>
+      </div>
+
+      <!-- Accuracy bars -->
+      <div id="evf-accuracy">
+        <div class="accuracy-row">
+          <div class="accuracy-label"><span>Signal Accuracy</span><span id="sig-acc-val">—</span></div>
+          <div class="bar-track"><div id="sig-acc-bar" class="bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="accuracy-row">
+          <div class="accuracy-label"><span>Order Accuracy</span><span id="ord-acc-val">—</span></div>
+          <div class="bar-track"><div id="ord-acc-bar" class="bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="accuracy-row">
+          <div class="accuracy-label"><span>Risk Accuracy</span><span id="risk-acc-val">—</span></div>
+          <div class="bar-track"><div id="risk-acc-bar" class="bar-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Slippage + latency stats -->
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin:14px 0 12px;">
+        <div class="stat-card" style="padding:10px 12px;">
+          <div class="label">Slip Avg</div>
+          <div id="slip-avg" class="value" style="font-size:16px;">—</div>
+          <div class="sub">pip</div>
+        </div>
+        <div class="stat-card" style="padding:10px 12px;">
+          <div class="label">Slip P95</div>
+          <div id="slip-p95" class="value" style="font-size:16px;">—</div>
+          <div class="sub">pip</div>
+        </div>
+        <div class="stat-card" style="padding:10px 12px;">
+          <div class="label">Delay Avg</div>
+          <div id="delay-avg" class="value" style="font-size:16px;">—</div>
+          <div class="sub">ms</div>
+        </div>
+        <div class="stat-card" style="padding:10px 12px;">
+          <div class="label">EVF Score</div>
+          <div id="evf-score-card" class="value" style="font-size:16px;">—</div>
+          <div class="sub">/ 100</div>
+        </div>
+      </div>
+
+      <!-- Checks grid -->
+      <div id="evf-checks" class="checks-grid">
+        <div class="loading">Loading EVF checks…</div>
+      </div>
+    </div>
+
+    <!-- EVF Action -->
+    <div class="action-panel">
+      <h4>Run EVF — requires confirm token</h4>
+      <div class="action-row">
+        <input id="evf-strategy-input" class="token-input" placeholder="Strategy (e.g. ST-A2)" style="max-width:130px;" />
+        <input id="evf-token" class="token-input" placeholder="CONFIRM-EVF-{strategy}" />
+        <button class="action-btn primary" onclick="runEVF()">▶ Run EVF</button>
+      </div>
+      <div id="evf-output" class="output-box"></div>
+    </div>
+  </div>
+
+  <!-- Trade Status Panel -->
+  <div class="panel full-width">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>📈</span>
+        <div>
+          <div class="panel-title">Live Trade Status</div>
+          <div class="panel-subtitle">Recent executions from journals</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="trade-win-badge" class="badge badge-unknown">—% Win</span>
+        <span id="trade-count-badge" class="badge badge-unknown">— trades</span>
+      </div>
+    </div>
+    <div class="panel-body" style="padding:0;">
+      <!-- Summary row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0;border-bottom:1px solid var(--border);">
+        <div style="padding:12px 16px;border-right:1px solid var(--border);">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Wins</div>
+          <div id="t-wins" class="value green" style="font-size:20px;">—</div>
+        </div>
+        <div style="padding:12px 16px;border-right:1px solid var(--border);">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Losses</div>
+          <div id="t-losses" class="value red" style="font-size:20px;">—</div>
+        </div>
+        <div style="padding:12px 16px;border-right:1px solid var(--border);">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Win Rate</div>
+          <div id="t-winrate" class="value" style="font-size:20px;">—</div>
+        </div>
+        <div style="padding:12px 16px;border-right:1px solid var(--border);">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Avg R</div>
+          <div id="t-avgr" class="value" style="font-size:20px;">—</div>
+        </div>
+        <div style="padding:12px 16px;">
+          <div class="label" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Total R</div>
+          <div id="t-totalr" class="value" style="font-size:20px;">—</div>
+        </div>
+      </div>
+
+      <!-- Trade feed -->
+      <div class="trade-feed">
+        <div class="trade-row header">
+          <span>Time</span>
+          <span>Symbol</span>
+          <span>Dir</span>
+          <span>Entry</span>
+          <span>Strategy</span>
+          <span>Result</span>
+          <span>R</span>
+        </div>
+        <div id="trade-rows">
+          <div class="loading">Loading trades…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = window.location.origin;
+
+async function apiFetch(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (e) {
+    console.error('API error', path, e);
+    return null;
+  }
+}
+
+function badgeClass(status) {
+  if (!status) return 'badge-unknown';
+  const s = status.toLowerCase();
+  if (s === 'pass') return 'badge-pass';
+  if (s === 'fail') return 'badge-fail';
+  if (s === 'demo') return 'badge-demo';
+  if (s === 'live') return 'badge-live';
+  if (s === 'research') return 'badge-research';
+  if (s === 'shadow') return 'badge-shadow';
+  if (s === 'replay') return 'badge-replay';
+  if (s === 'backtest') return 'badge-backtest';
+  if (s === 'pending') return 'badge-pending';
+  return 'badge-unknown';
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString();
+  } catch { return iso; }
+}
+
+function fmtShort(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return iso; }
+}
+
+// ---- Status summary ----
+async function loadStatus() {
+  const d = await apiFetch('/api/status');
+  if (!d) return;
+
+  document.getElementById('hdr-strategy').textContent = d.current_strategy || '—';
+  document.getElementById('hdr-strategy-status').textContent = 'status: ' + (d.strategy_status || '—');
+
+  const svosEl = document.getElementById('hdr-svos');
+  svosEl.textContent = d.last_svos_status || '—';
+  svosEl.className = 'value ' + (d.last_svos_status === 'PASS' ? 'green' : d.last_svos_status === 'FAIL' ? 'red' : 'muted');
+  document.getElementById('hdr-svos-at').textContent = fmtShort(d.last_svos_at);
+
+  const evfScore = d.evf_score || 0;
+  const evfEl = document.getElementById('hdr-evf-score');
+  evfEl.textContent = evfScore;
+  evfEl.className = 'value ' + (evfScore >= 80 ? 'green' : evfScore >= 50 ? 'yellow' : 'red');
+  document.getElementById('hdr-evf-status').textContent = d.evf_status || '—';
+
+  document.getElementById('hdr-trades').textContent = d.trade_count || 0;
+  document.getElementById('hdr-winrate').textContent = (d.win_rate || 0) + '% win rate';
+
+  const liveEl = document.getElementById('hdr-live');
+  const liveBadge = document.getElementById('live-badge');
+  if (d.live_trading) {
+    liveEl.textContent = 'ON'; liveEl.className = 'value red';
+    liveBadge.textContent = 'LIVE'; liveBadge.className = 'live-badge live';
+  } else {
+    liveEl.textContent = 'OFF'; liveEl.className = 'value muted';
+    liveBadge.textContent = 'PAPER'; liveBadge.className = 'live-badge paper';
+  }
+
+  document.getElementById('last-update').textContent = 'Updated ' + fmtShort(d.fetched_at);
+}
+
+// ---- SVOS Panel ----
+const STAGES = ['audit','enhancement','replay','backtest','robustness','demo','production'];
+const STAGE_ICONS = { pass:'✓', fail:'✗', pending:'○', active:'◈' };
+
+async function loadSVOS() {
+  const d = await apiFetch('/api/svos');
+  if (!d) return;
+
+  const currentStrategy = d.current_strategy;
+  const strategies = d.strategies || [];
+  const current = strategies.find(s => s.name === currentStrategy);
+  const currentStatus = current ? current.status : 'unknown';
+
+  // Badge
+  const badge = document.getElementById('svos-current-badge');
+  badge.textContent = currentStatus.toUpperCase();
+  badge.className = 'badge ' + badgeClass(currentStatus);
+
+  // Pipeline
+  const pipelineEl = document.getElementById('svos-pipeline');
+  const reqs = current ? current.requirements : {};
+  const lastStage = current ? current.last_svos_promoted_stage : '';
+
+  const stageStatus = (stage) => {
+    if (reqs[stage] === 'pass') return 'pass';
+    if (reqs[stage] === 'fail') return 'fail';
+    if (stage === lastStage) return 'active';
+    return 'pending';
+  };
+
+  pipelineEl.innerHTML = STAGES.map((stage, i) => {
+    const st = stageStatus(stage);
+    const icon = STAGE_ICONS[st] || '○';
+    return `
+      ${i > 0 ? '<span class="stage-arrow">›</span>' : ''}
+      <div class="stage">
+        <div class="stage-dot ${st}">${icon}</div>
+        <div class="stage-label">${stage}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Strategy select
+  const sel = document.getElementById('svos-strategy-select');
+  sel.innerHTML = '<option value="">Select strategy…</option>' +
+    strategies.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+
+  // Table
+  const tbody = document.getElementById('svos-table-body');
+  tbody.innerHTML = strategies.map(s => {
+    const req = s.requirements || {};
+    const reqBadge = (v) => {
+      if (!v || v === 'pending') return '<span class="badge badge-pending">pending</span>';
+      if (v === 'pass') return '<span class="badge badge-pass">pass</span>';
+      if (v === 'fail') return '<span class="badge badge-fail">fail</span>';
+      return `<span class="badge badge-unknown">${v}</span>`;
+    };
+    const isCurrent = s.name === currentStrategy;
+    return `<tr class="${isCurrent ? 'current-row' : ''}">
+      <td class="mono" style="font-weight:${isCurrent ? '700' : '400'}">
+        ${s.name}${isCurrent ? ' <span class="badge badge-demo" style="font-size:9px;">CURRENT</span>' : ''}
+      </td>
+      <td class="muted">v${s.version || '—'}</td>
+      <td><span class="badge ${badgeClass(s.status)}">${s.status}</span></td>
+      <td class="mono muted" style="font-size:11px;">${(s.symbols || []).join(', ')}</td>
+      <td>${reqBadge(req.replay)}</td>
+      <td>${reqBadge(req.backtest)}</td>
+      <td class="timestamp">${s.last_svos_at ? '<span class="badge ' + badgeClass(s.last_svos_status) + '">' + (s.last_svos_status || '—') + '</span> ' + fmtShort(s.last_svos_at) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ---- EVF Panel ----
+async function loadEVF() {
+  const d = await apiFetch('/api/evf');
+  if (!d) return;
+
+  const status = d.status || 'UNKNOWN';
+  const score = d.final_score || 0;
+
+  // Badge
+  const badge = document.getElementById('evf-status-badge');
+  badge.textContent = status;
+  badge.className = 'badge ' + (status === 'PASS' ? 'badge-pass' : status === 'FAIL' ? 'badge-fail' : status === 'BLOCKED' ? 'badge-fail' : 'badge-unknown');
+
+  // Ring
+  const circ = 213.6;
+  const pct = Math.min(score, 100) / 100;
+  const offset = circ - pct * circ;
+  const ring = document.getElementById('evf-ring');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = score >= 80 ? '#3fb950' : score >= 50 ? '#d29922' : '#f85149';
+
+  document.getElementById('evf-score-num').textContent = score;
+  const bigSt = document.getElementById('evf-big-status');
+  bigSt.textContent = status;
+  bigSt.className = 'big-status ' + (status === 'PASS' ? 'green' : status === 'FAIL' || status === 'BLOCKED' ? 'red' : 'muted');
+
+  document.getElementById('evf-strategy-meta').textContent = 'Strategy: ' + (d.strategy || '—');
+  document.getElementById('evf-period-meta').textContent = 'Period: ' + (d.period || '—');
+  document.getElementById('evf-created-meta').textContent = 'Report: ' + fmtShort(d.created_at);
+
+  // Accuracy bars
+  const setBar = (id, barId, val) => {
+    const pct = Math.round((val || 0) * 100);
+    document.getElementById(id).textContent = pct + '%';
+    const bar = document.getElementById(barId);
+    bar.style.width = pct + '%';
+    bar.className = 'bar-fill' + (pct < 50 ? ' danger' : pct < 80 ? ' warn' : '');
+  };
+  setBar('sig-acc-val', 'sig-acc-bar', d.signal_accuracy);
+  setBar('ord-acc-val', 'ord-acc-bar', d.order_accuracy);
+  setBar('risk-acc-val', 'risk-acc-bar', d.risk_accuracy);
+
+  // Slippage / latency
+  document.getElementById('slip-avg').textContent = (d.slippage_average_pip || 0).toFixed(3);
+  document.getElementById('slip-p95').textContent = (d.slippage_p95_pip || 0).toFixed(3);
+  document.getElementById('delay-avg').textContent = Math.round(d.execution_delay_ms_average || 0);
+  const scoreCard = document.getElementById('evf-score-card');
+  scoreCard.textContent = score;
+  scoreCard.className = 'value ' + (score >= 80 ? 'green' : score >= 50 ? 'yellow' : 'red');
+
+  // Checks grid — combine boolean fields + checks array
+  const boolChecks = [
+    { name: 'Duplicate Order Protection', passed: d.duplicate_order_protection_passed, msg: '' },
+    { name: 'Spread Handling', passed: d.spread_handling_passed, msg: '' },
+    { name: 'Slippage Gate', passed: d.slippage_passed, msg: '' },
+    { name: 'Exit Management', passed: d.exit_management_passed, msg: '' },
+    { name: 'Recovery', passed: d.recovery_passed, msg: '' },
+    { name: 'Broker Simulation', passed: d.broker_simulation_passed, msg: '' },
+  ];
+  const checkItems = d.checks && d.checks.length ? d.checks : boolChecks;
+
+  const checksEl = document.getElementById('evf-checks');
+  checksEl.innerHTML = checkItems.map(c => `
+    <div class="check-item ${c.passed ? 'pass' : 'fail'}">
+      <div class="check-icon">${c.passed ? '✅' : '❌'}</div>
+      <div>
+        <div class="check-name">${c.name}</div>
+        ${c.message || c.msg ? `<div class="check-msg">${c.message || c.msg}</div>` : ''}
+        ${c.score !== undefined ? `<div class="check-msg">score: ${c.score}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---- Trades Panel ----
+async function loadTrades() {
+  const d = await apiFetch('/api/trades');
+  if (!d) return;
+
+  const s = d.stats || {};
+  document.getElementById('t-wins').textContent = s.wins || 0;
+  document.getElementById('t-losses').textContent = s.losses || 0;
+  const wrEl = document.getElementById('t-winrate');
+  wrEl.textContent = (s.win_rate || 0) + '%';
+  wrEl.className = 'value ' + (s.win_rate >= 50 ? 'green' : 'red');
+  const arEl = document.getElementById('t-avgr');
+  arEl.textContent = (s.avg_r || 0).toFixed(2) + 'R';
+  arEl.className = 'value ' + (s.avg_r >= 0 ? 'green' : 'red');
+  const trEl = document.getElementById('t-totalr');
+  trEl.textContent = (s.total_r || 0).toFixed(2) + 'R';
+  trEl.className = 'value ' + (s.total_r >= 0 ? 'green' : 'red');
+
+  // Header badges
+  document.getElementById('trade-win-badge').textContent = (s.win_rate || 0) + '% Win';
+  document.getElementById('trade-win-badge').className = 'badge ' + (s.win_rate >= 50 ? 'badge-pass' : 'badge-fail');
+  document.getElementById('trade-count-badge').textContent = (s.total || 0) + ' trades';
+  document.getElementById('trade-count-badge').className = 'badge badge-unknown';
+
+  // Header summary
+  document.getElementById('hdr-avg-r').textContent = (s.avg_r || 0).toFixed(2) + 'R';
+  document.getElementById('hdr-avg-r').className = 'value ' + (s.avg_r >= 0 ? 'green' : 'red');
+  document.getElementById('hdr-total-r').textContent = 'total: ' + (s.total_r || 0).toFixed(2) + 'R';
+
+  // Trade rows
+  const rows = d.recent || [];
+  const rowsEl = document.getElementById('trade-rows');
+  if (!rows.length) {
+    rowsEl.innerHTML = '<div class="loading">No trades in journal</div>';
+    return;
+  }
+  rowsEl.innerHTML = rows.map(r => {
+    const r_val = r.result_r != null ? r.result_r : (r.r_multiple != null ? r.r_multiple : null);
+    const rStr = r_val != null ? (r_val >= 0 ? '+' : '') + r_val.toFixed(2) + 'R' : '—';
+    const rClass = r_val != null ? (r_val > 0 ? 'green' : 'red') : 'muted';
+    const result = r.result || r.status || '—';
+    const dirClass = (r.direction || '').toLowerCase() === 'buy' ? 'dir-long' : 'dir-short';
+    const dirLabel = (r.direction || '').toLowerCase() === 'buy' ? '▲ LONG' : (r.direction || '').toLowerCase() === 'sell' ? '▼ SHORT' : r.direction || '—';
+    return `<div class="trade-row">
+      <span class="timestamp">${fmtShort(r.timestamp || r.closed_at)}</span>
+      <span class="mono">${r.symbol || r.pair || '—'}</span>
+      <span class="${dirClass}">${dirLabel}</span>
+      <span class="mono">${r.entry != null ? r.entry.toFixed(5) : '—'}</span>
+      <span class="muted">${r.strategy || '—'}</span>
+      <span>${result}</span>
+      <span class="${rClass}" style="font-weight:600;">${rStr}</span>
+    </div>`;
+  }).join('');
+}
+
+// ---- Actions ----
+async function runSVOS() {
+  const strategy = document.getElementById('svos-strategy-select').value;
+  const token = document.getElementById('svos-token').value.trim();
+  const out = document.getElementById('svos-output');
+  out.className = 'output-box visible';
+  out.textContent = `Sending CONFIRM token for ${strategy}…`;
+
+  try {
+    const r = await fetch(API + '/api/svos/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy, confirm_token: token }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}\nRequired token: ${d.required || ''}`;
+    } else {
+      out.textContent = `Status: ${d.status} (rc=${d.returncode})\n\n${d.output || ''}`;
+      setTimeout(refreshAll, 2000);
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
+async function runEVF() {
+  const strategy = document.getElementById('evf-strategy-input').value.trim();
+  const token = document.getElementById('evf-token').value.trim();
+  const out = document.getElementById('evf-output');
+  out.className = 'output-box visible';
+  out.textContent = `Sending CONFIRM token for EVF ${strategy}…`;
+
+  try {
+    const r = await fetch(API + '/api/evf/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy, confirm_token: token }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}\nRequired token: ${d.required || ''}`;
+    } else {
+      out.textContent = `Status: ${d.status} (rc=${d.returncode})\n\n${d.output || ''}`;
+      setTimeout(loadEVF, 3000);
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([loadStatus(), loadSVOS(), loadEVF(), loadTrades()]);
+}
+
+// Auto-refresh every 30s
+setInterval(refreshAll, 30000);
+
+// Initial load
+refreshAll();
+</script>
+</body>
+</html>
