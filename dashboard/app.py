@@ -35,6 +35,8 @@ except ImportError:
     print("Flask not installed. Run: pip install flask flask-cors")
     sys.exit(1)
 
+from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
+
 try:
     import yaml
 except ImportError:
@@ -50,7 +52,6 @@ _JOURNAL_PATHS = [
     _ROOT / "logs" / "adaptive_trades.jsonl",
 ]
 _SVOS_REPORTS_DIR = _ROOT / "reports" / "current_strategy_svos"
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -271,6 +272,9 @@ def api_status():
     strategies = catalog.get("strategies", {})
     current = catalog.get("current_strategy", "")
     current_meta = strategies.get(current, {})
+    port = int(os.getenv("DASHBOARD_PORT", "8080"))
+    bind_host = dashboard_bind_host()
+    public_host = dashboard_public_host(bind_host)
 
     records = _all_trades()
     stats = _trade_stats(records)
@@ -288,6 +292,9 @@ def api_status():
         "trade_count": stats["total"],
         "win_rate": stats["win_rate"],
         "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
+        "dashboard_bind_host": bind_host,
+        "dashboard_public_host": public_host,
+        "dashboard_url": dashboard_url(public_host, port),
         "fetched_at": _now_iso(),
     })
 
@@ -302,5 +309,7 @@ def index():
 
 if __name__ == "__main__":
     port = int(os.getenv("DASHBOARD_PORT", "8080"))
-    print(f"Dashboard running at http://localhost:{port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    bind_host = dashboard_bind_host()
+    public_host = dashboard_public_host(bind_host)
+    print(f"Dashboard running at {dashboard_url(public_host, port)} (bind={bind_host})")
+    app.run(host=bind_host, port=port, debug=False)

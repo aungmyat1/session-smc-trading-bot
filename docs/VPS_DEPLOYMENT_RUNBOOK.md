@@ -57,6 +57,21 @@ python3 scripts/demo_health_check.py
 python3 scripts/demo_status.py
 ```
 
+### Dashboard
+
+Bind the dashboard to the VPS IP so the API and UI are reachable from the
+server's public address instead of only `localhost`.
+
+```bash
+export VPS_IP_ADDRESS=<your-vps-public-ip>
+export DASHBOARD_HOST="$VPS_IP_ADDRESS"
+export DASHBOARD_PUBLIC_HOST="$VPS_IP_ADDRESS"
+python3 dashboard/app.py
+```
+
+The dashboard will print the public URL and expose it through
+`GET /api/status` as `dashboard_url`.
+
 ### Run In Background
 
 `nohup` and `screen` both work. Use one of these:
