@@ -3,12 +3,12 @@
 # Risk tiers: tier1=0.30%, tier2=0.20%, tier3=0.10%
 
 portfolio:
-  max_trades_per_day:      6        # London ~3 + NY ~3 on active days
+  max_trades_per_day:      4        # Target 2-3 trades/day, allow a small buffer
   max_open_positions:      3
   daily_loss_limit_pct:    2.0
   weekly_loss_limit_pct:   5.0
   monthly_loss_limit_pct:  8.0
-  min_confidence:          0.60
+  min_confidence:          0.65
 
 correlation_groups:
   - [EURUSD, GBPUSD, EURGBP]       # EUR group
@@ -21,7 +21,7 @@ strategies:
     enabled:        true
     execution_mode: demo            # tier1 — backtest validated
     risk:           0.30
-    pairs:          [EURUSD, GBPUSD]
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
     min_confidence: 0.70
     description:    "Session sweep + 15M CHoCH + BOS + FVG entry"
 
@@ -29,7 +29,7 @@ strategies:
     enabled:        true
     execution_mode: demo            # tier2 — adaptive engine, demo phase
     risk:           0.20
-    pairs:          [EURUSD, GBPUSD, USDJPY]
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
     min_confidence: 0.60
     description:    "Asian range breakout + London retest"
 
@@ -37,7 +37,7 @@ strategies:
     enabled:        true
     execution_mode: demo            # tier2 — adaptive engine, demo phase
     risk:           0.20
-    pairs:          [EURUSD, GBPUSD, USDJPY]
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
     min_confidence: 0.60
     description:    "NY sweep of London H/L + retest"
 
@@ -49,10 +49,35 @@ strategies:
     min_confidence: 0.80
     description:    "Adaptive SMC session strategy (shadow)"
 
-  VWAPBreakout:
+  VWAPMeanReversion:
     enabled:        true
     execution_mode: shadow          # tier3 — observe only until validated
     risk:           0.10
-    pairs:          [EURUSD, GBPUSD]
-    min_confidence: 0.70
-    description:    "VWAP cross + volume confirmation (shadow)"
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
+    min_confidence: 0.65
+    description:    "VWAP fade + liquidity sweep + reclaim (shadow)"
+    parameters:
+      default:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.35
+        extreme_atr_mult: 1.0
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      EURUSD:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.35
+        extreme_atr_mult: 0.95
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      GBPUSD:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.40
+        extreme_atr_mult: 0.95
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      XAUUSD:
+        min_session_bars: 12
+        sweep_buffer_mult: 0.55
+        extreme_atr_mult: 1.2
+        reclaim_atr_mult: 0.7
+        tp_rr: 1.7

@@ -67,6 +67,7 @@ with open("config/config.json") as f:
 PAIRS: list[str] = CONFIG["pairs"]
 POLL_INTERVAL: int = CONFIG.get("poll_interval_seconds", 60)
 LIVE_TRADING: bool = os.getenv("LIVE_TRADING", "false").lower() == "true"
+BROKER_MODE: str = os.getenv("BROKER_MODE", "metaapi").lower().strip()
 
 METAAPI_TOKEN: str = os.getenv("METAAPI_TOKEN", "")
 METAAPI_ACCOUNT_ID: str = os.getenv("METAAPI_ACCOUNT_ID", "")
@@ -86,24 +87,52 @@ _CONNECT_RETRY_BASE_S: int = 5
 # ── Imports ───────────────────────────────────────────────────────────────────
 
 from data.session_filter import get_active_session, seconds_to_next_session
+from core.broker_interface import BrokerInterface
 from execution.metaapi_client import MetaAPIClient
 from execution.order_manager import OrderManager
 from execution.risk_manager import RiskManager
 from execution.trade_logger import TradeLogger
+from execution_simulator.broker.virtual_broker import VirtualBroker
 from monitoring.telegram import TelegramAlerter
 from strategy.session_liquidity.session_strategy import run_strategy
 
 
+# ── Broker wiring ───────────────────────────────────────────────────────────
+
+def _build_execution_client(
+    market_client: MetaAPIClient | None = None,
+    broker: BrokerInterface | None = None,
+) -> BrokerInterface | MetaAPIClient:
+    """
+    Return the order-execution backend.
+
+    Default behavior keeps the existing MetaAPI path. When a broker instance is
+    injected, the bot can send orders through the virtual broker without the
+    strategy knowing the difference.
+    """
+    if broker is not None:
+        return broker
+    if BROKER_MODE == "virtual":
+        return VirtualBroker()
+    if market_client is None:
+        return MetaAPIClient(METAAPI_TOKEN, METAAPI_ACCOUNT_ID)
+    return market_client
+
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
-async def run_bot() -> None:
+async def run_bot(
+    market_client: MetaAPIClient | None = None,
+    broker: BrokerInterface | None = None,
+) -> None:
     telegram = TelegramAlerter(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
     await telegram.start()
 
-    client = MetaAPIClient(METAAPI_TOKEN, METAAPI_ACCOUNT_ID)
+    client = market_client or MetaAPIClient(METAAPI_TOKEN, METAAPI_ACCOUNT_ID)
+    execution_client = _build_execution_client(market_client=client, broker=broker)
     risk = RiskManager(CONFIG)
     trade_logger = TradeLogger()
-    order_manager = OrderManager(client, risk, trade_logger, CONFIG)
+    order_manager = OrderManager(execution_client, risk, trade_logger, CONFIG)
 
     # Dedup: track signal timestamps already processed, per symbol
     global _BOT_START_TIME, _LAST_SIGNAL_TIME, _last_heartbeat_ts, _last_reconnect_attempt
@@ -118,9 +147,13 @@ async def run_bot() -> None:
     watchdog_task = asyncio.create_task(_run_watchdog(telegram))
 
     try:
-        logger.info("Connecting to MetaAPI (LIVE_TRADING=%s)…", LIVE_TRADING)
-        await _connect_with_retry(client, telegram)
-        logger.info("MetaAPI connected.")
+        if isinstance(execution_client, MetaAPIClient):
+            logger.info("Connecting to MetaAPI (LIVE_TRADING=%s)…", LIVE_TRADING)
+            await _connect_with_retry(execution_client, telegram)
+            logger.info("MetaAPI connected.")
+        else:
+            logger.info("Using execution broker: %s", execution_client.__class__.__name__)
+            await execution_client.connect()
 
         await telegram.send_startup(PAIRS, CONFIG["risk"]["risk_per_trade_pct"], LIVE_TRADING)
 
@@ -131,12 +164,12 @@ async def run_bot() -> None:
             # ── Heartbeat (every 5 min) ───────────────────────────────────────
             elapsed = (now - last_heartbeat).total_seconds()
             if elapsed >= HEARTBEAT_INTERVAL_S:
-                await _send_heartbeat(client, telegram, now)
+                await _send_heartbeat(execution_client, telegram, now)
                 last_heartbeat = now
-                if not client.is_connected:
+                if isinstance(execution_client, MetaAPIClient) and not execution_client.is_connected:
                     if session:
                         logger.info("Connection lost after heartbeat — attempting reconnect")
-                        if await client.reconnect():
+                        if await execution_client.reconnect():
                             _last_reconnect_attempt = None
                     else:
                         logger.info(
@@ -146,7 +179,7 @@ async def run_bot() -> None:
             # ── Session boundary ──────────────────────────────────────────────
             if session != last_session:
                 if last_session is not None:
-                    await _close_session_positions(client, telegram, last_session, CONFIG)
+                    await _close_session_positions(execution_client, telegram, last_session, CONFIG)
                 if session:
                     await telegram.send_session_open(session)
                 last_session = session
@@ -166,13 +199,13 @@ async def run_bot() -> None:
                 continue
 
             # ── Reconnect if disconnected (every 2 min, not just at heartbeat) ─
-            if not client.is_connected:
+            if isinstance(execution_client, MetaAPIClient) and not execution_client.is_connected:
                 now2 = datetime.now(timezone.utc)
                 since = (now2 - _last_reconnect_attempt).total_seconds() if _last_reconnect_attempt else 999
                 if since >= _RECONNECT_BACKOFF_S:
                     logger.info("Disconnected — attempting reconnect")
                     _last_reconnect_attempt = now2
-                    ok = await client.reconnect()
+                    ok = await execution_client.reconnect()
                     if ok:
                         _last_reconnect_attempt = None
                     else:
@@ -202,7 +235,8 @@ async def run_bot() -> None:
                     await _scan_pair(
                         symbol=symbol,
                         equity=equity,
-                        client=client,
+                        market_client=client,
+                        execution_client=execution_client,
                         order_manager=order_manager,
                         telegram=telegram,
                         trade_logger=trade_logger,
@@ -227,7 +261,7 @@ async def run_bot() -> None:
             await watchdog_task
         except asyncio.CancelledError:
             pass
-        await client.disconnect()
+        await execution_client.disconnect()
     await telegram.stop()
     logger.info("Bot stopped")
 
@@ -258,7 +292,8 @@ async def _connect_with_retry(client: MetaAPIClient, telegram: TelegramAlerter) 
 async def _scan_pair(
     symbol: str,
     equity: float,
-    client: MetaAPIClient,
+    market_client: MetaAPIClient,
+    execution_client: BrokerInterface | MetaAPIClient,
     order_manager: OrderManager,
     telegram: TelegramAlerter,
     trade_logger: TradeLogger,
@@ -270,8 +305,8 @@ async def _scan_pair(
     Dedup by signal.timestamp.isoformat() so the same signal is never submitted
     twice across multiple polls within the same 15-minute bar.
     """
-    m15 = await client.get_candles(symbol, "15m", count=300)
-    h4 = await client.get_candles(symbol, "4h", count=200)
+    m15 = await market_client.get_candles(symbol, "15m", count=300)
+    h4 = await market_client.get_candles(symbol, "4h", count=200)
 
     if len(m15) < 20:
         logger.debug("[%s] Insufficient M15 candles (%d) — skipping", symbol, len(m15))
@@ -330,7 +365,7 @@ def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str,
 # ── Session-end position close ────────────────────────────────────────────────
 
 async def _close_session_positions(
-    client: MetaAPIClient,
+    client: BrokerInterface | MetaAPIClient,
     telegram: TelegramAlerter,
     session: str,
     config: dict,
@@ -356,7 +391,7 @@ async def _close_session_positions(
 # ── Health monitor ────────────────────────────────────────────────────────────
 
 async def _send_heartbeat(
-    client: MetaAPIClient,
+    client: BrokerInterface | MetaAPIClient,
     telegram: TelegramAlerter,
     now: datetime,
 ) -> None:

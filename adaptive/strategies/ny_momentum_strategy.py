@@ -26,6 +26,7 @@ _PIP_SIZE: dict[str, float] = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
     "USDJPY": 0.01,
+    "XAUUSD": 0.1,
 }
 
 LONDON_START = 6

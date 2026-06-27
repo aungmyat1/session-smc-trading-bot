@@ -35,6 +35,7 @@ _STRATEGY_REGIME_MAP: dict[str, set[str]] = {
     "smc_session":      {"RANGING", "BREAKOUT", "TRENDING"},
     "london_breakout":  {"BREAKOUT", "RANGING"},
     "ny_momentum":      {"TRENDING", "BREAKOUT"},
+    "vwap_mean_reversion": {"RANGING"},
 }
 
 

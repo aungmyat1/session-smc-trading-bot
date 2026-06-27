@@ -66,6 +66,23 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+  VWAPMeanReversion:
+    status: shadow
+    approved: false
+    version: '0.1'
+    owner: quant
+    symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+    timeframes:
+    - M15
+    deployment_target: shadow
+    description: VWAP fade + sweep + reclaim
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
   AdaptiveSMC:
     status: research
     approved: false

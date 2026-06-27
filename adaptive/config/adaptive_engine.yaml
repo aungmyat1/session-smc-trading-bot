@@ -11,7 +11,7 @@ pairs:
 risk:
   per_trade: 0.005          # 0.5% of account per trade
   daily_loss_limit: 0.015   # 1.5% daily loss cap → halt
-  max_trades_per_day: 6
+  max_trades_per_day: 4
   max_consecutive_losses: 3
 
 filters:
@@ -20,6 +20,7 @@ filters:
     EURUSD: 1.5
     GBPUSD: 2.0
     USDJPY: 2.0
+    XAUUSD: 3.0
   blocked_regimes:
     - UNSAFE
   max_atr_pct: 0.008        # 0.8% of price

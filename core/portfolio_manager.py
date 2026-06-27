@@ -30,6 +30,7 @@ _STRATEGY_TIER: dict[str, str] = {
     "LondonBreakout": "tier2",
     "NYMomentum":     "tier2",
     "AdaptiveSMC":    "tier3",
+    "VWAPMeanReversion": "tier3",
     "VWAPBreakout":   "tier3",
 }
 
