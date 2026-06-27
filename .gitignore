@@ -14,6 +14,12 @@ build/
 data/
 *.parquet
 *.csv
+.dukascopy-cache/
+*.db
+*.duckdb
+research.db
+research_sweep.db
+research_db/*.duckdb
 
 # Logs
 logs/
