@@ -77,14 +77,22 @@ class TelegramAlerter:
 
     # ── Typed alert helpers ──────────────────────────────────────────────────
 
-    async def send_startup(self, pairs: list[str], risk_pct: float, live: bool) -> None:
+    async def send_startup(
+        self,
+        pairs: list[str],
+        risk_pct: float,
+        live: bool,
+        recovery_summary: str | None = None,
+    ) -> None:
         mode = "🟡 DEMO / DRY RUN" if not live else "🔴 LIVE"
         pairs_str = "\n".join(f"  • {p}" for p in pairs)
+        recovery_block = f"\n*Recovery:*\n{recovery_summary}" if recovery_summary else ""
         msg = (
             f"*SMC-Forex-Bot ONLINE* {mode}\n\n"
             f"*Pairs:*\n{pairs_str}\n\n"
             f"*Risk per trade:* {risk_pct}%\n"
             f"*Sessions:* London 07-10 UTC | NY 13-16 UTC"
+            f"{recovery_block}"
         )
         await self._send_md(msg)
 
@@ -145,3 +153,10 @@ class TelegramAlerter:
     async def send_session_close(self, session: str, closed_count: int) -> None:
         suffix = f" — {closed_count} position(s) closed" if closed_count else ""
         await self.send(f"[{session.upper()} session closed]{suffix}")
+
+    async def send_reconnect_success(self, source: str = "MetaAPI") -> None:
+        await self.send(f"[{source} reconnect] restored connection successfully")
+
+    async def send_reconnect_failure(self, source: str = "MetaAPI", reason: str = "") -> None:
+        suffix = f": {reason}" if reason else ""
+        await self.send(f"[{source} reconnect] failed{suffix}")

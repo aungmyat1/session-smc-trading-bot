@@ -325,6 +325,55 @@ def check_journal() -> dict:
         return {"status": "FAIL", "detail": str(exc)[:200]}
 
 
+def check_recovery() -> dict:
+    state_path = _ROOT / "logs" / "bot_state.json"
+    journal_path = _ROOT / "logs" / "trades.jsonl"
+    state: dict = {}
+    journal_stats: dict = {"records": 0, "signals": 0, "orders": 0, "fills": 0, "rejections": 0, "closes": 0}
+
+    if state_path.exists():
+        try:
+            state = json.loads(state_path.read_text())
+        except Exception:
+            return {"status": "WARN", "detail": "bot_state.json exists but could not be parsed", "state_file": str(state_path)}
+
+    if journal_path.exists():
+        try:
+            lines = [line for line in journal_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            journal_stats["records"] = len(lines)
+            for line in lines:
+                try:
+                    event = json.loads(line)
+                except Exception:
+                    continue
+                event_type = event.get("event")
+                if event_type == "SIGNAL_CREATED":
+                    journal_stats["signals"] += 1
+                elif event_type == "ORDER_SUBMITTED":
+                    journal_stats["orders"] += 1
+                elif event_type == "ORDER_FILLED":
+                    journal_stats["fills"] += 1
+                elif event_type == "ORDER_REJECTED":
+                    journal_stats["rejections"] += 1
+                elif event_type == "POSITION_CLOSED":
+                    journal_stats["closes"] += 1
+        except Exception as exc:
+            return {"status": "WARN", "detail": f"trade journal unreadable: {exc}", "state": state}
+
+    if not state and not journal_stats["records"]:
+        return {"status": "WARN", "detail": "no restart recovery state found", "state": state, "journal": journal_stats}
+
+    return {
+        "status": "PASS",
+        "detail": (
+            f"state_loaded={bool(state)} journal_records={journal_stats['records']} "
+            f"signals={journal_stats['signals']} fills={journal_stats['fills']} closes={journal_stats['closes']}"
+        ),
+        "state": state,
+        "journal": journal_stats,
+    }
+
+
 # ── Output ─────────────────────────────────────────────────────────────────────
 
 _ICON = {"PASS": "✓", "WARN": "~", "FAIL": "✗",
@@ -341,6 +390,7 @@ async def _run_all(no_broker: bool, no_db: bool, db_backend: str | None = None) 
     results: dict[str, dict] = {}
     results["Runner"]      = check_runner()
     results["Risk Engine"] = check_risk_engine()
+    results["Recovery"]    = check_recovery()
     results["Portfolio"]   = check_portfolio()
     results["Execution"]   = check_execution()
     results["Journal"]     = check_journal()

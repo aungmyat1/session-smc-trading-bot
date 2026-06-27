@@ -76,3 +76,37 @@ def test_missing_db_config_fails_closed(monkeypatch):
 
     assert result["status"] == "FAIL"
     assert "missing database runtime config" in result["detail"].lower()
+
+
+def test_recovery_check_reports_loaded_state_and_journal(tmp_path, monkeypatch):
+    monkeypatch.setattr(health_check, "_ROOT", tmp_path)
+    logs = tmp_path / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    (logs / "bot_state.json").write_text(
+        '{"daily_loss_r": 1.5, "weekly_loss_r": 2.0, "consecutive_losses": 2, "halted": false}',
+        encoding="utf-8",
+    )
+    (logs / "trades.jsonl").write_text(
+        "\n".join(
+            [
+                '{"event":"SIGNAL_CREATED"}',
+                '{"event":"ORDER_SUBMITTED"}',
+                '{"event":"ORDER_FILLED"}',
+                '{"event":"POSITION_CLOSED"}',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = health_check.check_recovery()
+
+    assert result["status"] == "PASS"
+    assert result["journal"]["signals"] == 1
+    assert result["journal"]["closes"] == 1
+
+
+def test_recovery_check_warns_when_no_artifacts(tmp_path, monkeypatch):
+    monkeypatch.setattr(health_check, "_ROOT", tmp_path)
+    result = health_check.check_recovery()
+    assert result["status"] == "WARN"
+    assert "no restart recovery state" in result["detail"].lower()

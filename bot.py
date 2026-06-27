@@ -99,6 +99,31 @@ from strategy.session_liquidity.session_strategy import run_strategy
 
 # ── Broker wiring ───────────────────────────────────────────────────────────
 
+def _build_recovery_summary(
+    trade_logger: TradeLogger,
+    risk: RiskManager,
+    seen_signals: dict[str, set[str]],
+) -> str:
+    """Summarize restart-recovered bot state for startup alerting."""
+    events = trade_logger.read_all()
+    counts = {
+        "signals": sum(1 for event in events if event.get("event") == "SIGNAL_CREATED"),
+        "orders": sum(1 for event in events if event.get("event") == "ORDER_SUBMITTED"),
+        "fills": sum(1 for event in events if event.get("event") == "ORDER_FILLED"),
+        "rejections": sum(1 for event in events if event.get("event") == "ORDER_REJECTED"),
+        "closes": sum(1 for event in events if event.get("event") == "POSITION_CLOSED"),
+        "errors": sum(1 for event in events if event.get("event") == "ERROR"),
+    }
+    seen_total = sum(len(v) for v in seen_signals.values())
+    state = risk.state
+    lines = [
+        f"- recovered_signals={seen_total}",
+        f"- journal: signals={counts['signals']} orders={counts['orders']} fills={counts['fills']} closes={counts['closes']} errors={counts['errors']}",
+        f"- risk_state: daily_loss={state.daily_loss_r:.2f}R weekly_loss={state.weekly_loss_r:.2f}R consec_losses={state.consecutive_losses}",
+        f"- halt_state: halted={state.halted} reason={state.halt_reason or 'none'}",
+    ]
+    return "\n".join(lines)
+
 def _build_execution_client(
     market_client: MetaAPIClient | None = None,
     broker: BrokerInterface | None = None,
@@ -155,7 +180,13 @@ async def run_bot(
             logger.info("Using execution broker: %s", execution_client.__class__.__name__)
             await execution_client.connect()
 
-        await telegram.send_startup(PAIRS, CONFIG["risk"]["risk_per_trade_pct"], LIVE_TRADING)
+        recovery_summary = _build_recovery_summary(trade_logger, risk, seen_signals)
+        await telegram.send_startup(
+            PAIRS,
+            CONFIG["risk"]["risk_per_trade_pct"],
+            LIVE_TRADING,
+            recovery_summary=recovery_summary,
+        )
 
         while True:
             now = datetime.now(timezone.utc)
@@ -171,10 +202,11 @@ async def run_bot(
                         logger.info("Connection lost after heartbeat — attempting reconnect")
                         if await execution_client.reconnect():
                             _last_reconnect_attempt = None
-                    else:
-                        logger.info(
-                            "Connection lost after heartbeat during off-hours — reconnect deferred until session opens"
-                        )
+                            await telegram.send_reconnect_success("MetaAPI")
+                        else:
+                            logger.info(
+                                "Connection lost after heartbeat during off-hours — reconnect deferred until session opens"
+                            )
 
             # ── Session boundary ──────────────────────────────────────────────
             if session != last_session:
@@ -208,7 +240,9 @@ async def run_bot(
                     ok = await execution_client.reconnect()
                     if ok:
                         _last_reconnect_attempt = None
+                        await telegram.send_reconnect_success("MetaAPI")
                     else:
+                        await telegram.send_reconnect_failure("MetaAPI", "during active session")
                         await telegram.send_error("MetaAPI reconnect failed during active session")
                         await asyncio.sleep(POLL_INTERVAL)
                         continue
