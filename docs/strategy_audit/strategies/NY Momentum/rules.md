@@ -230,3 +230,23 @@ Rules are listed in execution order. Each entry covers: Purpose | Inputs | Outpu
 - `update()` is called using `m15[-1]["close"]` as the current price — a single price point per M15 candle, not intra-candle extremes. TP/SL are checked against close only. A candle that hit TP on its high but closed below TP would not register as a TP hit until a future candle closes at or above TP. This understates TP hit frequency.
 - `close_all()` exists but is never called. Open paper trades are never force-closed at session end or on shutdown. They persist indefinitely until SL or TP is hit on a future candle.
 - Paper execution does not simulate spread: entry is at candle close (bid-equivalent); no ask-side adjustment.
+# NY Momentum Rules
+
+## Entry Rules
+
+- Build London levels from the London session.
+- Scan only New York session bars.
+- Detect a sweep only when price trades beyond the London high or low by the buffer and closes beyond the level.
+- Wait for a retest of the swept level before confirming the signal.
+
+## Invalidation Rules
+
+- If the sweep never confirms, no trade is emitted.
+- If the retest never arrives, the pending side is cleared.
+- If the entry would create non-positive risk, the signal is skipped.
+
+## Geometry Rules
+
+- Long stop is placed below the London low.
+- Short stop is placed above the London high.
+- TP is fixed at `2R`.

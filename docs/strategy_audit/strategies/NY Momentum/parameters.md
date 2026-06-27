@@ -134,3 +134,24 @@ Table columns: Parameter | Value | File | Line | Description | Hardcoded | Confi
 - ATR% bounds (config) vs `_MAX_ATR_PCT`/`_MIN_ATR_PCT` (signal_scorer.py constants)
 
 The strategy and scorer read their own hardcoded constants, making the YAML config values for `ny_momentum`, `filters`, and `sessions` have no runtime effect.
+# NY Momentum Parameters
+
+## Source Defaults
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `LONDON_START` | `6` | London session start in UTC, inclusive. |
+| `LONDON_END` | `9` | London session end in UTC, inclusive. |
+| `NY_START` | `11` | New York session start in UTC, inclusive. |
+| `NY_END` | `15` | New York session end in UTC, inclusive. |
+| `TP_RR` | `2.0` | Fixed reward/risk target. |
+| `SWEEP_BUFFER` | `1` pip | Minimum sweep distance beyond the London level. |
+
+## Portfolio Settings
+
+| Source | Value |
+| --- | --- |
+| `config/strategy_portfolio.yaml` execution mode | `demo` |
+| `config/strategy_portfolio.yaml` risk | `0.20` |
+| Adapter `core.Signal.risk_percent` | `0.25` |
+| Adapter confidence | derived from RR, capped at `1.0` |

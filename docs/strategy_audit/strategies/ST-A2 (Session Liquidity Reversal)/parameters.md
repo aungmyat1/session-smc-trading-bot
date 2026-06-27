@@ -64,3 +64,29 @@ run_strategy(); if DEFAULT_CONFIG is used, rr=3.0 not rr=5.0.
 | 4 (Asian min bars) | session_builder.py:79 | Not configurable. Hardcoded holiday/gap threshold. |
 | 0.25 (risk_percent) | st_a2_adapter.py:69 | 0.25% per trade. RISK_SPEC.md specifies 1% per trade. Discrepancy is unexplained in code comments. |
 | 50 (m15 min length) | st_a2_adapter.py:50 | Minimum M15 candle count before calling strategy. No relationship to atr_period or any documented threshold. |
+# ST-A2 Parameters
+
+## Engine Defaults
+
+Source: `strategy/session_liquidity/session_strategy.py`
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `rr` | `3.0` | Reward/risk target used when building the signal. |
+| `sl_buffer_pips` | `2.0` | Stop buffer beyond the sweep wick. |
+| `displacement_mult` | `1.2` | ATR multiplier for the displacement body filter. |
+| `atr_period` | `14` | Wilder ATR lookback. |
+| `sweep_timeout_bars` | `4` | Number of M15 bars allowed between sweep and displacement. |
+| `min_sl_pips` | `5.0` | Minimum accepted stop size. |
+| `min_range_pips.EURUSD` | `15.0` | Minimum Asian range for EURUSD. |
+| `min_range_pips.GBPUSD` | `20.0` | Minimum Asian range for GBPUSD. |
+| `min_range_pips.XAUUSD` | `30.0` | Present in code defaults, but the adapter target is EURUSD/GBPUSD. |
+
+## Portfolio And Signal Parameters
+
+| Source | Value |
+| --- | --- |
+| `config/strategy_portfolio.yaml` risk | `0.30` |
+| Adapter `core.Signal.risk_percent` | `0.25` |
+| Adapter confidence | `1.0` |
+| Signal TTL | `300` seconds from `core.Signal` |

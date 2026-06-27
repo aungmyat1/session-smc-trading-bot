@@ -205,3 +205,27 @@ Portfolio-level filters (run_portfolio.py):
 | `python-dotenv` | `.env` loading | Runners |
 | `pyyaml` | Config loading | Portfolio runner (soft dependency, falls back to hardcoded) |
 | No numpy/pandas | Deliberate — pure Python | regime_detector.py docstring explicitly states this |
+# London Breakout
+
+## Overview
+
+London Breakout is the session breakout branch in `adaptive/strategies/london_breakout_strategy.py`, wrapped for portfolio execution by `strategies/adapters/london_breakout_adapter.py`.
+
+## Audit Status
+
+- Catalog status: `research`
+- Approval: `false`
+- Version: `0.3`
+- Deployment target: `research`
+- Portfolio mode: `demo`
+
+## Runtime Behavior
+
+- Build the Asian range from `00:00-06:00 UTC`.
+- Look for a London-session close above the Asian high or below the Asian low.
+- Wait for a retest before confirming the signal.
+- Emit one `AdaptiveSignal` per confirmed breakout sequence.
+
+## Pair Coverage Note
+
+The source docstring names `EURUSD`, `GBPUSD`, and `USDJPY`, while the portfolio config currently also routes `XAUUSD`. The adapter itself is symbol-agnostic enough to handle the pair map provided by the portfolio layer.
