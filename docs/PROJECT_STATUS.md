@@ -86,8 +86,8 @@ deployment approval. See `config/strategy_catalog.yaml` and
 |---|---|---|
 | DP-01 | `scripts/fetch_data.py` — Dukascopy async download | [x] |
 | DP-02 | `scripts/data_audit.py` — DATA_AUDIT.md generation | [x] |
-| DP-03 | 5yr data download complete | [x] EURUSD 4.9yr ✅  GBPUSD 3.3yr ⚠️ (re-download needed) |
-| DP-04 | Data audit passed | [ ] EURUSD coverage PASS, gap% FAIL (~1% normal FX gaps) |
+| DP-03 | 3-year Dukascopy archive complete | [x] EURUSD ✅ GBPUSD ✅ XAUUSD ✅ (2023-07 → 2026-06 raw coverage complete) |
+| DP-04 | Data audit passed | [x] Dataset validation PASS; processed M1/M5/M15/H1/H4/D1 built for all three symbols |
 
 ---
 
@@ -191,6 +191,8 @@ Research plan: `docs/ST_B_RESEARCH_PLAN.md`
 
 2. **E6 blocked on E5** — do not update `config/costs.json` until 5 London + 5 NY sessions.
    Decision table in `docs/OPS02_REVISED_GATE.md`.
+
+3. **Historical dataset complete** — raw ticks and processed timeframes for EURUSD, GBPUSD, and XAUUSD are now built and validated for the 2023-07 → 2026-06 window. Current validation report: `reports/dataset_validation_report.md`.
 
 ---
 

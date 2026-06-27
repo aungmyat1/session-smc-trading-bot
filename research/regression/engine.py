@@ -129,6 +129,8 @@ class RegressionEngine:
         for metric in ("profit_factor", "win_rate", "expectancy", "max_drawdown", "trade_count", "net_return"):
             latest_v = _safe_float(latest.get(metric))
             previous_v = _safe_float(previous.get(metric))
+            if _is_nan(latest_v) and _is_nan(previous_v):
+                continue
             if _is_nan(latest_v) or _is_nan(previous_v):
                 comparisons.append(
                     RegressionComparison(
@@ -188,10 +190,12 @@ class RegressionEngine:
             elif status == "WARNING" and overall != "FAIL":
                 overall = "WARNING"
 
-        summary = {
-            "PASS": "Latest run remains within regression thresholds.",
-            "WARNING": "Latest run shows manageable regression drift.",
-            "FAIL": "Latest run regressed beyond configured thresholds.",
-        }[overall]
+        if not comparisons:
+            summary = "No comparable regression metrics provided; regression comparison skipped."
+        else:
+            summary = {
+                "PASS": "Latest run remains within regression thresholds.",
+                "WARNING": "Latest run shows manageable regression drift.",
+                "FAIL": "Latest run regressed beyond configured thresholds.",
+            }[overall]
         return RegressionResult(status=overall, comparisons=comparisons, summary=summary)
-

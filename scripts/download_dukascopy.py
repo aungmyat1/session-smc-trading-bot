@@ -20,11 +20,14 @@ CLAUDE.md §0: do not download data without explicit user instruction.
 
 import argparse
 import asyncio
+import json
 import io
 import logging
 import lzma
 import struct
 import sys
+from datetime import datetime, timezone
+from time import perf_counter
 from calendar import monthrange
 from pathlib import Path
 
@@ -98,22 +101,54 @@ def _decode_bi5(data: bytes, hour_epoch_ms: int, price_div: float) -> list:
 
 async def _fetch_hour(session: aiohttp.ClientSession, sem: asyncio.Semaphore,
                       sym: str, year: int, month: int, day: int, hour: int,
-                      price_div: float) -> list:
+                      price_div: float, request_delay: float = 0.05,
+                      max_retries: int = 5) -> tuple[list, dict]:
     url = _URL.format(sym=DUKA_SYM[sym], year=year, month0=month - 1, day=day, hour=hour)
     hour_ms = _hour_epoch_ms(year, month, day, hour)
+    stats = {
+        "url": url,
+        "hour": f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:00:00Z",
+        "attempts": 0,
+        "retries": 0,
+        "status": "pending",
+        "rows": 0,
+    }
 
     async with sem:
-        try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                if resp.status == 404:
-                    return []  # no data for this hour (weekend, holiday, etc.)
-                resp.raise_for_status()
-                data = await resp.read()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            log.warning("fetch error %s: %s", url, e)
-            return []
-
-    return _decode_bi5(data, hour_ms, price_div)
+        for attempt in range(max_retries):
+            stats["attempts"] = attempt + 1
+            try:
+                if request_delay > 0:
+                    await asyncio.sleep(request_delay)
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    if resp.status == 404:
+                        stats["status"] = "missing"
+                        return [], stats  # no data for this hour (weekend, holiday, etc.)
+                    if resp.status in (429, 500, 502, 503, 504):
+                        raise aiohttp.ClientResponseError(
+                            request_info=resp.request_info,
+                            history=resp.history,
+                            status=resp.status,
+                            message=f"retryable status {resp.status}",
+                            headers=resp.headers,
+                    )
+                    resp.raise_for_status()
+                    data = await resp.read()
+                ticks = _decode_bi5(data, hour_ms, price_div)
+                stats["status"] = "ok"
+                stats["rows"] = len(ticks)
+                return ticks, stats
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if attempt >= max_retries - 1:
+                    log.warning("fetch error %s: %s", url, e)
+                    stats["status"] = "failed"
+                    stats["error"] = str(e)
+                    return [], stats
+                backoff = min(10.0, 0.75 * (2 ** attempt))
+                log.warning("retry %d/%d %s: %s (sleep %.2fs)",
+                            attempt + 1, max_retries, url, e, backoff)
+                stats["retries"] += 1
+                await asyncio.sleep(backoff)
 
 
 async def _download_month(sym: str, year: int, month: int, force: bool,
@@ -121,6 +156,8 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
     """Download all hours for one month, write Parquet. Returns tick count."""
     out_path = DATA_RAW / sym / str(year) / f"{month:02d}" / "ticks.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    month_dir = out_path.parent
+    meta_path = month_dir / "acquisition.json"
 
     if not force and out_path.exists():
         try:
@@ -140,6 +177,8 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
     ]
 
     log.info("Downloading %s %d-%02d (%d hours)...", sym, year, month, len(hours))
+    started_at = datetime.now(timezone.utc)
+    started_perf = perf_counter()
 
     sem = asyncio.Semaphore(workers)
     connector = aiohttp.TCPConnector(limit=workers * 2)
@@ -151,11 +190,39 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
         results = await asyncio.gather(*tasks)
 
     all_ticks = []
+    hour_stats = []
     for batch in results:
-        all_ticks.extend(batch)
+        ticks, stats = batch
+        hour_stats.append(stats)
+        all_ticks.extend(ticks)
+
+    elapsed_seconds = perf_counter() - started_perf
+    month_meta = {
+        "symbol": sym,
+        "year": year,
+        "month": month,
+        "month_key": f"{year:04d}-{month:02d}",
+        "source": "dukascopy",
+        "output_path": str(out_path.relative_to(ROOT)),
+        "started_at": started_at.isoformat(),
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        "rows": len(all_ticks),
+        "hours_requested": len(hours),
+        "hours_ok": sum(1 for item in hour_stats if item["status"] == "ok"),
+        "hours_missing": sum(1 for item in hour_stats if item["status"] == "missing"),
+        "hours_failed": sum(1 for item in hour_stats if item["status"] == "failed"),
+        "retries": sum(item["retries"] for item in hour_stats),
+        "max_attempts": max((item["attempts"] for item in hour_stats), default=0),
+        "avg_rows_per_hour": round(len(all_ticks) / len(hours), 2) if hours else 0.0,
+        "rows_per_second": round(len(all_ticks) / elapsed_seconds, 2) if elapsed_seconds > 0 else None,
+        "cached": False,
+    }
 
     if not all_ticks:
         log.warning("No ticks for %s %d-%02d (weekend/holiday month?)", sym, year, month)
+        meta_path.write_text(json.dumps(month_meta, indent=2))
+        log.info("Wrote acquisition metadata → %s", meta_path)
         return 0
 
     all_ticks.sort(key=lambda t: t[0])
@@ -173,6 +240,9 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
     )
     pq.write_table(table, out_path, compression="snappy", row_group_size=100_000)
     log.info("Wrote %s %d-%02d → %d ticks → %s", sym, year, month, len(all_ticks), out_path)
+
+    meta_path.write_text(json.dumps(month_meta, indent=2))
+    log.info("Wrote acquisition metadata → %s", meta_path)
     return len(all_ticks)
 
 
