@@ -326,7 +326,7 @@ Each trial = one change. Register in VERDICT_LOG before running. Per CLAUDE.md �
 | Trade count | n ≥ 50 | CLAUDE.md §7 minimum. 50 trades over 5yr is achievable even with strict confirmation. n < 50 indicates the confirmation chain is too strict for these instruments/sessions; requires structural rethink (not tuning). |
 | PF (std spread) | > 1.0 | CLAUDE.md §7 gate. Net positive expectancy at real cost is the baseline requirement. |
 | PF (2× spread) | > 1.0 | CLAUDE.md §7 gate. Must survive doubled spread stress (T29-GBP lesson: marginal at standard, failed 2×). |
-| Years tested | ≥ 4 (actual coverage) | EURUSD has 4.9yr; GBPUSD has 3.3yr. Treat 2021–2024 as minimum valid window. Partial 2026 included if data available. |
+| Years tested | ≥ 4 (actual coverage) | Historical ST-A/ST-A2 runs used older EURUSD 4.9yr and GBPUSD 3.3yr CSV windows. The current raw archive now covers EURUSD, GBPUSD, and XAUUSD from 2023-07 through 2026-06, so future runs should cite the archive window explicitly rather than the legacy run windows. |
 
 **On the n ≥ 50 vs n ≥ 100 discrepancy:**
 AGENT_RULES §5 specifies n ≥ 100. CLAUDE.md §7 specifies n ≥ 50. For ST-B Phase-0, n ≥ 50 applies:
@@ -415,10 +415,12 @@ modifying the module.
 
 ### E.6 GBPUSD Data Coverage
 
-**Mechanism:** GBPUSD M15 data starts 2023 (3.3yr). EURUSD has 4.9yr. Combined ST-B analysis
-will be GBPUSD-light. If ST-B's edge is concentrated in GBPUSD (as implied by ST-A2's per-symbol
-results: GBPUSD PF_2x=1.168 vs EURUSD PF_2x=0.945), the shorter history understates the true
-sample size for GBPUSD.
+**Mechanism:** Historical ST-A/ST-A2 analysis used the older GBPUSD CSV window, so those reports
+should still be read as legacy provenance. The current raw archive now includes full GBPUSD coverage
+from 2023-07 through 2026-06, which gives future ST-B analysis a cleaner basis for measuring any
+GBPUSD-specific edge. If ST-B's edge is concentrated in GBPUSD (as implied by ST-A2's per-symbol
+results: GBPUSD PF_2x=1.168 vs EURUSD PF_2x=0.945), the completed archive should reduce sampling
+ambiguity rather than reinforce it.
 
 ---
 

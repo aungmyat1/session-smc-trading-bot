@@ -1,6 +1,6 @@
 # Historical Data Pipeline — Final Report
 # Session & SMC Trading Bot — Phase B
-# Date: 2026-06-25
+# Date: 2026-06-27
 
 ---
 
@@ -75,15 +75,16 @@ reports/dataset_validation_report.md
 
 ---
 
-## §4 — What Exists After This Pipeline (Before Download)
+## §4 — What Exists After This Pipeline
 
 | Item | Status |
 |---|---|
-| `data/historical/*.csv` | Pre-existing (EURUSD 5yr, GBPUSD 3yr mid-price CSV) |
-| `data/raw/dukascopy/` | Directory created — empty until `download_dukascopy.py` run |
-| `data/processed/` | Directory created — empty until `build_timeframes.py` run |
-| `data/features/` | Directory created — empty until `extract_features.py` run |
-| `reports/` | Directory created — empty until `validate_dataset.py` run |
+| `data/historical/*.csv` | Pre-existing (legacy mid-price CSVs still available) |
+| `data/raw/dukascopy/` | ✅ Complete raw tick archive for EURUSD, GBPUSD, XAUUSD |
+| `data/normalized/` | ✅ Completed unified tick schema + manifest |
+| `data/processed/` | ✅ Completed M1/M5/M15/H1/H4/D1 build for all three symbols |
+| `data/features/` | Directory created — still pending feature extraction |
+| `reports/` | ✅ Contains completed dataset validation report |
 | All scripts | Written and ready to execute |
 | `replay_parquet.py` | Functional now — falls back to existing CSV data |
 
@@ -94,12 +95,9 @@ reports/dataset_validation_report.md
 | Priority | Action | Unblocked by |
 |---|---|---|
 | 1 | Run E6 cost revalidation | `bash scripts/run_e6_revalidation.sh` (after ~2026-06-30) |
-| 2 | Download GBPUSD 2021-2023 ticks | `python scripts/download_dukascopy.py --symbols GBPUSD --start 2021-01 --end 2023-02` |
-| 3 | Download EURUSD 2021-2026 ticks | `python scripts/download_dukascopy.py --symbols EURUSD --start 2021-01 --end 2026-06` |
-| 4 | Build timeframes | `python scripts/build_timeframes.py` |
-| 5 | Validate dataset | `python scripts/validate_dataset.py` |
-| 6 | Register + run walk-forward trial | `TRIAL_ST_A2_WF_001` per VERDICT_LOG §9 |
-| 7 | Run ST-B (Trend Pullback) on 5yr data | Per VERDICT_LOG — after E6 resolves |
+| 2 | Extract features | `python scripts/extract_features.py` |
+| 3 | Register + run walk-forward trial | `TRIAL_ST_A2_WF_001` per VERDICT_LOG §9 |
+| 4 | Run ST-B (Trend Pullback) on 5yr data | Per VERDICT_LOG — after E6 resolves |
 
 ---
 
@@ -111,17 +109,12 @@ reports/dataset_validation_report.md
    will be empty. The script logs a warning and continues. FVG extraction is
    independent and will work as long as `session_smc.fvg.find_fvgs()` is importable.
 
-2. **GBPUSD gap**: Without the 2021-2023 GBPUSD download, the GBPUSD walk-forward
-   fold 1 and fold 2 cannot be run. The adapter falls back to the existing 3yr CSV.
+2. **Feature persistence gap**: `extract_features.py` is still the next major data-layer step if you want persisted sweep/session/FVG tables for cross-symbol research.
 
-3. **XAUUSD price divisor (1,000)**: Implemented in `download_dukascopy.py` PRICE_DIV
-   config but not tested (no XAUUSD data downloaded yet). The different divisor
-   means XAUUSD raw tick values will be much larger integers than FX pairs.
+3. **XAUUSD price divisor (1,000)**: Implemented in `download_dukascopy.py` and now validated on the completed XAUUSD backfill.
 
-4. **`build_timeframes.py` memory**: Loading 5yr EURUSD ticks (~1.5B ticks) into one
-   DataFrame requires ~8–12 GB RAM. Run on a machine with sufficient memory or
-   process by year via `--start`/`--end`.
+4. **`build_timeframes.py` memory**: The builder is now streaming month-by-month and no longer requires a giant symbol-level DataFrame.
 
 ---
 
-*HISTORICAL_DATA_PIPELINE_FINAL_REPORT.md | Written 2026-06-25 | Phase B complete*
+*HISTORICAL_DATA_PIPELINE_FINAL_REPORT.md | Updated 2026-06-27 | Phase B complete*

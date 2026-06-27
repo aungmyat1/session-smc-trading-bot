@@ -131,33 +131,37 @@ def build_symbol(sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple
 
     log.info("%s: loading %d months of raw ticks", sym, len(months))
 
-    frames = []
+    out_dir = DATA_PROC / sym
+    out_dir.mkdir(parents=True, exist_ok=True)
+    month_frames_by_tf = {tf: [] for tf in tfs}
+    total_ticks = 0
+    loaded_months = 0
+
     for year, month in months:
         df = _load_month_ticks(sym, year, month)
-        if df is not None:
-            frames.append(df)
-            log.debug("  loaded %s %d-%02d: %d ticks", sym, year, month, len(df))
+        if df is None:
+            continue
+        loaded_months += 1
+        total_ticks += len(df)
+        log.debug("  loaded %s %d-%02d: %d ticks", sym, year, month, len(df))
+        for tf in tfs:
+            freq = TIMEFRAMES[tf]
+            bars = _resample_to_ohlcv(df, freq)
+            if not bars.empty:
+                month_frames_by_tf[tf].append(bars)
 
-    if not frames:
+    if loaded_months == 0:
         log.error("All months empty for %s", sym)
         return
 
-    ticks = pd.concat(frames, ignore_index=True)
-    ticks = ticks.sort_values("timestamp_utc").reset_index(drop=True)
-    log.info("%s: %d total ticks loaded", sym, len(ticks))
-
-    out_dir = DATA_PROC / sym
-    out_dir.mkdir(parents=True, exist_ok=True)
+    log.info("%s: %d total ticks loaded", sym, total_ticks)
 
     for tf in tfs:
-        freq = TIMEFRAMES[tf]
-        log.info("%s: resampling to %s (%s)...", sym, tf, freq)
-        bars = _resample_to_ohlcv(ticks, freq)
-
-        if bars.empty:
+        frames = month_frames_by_tf[tf]
+        if not frames:
             log.warning("%s %s: no bars produced", sym, tf)
             continue
-
+        bars = pd.concat(frames, ignore_index=True).sort_values("timestamp_utc").reset_index(drop=True)
         out_path = out_dir / f"{tf}.parquet"
         table = pa.Table.from_pandas(bars, schema=OHLCV_SCHEMA, preserve_index=False)
         pq.write_table(table, out_path, compression="snappy", row_group_size=50_000)

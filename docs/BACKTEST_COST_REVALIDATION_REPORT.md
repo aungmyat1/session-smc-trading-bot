@@ -18,7 +18,7 @@
 | EURUSD cost (std/2×) | / pip |
 | GBPUSD cost (std/2×) | / pip |
 | Strategy | ST-A2 (min_sl_pips=5.0, RR=5) |
-| Data | EURUSD (4.9yr) + GBPUSD (3.3yr) |
+| Data | Historical ST-A2 run used the older EURUSD 4.9yr + GBPUSD 3.3yr CSV windows; the current raw archive now spans 2023-07 through 2026-06 for EURUSD, GBPUSD, and XAUUSD. |
 
 ---
 
