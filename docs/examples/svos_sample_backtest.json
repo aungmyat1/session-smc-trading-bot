@@ -1,0 +1,15 @@
+{
+  "completed_successfully": true,
+  "trade_count": 120,
+  "expectancy": 0.12,
+  "max_drawdown": 4.5,
+  "profit_factor": 1.25,
+  "metrics": {
+    "trade_count": 120,
+    "expectancy": 0.12,
+    "max_drawdown": 4.5,
+    "profit_factor": 1.25,
+    "win_rate": 0.35,
+    "net_return": 12.0
+  }
+}

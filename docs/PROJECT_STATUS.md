@@ -54,6 +54,7 @@ deployment approval. See `config/strategy_catalog.yaml` and
 | RESEARCH-13 | `config/research_queue.yaml` + `scripts/run_research_queue.py` | [x] 2026-06-26 |
 | RESEARCH-14 | `config/strategy_change_pipeline.yaml` + blocked promotion stages | [x] 2026-06-26 |
 | RESEARCH-15 | Validation gate engine + regression engine + promotion reports | [x] 2026-06-26 |
+| RESEARCH-16 | `scripts/run_current_strategy_validation.py` + `scripts/run_current_strategy_svos.py` + catalog-linked strategy spec loading | [x] 2026-06-27 |
 | BUG-02 | Telegram parse_mode Markdown on raw heartbeat string → 400 errors | [x] fixed 2026-06-23 |
 
 ---

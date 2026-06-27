@@ -66,7 +66,18 @@ This platform should be designed as a **Strategy Validation Operating System
            PASS / FAIL / FIX
                       │
                       ▼
-        Phase 5 ─ Demo Trading
+        Phase 5 ─ Virtual Broker Validation
+                      │
+ Historical execution replay
+ Order simulation
+ SL / TP / spread / slippage
+ Commission / margin / latency
+ Trade-log parity checks
+                      │
+           PASS / FAIL / FIX
+                      │
+                      ▼
+        Phase 6 ─ Demo Trading
                       │
  Live Market Validation
                       │
@@ -75,7 +86,7 @@ This platform should be designed as a **Strategy Validation Operating System
            PASS / FAIL
                       │
                       ▼
-        Phase 6 ─ Production Approval
+        Phase 7 ─ Production Approval
                       │
  Live Capital
 ```
@@ -351,7 +362,30 @@ Monte Carlo
 
 If the strategy only works under perfect conditions, it fails.
 
-### Phase 5: Demo Validation
+### Phase 5: Virtual Broker Validation
+
+Before exposing a strategy to a real demo account, the platform should replay
+historical market data through a simulated broker that behaves like a live
+venue.
+
+The virtual broker should simulate:
+
+- market orders
+- pending orders
+- stop loss / take profit execution
+- spread
+- slippage
+- commission
+- margin
+- position sizing
+- partial fills, if enabled
+- order latency
+- trade logs that mirror live broker output
+
+This catches execution bugs earlier than demo trading and shortens the research
+loop without replacing real-market validation.
+
+### Phase 6: Demo Validation
 
 Connect to MT5 and track whether live behavior matches research.
 
@@ -393,7 +427,7 @@ Actual
 0.9
 ```
 
-### Phase 6: Production Gate
+### Phase 7: Production Gate
 
 The system decides:
 
@@ -436,6 +470,8 @@ YES
 ```
 
 Only then is the strategy promoted to live trading.
+
+---
 
 ---
 
@@ -761,14 +797,16 @@ Here's a realistic timeline:
 | Historical replay | 2-5 days | 4-12 hours |
 | Backtest | 2-8 hours | 30-60 minutes |
 | Robustness tests | 1-2 days | 2-4 hours |
+| Virtual broker validation | 2-4 days | 4-24 hours |
 | Demo validation | 2-4 weeks | 2-4 weeks (cannot be rushed) |
 | Final approval | 1 day | 30 minutes |
 
 So a professional workflow becomes:
 
-- Without automation: 4-8 weeks per strategy
-- With a well-designed audit platform: 2-5 days to reach demo, then 2-4 weeks
-  of live validation
+- Without automation: 5-10 days to reach demo, then 2-4 weeks of live
+  validation
+- With a well-designed audit platform: 11-43 hours to finish research and
+  virtual broker verification, then 2-4 weeks of live validation
 
 ---
 

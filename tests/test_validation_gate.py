@@ -124,6 +124,26 @@ def test_lifecycle_promotion_and_reports(tmp_path):
     assert "Validation Report" in report_dir.read_text(encoding="utf-8")
 
 
+def test_validation_runner_can_skip_promotion(tmp_path):
+    catalog_copy = tmp_path / "strategy_catalog.yaml"
+    catalog_copy.write_text(
+        Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    runner = ValidationRunner("ST-A2", output_dir=tmp_path, registry_path=catalog_copy)
+    bundle = runner.run(
+        _valid_replay(),
+        _valid_backtest(),
+        {"profit_factor": 1.25, "win_rate": 0.35, "expectancy": 0.12, "max_drawdown": 4.5, "trade_count": 120, "net_return": 12.0},
+        previous_metrics={"profit_factor": 1.20, "win_rate": 0.34, "expectancy": 0.11, "max_drawdown": 4.8, "trade_count": 118, "net_return": 11.0},
+        current_stage="demo",
+        promote=False,
+    )
+    assert bundle.overall_status == "PASS"
+    assert bundle.promoted is False
+    assert get_strategy_manifest("ST-A2", catalog_copy)["status"] == "demo"
+
+
 def test_config_loading():
     cfg = load_validation_config()
     assert cfg.minimum_trade_count >= 100

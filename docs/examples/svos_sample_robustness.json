@@ -1,0 +1,20 @@
+{
+  "completed_successfully": true,
+  "walk_forward_passed": true,
+  "monte_carlo_passed": true,
+  "parameter_stability_passed": true,
+  "regime_analysis_passed": true,
+  "execution_cost_passed": true,
+  "latest_metrics": {
+    "profit_factor": 1.22,
+    "win_rate": 0.36,
+    "expectancy": 0.11,
+    "max_drawdown": 4.8
+  },
+  "previous_metrics": {
+    "profit_factor": 1.2,
+    "win_rate": 0.35,
+    "expectancy": 0.1,
+    "max_drawdown": 4.7
+  }
+}

@@ -22,6 +22,7 @@ from datetime import date
 
 import polars as pl
 
+from db.runtime import resolve_database_url
 from .config import (
     FEATURES_DIR,
     PHASE0_MIN_NET_PF,
@@ -98,13 +99,12 @@ def main() -> None:
     if not args.skip_db and all_trades:
         print("\n[3/3] Writing to PostgreSQL...")
         from sqlalchemy import create_engine
-        eng = create_engine(
-            os.getenv(
-                "DATABASE_URL",
-                "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research",
-            ),
-            pool_pre_ping=True,
-        )
+        db_url = resolve_database_url()
+        if not db_url:
+            raise SystemExit(
+                "DATABASE_URL is required for phase-0 DB writes; set it explicitly or use --skip-db"
+            )
+        eng = create_engine(db_url, pool_pre_ping=True)
         df = pl.read_parquet(FEATURES_DIR / "_replay_results.parquet")
         write_all(eng, df)
     elif args.skip_db:

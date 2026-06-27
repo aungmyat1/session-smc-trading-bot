@@ -7,6 +7,8 @@ outage never crashes the bot.
 
 import logging
 import os
+import hashlib
+import time
 from typing import Optional
 
 import aiohttp
@@ -21,6 +23,9 @@ class TelegramAlerter:
         self._token = token or os.getenv("TELEGRAM_BOT_TOKEN", "")
         self._chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         self._session: Optional[aiohttp.ClientSession] = None
+        self._alert_base_cooldown_s = int(os.getenv("TELEGRAM_ALERT_COOLDOWN_S", "900"))
+        self._alert_max_cooldown_s = int(os.getenv("TELEGRAM_ALERT_MAX_COOLDOWN_S", "3600"))
+        self._alert_state: dict[str, tuple[float, int]] = {}
 
     async def start(self) -> None:
         self._session = aiohttp.ClientSession()
@@ -37,9 +42,24 @@ class TelegramAlerter:
         """Send Markdown-formatted message (used only by typed helpers with known-safe text)."""
         await self._post(text, parse_mode="Markdown")
 
-    async def _post(self, text: str, parse_mode: "str | None") -> None:
+    def _should_suppress(self, category: str, text: str, parse_mode: "str | None") -> bool:
+        key_raw = f"{category}:{parse_mode or 'plain'}:{text}"
+        key = hashlib.sha256(key_raw.encode("utf-8")).hexdigest()
+        now = time.monotonic()
+        last_sent, repeat_count = self._alert_state.get(key, (0.0, 0))
+        cooldown = min(self._alert_max_cooldown_s, self._alert_base_cooldown_s * (2 ** repeat_count))
+        if last_sent and (now - last_sent) < cooldown:
+            remaining = int(cooldown - (now - last_sent))
+            logger.info("Telegram alert suppressed for %ss (category=%s)", remaining, category)
+            return True
+        self._alert_state[key] = (now, repeat_count + 1)
+        return False
+
+    async def _post(self, text: str, parse_mode: "str | None", alert_category: str | None = None) -> None:
         if not self._token or not self._chat_id:
             logger.debug("Telegram not configured — skipping alert")
+            return
+        if alert_category and self._should_suppress(alert_category, text, parse_mode):
             return
         if not self._session or self._session.closed:
             self._session = aiohttp.ClientSession()
@@ -113,11 +133,11 @@ class TelegramAlerter:
             f"State: {state_summary}\n\n"
             f"Trading halted. Resumes on next daily/weekly reset."
         )
-        await self._send_md(msg)
+        await self._post(msg, parse_mode="Markdown", alert_category="circuit_breaker")
 
     async def send_error(self, error: str) -> None:
         msg = f"⚠️ Bot Error\n\n{error[:500]}"
-        await self.send(msg)
+        await self._post(msg, parse_mode=None, alert_category="error")
 
     async def send_session_open(self, session: str) -> None:
         await self.send(f"[{session.upper()} session open] scanning pairs")

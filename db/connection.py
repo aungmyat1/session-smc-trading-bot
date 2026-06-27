@@ -10,10 +10,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.pool import QueuePool
 
-_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research",
-)
+from db.runtime import resolve_database_url
+
+_URL = resolve_database_url()
+if not _URL:
+    raise RuntimeError(
+        "DATABASE_URL is required for db.connection; set it explicitly instead of relying on a localhost fallback"
+    )
 
 engine = create_engine(
     _URL,

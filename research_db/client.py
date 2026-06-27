@@ -33,13 +33,13 @@ import psycopg2.extras
 log = logging.getLogger("research_db")
 
 
-def _dsn_from_env() -> str:
+def _dsn_from_env() -> str | None:
     url = os.environ.get("DATABASE_URL", "")
     if url.startswith("postgresql+asyncpg://"):
         url = url.replace("postgresql+asyncpg://", "postgresql://", 1)
     if url.startswith("postgresql://"):
         return url
-    return "postgresql://trading:TradingSecure2026!@127.0.0.1:5432/vmassit"
+    return None
 
 
 class ResearchDB:
@@ -50,6 +50,10 @@ class ResearchDB:
         self._connect()
 
     def _connect(self) -> None:
+        if not self._dsn:
+            log.warning("ResearchDB unavailable: DATABASE_URL not configured")
+            self._available = False
+            return
         try:
             self._conn = psycopg2.connect(self._dsn)
             self._conn.autocommit = False

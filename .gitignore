@@ -16,6 +16,7 @@ data/
 *.csv
 .dukascopy-cache/
 *.db
+*.sqlite3
 *.duckdb
 research.db
 research_sweep.db

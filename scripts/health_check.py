@@ -33,6 +33,7 @@ import json
 import os
 import sys
 import socket
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -46,12 +47,18 @@ try:
 except ImportError:
     pass
 
+try:
+    import yaml
+except ImportError:  # pragma: no cover - optional in minimal runtimes
+    yaml = None
+
 _RUNNER_LOG  = _ROOT / "logs" / "st_a2_runner.log"
 _PAIRS       = ["EURUSD", "XAUUSD"]
 _STALE_S     = 300   # runner log is stale if no entry within 5 min
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
 _DB_CONNECT_TIMEOUT_S = 3
+_DB_BACKEND_CHOICES = {"auto", "postgres", "duckdb", "sqlite", "disabled"}
 
 # ── Individual checks ──────────────────────────────────────────────────────────
 
@@ -126,32 +133,133 @@ async def check_data_feed() -> dict:
     return {"status": "PASS", "detail": "all pairs reachable", "pairs": pairs}
 
 
-def check_research_db() -> dict:
-    """
-    Probe the optional PostgreSQL research database.
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
-    This is intentionally a health warning, not a hard failure: the live bot
-    uses the local journal and must keep running even if the research stack is
-    offline.
+
+def _load_yaml(path: Path) -> dict:
+    if yaml is None or not path.exists():
+        return {}
+    try:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _infer_db_backend(explicit_backend: str | None = None) -> tuple[str, dict]:
+    backend = (explicit_backend or os.environ.get("DB_BACKEND", "")).strip().lower()
+    if backend and backend not in _DB_BACKEND_CHOICES:
+        return "unknown", {
+            "status": "FAIL",
+            "detail": f"invalid DB_BACKEND={backend!r}; expected one of {sorted(_DB_BACKEND_CHOICES)}",
+        }
+
+    if backend == "disabled" or not _env_bool("DB_HEALTHCHECK_ENABLED", True):
+        return "disabled", {
+            "status": "SKIP",
+            "detail": "database health check disabled for this runtime mode",
+        }
+
+    if backend in {"postgres", "duckdb", "sqlite"}:
+        return backend, {}
+
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if database_url:
+        parsed = urlparse(database_url)
+        scheme = (parsed.scheme or "").lower()
+        if scheme.startswith("postgres"):
+            return "postgres", {"database_url": database_url}
+        if scheme.startswith("sqlite"):
+            return "sqlite", {"database_url": database_url}
+        if scheme.startswith("duckdb"):
+            return "duckdb", {"database_url": database_url}
+
+    if os.environ.get("DB_HOST") or os.environ.get("DB_PORT") or os.environ.get("DB_NAME"):
+        return "postgres", {}
+
+    research_cfg = _load_yaml(_ROOT / "config" / "research_engine.yaml")
+    duckdb_path = str(research_cfg.get("analytics", {}).get("duckdb_path", "")).strip()
+    if duckdb_path:
+        return "duckdb", {"duckdb_path": duckdb_path}
+
+    return "unknown", {
+        "status": "FAIL",
+        "detail": (
+            "missing database runtime config; set DB_BACKEND=postgres|duckdb|sqlite|disabled "
+            "or provide DATABASE_URL / config/research_engine.yaml"
+        ),
+    }
+
+
+def _postgres_service_status() -> str:
+    try:
+        proc = subprocess.run(
+            ["systemctl", "is-active", "postgresql"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2,
+        )
+    except Exception:
+        return "unknown"
+    status = (proc.stdout or proc.stderr or "").strip()
+    return status or "unknown"
+
+
+def check_research_db(db_backend: str | None = None) -> dict:
     """
-    database_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research",
-    )
-    parsed = urlparse(database_url)
-    host = parsed.hostname or "localhost"
-    port = parsed.port or 5432
+    Probe the runtime database backend.
+
+    This is strict for required postgres runtimes and a no-op for DuckDB,
+    SQLite, or explicitly disabled database modes.
+    """
+    backend, meta = _infer_db_backend(db_backend)
+    if backend == "unknown":
+        return meta
+
+    if backend == "disabled":
+        return meta
+
+    if backend in {"duckdb", "sqlite"}:
+        path = meta.get("duckdb_path") or meta.get("database_url") or "local file"
+        return {
+            "status": "SKIP",
+            "detail": f"{backend} runtime selected; no localhost:5432 check required ({path})",
+        }
+
+    database_url = meta.get("database_url") or os.environ.get("DATABASE_URL", "")
+    parsed = urlparse(database_url) if database_url else None
+    host = parsed.hostname if parsed and parsed.hostname else os.environ.get("DB_HOST", "localhost")
+    port = parsed.port if parsed and parsed.port else int(os.environ.get("DB_PORT", "5432"))
+    db_name = parsed.path.lstrip("/") if parsed and parsed.path else os.environ.get("DB_NAME", "")
+    db_user = parsed.username if parsed and parsed.username else os.environ.get("DB_USER", "")
+    required = backend == "postgres"
+    service_status = _postgres_service_status()
 
     try:
         with socket.create_connection((host, port), timeout=_DB_CONNECT_TIMEOUT_S):
             pass
     except Exception as exc:
         return {
-            "status": "WARN",
-            "detail": f"research DB unavailable at {host}:{port} ({exc.__class__.__name__})",
+            "status": "FAIL" if required else "WARN",
+            "detail": (
+                f"postgres required={required} host={host}:{port} db={db_name or '?'} "
+                f"user={db_user or '?'} service={service_status} "
+                f"-> unreachable ({exc.__class__.__name__})"
+            ),
         }
 
-    return {"status": "PASS", "detail": f"reachable at {host}:{port}"}
+    return {
+        "status": "PASS",
+        "detail": (
+            f"postgres required={required} host={host}:{port} db={db_name or '?'} "
+            f"user={db_user or '?'} service={service_status} reachable"
+        ),
+    }
 
 
 def check_risk_engine() -> dict:
@@ -229,14 +337,14 @@ def _fmt(label: str, r: dict, w: int = 14) -> str:
     return f"  {label:<{w}}  {icon} {st:<8}  {r.get('detail', '')}"
 
 
-async def _run_all(no_broker: bool, no_db: bool) -> dict:
+async def _run_all(no_broker: bool, no_db: bool, db_backend: str | None = None) -> dict:
     results: dict[str, dict] = {}
     results["Runner"]      = check_runner()
     results["Risk Engine"] = check_risk_engine()
     results["Portfolio"]   = check_portfolio()
     results["Execution"]   = check_execution()
     results["Journal"]     = check_journal()
-    results["Research DB"] = {"status": "SKIP", "detail": "--no-db"} if no_db else check_research_db()
+    results["Research DB"] = {"status": "SKIP", "detail": "--no-db"} if no_db else check_research_db(db_backend)
     if not no_broker:
         results["Broker"]    = await check_broker()
         results["Data Feed"] = await check_data_feed()
@@ -261,10 +369,19 @@ def main() -> None:
                         help="Skip broker connection (offline-safe)")
     parser.add_argument("--no-db", action="store_true",
                         help="Skip research database reachability probe")
+    parser.add_argument(
+        "--db-backend",
+        choices=sorted(_DB_BACKEND_CHOICES),
+        default=os.environ.get("DB_BACKEND", "auto"),
+        help="Override the DB runtime mode for this health check",
+    )
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
 
-    results = asyncio.run(_run_all(args.no_broker, args.no_db))
+    if args.db_backend:
+        os.environ["DB_BACKEND"] = args.db_backend
+
+    results = asyncio.run(_run_all(args.no_broker, args.no_db, args.db_backend))
     now     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if args.as_json:

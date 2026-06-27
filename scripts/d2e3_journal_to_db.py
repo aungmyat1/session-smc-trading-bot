@@ -29,12 +29,11 @@ from typing import Iterable
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+from db.runtime import resolve_database_url
+
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LOG = ROOT / "logs" / "d2e3_trades.jsonl"
-DEFAULT_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://trading_user:trading_research_2025@127.0.0.1:5432/trading_research",
-)
+DEFAULT_DATABASE_URL = resolve_database_url()
 
 STRATEGY_NAME = "ST-D2-E3-OPT2"
 STRATEGY_VERSION = "1.0"

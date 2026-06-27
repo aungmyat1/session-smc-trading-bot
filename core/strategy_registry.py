@@ -31,6 +31,7 @@ _LIFECYCLE_ORDER = {
     "retired": 8,
 }
 _CATALOG_PATH = Path(__file__).resolve().parents[1] / "config" / "strategy_catalog.yaml"
+_CURRENT_STRATEGY_KEY = "current_strategy"
 
 
 def _normalize_name(name: str) -> str:
@@ -49,10 +50,12 @@ def _catalog_payload(path: Path | None = None) -> dict[str, Any]:
         data = yaml.safe_load(handle) or {}
     if not isinstance(data, dict):
         return {"strategies": {}}
+    data = dict(data)
     strategies = data.get("strategies", {})
     if not isinstance(strategies, dict):
         strategies = {}
-    return {"strategies": strategies}
+    data["strategies"] = strategies
+    return data
 
 
 def _write_catalog(payload: dict[str, Any], path: Path | None = None) -> None:
@@ -80,6 +83,57 @@ def get_strategy_manifest(name: str, path: Path | str | None = None) -> Optional
 def list_catalog_strategies(path: Path | str | None = None) -> List[str]:
     """Return catalog strategy names sorted alphabetically."""
     return sorted(load_strategy_catalog(path).keys())
+
+
+def get_strategy_spec_path(name: str, path: Path | str | None = None) -> Optional[Path]:
+    """Return the audited strategy spec path, if one is configured."""
+    manifest = get_strategy_manifest(name, path)
+    if not manifest:
+        return None
+    raw = manifest.get("strategy_spec_path")
+    if not raw:
+        return None
+    spec_path = Path(str(raw))
+    if spec_path.is_absolute():
+        return spec_path
+    catalog_path = Path(path) if path is not None else _CATALOG_PATH
+    candidates = [catalog_path.parent, catalog_path.parent.parent]
+    for base in candidates:
+        candidate = base / spec_path
+        if candidate.exists():
+            return candidate
+    return candidates[-1] / spec_path
+
+
+def get_strategy_spec_text(name: str, path: Path | str | None = None) -> Optional[str]:
+    """Return the strategy spec text from the catalog-specified document."""
+    spec_path = get_strategy_spec_path(name, path)
+    if spec_path is not None and spec_path.exists():
+        return spec_path.read_text(encoding="utf-8")
+    manifest = get_strategy_manifest(name, path)
+    if manifest and manifest.get("description"):
+        return str(manifest["description"])
+    return None
+
+
+def get_current_strategy_name(path: Path | str | None = None) -> Optional[str]:
+    """Return the catalog's active strategy name, if one is set."""
+    payload = _catalog_payload(Path(path) if path is not None else None)
+    current = payload.get(_CURRENT_STRATEGY_KEY)
+    if isinstance(current, str) and current.strip():
+        return _normalize_name(current)
+    for name, manifest in payload.get("strategies", {}).items():
+        if isinstance(manifest, dict) and bool(manifest.get("current", False)):
+            return _normalize_name(name)
+    return None
+
+
+def get_current_strategy_manifest(path: Path | str | None = None) -> Optional[dict[str, Any]]:
+    """Return the active strategy manifest, if one is set."""
+    current = get_current_strategy_name(path)
+    if not current:
+        return None
+    return get_strategy_manifest(current, path)
 
 
 def strategy_lifecycle_status(name: str, path: Path | str | None = None) -> str:
@@ -141,6 +195,29 @@ def update_strategy_manifest(
     strategies[name] = manifest
     _write_catalog(payload, catalog_path)
     return manifest
+
+
+def set_current_strategy(
+    name: str,
+    path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Mark a strategy as the catalog's active current strategy."""
+    catalog_path = Path(path) if path is not None else _CATALOG_PATH
+    payload = _catalog_payload(catalog_path)
+    strategies = payload.setdefault("strategies", {})
+    normalized = _normalize_name(name)
+    if normalized not in strategies:
+        raise KeyError(f"strategy not found in catalog: {normalized}")
+
+    for strategy_name, manifest in strategies.items():
+        if not isinstance(manifest, dict):
+            manifest = {}
+        manifest["current"] = _normalize_name(strategy_name) == normalized
+        strategies[strategy_name] = manifest
+
+    payload[_CURRENT_STRATEGY_KEY] = normalized
+    _write_catalog(payload, catalog_path)
+    return strategies[normalized]
 
 
 def promote_strategy_stage(

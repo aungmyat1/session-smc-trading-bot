@@ -1,9 +1,12 @@
+current_strategy: ST-A2
 strategies:
   ST-A2:
     status: demo
     approved: true
+    current: true
     version: '2.1'
     owner: quant
+    strategy_spec_path: docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/strategy_spec.md
     symbols:
     - EURUSD
     - GBPUSD
@@ -16,6 +19,12 @@ strategies:
       replay: pass
       backtest: pass
       walk_forward: pending
+    last_svos_at: '2026-06-27T17:07:06.176274+00:00'
+    last_svos_status: PASS
+    last_svos_promoted_stage: live
+    last_svos_report: /home/aungp/session-smc-trading-bot/reports/current_strategy_svos/ST-A2
+    validation_mode: svos
+    last_svos_payload_auto: false
   LondonBreakout:
     status: research
     approved: false
@@ -33,6 +42,7 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false
   NYMomentum:
     status: replay
     approved: false
@@ -50,6 +60,7 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false
   VWAPBreakout:
     status: shadow
     approved: false
@@ -66,6 +77,7 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false
   VWAPMeanReversion:
     status: shadow
     approved: false
@@ -83,6 +95,7 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false
   AdaptiveSMC:
     status: research
     approved: false
@@ -100,11 +113,13 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false
   D2E3:
     status: research
     approved: false
     version: '0.1'
     owner: quant
+    strategy_spec_path: docs/strategy_audit/strategies/D2E3/strategy_spec.md
     symbols:
     - EURUSD
     - GBPUSD
@@ -116,3 +131,4 @@ strategies:
       replay: pending
       backtest: pending
       walk_forward: pending
+    current: false

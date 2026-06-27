@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the execution validation suite from a JSON payload."""
+"""Run the Execution Validation Framework from a JSON payload."""
 
 from __future__ import annotations
 
@@ -56,16 +56,17 @@ def _normalize_samples(samples: list[dict]) -> list[dict]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run execution validation suite")
+    parser = argparse.ArgumentParser(description="Run the Execution Validation Framework")
     parser.add_argument("--payload", help="JSON file with signals/orders/fills/events")
     parser.add_argument("--strategy", default="ST-A2")
     parser.add_argument("--period", default="2023-2026")
     parser.add_argument("--rules", help="Validation rules YAML")
+    parser.add_argument("--report-dir", default="execution_validation/reports")
     args = parser.parse_args()
 
     payload = _load_json(args.payload)
     rules = load_validation_rules(args.rules)
-    suite = ExecutionValidationSuite(rules=rules)
+    suite = ExecutionValidationSuite(rules=rules, report_dir=args.report_dir)
     risk_samples = _normalize_samples(payload.get("risk_samples", []))
     broker_rule_samples = _normalize_samples(payload.get("broker_rule_samples", []))
     report = suite.run(

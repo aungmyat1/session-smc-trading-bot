@@ -1,0 +1,48 @@
+{
+  "completed_successfully": true,
+  "trades": [
+    {
+      "trade_id": "T1",
+      "timestamp": "2026-06-01T08:00:00Z",
+      "side": "long",
+      "entry_price": 1.1,
+      "stop_loss": 1.095,
+      "take_profit": 1.11,
+      "position_size": 0.1,
+      "required_features": [
+        "sweep",
+        "bias"
+      ]
+    }
+  ],
+  "state_transitions": [
+    [
+      "IDLE",
+      "SETUP"
+    ],
+    [
+      "SETUP",
+      "CONFIRMED"
+    ],
+    [
+      "CONFIRMED",
+      "ORDER_PLACED"
+    ],
+    [
+      "ORDER_PLACED",
+      "FILLED"
+    ],
+    [
+      "FILLED",
+      "CLOSED"
+    ]
+  ],
+  "required_features": [
+    "sweep",
+    "bias"
+  ],
+  "available_features": [
+    "sweep",
+    "bias"
+  ]
+}

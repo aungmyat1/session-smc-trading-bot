@@ -460,6 +460,7 @@ class SVOSRunner:
         backtest: BacktestValidationInput | dict[str, Any] | None = None,
         robustness: RobustnessValidationInput | dict[str, Any] | None = None,
         demo: DemoValidationInput | dict[str, Any] | None = None,
+        promote: bool = True,
     ) -> SVOSRunResult:
         stages: list[StageResult] = []
         promoted_stage: str | None = None
@@ -478,34 +479,39 @@ class SVOSRunner:
         stages.append(replay_result)
         if replay_result.status != "PASS":
             return self._finish(stages, promoted_stage)
-        self._promote("backtest")
+        if promote:
+            self._promote("backtest")
         promoted_stage = "backtest"
 
         backtest_result = self._validate_backtest(backtest)
         stages.append(backtest_result)
         if backtest_result.status != "PASS":
             return self._finish(stages, promoted_stage)
-        self._promote("walk_forward")
+        if promote:
+            self._promote("walk_forward")
         promoted_stage = "walk_forward"
 
         robustness_result = self._validate_robustness(robustness)
         stages.append(robustness_result)
         if robustness_result.status != "PASS":
             return self._finish(stages, promoted_stage)
-        self._promote("shadow")
+        if promote:
+            self._promote("shadow")
         promoted_stage = "shadow"
 
         demo_result = self._validate_demo(demo)
         stages.append(demo_result)
         if demo_result.status != "PASS":
             return self._finish(stages, promoted_stage)
-        self._promote("demo")
+        if promote:
+            self._promote("demo")
         promoted_stage = "demo"
 
         production_result = self._validate_production_approval()
         stages.append(production_result)
         if production_result.status == "PASS":
-            self._promote("live")
+            if promote:
+                self._promote("live")
             promoted_stage = "live"
 
         return self._finish(stages, promoted_stage)

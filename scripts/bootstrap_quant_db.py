@@ -18,18 +18,20 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 import psycopg2
 from psycopg2 import sql
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from db.runtime import resolve_database_url
+
 SCHEMA_PATH = ROOT / "db" / "schema_v2.sql"
 
-DEFAULT_DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://trading_user:trading_research_2025@127.0.0.1:5432/trading_research",
-)
+DEFAULT_DATABASE_URL = resolve_database_url()
 
 INSTRUMENTS = [
     ("EURUSD", "fx", "EURUSD", "EUR", "USD", 0.0001),
@@ -119,6 +121,11 @@ def main() -> None:
         print(f"Schema file: {SCHEMA_PATH}")
         print("Dry run requested; no database changes made.")
         return
+
+    if not args.database_url:
+        raise SystemExit(
+            "DATABASE_URL is required for bootstrap_quant_db; set it explicitly or pass --database-url"
+        )
 
     conn = psycopg2.connect(args.database_url)
     conn.autocommit = False

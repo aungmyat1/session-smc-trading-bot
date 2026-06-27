@@ -460,6 +460,7 @@ class ValidationRunner:
         latest_metrics: dict[str, float] | None = None,
         previous_metrics: dict[str, float] | None = None,
         current_stage: str = "backtest",
+        promote: bool = True,
     ) -> ValidationReportBundle:
         if replay is None:
             replay_result = ValidationResult(
@@ -497,7 +498,7 @@ class ValidationRunner:
 
         next_stage = self.config.next_stage(current_stage)
         promoted = False
-        if overall_status == "PASS" and next_stage:
+        if promote and overall_status == "PASS" and next_stage:
             promote_strategy_stage(self.strategy, next_stage, path=self.registry_path)
             promoted = True
 

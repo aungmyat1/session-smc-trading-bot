@@ -1,0 +1,202 @@
+{
+  "signals": [
+    {
+      "signal_id": "ST-A2-000123",
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "entry_zone": 2328.5,
+      "entry": 2328.5,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5,
+      "timestamp": "2026-06-27T09:30:00Z",
+      "session": "london",
+      "strategy_name": "ST-A2",
+      "strategy_version": "2.1.3",
+      "rules_hash": "a83f92",
+      "metadata": {
+        "strategy_name": "ST-A2",
+        "strategy_version": "2.1.3",
+        "rules_hash": "a83f92"
+      }
+    }
+  ],
+  "orders": [
+    {
+      "order_id": "ST-A2-000123",
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5,
+      "status": "filled",
+      "metadata": {
+        "strategy_name": "ST-A2",
+        "strategy_version": "2.1.3",
+        "rules_hash": "a83f92"
+      }
+    }
+  ],
+  "fills": [
+    {
+      "order_id": "ST-A2-000123",
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5
+    }
+  ],
+  "execution_events": [
+    {
+      "event_id": "EVT-000001",
+      "timestamp": "2026-06-27T09:30:00Z",
+      "order_id": "ST-A2-000123",
+      "event_type": "ORDER_FILLED",
+      "price": 2328.53,
+      "message": "latency=150ms slippage=0.00300",
+      "metadata": {
+        "symbol": "XAUUSD",
+        "requested_price": 2328.5,
+        "filled_price": 2328.53,
+        "slippage": 0.003,
+        "latency_ms": 150,
+        "point_size": 0.01
+      }
+    }
+  ],
+  "risk_samples": [
+    {
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5,
+      "market_event": {
+        "timestamp": "2026-06-27T09:30:00Z",
+        "symbol": "XAUUSD",
+        "bid": 2328.5,
+        "ask": 2328.53,
+        "volume": 100.0
+      },
+      "expected_allowed": true,
+      "account_balance": 10000.0
+    }
+  ],
+  "broker_rule_samples": [
+    {
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5,
+      "market_event": {
+        "timestamp": "2026-06-27T09:30:00Z",
+        "symbol": "XAUUSD",
+        "bid": 2328.5,
+        "ask": 2328.53,
+        "volume": 100.0
+      },
+      "expected_allowed": true,
+      "account_balance": 10000.0
+    },
+    {
+      "symbol": "XAUUSD",
+      "direction": "BUY",
+      "volume": 0.1,
+      "stop_loss": 2323.5,
+      "take_profit": 2335.5,
+      "market_event": {
+        "timestamp": "2026-06-27T09:30:00Z",
+        "symbol": "XAUUSD",
+        "bid": 2328.5,
+        "ask": 2329.35,
+        "volume": 100.0
+      },
+      "expected_allowed": false,
+      "account_balance": 10000.0
+    }
+  ],
+  "recovery_snapshot": {
+    "connected": true,
+    "market_event": {
+      "timestamp": "2026-06-27T09:30:00Z",
+      "symbol": "XAUUSD",
+      "bid": 2328.5,
+      "ask": 2328.53,
+      "volume": 100.0
+    },
+    "orders": [
+      {
+        "order_id": "ST-A2-000123",
+        "symbol": "XAUUSD",
+        "direction": "BUY",
+        "volume": 0.1,
+        "stop_loss": 2323.5,
+        "take_profit": 2335.5,
+        "requested_at": "2026-06-27T09:30:00Z",
+        "status": "filled",
+        "filled_at": "2026-06-27T09:30:00Z",
+        "filled_price": 2328.53,
+        "requested_price": 2328.5,
+        "slippage": 0.003,
+        "latency_ms": 150,
+        "magic": 21001,
+        "comment": "ST-A2-demo",
+        "metadata": {
+          "strategy_name": "ST-A2",
+          "strategy_version": "2.1.3",
+          "rules_hash": "a83f92"
+        }
+      }
+    ],
+    "positions": [
+      {
+        "position_id": "VIRT-POS-000001",
+        "order_id": "ST-A2-000123",
+        "symbol": "XAUUSD",
+        "direction": "BUY",
+        "volume": 0.1,
+        "open_price": 2328.53,
+        "stop_loss": 2323.5,
+        "take_profit": 2335.5,
+        "open_time": "2026-06-27T09:30:00Z",
+        "magic": 21001,
+        "comment": "ST-A2-demo",
+        "close_time": null,
+        "close_price": null,
+        "exit_reason": "",
+        "profit": 0.0,
+        "metadata": {
+          "requested_price": 2328.5,
+          "signal_timestamp": "2026-06-27T09:30:00Z",
+          "expected_entry": 2328.5,
+          "filled_price": 2328.53,
+          "slippage": 0.003,
+          "latency_ms": 150
+        }
+      }
+    ],
+    "events": [
+      {
+        "event_id": "EVT-000001",
+        "timestamp": "2026-06-27T09:30:00Z",
+        "order_id": "ST-A2-000123",
+        "event_type": "ORDER_FILLED",
+        "price": 2328.53,
+        "message": "latency=150ms slippage=0.00300",
+        "metadata": {
+          "symbol": "XAUUSD",
+          "requested_price": 2328.5,
+          "filled_price": 2328.53,
+          "slippage": 0.003,
+          "latency_ms": 150,
+          "point_size": 0.01
+        }
+      }
+    ]
+  },
+  "recovery_expected_open_positions": 1,
+  "backtest_pf": 1.5,
+  "virtual_pf": 1.45
+}

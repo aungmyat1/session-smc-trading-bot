@@ -26,16 +26,18 @@ import polars as pl
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
+from db.runtime import resolve_database_url
 from .config import FEATURES_DIR, PHASE0_MIN_NET_PF, PHASE0_MIN_TRADES
 
 _UTC = timezone.utc
-_DB_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research"
-)
+_DB_URL = resolve_database_url()
 
 
 def _engine():
+    if not _DB_URL:
+        raise RuntimeError(
+            "DATABASE_URL is required for PostgreSQL writes; set it or use --skip-db"
+        )
     return create_engine(_DB_URL, pool_pre_ping=True)
 
 

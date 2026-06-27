@@ -1,0 +1,18 @@
+{
+  "completed_successfully": true,
+  "days_monitored": 20,
+  "min_demo_days": 14,
+  "tolerance_pct": 0.1,
+  "research_metrics": {
+    "profit_factor": 1.2,
+    "win_rate": 0.35,
+    "expectancy": 0.1,
+    "max_drawdown": 4.7
+  },
+  "live_metrics": {
+    "profit_factor": 1.18,
+    "win_rate": 0.34,
+    "expectancy": 0.099,
+    "max_drawdown": 4.9
+  }
+}

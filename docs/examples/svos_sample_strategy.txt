@@ -1,0 +1,11 @@
+Market: FX
+Session: London and New York
+Bias: Bullish
+Entry Trigger: Sweep then CHOCH
+Confirmation: FVG and Order Block
+Invalidation: If price closes back below the swept low
+Stop Loss: Below sweep
+Take Profit: 2R
+Risk: 0.3%
+Filters: HTF bias, session filter, spread filter
+Exit Rules: Close at target, no trailing stop

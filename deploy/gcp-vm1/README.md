@@ -20,6 +20,8 @@ replays do not compete with live demo execution.
 ## Bring-up
 
 1. Copy `.env.example` to `.env` and set real secrets.
+   - Set `DB_BACKEND=postgres` for the research node so the DB health check
+     validates the local Postgres service.
 2. Start Postgres:
 
 ```bash
