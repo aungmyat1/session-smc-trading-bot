@@ -332,3 +332,24 @@ excessive at the portfolio runner level.
 - The portfolio runner (`run_portfolio.py`) and the shadow runner (`run_shadow.py`)
   each enforce `dry_run=True` independently. If one path is accidentally bypassed,
   the other still protects. Defense in depth is present.
+# London Breakout Rules
+
+## Entry Rules
+
+- Build the Asian range from completed candles.
+- Reject the setup if the range is outside `15-50` pips.
+- Scan only London-session bars.
+- Set direction when a candle closes above the Asian high or below the Asian low.
+- Require a retest of the breakout level before confirming the signal.
+
+## Invalidation Rules
+
+- If the breakout candle produces no valid risk geometry, the setup resets.
+- The strategy emits no signal if the retest does not arrive.
+- The strategy emits no signal if the entry would have non-positive risk.
+
+## Geometry Rules
+
+- Long stop is placed below the Asian low.
+- Short stop is placed above the Asian high.
+- TP is fixed at `1.5R`.

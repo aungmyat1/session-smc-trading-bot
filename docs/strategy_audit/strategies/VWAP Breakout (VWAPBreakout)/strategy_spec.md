@@ -117,3 +117,21 @@ The adapter itself contains no kill switch. Safety is enforced by the surroundin
 | `strategies/shadow_tracker.py` | Internal (downstream) | Logs signals without execution |
 | `config/strategy_portfolio.yaml` | Config | Pairs, execution_mode, min_confidence, enabled flag |
 | No external pip packages | — | Strategy is pure Python |
+# VWAP Breakout
+
+## Overview
+
+`VWAPBreakout` is a compatibility alias for `VWAPMeanReversion`. The adapter class keeps the older name for import stability, but the emitted signal identity remains `VWAPMeanReversion`.
+
+## Audit Status
+
+- Catalog status: `shadow`
+- Approval: `false`
+- Version: `0.3`
+- Deployment target: `shadow`
+
+## Runtime Behavior
+
+- The alias uses the same underlying code path as `VWAPMeanReversion`.
+- The alias exists for backward compatibility only.
+- No separate trading logic is defined here.

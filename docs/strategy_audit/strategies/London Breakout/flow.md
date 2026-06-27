@@ -375,3 +375,13 @@ Shadow Runner path (alternative). Both share the core strategy module.
 | demo_risk_manager blocked | Execution-level limits | SKIP |
 | DRY_RUN = True | Default | Simulated result, no real order |
 | mode = live | run_portfolio.py | sys.exit(1) — blocked permanently |
+# London Breakout Flow
+
+1. Filter M15 candles into the Asian session.
+1. Build the Asian high/low box.
+1. Reject the day if the range is outside the allowed band.
+1. Scan London-session bars in order.
+1. Mark breakout direction on the first close beyond the Asian box.
+1. Wait for a retest candle that touches the breakout area.
+1. Build the signal at the retest close.
+1. Reset the breakout state after a signal is emitted.

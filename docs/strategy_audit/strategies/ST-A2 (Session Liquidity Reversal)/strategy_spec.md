@@ -260,3 +260,36 @@ Safety controls are in the (unbuilt / separate) execution layer:
 | Python standard library only | — | dataclasses, datetime, zoneinfo, typing |
 | No third-party packages | — | Strategy module has zero external imports |
 | MetaAPI Cloud SDK | >= 29 | Execution layer (not in strategy module) |
+# ST-A2 (Session Liquidity Reversal)
+
+## Overview
+
+ST-A2 is the canonical session-liquidity strategy in this repository. It is implemented by `strategy/session_liquidity/session_strategy.py` and translated into the portfolio execution contract by `strategies/adapters/st_a2_adapter.py`.
+
+## Audit Status
+
+- Catalog status: `demo`
+- Approval: `true`
+- Version: `2.1`
+- Symbols: `EURUSD`, `GBPUSD`
+- Timeframes: `M15`, `H4`
+- Deployment target: `execution`
+
+## Runtime Behavior
+
+- The adapter calls the legacy `run_strategy()` path.
+- The underlying engine is the SA-01 to SA-07 session-liquidity chain.
+- `run_strategy_v2()` exists, but the portfolio adapter does not currently use it.
+- The adapter emits the latest raw signal only.
+- The adapter maps the signal into `core.Signal` with `strategy_name="ST-A2"`.
+
+## Core Idea
+
+The strategy looks for:
+
+1. H4 bias
+1. Asian session range
+1. Liquidity sweep of the Asian high/low
+1. Displacement within the sweep timeout
+1. Valid stop geometry
+1. Fixed RR target

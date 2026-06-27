@@ -106,3 +106,26 @@ constants. Duplicates and magic numbers are flagged.
 | run_shadow.py | 228 | `* 1.001` | HTF bias bullish threshold | 0.1% above mean = BULLISH — undocumented |
 | run_shadow.py | 229 | `* 0.999` | HTF bias bearish threshold | 0.1% below mean = BEARISH — undocumented |
 | run_shadow.py | 58 | `PAIRS = ["EURUSD", "GBPUSD"]` | Shadow runner default excludes USDJPY | Inconsistent with strategy_portfolio.yaml |
+# London Breakout Parameters
+
+## Source Defaults
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `ASIAN_START_HOUR` | `0` | Asian session start in UTC. |
+| `ASIAN_END_HOUR` | `6` | Asian session end in UTC. |
+| `LONDON_START_HOUR` | `6` | London session start in UTC. |
+| `LONDON_END_HOUR` | `9` | London session end in UTC, inclusive in the strategy logic. |
+| `MIN_RANGE_PIPS` | `15.0` | Minimum valid Asian range. |
+| `MAX_RANGE_PIPS` | `50.0` | Maximum valid Asian range. |
+| `TP_RR` | `1.5` | Fixed reward/risk target. |
+| `RETEST_TOLERANCE` | `0.3` pip | Retest tolerance above/below the breakout level. |
+
+## Portfolio Settings
+
+| Source | Value |
+| --- | --- |
+| `config/strategy_portfolio.yaml` execution mode | `demo` |
+| `config/strategy_portfolio.yaml` risk | `0.20` |
+| Adapter `core.Signal.risk_percent` | `0.25` |
+| Adapter confidence | derived from RR, capped at `1.0` |

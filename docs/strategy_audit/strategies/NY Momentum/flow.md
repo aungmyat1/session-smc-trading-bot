@@ -433,3 +433,12 @@ strategies/adapters/ny_momentum_adapter.py  [SEPARATE PATH, not used by run_shad
     |-- core/signal.py
     |-- adaptive/strategies/ny_momentum_strategy.py
 ```
+# NY Momentum Flow
+
+1. Build London high/low levels from the London session.
+1. Scan New York bars in order.
+1. Watch for a swept long or short side.
+1. Require a close beyond the swept level.
+1. Wait for a retest candle.
+1. Build the final signal from the retest close.
+1. Reset the corresponding side after a signal is emitted.

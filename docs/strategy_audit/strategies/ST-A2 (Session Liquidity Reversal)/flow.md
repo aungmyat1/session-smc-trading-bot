@@ -212,3 +212,16 @@ run_strategy(candles_m15, candles_4h, symbol, config)
 | Signal construction failed | session_strategy.py:175 | build_signal returns None | Log SIGNAL_REJECTED |
 | Min SL not met | session_strategy.py:178 | risk_pips < 5.0 | Log SIGNAL_REJECTED |
 | No signals from run_strategy | st_a2_adapter.py:54 | raw_signals is empty | Return None |
+# ST-A2 Flow
+
+1. Sort M15 candles chronologically.
+1. Compute Wilder ATR across the full series.
+1. Group killzone bars by UTC date.
+1. Build the Asian range for the trade date.
+1. Reject the day if the range is missing or too small.
+1. Scan London and New York killzones.
+1. Check H4 bias before looking for a sweep.
+1. Record a pending sweep when price strictly breaches the Asian range and closes back inside.
+1. Wait up to `sweep_timeout_bars` for a displacement candle.
+1. Build the final signal from the sweep plus displacement pair.
+1. Enforce one completed signal per session per day.

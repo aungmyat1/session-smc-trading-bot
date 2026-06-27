@@ -191,3 +191,23 @@ Filters are applied downstream in the engine, not inside the strategy itself.
 - `metaapi-cloud-sdk` (>=29) — broker data and order execution
 - `python-dotenv` — `.env` loading (optional, graceful fallback)
 - Standard library only within the strategy itself (`datetime`, `__future__`)
+# NY Momentum
+
+## Overview
+
+NY Momentum is the New York expansion branch in `adaptive/strategies/ny_momentum_strategy.py`, wrapped for portfolio execution by `strategies/adapters/ny_momentum_adapter.py`.
+
+## Audit Status
+
+- Catalog status: `replay`
+- Approval: `false`
+- Version: `0.3`
+- Deployment target: `research`
+- Portfolio mode: `demo`
+
+## Runtime Behavior
+
+- Identify London high/low from the London session bars.
+- During New York hours, watch for a sweep of one side of the London range.
+- Require a close beyond the swept level.
+- Wait for a retest before confirming the signal.

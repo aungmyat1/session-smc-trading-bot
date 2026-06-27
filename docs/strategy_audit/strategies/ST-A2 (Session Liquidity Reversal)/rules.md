@@ -311,3 +311,27 @@ Rules are listed in execution order (the order they are evaluated in run_strateg
 - timestamp is set to datetime.now(timezone.utc) at the time of adapter call, not the
   displacement candle timestamp. This may differ from the signal's internal timestamp.
   The original Signal.timestamp (bar close time) is not forwarded to core.Signal.
+# ST-A2 Rules
+
+## Entry Rules
+
+- Build the Asian range from completed M15 candles.
+- Skip the day if the Asian range is missing.
+- Skip the day if the Asian range is below the minimum range threshold.
+- Require a non-neutral H4 bias.
+- Require a strict wick breach of the Asian high or low.
+- Require a close back inside the range in the direction of the bias.
+- Require a displacement candle within `sweep_timeout_bars`.
+- Reject the signal if the stop distance is below `min_sl_pips`.
+
+## Invalidation Rules
+
+- The sweep is cancelled when the session changes before displacement appears.
+- Only one signal per session is allowed inside a calendar day.
+- The signal is rejected when `build_signal()` returns `None`.
+
+## Geometry Rules
+
+- Long stop is placed below the sweep wick minus the buffer.
+- Short stop is placed above the sweep wick plus the buffer.
+- TP is computed from the configured RR and the stop distance.
