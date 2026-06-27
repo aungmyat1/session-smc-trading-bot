@@ -15,6 +15,8 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from core.broker_interface import BrokerInterface
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -88,7 +90,7 @@ class OrderResult:
 
 # ── Client ────────────────────────────────────────────────────────────────────
 
-class MetaAPIClient:
+class MetaAPIClient(BrokerInterface):
     """
     Wraps MetaAPI RPC connection. All broker calls flow through here.
 
@@ -276,6 +278,9 @@ class MetaAPIClient:
             currency=raw.get("currency", "USD"),
         )
 
+    async def get_account(self) -> AccountInfo:
+        return await self.get_account_info()
+
     async def get_symbol_price(self, symbol: str) -> SymbolPrice:
         if not self._connected:
             raise RuntimeError("Not connected")
@@ -284,6 +289,9 @@ class MetaAPIClient:
         ask = float(raw.get("ask", 0.0))
         spread_pips = round((ask - bid) / 0.0001, 2)
         return SymbolPrice(bid=bid, ask=ask, spread_pips=spread_pips, time=raw.get("time", ""))
+
+    async def get_price(self, symbol: str) -> SymbolPrice:
+        return await self.get_symbol_price(symbol)
 
     async def check_spread(self, symbol: str) -> tuple[bool, float]:
         """
@@ -396,6 +404,9 @@ class MetaAPIClient:
             ))
         return result
 
+    async def get_positions(self) -> list[BrokerPosition]:
+        return await self.get_open_positions()
+
     # ── Order execution ───────────────────────────────────────────────────────
 
     async def place_order(
@@ -454,6 +465,65 @@ class MetaAPIClient:
             sl=sl,
             tp=tp,
         )
+
+    async def send_order(self, order: dict | object) -> OrderResult:
+        if isinstance(order, dict):
+            return await self.place_order(
+                symbol=str(order["symbol"]),
+                direction=str(order.get("direction", order.get("type", ""))),
+                volume=float(order["volume"]),
+                sl=float(order.get("sl", order.get("stop_loss", 0.0))),
+                tp=float(order.get("tp", order.get("take_profit", 0.0))),
+                magic=int(order.get("magic", 0)),
+                comment=str(order.get("comment", "")),
+            )
+        return await self.place_order(
+            symbol=str(getattr(order, "symbol")),
+            direction=str(getattr(order, "direction", getattr(order, "type", ""))),
+            volume=float(getattr(order, "volume")),
+            sl=float(getattr(order, "stop_loss", getattr(order, "sl", 0.0))),
+            tp=float(getattr(order, "take_profit", getattr(order, "tp", 0.0))),
+            magic=int(getattr(order, "magic", 0)),
+            comment=str(getattr(order, "comment", "")),
+        )
+
+    async def modify_order(self, order_id: str, sl: float | None = None, tp: float | None = None) -> bool:
+        if not self._connected or self._connection is None:
+            return False
+        target = None
+        for position in await self.get_open_positions():
+            if position.position_id == order_id or position.position_id.endswith(order_id):
+                target = position
+                break
+        if target is None or not hasattr(self._connection, "modify_position"):
+            return False
+        payload = {}
+        if sl is not None:
+            payload["stopLoss"] = sl
+        if tp is not None:
+            payload["takeProfit"] = tp
+        if not payload:
+            return True
+        await self._rpc(self._connection.modify_position(target.position_id, payload))
+        return True
+
+    async def close_order(self, order_id: str) -> bool:
+        if not self._connected or self._connection is None:
+            return False
+        target = None
+        for position in await self.get_open_positions():
+            if position.position_id == order_id or position.position_id.endswith(order_id):
+                target = position
+                break
+        if target is None:
+            return False
+        if hasattr(self._connection, "close_position"):
+            await self._rpc(self._connection.close_position(target.position_id))
+            return True
+        if hasattr(self._connection, "close_positions_by_symbol"):
+            await self._rpc(self._connection.close_positions_by_symbol(target.symbol))
+            return True
+        return False
 
     async def place_limit_order(
         self,

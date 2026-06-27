@@ -48,7 +48,14 @@ class ExecutionValidationReport:
     execution_delay_ms_average: float = 0.0
     execution_delay_ms_maximum: float = 0.0
     final_score: int = 0
+    readiness_status: str = "BLOCKED"
     status: str = "BLOCKED"
+    blocking_reasons: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    coverage_summary: dict[str, Any] = field(default_factory=dict)
+    sample_size_summary: dict[str, Any] = field(default_factory=dict)
+    exit_path_exercised: bool = False
+    live_approval_allowed: bool = False
     metrics: dict[str, Any] = field(default_factory=dict)
     checks: dict[str, CheckResult] = field(default_factory=dict)
 
@@ -75,7 +82,14 @@ class ExecutionValidationReport:
             "execution_delay_ms_average": self.execution_delay_ms_average,
             "execution_delay_ms_maximum": self.execution_delay_ms_maximum,
             "final_score": self.final_score,
+            "readiness_status": self.readiness_status,
             "status": self.status,
+            "blocking_reasons": self.blocking_reasons,
+            "warnings": self.warnings,
+            "coverage_summary": self.coverage_summary,
+            "sample_size_summary": self.sample_size_summary,
+            "exit_path_exercised": self.exit_path_exercised,
+            "live_approval_allowed": self.live_approval_allowed,
             "metrics": self.metrics,
             "checks": {name: asdict(check) for name, check in self.checks.items()},
         }
@@ -122,6 +136,15 @@ def _event_message_of(item: Any) -> str:
 def _event_metadata_of(item: Any) -> dict[str, Any]:
     raw = _get_value(item, "metadata", {})
     return raw if isinstance(raw, dict) else {}
+
+
+def _event_reason_of(item: Any) -> str:
+    parts = [
+        _event_message_of(item),
+        str(_event_metadata_of(item).get("exit_reason", "")),
+        str(_event_metadata_of(item).get("reason", "")),
+    ]
+    return " ".join(part for part in parts if part).strip()
 
 
 def _detect_duplicates(items: list[Any]) -> list[str]:
@@ -190,7 +213,7 @@ def _assess_strategy_version_control(signals: list[Any], orders: list[Any], stra
 
 def _assess_exit_management(execution_events: list[ExecutionEvent], fills: list[Any], broker: VirtualBroker | None = None) -> CheckResult:
     close_events = [ev for ev in execution_events if _event_type_of(ev) in {"POSITION_CLOSED", "ORDER_CLOSED"}]
-    exit_reasons = [str(_event_message_of(ev) or _event_type_of(ev)) for ev in close_events]
+    exit_reasons = [str(_event_reason_of(ev) or _event_type_of(ev)) for ev in close_events]
     open_positions = 0
     if broker is not None:
         try:
@@ -198,19 +221,114 @@ def _assess_exit_management(execution_events: list[ExecutionEvent], fills: list[
         except Exception:
             open_positions = -1
     observed_exit = bool(close_events)
-    passed = True
+    open_positions_clear = open_positions in {0, -1}
+    passed = observed_exit and open_positions_clear
+    details = {
+        "close_events": len(close_events),
+        "exit_reasons": exit_reasons,
+        "open_positions": open_positions,
+        "observed_exit": observed_exit,
+        "open_positions_clear": open_positions_clear,
+    }
+    if not observed_exit:
+        details["failure"] = "no_close_events_observed"
+    elif open_positions > 0:
+        details["failure"] = "positions_remain_open_after_exit"
     return CheckResult(
         name="exit_management",
         passed=passed,
         score=1.0 if passed else 0.0,
-        details={
-            "close_events": len(close_events),
-            "exit_reasons": exit_reasons,
-            "open_positions": open_positions,
-            "observed_exit": observed_exit,
-        },
-        message="Exit management observed" if observed_exit else "Exit path not exercised in this sample",
+        details=details,
+        message="Exit management observed" if passed else "Exit management not fully exercised",
     )
+
+
+def _coverage_flag(markers: dict[str, Any], key: str) -> bool:
+    if key not in markers:
+        return False
+    value = markers.get(key)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "covered", "exercised"}
+    return bool(value)
+
+
+def _has_event_reason(execution_events: list[ExecutionEvent], keywords: tuple[str, ...]) -> bool:
+    for ev in execution_events:
+        if _event_type_of(ev) not in {"POSITION_CLOSED", "ORDER_CLOSED"}:
+            continue
+        reason = _event_reason_of(ev).lower()
+        if any(keyword in reason for keyword in keywords):
+            return True
+    return False
+
+
+def _coverage_summary(
+    *,
+    signals: list[Any],
+    orders: list[Any],
+    execution_events: list[ExecutionEvent],
+    risk_samples: list[dict[str, Any]],
+    broker_rule_samples: list[dict[str, Any]],
+    recovery_snapshot: dict[str, Any],
+    recovery_check: CheckResult,
+    coverage_markers: dict[str, Any],
+) -> dict[str, Any]:
+    duplicate_signal_ids = _detect_duplicates(signals)
+    duplicate_order_ids = _detect_duplicates(orders)
+    broker_rejection_observed = any(not bool(sample.get("expected_allowed", True)) for sample in broker_rule_samples) or any(
+        _event_type_of(ev) == "ORDER_REJECTED" for ev in execution_events
+    )
+    risk_rejection_observed = any(not bool(sample.get("expected_allowed", True)) for sample in risk_samples)
+    entry_order_placement = _coverage_flag(coverage_markers, "entry_order_placement") or (bool(signals) and bool(orders))
+    stop_loss_exit = _coverage_flag(coverage_markers, "stop_loss_exit") or _has_event_reason(execution_events, ("stop_loss", "stop loss", "sl"))
+    take_profit_exit = _coverage_flag(coverage_markers, "take_profit_exit") or _has_event_reason(execution_events, ("take_profit", "take profit", "tp"))
+    session_manual_close = _coverage_flag(coverage_markers, "session_manual_close") or _has_event_reason(
+        execution_events,
+        ("manual", "session", "managed", "close"),
+    )
+    duplicate_order_protection = _coverage_flag(coverage_markers, "duplicate_order_protection") or bool(duplicate_signal_ids or duplicate_order_ids)
+    broker_rejection = _coverage_flag(coverage_markers, "broker_rejection") or broker_rejection_observed or risk_rejection_observed
+    recovery_restart = _coverage_flag(coverage_markers, "recovery_restart") or recovery_check.passed or bool(recovery_snapshot)
+
+    critical_paths = {
+        "entry_order_placement": entry_order_placement,
+        "stop_loss_exit": stop_loss_exit,
+        "take_profit_exit": take_profit_exit,
+        "session_manual_close": session_manual_close,
+        "duplicate_order_protection": duplicate_order_protection,
+        "broker_rejection": broker_rejection,
+        "recovery_restart": recovery_restart,
+    }
+    exit_path_exercised = bool(stop_loss_exit or take_profit_exit or session_manual_close)
+    return {
+        "paths": {name: {"exercised": exercised} for name, exercised in critical_paths.items()},
+        "critical_paths_complete": all(critical_paths.values()),
+        "exit_path_exercised": exit_path_exercised,
+        "broker_rejection_observed": broker_rejection_observed,
+        "risk_rejection_observed": risk_rejection_observed,
+        "duplicate_ids_detected": {"signals": duplicate_signal_ids, "orders": duplicate_order_ids},
+    }
+
+
+def _readiness_status(
+    *,
+    checks_passed: bool,
+    exit_path_exercised: bool,
+    critical_paths_complete: bool,
+    executed_orders: int,
+    rules: ValidationRules,
+) -> str:
+    if not checks_passed:
+        return "BLOCKED"
+    if critical_paths_complete and executed_orders >= rules.minimum_live_executed_orders:
+        return "READY_FOR_LIVE"
+    if critical_paths_complete and executed_orders >= rules.minimum_small_live_executed_orders:
+        return "READY_FOR_SMALL_LIVE"
+    if exit_path_exercised and executed_orders >= rules.minimum_shadow_executed_orders:
+        return "READY_FOR_SHADOW"
+    if exit_path_exercised and executed_orders >= rules.minimum_demo_executed_orders:
+        return "READY_FOR_DEMO"
+    return "READY_FOR_DEMO_WITH_LIMITATIONS"
 
 
 class ExecutionValidationSuite:

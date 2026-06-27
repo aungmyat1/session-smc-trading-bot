@@ -822,6 +822,7 @@ def main():
             "best_rr": float(best_rr),
             "best_result": {
                 "trades": len(all_rr_data[best_rr]["trades"]),
+                "trade_rows": all_rr_data[best_rr]["trades"],
                 "std_metrics": all_rr_data[best_rr]["std_metrics"],
                 "stress_metrics": all_rr_data[best_rr]["stress_metrics"],
                 "gross_pf": all_rr_data[best_rr]["gross_pf"],

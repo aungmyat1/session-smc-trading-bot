@@ -63,6 +63,19 @@
         "latency_ms": 150,
         "point_size": 0.01
       }
+    },
+    {
+      "event_id": "EVT-000002",
+      "timestamp": "2026-06-27T10:15:00Z",
+      "order_id": "ST-A2-000123",
+      "event_type": "POSITION_CLOSED",
+      "price": 2335.5,
+      "message": "end_of_replay",
+      "metadata": {
+        "symbol": "XAUUSD",
+        "exit_reason": "END_OF_REPLAY",
+        "close_price": 2335.5
+      }
     }
   ],
   "risk_samples": [
@@ -150,33 +163,7 @@
         }
       }
     ],
-    "positions": [
-      {
-        "position_id": "VIRT-POS-000001",
-        "order_id": "ST-A2-000123",
-        "symbol": "XAUUSD",
-        "direction": "BUY",
-        "volume": 0.1,
-        "open_price": 2328.53,
-        "stop_loss": 2323.5,
-        "take_profit": 2335.5,
-        "open_time": "2026-06-27T09:30:00Z",
-        "magic": 21001,
-        "comment": "ST-A2-demo",
-        "close_time": null,
-        "close_price": null,
-        "exit_reason": "",
-        "profit": 0.0,
-        "metadata": {
-          "requested_price": 2328.5,
-          "signal_timestamp": "2026-06-27T09:30:00Z",
-          "expected_entry": 2328.5,
-          "filled_price": 2328.53,
-          "slippage": 0.003,
-          "latency_ms": 150
-        }
-      }
-    ],
+    "positions": [],
     "events": [
       {
         "event_id": "EVT-000001",
@@ -193,10 +180,23 @@
           "latency_ms": 150,
           "point_size": 0.01
         }
+      },
+      {
+        "event_id": "EVT-000002",
+        "timestamp": "2026-06-27T10:15:00Z",
+        "order_id": "ST-A2-000123",
+        "event_type": "POSITION_CLOSED",
+        "price": 2335.5,
+        "message": "end_of_replay",
+        "metadata": {
+          "symbol": "XAUUSD",
+          "exit_reason": "END_OF_REPLAY",
+          "close_price": 2335.5
+        }
       }
     ]
   },
-  "recovery_expected_open_positions": 1,
+  "recovery_expected_open_positions": 0,
   "backtest_pf": 1.5,
   "virtual_pf": 1.45
 }

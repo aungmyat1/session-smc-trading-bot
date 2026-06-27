@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -82,6 +83,11 @@ def main() -> int:
         help="Disable the auto-generated demo payload",
     )
     parser.set_defaults(allow_synthetic_demo=True)
+    parser.add_argument(
+        "--allow-live-promotion",
+        action="store_true",
+        help="Allow SVOS to update the catalog to live when the demo payload is non-synthetic and all gates pass",
+    )
     parser.add_argument("--outdir", default="reports/current_strategy_svos", help="Output directory")
     parser.add_argument("--config", default="config/validation.yaml", help="Validation config YAML")
     args = parser.parse_args()
@@ -107,33 +113,38 @@ def main() -> int:
     validation_config = load_validation_config(config_path)
 
     payload = None
-    if not any([args.replay_json, args.backtest_json, args.robustness_json, args.demo_json]):
-        payload_bundle = build_svos_payload_bundle(
-            strategy=strategy,
-            catalog_path=catalog_path,
-            symbols=args.symbol,
-            start=args.start,
-            end=args.end,
-            costs_json=args.costs_json,
-            allow_synthetic_demo=args.allow_synthetic_demo,
-            output_dir=_ROOT / args.outdir / strategy / "auto_payload",
-        )
-        payload = payload_bundle.to_dict()
+    try:
+        if not any([args.replay_json, args.backtest_json, args.robustness_json, args.demo_json]):
+            payload_bundle = build_svos_payload_bundle(
+                strategy=strategy,
+                catalog_path=catalog_path,
+                symbols=args.symbol,
+                start=args.start,
+                end=args.end,
+                costs_json=args.costs_json,
+                allow_synthetic_demo=args.allow_synthetic_demo,
+                output_dir=_ROOT / args.outdir / strategy / "auto_payload",
+            )
+            payload = payload_bundle.to_dict()
 
-    runner = SVOSRunner(
-        strategy,
-        registry_path=catalog_path,
-        output_dir=_ROOT / args.outdir,
-        validation_config=validation_config,
-    )
-    result = runner.run_pipeline(
-        strategy_text,
-        replay=(_load_json(args.replay_json) or payload.get("replay")) if payload else (_load_json(args.replay_json) or None),
-        backtest=(_load_json(args.backtest_json) or payload.get("backtest")) if payload else (_load_json(args.backtest_json) or None),
-        robustness=(_load_json(args.robustness_json) or payload.get("robustness")) if payload else (_load_json(args.robustness_json) or None),
-        demo=(_load_json(args.demo_json) or payload.get("demo")) if payload else (_load_json(args.demo_json) or None),
-        promote=False,
-    )
+        runner = SVOSRunner(
+            strategy,
+            registry_path=catalog_path,
+            output_dir=_ROOT / args.outdir,
+            validation_config=validation_config,
+        )
+        result = runner.run_pipeline(
+            strategy_text,
+            replay=(_load_json(args.replay_json) or payload.get("replay")) if payload else (_load_json(args.replay_json) or None),
+            backtest=(_load_json(args.backtest_json) or payload.get("backtest")) if payload else (_load_json(args.backtest_json) or None),
+            robustness=(_load_json(args.robustness_json) or payload.get("robustness")) if payload else (_load_json(args.robustness_json) or None),
+            demo=(_load_json(args.demo_json) or payload.get("demo")) if payload else (_load_json(args.demo_json) or None),
+            promote=args.allow_live_promotion,
+            allow_live_promotion=args.allow_live_promotion,
+        )
+    except (FileNotFoundError, RuntimeError, subprocess.CalledProcessError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
     report_root = _ROOT / args.outdir / strategy
     update_strategy_manifest(
@@ -154,6 +165,7 @@ def main() -> int:
         "current_strategy": get_current_strategy_name(catalog_path),
         "overall_status": result.overall_status,
         "promoted_stage": result.promoted_stage,
+        "allow_live_promotion": args.allow_live_promotion,
         "report_dir": str(report_root),
         "catalog_path": str(catalog_path),
         "payload": payload,

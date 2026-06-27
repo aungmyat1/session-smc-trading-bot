@@ -171,6 +171,10 @@ async def build_validation_payload_from_candles(
             }
         )
 
+    open_positions = list(broker._positions.open_positions())
+    for position in open_positions:
+        await broker.close_position(position.position_id, reason="END_OF_REPLAY")
+
     recovery_snapshot = broker.snapshot_state()
     execution_events = broker.execution_events()
     fills = [

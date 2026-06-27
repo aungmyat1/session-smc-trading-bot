@@ -138,6 +138,8 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
                 "max_drawdown": 4.9,
             },
         ),
+        promote=True,
+        allow_live_promotion=True,
     )
     assert result.overall_status == "PASS"
     assert result.stages[-1].stage == "production_approval"
@@ -199,8 +201,61 @@ def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
     assert get_strategy_status(catalog_copy, "ST-A2") != "live"
 
 
+def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
+    catalog_copy = tmp_path / "strategy_catalog.yaml"
+    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
+    result = runner.run_pipeline(
+        _complete_strategy_text(),
+        replay=_valid_replay(),
+        backtest=_valid_backtest(),
+        robustness=RobustnessValidationInput(
+            completed_successfully=True,
+            walk_forward_passed=True,
+            monte_carlo_passed=True,
+            parameter_stability_passed=True,
+            regime_analysis_passed=True,
+            execution_cost_passed=True,
+            latest_metrics={
+                "profit_factor": 1.22,
+                "win_rate": 0.36,
+                "expectancy": 0.11,
+                "max_drawdown": 4.8,
+            },
+            previous_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
+        ),
+        demo=DemoValidationInput(
+            completed_successfully=True,
+            days_monitored=20,
+            min_demo_days=14,
+            tolerance_pct=0.10,
+            research_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
+            live_metrics={
+                "profit_factor": 1.18,
+                "win_rate": 0.34,
+                "expectancy": 0.099,
+                "max_drawdown": 4.9,
+            },
+        ),
+        promote=True,
+        allow_live_promotion=False,
+    )
+    assert result.overall_status == "PASS"
+    assert result.promoted_stage == "demo"
+    assert get_strategy_status(catalog_copy, "ST-A2") == "demo"
+
+
 def get_strategy_status(catalog_path: Path, strategy: str) -> str:
     from core.strategy_registry import get_strategy_manifest
 
     return str(get_strategy_manifest(strategy, catalog_path).get("status", ""))
-

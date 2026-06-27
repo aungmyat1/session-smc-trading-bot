@@ -91,6 +91,13 @@ _CONTRADICTION_HINTS = (
     ("exit", ("close long", "close short")),
 )
 
+_PLACEHOLDER_MARKERS = {
+    "synthetic",
+    "sample",
+    "example",
+    "placeholder",
+}
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -270,6 +277,27 @@ def _find_contradictions(raw_text: str, fields: dict[str, str]) -> list["Strateg
                 )
             )
     return issues
+
+
+def _contains_placeholder_marker(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, dict):
+        for key, item in value.items():
+            lowered = str(key).strip().lower()
+            if lowered in _PLACEHOLDER_MARKERS and _contains_placeholder_marker(item):
+                return True
+            if _contains_placeholder_marker(item):
+                return True
+        return False
+    if isinstance(value, (list, tuple, set)):
+        return any(_contains_placeholder_marker(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        return any(marker in lowered for marker in _PLACEHOLDER_MARKERS)
+    return False
 
 
 @dataclass
@@ -460,7 +488,8 @@ class SVOSRunner:
         backtest: BacktestValidationInput | dict[str, Any] | None = None,
         robustness: RobustnessValidationInput | dict[str, Any] | None = None,
         demo: DemoValidationInput | dict[str, Any] | None = None,
-        promote: bool = True,
+        promote: bool = False,
+        allow_live_promotion: bool = False,
     ) -> SVOSRunResult:
         stages: list[StageResult] = []
         promoted_stage: str | None = None
@@ -505,14 +534,14 @@ class SVOSRunner:
             return self._finish(stages, promoted_stage)
         if promote:
             self._promote("demo")
-        promoted_stage = "demo"
+            promoted_stage = "demo"
 
-        production_result = self._validate_production_approval()
+        production_result = self._validate_production_approval(demo, allow_live_promotion=allow_live_promotion, promote=promote)
         stages.append(production_result)
-        if production_result.status == "PASS":
-            if promote:
+        if production_result.status == "PASS" and production_result.can_promote:
+            if promote and allow_live_promotion:
                 self._promote("live")
-            promoted_stage = "live"
+                promoted_stage = "live"
 
         return self._finish(stages, promoted_stage)
 
@@ -809,8 +838,24 @@ class SVOSRunner:
             },
         )
 
-    def _validate_production_approval(self) -> StageResult:
+    def _validate_production_approval(
+        self,
+        demo: DemoValidationInput | dict[str, Any] | None,
+        *,
+        allow_live_promotion: bool,
+        promote: bool,
+    ) -> StageResult:
         approved = can_deploy_strategy(self.strategy_name, target_stage="demo", path=self.registry_path)
+        demo_payload = _as_dict(demo)
+        has_placeholder = _contains_placeholder_marker(demo_payload)
+        live_guard_blocked = not allow_live_promotion or not promote or has_placeholder
+        blocking_reasons: list[str] = []
+        if not allow_live_promotion:
+            blocking_reasons.append("Missing explicit --allow-live-promotion flag.")
+        if not promote:
+            blocking_reasons.append("Pipeline promotion is disabled.")
+        if has_placeholder:
+            blocking_reasons.append("Demo payload contains synthetic/sample/example placeholder markers.")
         if approved:
             return StageResult(
                 phase=6,
@@ -819,8 +864,16 @@ class SVOSRunner:
                 issues=[],
                 fix_instructions=[],
                 next_stage=None,
-                can_promote=True,
-                metadata={"registry_approved": True},
+                can_promote=approved and not live_guard_blocked,
+                metadata={
+                    "registry_approved": True,
+                    "live_promotion_allowed": approved and not live_guard_blocked,
+                    "live_promotion_guard": {
+                        "blocked": live_guard_blocked,
+                        "reasons": blocking_reasons,
+                        "placeholder_detected": has_placeholder,
+                    },
+                },
             )
         return StageResult(
             phase=6,
@@ -840,7 +893,7 @@ class SVOSRunner:
             ],
             next_stage=None,
             can_promote=False,
-            metadata={"registry_approved": False},
+            metadata={"registry_approved": False, "live_promotion_allowed": False, "live_promotion_guard": {"blocked": True, "reasons": blocking_reasons}},
         )
 
     def _promote(self, stage: str) -> None:

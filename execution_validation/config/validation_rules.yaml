@@ -3,6 +3,10 @@ signal_match:
 maximum_slippage_pip: 0.5
 maximum_pf_difference: 0.10
 maximum_missing_orders: 0.01
+minimum_demo_executed_orders: 1
+minimum_shadow_executed_orders: 30
+minimum_small_live_executed_orders: 30
+minimum_live_executed_orders: 100
 risk_account_balance: 10000.0
 risk_pct: 0.5
 max_spread:

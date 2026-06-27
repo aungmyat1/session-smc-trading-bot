@@ -12,6 +12,13 @@ from pathlib import Path
 from typing import Any
 
 from core.strategy_registry import get_strategy_manifest
+from research.lineage import build_lineage_metadata
+from research.robustness import (
+    monte_carlo_resampling,
+    parameter_sensitivity,
+    regime_analysis,
+    walk_forward_analysis,
+)
 from scripts.replay_parquet import load_h4, load_m15
 from simulator.historical_replay import run_historical_replay
 
@@ -69,7 +76,23 @@ def _run_backtest_session_liquidity(costs_json: Path | None = None, output_dir: 
     if costs_json is not None:
         cmd.extend(["--costs-json", str(costs_json)])
 
-    completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    try:
+        completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr or ""
+        stdout = exc.stdout or ""
+        if "missing" in stderr.lower() or "file not found" in stderr.lower():
+            raise RuntimeError(
+                "SVOS auto-payload generation could not find the required historical data file. "
+                "Expected data/historical/EUR_USD_M15.csv and data/historical/EUR_USD_H4.csv "
+                "for the default ST-A2 backtest. Run `python3 scripts/download_dukascopy.py "
+                "--symbols EURUSD GBPUSD --start 2021-01 --end 2026-06` or place the CSV files "
+                "under data/historical/ before retrying."
+            ) from None
+        raise RuntimeError(
+            "SVOS auto-payload generation failed while running backtest_session_liquidity.py. "
+            f"stdout={stdout!r} stderr={stderr!r}"
+        ) from None
     if not summary_path.exists():
         raise RuntimeError(
             "backtest_session_liquidity.py did not write the expected JSON summary"
@@ -91,8 +114,16 @@ def build_replay_payload(
     missing_timestamps: list[str] = []
 
     for symbol in symbols:
-        m15 = load_m15(symbol, start=start, end=end)
-        h4 = load_h4(symbol, start=start, end=end)
+        try:
+            m15 = load_m15(symbol, start=start, end=end)
+            h4 = load_h4(symbol, start=start, end=end)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                f"Missing historical data for {symbol}: {exc}. "
+                "Expected files under data/historical/ or processed Parquet under data/processed/. "
+                "Run `python3 scripts/download_dukascopy.py --symbols EURUSD GBPUSD --start 2021-01 --end 2026-06` "
+                "before building the SVOS payload."
+            ) from None
         report = run_historical_replay(symbol, m15, h4, start=start, end=end)
         for day in report.days:
             for idx, signal in enumerate(day.signals):
@@ -129,6 +160,44 @@ def _metrics_from_backtest(summary: dict[str, Any]) -> dict[str, Any]:
     return metrics
 
 
+def _previous_metrics_from_backtest(summary: dict[str, Any]) -> dict[str, Any]:
+    rr_results = summary.get("rr_results", {}) if isinstance(summary.get("rr_results", {}), dict) else {}
+    best_rr = summary.get("best_rr")
+    best_result = summary.get("best_result", {}) or {}
+    std = best_result.get("std_metrics", {}) or {}
+    if rr_results and best_rr is not None:
+        rr_keys: list[float] = []
+        for key in rr_results:
+            try:
+                rr_keys.append(float(key))
+            except (TypeError, ValueError):
+                continue
+        if rr_keys:
+            sorted_rrs = sorted(rr_keys)
+            try:
+                best_rr_float = float(best_rr)
+            except (TypeError, ValueError):
+                best_rr_float = sorted_rrs[-1]
+            runner_up = None
+            for rr in sorted_rrs:
+                if rr < best_rr_float:
+                    runner_up = rr
+            if runner_up is None and len(sorted_rrs) > 1:
+                runner_up = sorted_rrs[-2]
+            if runner_up is not None:
+                candidate = rr_results.get(str(runner_up), {}) or rr_results.get(runner_up, {})
+                if isinstance(candidate, dict):
+                    return dict(candidate)
+    return {
+        "trade_count": int(std.get("trade_count", 0) or 0),
+        "expectancy": float(std.get("avg_r", 0.0) or 0.0),
+        "max_drawdown": float(std.get("max_dd", 0.0) or 0.0),
+        "profit_factor": float(std.get("net_pf", 0.0) or 0.0),
+        "win_rate": float(std.get("win_rate", 0.0) or 0.0),
+        "net_return": float(std.get("total_net_r", 0.0) or 0.0),
+    }
+
+
 def build_backtest_payload(summary: dict[str, Any]) -> dict[str, Any]:
     metrics = _metrics_from_backtest(summary)
     gate = bool(summary.get("any_pass", False))
@@ -149,18 +218,53 @@ def build_backtest_payload(summary: dict[str, Any]) -> dict[str, Any]:
 def build_robustness_payload(summary: dict[str, Any]) -> dict[str, Any]:
     metrics = _metrics_from_backtest(summary)
     gate = bool(summary.get("any_pass", False))
+    best_result = summary.get("best_result", {}) or {}
+    trades = best_result.get("trade_rows") or best_result.get("trades") or []
+    rr_results = summary.get("rr_results", {}) if isinstance(summary.get("rr_results", {}), dict) else {}
+    trade_rows = trades if isinstance(trades, list) and trades and isinstance(trades[0], dict) else []
+
+    if trade_rows:
+        walk_forward = walk_forward_analysis(trade_rows)
+        monte_carlo = monte_carlo_resampling(trade_rows)
+        regime = regime_analysis(trade_rows)
+        parameter_stability = parameter_sensitivity(rr_results) if rr_results else {"passed": gate, "reason": "no_rr_results"}
+    else:
+        walk_forward = {"passed": gate, "reason": "trade_rows_unavailable"}
+        monte_carlo = {"passed": gate, "reason": "trade_rows_unavailable"}
+        regime = {"passed": gate, "reason": "trade_rows_unavailable"}
+        parameter_stability = {"passed": gate, "reason": "trade_rows_unavailable"}
+
+    execution_cost_passed = bool(best_result.get("gate", gate)) and metrics["profit_factor"] >= 1.0
+    lineage = build_lineage_metadata(
+        source="historical_backtest",
+        strategy=str(summary.get("strategy", "ST-A2")),
+        strategy_version=str(summary.get("strategy_version", summary.get("best_result", {}).get("strategy_version", "unknown"))),
+        artifact="robustness_payload",
+        extra={"run_id": summary.get("run_id", "")},
+    )
     return {
-        "completed_successfully": gate,
-        "walk_forward_passed": gate,
-        "monte_carlo_passed": gate,
-        "parameter_stability_passed": gate,
-        "regime_analysis_passed": gate,
-        "execution_cost_passed": gate,
+        "completed_successfully": bool(walk_forward.get("passed", gate))
+        and bool(monte_carlo.get("passed", gate))
+        and bool(parameter_stability.get("passed", gate))
+        and bool(regime.get("passed", gate))
+        and execution_cost_passed,
+        "walk_forward_passed": bool(walk_forward.get("passed", gate)),
+        "monte_carlo_passed": bool(monte_carlo.get("passed", gate)),
+        "parameter_stability_passed": bool(parameter_stability.get("passed", gate)),
+        "regime_analysis_passed": bool(regime.get("passed", gate)),
+        "execution_cost_passed": execution_cost_passed,
         "latest_metrics": metrics,
-        "previous_metrics": dict(metrics),
+        "previous_metrics": _previous_metrics_from_backtest(summary),
         "metrics": dict(metrics),
+        "analysis": {
+            "walk_forward": walk_forward,
+            "monte_carlo": monte_carlo,
+            "parameter_sensitivity": parameter_stability,
+            "regime": regime,
+        },
         "source": "historical_backtest",
         "auto_generated": True,
+        "lineage": lineage,
     }
 
 
@@ -245,6 +349,13 @@ def build_svos_payload_bundle(
             "end": end,
             "allow_synthetic_demo": allow_synthetic_demo,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "lineage": build_lineage_metadata(
+                source="svos_payload_builder",
+                strategy=strategy,
+                strategy_version=str(manifest.get("version", "unknown")),
+                artifact="svos_payload_bundle",
+                extra={"catalog_path": str(catalog_path) if catalog_path is not None else ""},
+            ),
         },
     )
 

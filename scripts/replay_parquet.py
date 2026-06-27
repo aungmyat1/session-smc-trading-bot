@@ -50,7 +50,11 @@ def _load_csv_fallback(sym: str, tf: str, start: str | None = None, end: str | N
     csv_sym = _CSV_SYM.get(sym, sym.replace("USD", "_USD"))
     path = DATA_HIST / f"{csv_sym}_{tf}.csv"
     if not path.exists():
-        raise FileNotFoundError(f"No processed Parquet or CSV found for {sym} {tf}")
+        raise FileNotFoundError(
+            f"Missing historical data file: {path}. "
+            "Run `python3 scripts/download_dukascopy.py --symbols EURUSD GBPUSD --start 2021-01 --end 2026-06` "
+            "or place the CSV at that path before retrying."
+        )
     df = pd.read_csv(path)
     df.columns = [c.lower() for c in df.columns]
     if start:

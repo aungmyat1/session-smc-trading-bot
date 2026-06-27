@@ -16,6 +16,10 @@ class ValidationRules:
     maximum_slippage_pip: float = 0.5
     maximum_pf_difference: float = 0.10
     maximum_missing_orders: float = 0.01
+    minimum_demo_executed_orders: int = 1
+    minimum_shadow_executed_orders: int = 30
+    minimum_small_live_executed_orders: int = 30
+    minimum_live_executed_orders: int = 100
     risk_account_balance: float = 10_000.0
     risk_pct: float = 0.5
     max_spread_points: dict[str, float] = field(default_factory=lambda: {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0})
@@ -39,6 +43,10 @@ def load_validation_rules(path: Path | str | None = None) -> ValidationRules:
         maximum_slippage_pip=float(payload.get("maximum_slippage_pip", 0.5)),
         maximum_pf_difference=float(payload.get("maximum_pf_difference", 0.10)),
         maximum_missing_orders=float(payload.get("maximum_missing_orders", 0.01)),
+        minimum_demo_executed_orders=int(payload.get("minimum_demo_executed_orders", 1)),
+        minimum_shadow_executed_orders=int(payload.get("minimum_shadow_executed_orders", 30)),
+        minimum_small_live_executed_orders=int(payload.get("minimum_small_live_executed_orders", 30)),
+        minimum_live_executed_orders=int(payload.get("minimum_live_executed_orders", 100)),
         risk_account_balance=float(payload.get("risk_account_balance", 10_000.0)),
         risk_pct=float(payload.get("risk_pct", 0.5)),
         max_spread_points=dict(payload.get("max_spread", {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0})),
@@ -49,4 +57,3 @@ def load_validation_rules(path: Path | str | None = None) -> ValidationRules:
         strategy_version=str(payload.get("strategy_version", "2.1.3")),
         rules_hash=str(payload.get("rules_hash", "a83f92")),
     )
-
