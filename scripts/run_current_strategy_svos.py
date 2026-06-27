@@ -31,6 +31,7 @@ from core.strategy_registry import (
 from research.svos.payload_builder import build_svos_payload_bundle
 from research.svos.engine import SVOSRunner
 from research.validation.engine import load_validation_config
+from research.lineage import build_release_metadata
 
 
 def _load_json(path: str | None) -> dict[str, Any]:
@@ -165,6 +166,7 @@ def main() -> int:
         "current_strategy": get_current_strategy_name(catalog_path),
         "overall_status": result.overall_status,
         "promoted_stage": result.promoted_stage,
+        "release": build_release_metadata(),
         "allow_live_promotion": args.allow_live_promotion,
         "report_dir": str(report_root),
         "catalog_path": str(catalog_path),

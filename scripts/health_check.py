@@ -37,6 +37,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
+from research.lineage import build_release_metadata
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -436,7 +437,8 @@ def main() -> None:
 
     if args.as_json:
         print(json.dumps({"timestamp": now, "checks": results,
-                          "verdict": _verdict(results)}, indent=2))
+                          "verdict": _verdict(results),
+                          "release": build_release_metadata()}, indent=2))
         return
 
     print()

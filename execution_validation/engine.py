@@ -20,6 +20,7 @@ from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrok
 from execution_simulator.execution.risk_engine import RiskEngine
 from execution_events import ExecutionEvent
 from models.order import Order
+from research.lineage import build_release_metadata
 
 _ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_REPORT_DIR = _ROOT / "execution_validation" / "reports"
@@ -56,6 +57,7 @@ class ExecutionValidationReport:
     sample_size_summary: dict[str, Any] = field(default_factory=dict)
     exit_path_exercised: bool = False
     live_approval_allowed: bool = False
+    release: dict[str, Any] = field(default_factory=build_release_metadata)
     metrics: dict[str, Any] = field(default_factory=dict)
     checks: dict[str, CheckResult] = field(default_factory=dict)
 
@@ -90,6 +92,7 @@ class ExecutionValidationReport:
             "sample_size_summary": self.sample_size_summary,
             "exit_path_exercised": self.exit_path_exercised,
             "live_approval_allowed": self.live_approval_allowed,
+            "release": self.release,
             "metrics": self.metrics,
             "checks": {name: asdict(check) for name, check in self.checks.items()},
         }

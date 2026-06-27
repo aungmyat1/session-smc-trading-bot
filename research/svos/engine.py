@@ -23,6 +23,7 @@ from research.validation.engine import (
     ValidationResult,
     load_validation_config,
 )
+from research.lineage import build_release_metadata
 
 _ROOT = Path(__file__).resolve().parents[2]
 
@@ -369,6 +370,7 @@ class SVOSRunResult:
     overall_status: StageStatus = "PASS"
     promoted_stage: str | None = None
     created_at: str = field(default_factory=_now)
+    release: dict[str, Any] = field(default_factory=build_release_metadata)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
