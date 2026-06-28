@@ -135,6 +135,7 @@ analytics:
     _write(tmp_path / "reports" / "index.json", json.dumps({"generated_at": "", "latest": {}, "reports": []}))
 
     monkeypatch.setenv("DB_BACKEND", "duckdb")
+    monkeypatch.setenv("LIVE_TRADING", "false")
     monkeypatch.setattr(dashboard_app, "_ROOT", tmp_path)
     monkeypatch.setattr(dashboard_app, "_CATALOG_PATH", tmp_path / "config" / "strategy_catalog.yaml")
     monkeypatch.setattr(dashboard_app, "_EVF_REPORTS_DIR", tmp_path / "execution_validation" / "reports")
