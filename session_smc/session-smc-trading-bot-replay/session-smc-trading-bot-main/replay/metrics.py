@@ -220,10 +220,14 @@ def gate_check(trades: list[ReplayTrade]) -> GateResult:
         else:
             overall = p_trade and p_pf_std and p_pf_2x and p_wr
             notes_parts = []
-            if not p_trade:  notes_parts.append(f"need {min_n} trades (got {m_std.n})")
-            if not p_pf_std: notes_parts.append(f"PF_std={m_std.pf_str()} < {GATE_MIN_PF_STD}")
-            if not p_pf_2x:  notes_parts.append(f"PF_2x={m_stress.pf_str()} < {GATE_MIN_PF_STRESS}")
-            if not p_wr:     notes_parts.append(f"WR={m_std.win_pct()} < {GATE_MIN_WIN_RATE*100:.0f}%")
+            if not p_trade:
+                notes_parts.append(f"need {min_n} trades (got {m_std.n})")
+            if not p_pf_std:
+                notes_parts.append(f"PF_std={m_std.pf_str()} < {GATE_MIN_PF_STD}")
+            if not p_pf_2x:
+                notes_parts.append(f"PF_2x={m_stress.pf_str()} < {GATE_MIN_PF_STRESS}")
+            if not p_wr:
+                notes_parts.append(f"WR={m_std.win_pct()} < {GATE_MIN_WIN_RATE*100:.0f}%")
             notes = "; ".join(notes_parts) if notes_parts else "All checks passed"
 
         gates.append(StrategyGate(
@@ -249,18 +253,13 @@ def gate_check(trades: list[ReplayTrade]) -> GateResult:
 def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
     """Print a full replay summary to stdout."""
     print(f"\n{'═'*68}")
-    print(f"  REPLAY SUMMARY")
+    print("  REPLAY SUMMARY")
     print(f"{'═'*68}")
 
     # ── Per-strategy table ────────────────────────────────────────────────────
     print(f"\n  {'Strategy':<20} {'Mode':<8} {'N':>5} {'PF_std':>8} {'PF_2x':>8} "
           f"{'WR':>7} {'AvgR':>7} {'MaxDD':>7} {'Gate':>8}")
     print(f"  {'-'*68}")
-
-    mode_map = {
-        "ST-A2": "demo", "LondonBreakout": "demo", "NYMomentum": "demo",
-        "AdaptiveSMC": "shadow", "VWAPBreakout": "shadow",
-    }
 
     for g in gate.strategies:
         st_trades  = [t for t in trades if t.strategy == g.strategy]
@@ -279,7 +278,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
     demo_trades = [t for t in trades if t.mode == "demo"]
     if demo_trades:
         print(f"\n  {'─'*68}")
-        print(f"  Year breakdown (demo strategies, std spread)")
+        print("  Year breakdown (demo strategies, std spread)")
         print(f"  {'Year':<8} {'N':>5} {'PF':>8} {'WR':>7} {'AvgR':>7} {'TotalR':>8}")
         print(f"  {'─'*68}")
         yr_map = year_report(demo_trades, "net_r_std")
@@ -290,7 +289,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     # ── Per-session breakdown ─────────────────────────────────────────────────
     if demo_trades:
-        print(f"\n  Session breakdown (demo strategies, std spread)")
+        print("\n  Session breakdown (demo strategies, std spread)")
         print(f"  {'Session':<12} {'N':>5} {'PF':>8} {'WR':>7} {'AvgR':>7}")
         print(f"  {'─'*68}")
         sess_map = session_report(demo_trades, "net_r_std")
@@ -299,7 +298,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     # ── Gate verdict ──────────────────────────────────────────────────────────
     print(f"\n  {'═'*68}")
-    print(f"  GATE RESULTS")
+    print("  GATE RESULTS")
     print(f"  {'─'*68}")
     for g in gate.strategies:
         icon = "✅" if g.overall else ("📋" if g.mode == "shadow" else "❌")
@@ -307,7 +306,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     print(f"\n  {'─'*68}")
     if gate.demo_ready:
-        print(f"  ✅ ALL DEMO STRATEGIES PASS — cleared for Vantage demo connection")
+        print("  ✅ ALL DEMO STRATEGIES PASS — cleared for Vantage demo connection")
     else:
         failed = [g.strategy for g in gate.strategies if g.mode == "demo" and not g.overall]
         print(f"  ❌ DEMO GATE FAIL — {', '.join(failed)} did not pass")

@@ -13,11 +13,9 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
-from replay.engine import ReplayTrade, ReplayResult
+from replay.engine import ReplayResult
 from replay.metrics import (
-    MetricSet, GateResult, gate_check,
-    compute_metrics, strategy_report, symbol_report,
-    year_report, session_report,
+    GateResult, compute_metrics, year_report, session_report,
 )
 
 _RESULTS_DIR = Path(__file__).parent / "results"
@@ -141,10 +139,8 @@ def export_report(result: ReplayResult, gate: GateResult, path: Path | None = No
         st = [t for t in result.trades if t.strategy == name]
         std_rs    = [t.net_r_std    for t in st]
         stress_rs = [t.net_r_stress for t in st]
-        gross_rs  = [t.gross_r      for t in st]
         m_std     = compute_metrics(std_rs,    [t.exit_reason for t in st])
         m_stress  = compute_metrics(stress_rs)
-        m_gross   = compute_metrics(gross_rs)
 
         mode = st[0].mode if st else "?"
         lines += [f"### {name} ({mode})", ""]
