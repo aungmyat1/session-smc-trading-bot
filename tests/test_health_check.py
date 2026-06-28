@@ -110,3 +110,31 @@ def test_recovery_check_warns_when_no_artifacts(tmp_path, monkeypatch):
     result = health_check.check_recovery()
     assert result["status"] == "WARN"
     assert "no restart recovery state" in result["detail"].lower()
+
+
+def test_emergency_stop_blocks_risk_engine(tmp_path, monkeypatch):
+    monkeypatch.setattr(health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "reports" / "control_state.json").write_text(
+        '{"emergency_stop":{"active":true,"reason":"operator halt"}}',
+        encoding="utf-8",
+    )
+
+    result = health_check.check_risk_engine()
+
+    assert result["status"] == "FAIL"
+    assert "EMERGENCY_STOP" in result["detail"]
+
+
+def test_emergency_stop_blocks_execution(tmp_path, monkeypatch):
+    monkeypatch.setattr(health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "reports" / "control_state.json").write_text(
+        '{"emergency_stop":{"active":true,"reason":"operator halt"}}',
+        encoding="utf-8",
+    )
+
+    result = health_check.check_execution()
+
+    assert result["status"] == "BLOCKED"
+    assert "EMERGENCY_STOP" in result["detail"]

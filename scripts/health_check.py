@@ -60,6 +60,7 @@ _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
 _DB_CONNECT_TIMEOUT_S = 3
 _DB_BACKEND_CHOICES = {"auto", "postgres", "duckdb", "sqlite", "disabled"}
+_CONTROL_STATE_PATH = _ROOT / "reports" / "control_state.json"
 
 # ── Individual checks ──────────────────────────────────────────────────────────
 
@@ -149,6 +150,21 @@ def _load_yaml(path: Path) -> dict:
     except Exception:
         return {}
     return payload if isinstance(payload, dict) else {}
+
+
+def _load_control_state() -> dict:
+    if not _CONTROL_STATE_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(_CONTROL_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _emergency_stop_state() -> dict:
+    state = _load_control_state().get("emergency_stop", {})
+    return state if isinstance(state, dict) else {}
 
 
 def _infer_db_backend(explicit_backend: str | None = None) -> tuple[str, dict]:
@@ -264,6 +280,15 @@ def check_research_db(db_backend: str | None = None) -> dict:
 
 
 def check_risk_engine() -> dict:
+    emergency = _emergency_stop_state()
+    if emergency.get("active"):
+        reason = emergency.get("reason", "dashboard emergency stop active")
+        return {
+            "status": "FAIL",
+            "detail": f"blocked: EMERGENCY_STOP ({reason})",
+            "emergency_stop": emergency,
+        }
+
     state_path = _ROOT / "logs" / "bot_state.json"
     state: dict = {}
     if state_path.exists():
@@ -301,6 +326,15 @@ def check_portfolio() -> dict:
 
 
 def check_execution() -> dict:
+    emergency = _emergency_stop_state()
+    if emergency.get("active"):
+        reason = emergency.get("reason", "dashboard emergency stop active")
+        return {
+            "status": "BLOCKED",
+            "detail": f"EMERGENCY_STOP active — {reason}",
+            "emergency_stop": emergency,
+        }
+
     mode      = os.environ.get("TRADING_MODE", "shadow").lower()
     demo_only = os.environ.get("DEMO_ONLY", "true").lower() not in ("false", "0", "no")
     live      = os.environ.get("LIVE_TRADING", "false").lower() in ("true", "1", "yes")

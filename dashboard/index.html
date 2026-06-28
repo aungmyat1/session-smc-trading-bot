@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SMC Trading Bot — Control Panel</title>
+<title>ISOP Control Panel</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -319,6 +319,118 @@
   }
   .output-box.visible { display: block; }
 
+  .kv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .kv-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .kv-card .label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 4px;
+  }
+  .kv-card .value {
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .mini-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .mini-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 12px;
+  }
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .report-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .report-card h4 {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .report-card .meta {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .report-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .report-actions .action-btn,
+  .report-actions .refresh-btn {
+    min-width: 150px;
+    justify-content: center;
+  }
+  .alert-feed {
+    max-height: 320px;
+    overflow-y: auto;
+    display: grid;
+    gap: 8px;
+  }
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .filter-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: var(--blue-dim);
+  }
+  .alert-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .alert-item.critical { border-color: var(--red); }
+  .alert-item.audit { border-color: var(--blue); }
+  .alert-item .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .section-note {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
   /* --- Score ring --- */
   .score-container { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
   .score-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
@@ -358,8 +470,8 @@
   <div class="header-left">
     <span style="font-size:20px;">📊</span>
     <div>
-      <h1>SMC Trading Bot — Control Panel</h1>
-      <div class="subtitle">SVOS &bull; EVF &bull; Trade Status</div>
+      <h1>ISOP Control Panel</h1>
+      <div class="subtitle">SVOS &bull; EVF &bull; RGM &bull; Governance &bull; SMO</div>
     </div>
   </div>
   <div class="header-right">
@@ -391,19 +503,34 @@
       <div id="hdr-evf-status" class="sub">—</div>
     </div>
     <div class="stat-card">
+      <div class="label">RGM Risk Status</div>
+      <div id="hdr-rgm" class="value">—</div>
+      <div id="hdr-rgm-sub" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Governance Approval</div>
+      <div id="hdr-governance" class="value">—</div>
+      <div id="hdr-governance-sub" class="sub">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">SMO Monitoring Status</div>
+      <div id="hdr-smo" class="value">—</div>
+      <div id="hdr-smo-sub" class="sub">—</div>
+    </div>
+    <div class="stat-card">
       <div class="label">Total Trades</div>
       <div id="hdr-trades" class="value">—</div>
       <div id="hdr-winrate" class="sub">—</div>
     </div>
     <div class="stat-card">
-      <div class="label">Avg R / Total R</div>
-      <div id="hdr-avg-r" class="value">—</div>
-      <div id="hdr-total-r" class="sub">—</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Live Trading</div>
+      <div class="label">Live Trading Status</div>
       <div id="hdr-live" class="value red">OFF</div>
       <div class="sub">Manual flip only</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Emergency Stop Status</div>
+      <div id="hdr-emergency" class="value">—</div>
+      <div id="hdr-emergency-sub" class="sub">—</div>
     </div>
   </div>
 
@@ -413,8 +540,8 @@
       <div class="panel-header-left">
         <span>🔬</span>
         <div>
-          <div class="panel-title">SVOS — Strategy Validation</div>
-          <div class="panel-subtitle">Stage-gate pipeline for all strategies</div>
+          <div class="panel-title">SVOS Research Qualification</div>
+          <div class="panel-subtitle">Stage-gate research and validation pipeline</div>
         </div>
       </div>
       <span id="svos-current-badge" class="badge badge-unknown">—</span>
@@ -466,8 +593,8 @@
       <div class="panel-header-left">
         <span>⚡</span>
         <div>
-          <div class="panel-title">EVF — Execution Validation</div>
-          <div class="panel-subtitle">Signal accuracy, slippage, broker rules</div>
+          <div class="panel-title">EVF Execution Validation</div>
+          <div class="panel-subtitle">Signal accuracy, slippage, latency, and execution rules</div>
         </div>
       </div>
       <span id="evf-status-badge" class="badge badge-unknown">—</span>
@@ -552,14 +679,119 @@
     </div>
   </div>
 
-  <!-- Trade Status Panel -->
+  <!-- RGM Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🛡️</span>
+        <div>
+          <div class="panel-title">RGM Risk Qualification</div>
+          <div class="panel-subtitle">Exposure, portfolio safety, and emergency state</div>
+        </div>
+      </div>
+      <span id="rgm-status-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div id="rgm-grid" class="kv-grid">
+        <div class="loading">Loading RGM data…</div>
+      </div>
+      <div id="rgm-breaches" class="mini-list"></div>
+      <div class="section-note">Emergency stop here is a dashboard control-state halt with audit logging. It does not place or close orders.</div>
+    </div>
+    <div class="action-panel">
+      <h4>Emergency Stop — requires confirm token</h4>
+      <div class="action-row">
+        <input id="emergency-reason" class="token-input" placeholder="Reason for emergency stop" />
+        <input id="emergency-token" class="token-input" placeholder="CONFIRM-EMERGENCY-STOP" />
+        <button class="action-btn secondary" onclick="triggerEmergencyStop()">■ Emergency Stop</button>
+      </div>
+      <div class="action-row" style="margin-top:8px;">
+        <input id="emergency-clear-reason" class="token-input" placeholder="Reason for clearing emergency stop" />
+        <input id="emergency-clear-token" class="token-input" placeholder="CONFIRM-CLEAR-EMERGENCY-STOP" />
+        <button class="action-btn primary" onclick="clearEmergencyStop()">Clear Emergency Stop</button>
+      </div>
+      <div id="emergency-output" class="output-box"></div>
+    </div>
+  </div>
+
+  <!-- Governance Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🏛️</span>
+        <div>
+          <div class="panel-title">Governance Control Plane</div>
+          <div class="panel-subtitle">Approval, promotion state, and lifecycle authority</div>
+        </div>
+      </div>
+      <span id="governance-status-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div id="governance-grid" class="kv-grid">
+        <div class="loading">Loading governance data…</div>
+      </div>
+      <div id="governance-promotion" class="mini-list"></div>
+    </div>
+  </div>
+
+  <!-- SMO Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>📡</span>
+        <div>
+          <div class="panel-title">SMO Monitoring</div>
+          <div class="panel-subtitle">Runtime monitoring, incidents, drift-facing review</div>
+        </div>
+      </div>
+      <span id="smo-status-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div id="smo-grid" class="kv-grid">
+        <div class="loading">Loading SMO data…</div>
+      </div>
+      <div id="smo-recent" class="mini-list"></div>
+    </div>
+  </div>
+
+  <!-- Reports Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🗂️</span>
+        <div>
+          <div class="panel-title">Reports Center</div>
+          <div class="panel-subtitle">Latest operating reports and read-only generation</div>
+        </div>
+      </div>
+      <span id="reports-rec-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div id="reports-grid" class="report-grid">
+        <div class="loading">Loading report index…</div>
+      </div>
+      <div class="report-actions">
+        <button class="refresh-btn" onclick="generateReport('daily')">Generate Daily Report</button>
+        <button class="refresh-btn" onclick="generateReport('risk')">Generate Risk Report</button>
+        <button class="refresh-btn" onclick="generateReport('system-health')">Generate System Health Report</button>
+        <button class="refresh-btn" onclick="generateReport('live-readiness')">Generate Live Readiness Report</button>
+        <button class="refresh-btn" onclick="generateAllReports()">Generate All Reports</button>
+        <button class="refresh-btn" onclick="openLatestReport()">Open Latest Report</button>
+        <button class="refresh-btn" onclick="downloadLatestReport()">Download Report</button>
+        <button class="refresh-btn" onclick="markLatestReviewed()">Mark Reviewed</button>
+      </div>
+      <div id="reports-output" class="output-box"></div>
+    </div>
+  </div>
+
+  <!-- Trade Journal Panel -->
   <div class="panel full-width">
     <div class="panel-header">
       <div class="panel-header-left">
         <span>📈</span>
         <div>
-          <div class="panel-title">Live Trade Status</div>
-          <div class="panel-subtitle">Recent executions from journals</div>
+          <div class="panel-title">Trade Journal</div>
+          <div class="panel-subtitle">Recent executions and journal-backed trade outcomes</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
@@ -609,10 +841,38 @@
       </div>
     </div>
   </div>
+
+  <!-- Incident Panel -->
+  <div class="panel full-width">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🚨</span>
+        <div>
+          <div class="panel-title">Incident / Alert Log</div>
+          <div class="panel-subtitle">Recent runtime alerts and dashboard audit events</div>
+        </div>
+      </div>
+      <span id="incident-count-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div class="filter-row">
+        <button id="incident-filter-all" class="filter-chip active" onclick="setIncidentFilter('all')">All</button>
+        <button id="incident-filter-unack" class="filter-chip" onclick="setIncidentFilter('unacknowledged')">Unacknowledged</button>
+        <button id="incident-filter-control" class="filter-chip" onclick="setIncidentFilter('control')">Emergency Control</button>
+        <button id="incident-filter-audit" class="filter-chip" onclick="setIncidentFilter('audit')">Audit</button>
+      </div>
+      <div id="incident-feed" class="alert-feed">
+        <div class="loading">Loading incidents…</div>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script>
 const API = window.location.origin;
+let latestReportsCache = {};
+let latestOpenReportId = '';
+let incidentFilter = 'all';
 
 let _apiErrorCount = 0;
 
@@ -677,6 +937,22 @@ function fmtShort(iso) {
   } catch { return iso; }
 }
 
+function toneClass(value) {
+  const s = (value || '').toString().toUpperCase();
+  if (['PASS','APPROVED','QUALIFIED','HEALTHY','ONLINE','CONTINUE','DEMO_READY','LIVE_READY'].includes(s)) return 'green';
+  if (['WARN','WATCH','PENDING','REVIEW'].includes(s)) return 'yellow';
+  if (['FAIL','BLOCKED','PAUSE','ALERT','NOT_READY'].includes(s)) return 'red';
+  return 'muted';
+}
+
+function recBadgeClass(value) {
+  const s = (value || '').toString().toUpperCase();
+  if (['CONTINUE','DEMO_READY','LIVE_READY'].includes(s)) return 'badge-pass';
+  if (['REVIEW'].includes(s)) return 'badge-pending';
+  if (['PAUSE','NOT_READY'].includes(s)) return 'badge-fail';
+  return 'badge-unknown';
+}
+
 // ---- Status summary ----
 async function loadStatus() {
   const d = await apiFetch('/api/status');
@@ -699,6 +975,21 @@ async function loadStatus() {
   document.getElementById('hdr-trades').textContent = d.trade_count || 0;
   document.getElementById('hdr-winrate').textContent = (d.win_rate || 0) + '% win rate';
 
+  const rgmEl = document.getElementById('hdr-rgm');
+  rgmEl.textContent = d.rgm_risk_status || '—';
+  rgmEl.className = 'value ' + toneClass(d.rgm_risk_status);
+  document.getElementById('hdr-rgm-sub').textContent = 'risk layer';
+
+  const govEl = document.getElementById('hdr-governance');
+  govEl.textContent = d.governance_approval || '—';
+  govEl.className = 'value ' + toneClass(d.governance_approval);
+  document.getElementById('hdr-governance-sub').textContent = 'promotion control';
+
+  const smoEl = document.getElementById('hdr-smo');
+  smoEl.textContent = d.smo_monitoring_status || '—';
+  smoEl.className = 'value ' + toneClass(d.smo_monitoring_status);
+  document.getElementById('hdr-smo-sub').textContent = 'monitoring layer';
+
   const liveEl = document.getElementById('hdr-live');
   const liveBadge = document.getElementById('live-badge');
   if (d.live_trading) {
@@ -708,6 +999,11 @@ async function loadStatus() {
     liveEl.textContent = 'OFF'; liveEl.className = 'value muted';
     liveBadge.textContent = 'PAPER'; liveBadge.className = 'live-badge paper';
   }
+
+  const emergencyEl = document.getElementById('hdr-emergency');
+  emergencyEl.textContent = d.emergency_stop_active ? 'ACTIVE' : 'CLEAR';
+  emergencyEl.className = 'value ' + (d.emergency_stop_active ? 'red' : 'green');
+  document.getElementById('hdr-emergency-sub').textContent = d.emergency_stop_reason || 'dashboard control state';
 
   document.getElementById('last-update').textContent = 'Updated ' + fmtShort(d.fetched_at);
 }
@@ -883,10 +1179,6 @@ async function loadTrades() {
   document.getElementById('trade-count-badge').className = 'badge badge-unknown';
 
   // Header summary
-  document.getElementById('hdr-avg-r').textContent = (s.avg_r || 0).toFixed(2) + 'R';
-  document.getElementById('hdr-avg-r').className = 'value ' + (s.avg_r >= 0 ? 'green' : 'red');
-  document.getElementById('hdr-total-r').textContent = 'total: ' + (s.total_r || 0).toFixed(2) + 'R';
-
   // Trade rows
   const rows = d.recent || [];
   const rowsEl = document.getElementById('trade-rows');
@@ -911,6 +1203,281 @@ async function loadTrades() {
       <span class="${rClass}" style="font-weight:600;">${rStr}</span>
     </div>`;
   }).join('');
+}
+
+// ---- RGM ----
+async function loadRGM() {
+  const d = await apiFetch('/api/rgm');
+  if (!d) return;
+
+  const badge = document.getElementById('rgm-status-badge');
+  badge.textContent = d.qualification_status || '—';
+  badge.className = 'badge ' + recBadgeClass(d.qualification_status);
+
+  document.getElementById('rgm-grid').innerHTML = `
+    <div class="kv-card"><div class="label">Risk Status</div><div class="value ${toneClass(d.risk_status)}">${d.risk_status || '—'}</div><div class="sub">${d.risk_summary || '—'}</div></div>
+    <div class="kv-card"><div class="label">Portfolio Status</div><div class="value ${toneClass(d.portfolio_status)}">${d.portfolio_status || '—'}</div><div class="sub">${d.portfolio_summary || '—'}</div></div>
+    <div class="kv-card"><div class="label">Execution Mode</div><div class="value ${toneClass(d.execution_mode_status)}">${d.execution_mode_status || '—'}</div><div class="sub">live mode remains blocked</div></div>
+    <div class="kv-card"><div class="label">Emergency Stop</div><div class="value ${d.emergency_stop && d.emergency_stop.active ? 'red' : 'green'}">${d.emergency_stop && d.emergency_stop.active ? 'ACTIVE' : 'CLEAR'}</div><div class="sub">${(d.emergency_stop && d.emergency_stop.reason) || 'not engaged'}</div></div>
+  `;
+
+  const breaches = d.risk_breaches || [];
+  document.getElementById('rgm-breaches').innerHTML = breaches.length
+    ? breaches.map(item => `<div class="mini-row"><span>Risk breach</span><span class="red">${item}</span></div>`).join('')
+    : `<div class="mini-row"><span>Risk breaches</span><span class="green">NONE</span></div>`;
+}
+
+// ---- Governance ----
+async function loadGovernance() {
+  const d = await apiFetch('/api/governance');
+  if (!d) return;
+
+  const badge = document.getElementById('governance-status-badge');
+  badge.textContent = d.approval_status || '—';
+  badge.className = 'badge ' + recBadgeClass(d.approval_status === 'APPROVED' ? 'CONTINUE' : 'REVIEW');
+
+  document.getElementById('governance-grid').innerHTML = `
+    <div class="kv-card"><div class="label">Current Strategy</div><div class="value blue mono">${d.current_strategy || '—'}</div><div class="sub">status: ${d.strategy_status || '—'}</div></div>
+    <div class="kv-card"><div class="label">Approval</div><div class="value ${toneClass(d.approval_status)}">${d.approval_status || '—'}</div><div class="sub">approved=${d.approved ? 'true' : 'false'}</div></div>
+    <div class="kv-card"><div class="label">Deployment Target</div><div class="value ${toneClass(d.deployment_target)}">${d.deployment_target || '—'}</div><div class="sub">governance target</div></div>
+    <div class="kv-card"><div class="label">Architecture</div><div class="value purple">${(d.architecture && d.architecture.target_architecture) || 'ISOP v2'}</div><div class="sub">${(d.architecture && d.architecture.current_architecture) || 'transitional'}</div></div>
+  `;
+
+  const promotion = d.promotion_map || {};
+  document.getElementById('governance-promotion').innerHTML = Object.keys(promotion).length
+    ? Object.entries(promotion).map(([from, to]) => `<div class="mini-row"><span>${from}</span><span>${to}</span></div>`).join('')
+    : `<div class="mini-row"><span>Promotion map</span><span>Unavailable</span></div>`;
+}
+
+// ---- SMO ----
+async function loadSMO() {
+  const d = await apiFetch('/api/smo');
+  if (!d) return;
+
+  const badge = document.getElementById('smo-status-badge');
+  badge.textContent = d.monitoring_status || '—';
+  badge.className = 'badge ' + recBadgeClass(d.monitoring_status === 'HEALTHY' ? 'CONTINUE' : d.monitoring_status === 'WATCH' ? 'REVIEW' : 'PAUSE');
+
+  document.getElementById('smo-grid').innerHTML = `
+    <div class="kv-card"><div class="label">Monitoring Status</div><div class="value ${toneClass(d.monitoring_status)}">${d.monitoring_status || '—'}</div><div class="sub">SMO layer</div></div>
+    <div class="kv-card"><div class="label">Runner</div><div class="value ${toneClass(d.runner_status && d.runner_status.status)}">${(d.runner_status && d.runner_status.status) || '—'}</div><div class="sub">${(d.runner_status && d.runner_status.detail) || '—'}</div></div>
+    <div class="kv-card"><div class="label">Database</div><div class="value ${toneClass(d.database_status && d.database_status.status)}">${(d.database_status && d.database_status.status) || '—'}</div><div class="sub">${(d.database_status && d.database_status.detail) || '—'}</div></div>
+    <div class="kv-card"><div class="label">Critical Alerts</div><div class="value ${d.critical_alerts > 0 ? 'red' : 'green'}">${d.critical_alerts || 0}</div><div class="sub">incidents: ${d.incident_count || 0}</div></div>
+    <div class="kv-card"><div class="label">Emergency Stop</div><div class="value ${(d.emergency_stop && d.emergency_stop.active) ? 'red' : 'green'}">${(d.emergency_stop && d.emergency_stop.active) ? 'ACTIVE' : 'CLEAR'}</div><div class="sub">${(d.emergency_stop && (d.emergency_stop.clear_reason || d.emergency_stop.reason)) || 'no emergency state'}</div></div>
+  `;
+
+  const recent = d.recent_incidents || [];
+  const timeline = d.control_timeline || [];
+  const incidentRows = recent.slice(-3).reverse().map(item => `<div class="mini-row"><span>${item.acknowledged ? 'Incident (seen)' : 'Incident (new)'}</span><span class="mono">${(item.text || '').slice(-90)}</span></div>`);
+  const controlRows = timeline.slice(-3).reverse().map(entry => {
+    const action = (entry.action || '').replaceAll('_', ' ');
+    const detail = entry.detail || {};
+    const reason = detail.clear_reason || detail.reason || 'n/a';
+    return `<div class="mini-row"><span>${action}</span><span>${reason}</span></div>`;
+  });
+  const mergedRows = [...controlRows, ...incidentRows];
+  document.getElementById('smo-recent').innerHTML = mergedRows.length
+    ? mergedRows.join('')
+    : `<div class="mini-row"><span>Recent activity</span><span class="green">No recent alerts</span></div>`;
+}
+
+// ---- Reports ----
+function renderReportCard(label, record, reviewedAt) {
+  if (!record) {
+    return `<div class="report-card"><h4>${label}</h4><div class="meta">No report found</div></div>`;
+  }
+  return `<div class="report-card">
+    <h4>${label}</h4>
+    <div class="meta">${record.filename}</div>
+    <div class="meta">${fmtShort(record.created_at)}</div>
+    <div class="meta">${reviewedAt ? 'Reviewed ' + fmtShort(reviewedAt) : 'Not reviewed'}</div>
+  </div>`;
+}
+
+async function loadReports() {
+  const d = await apiFetch('/api/reports/latest');
+  if (!d) return;
+  latestReportsCache = d.latest || {};
+  const reviewed = d.reviewed || {};
+  const latestDaily = latestReportsCache['daily'];
+  const latestStrategy = latestReportsCache['strategy'];
+  const latestRisk = latestReportsCache['risk'];
+  const latestExecution = latestReportsCache['execution'];
+  const latestSystem = latestReportsCache['system-health'];
+  const latestReadiness = latestReportsCache['live-readiness'];
+  const rec = d.recommendation_badge || 'REVIEW';
+  latestOpenReportId = (latestReadiness || latestDaily || latestRisk || latestSystem || latestStrategy || latestExecution || {}).report_id || '';
+
+  const badge = document.getElementById('reports-rec-badge');
+  badge.textContent = rec;
+  badge.className = 'badge ' + recBadgeClass(rec);
+
+  document.getElementById('reports-grid').innerHTML = [
+    renderReportCard('Latest daily report', latestDaily, reviewed[latestDaily && latestDaily.report_id]),
+    renderReportCard('Latest strategy report', latestStrategy, reviewed[latestStrategy && latestStrategy.report_id]),
+    renderReportCard('Latest risk report', latestRisk, reviewed[latestRisk && latestRisk.report_id]),
+    renderReportCard('Latest execution report', latestExecution, reviewed[latestExecution && latestExecution.report_id]),
+    renderReportCard('Latest system health report', latestSystem, reviewed[latestSystem && latestSystem.report_id]),
+    renderReportCard('Latest live readiness report', latestReadiness, reviewed[latestReadiness && latestReadiness.report_id]),
+  ].join('');
+}
+
+async function generateReport(type) {
+  const out = document.getElementById('reports-output');
+  out.className = 'output-box visible';
+  out.textContent = `Generating ${type} report…`;
+  try {
+    const r = await fetch(API + '/api/reports/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}`;
+    } else {
+      out.textContent = `Generated ${d.report_type}\n` + (d.artifacts || []).map(a => a.path).join('\n');
+      await loadReports();
+      await loadSMO();
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
+async function generateAllReports() {
+  const out = document.getElementById('reports-output');
+  out.className = 'output-box visible';
+  out.textContent = 'Generating all reports…';
+  try {
+    const r = await fetch(API + '/api/reports/generate/all', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}`;
+    } else {
+      out.textContent = (d.artifacts || []).map(a => a.path).join('\n');
+      await loadReports();
+      await loadSMO();
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
+async function openLatestReport() {
+  const out = document.getElementById('reports-output');
+  out.className = 'output-box visible';
+  if (!latestOpenReportId) {
+    out.textContent = 'No latest report found.';
+    return;
+  }
+  const d = await apiFetch('/api/reports/' + encodeURIComponent(latestOpenReportId));
+  if (!d) {
+    out.textContent = 'Failed to open report.';
+    return;
+  }
+  out.textContent = d.content || 'Empty report.';
+}
+
+async function downloadLatestReport() {
+  if (!latestOpenReportId) return;
+  const d = await apiFetch('/api/reports/' + encodeURIComponent(latestOpenReportId));
+  if (!d || !d.content) return;
+  const blob = new Blob([d.content], { type: 'text/markdown;charset=utf-8' });
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = d.filename || 'report.md';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
+}
+
+async function markLatestReviewed() {
+  const out = document.getElementById('reports-output');
+  out.className = 'output-box visible';
+  if (!latestOpenReportId) {
+    out.textContent = 'No latest report to mark reviewed.';
+    return;
+  }
+  const d = await apiFetch('/api/reports/' + encodeURIComponent(latestOpenReportId) + '?reviewed=1');
+  if (!d) {
+    out.textContent = 'Failed to mark report reviewed.';
+    return;
+  }
+  out.textContent = `Marked reviewed at ${fmtShort(d.reviewed_at)}`;
+  await loadReports();
+  await loadSMO();
+}
+
+// ---- Incident feed ----
+async function loadIncidents() {
+  const d = await apiFetch('/api/smo');
+  if (!d) return;
+  const feed = document.getElementById('incident-feed');
+  const incidents = d.recent_incidents || [];
+  const audit = d.recent_audit || [];
+  const timeline = d.control_timeline || [];
+  const allItems = [
+    ...incidents.slice(-8).map(item => ({ type: 'incident', ...item })),
+    ...audit.slice(-8).map(item => ({ type: 'audit', text: JSON.stringify(item) })),
+    ...timeline.slice(-8).map(item => ({ type: 'control', text: JSON.stringify(item) })),
+  ].slice(-20).reverse();
+  const merged = allItems.filter(item => {
+    if (incidentFilter === 'all') return true;
+    if (incidentFilter === 'unacknowledged') return item.type === 'incident' && !item.acknowledged;
+    if (incidentFilter === 'control') return item.type === 'control';
+    if (incidentFilter === 'audit') return item.type === 'audit';
+    return true;
+  }).slice(0, 12);
+  document.getElementById('incident-count-badge').textContent = `${d.incident_count || 0} incidents`;
+  document.getElementById('incident-count-badge').className = 'badge ' + ((d.critical_alerts || 0) > 0 ? 'badge-fail' : ((d.unacknowledged_incident_count || 0) > 0 ? 'badge-pending' : 'badge-pass'));
+  feed.innerHTML = merged.length ? merged.map(item => `
+    <div class="alert-item ${item.type === 'audit' || item.type === 'control' ? 'audit' : ((item.text || '').includes('CRITICAL') ? 'critical' : '')}">
+      <div class="meta">${item.type === 'audit' ? 'dashboard audit' : item.type === 'control' ? 'emergency control' : 'runtime alert'}</div>
+      <div class="mono">${item.text}</div>
+      ${item.type === 'incident' ? `<div style="margin-top:8px;"><button class="refresh-btn" onclick="ackIncident('${item.id}')">${item.acknowledged ? 'Acknowledged' : 'Acknowledge'}</button>${item.reviewed_at ? ` <span class="timestamp">seen ${fmtShort(item.reviewed_at)}</span>` : ''}</div>` : ''}
+    </div>
+  `).join('') : '<div class="loading">No incidents or audit events.</div>';
+}
+
+function setIncidentFilter(next) {
+  incidentFilter = next;
+  for (const [key, id] of Object.entries({
+    all: 'incident-filter-all',
+    unacknowledged: 'incident-filter-unack',
+    control: 'incident-filter-control',
+    audit: 'incident-filter-audit',
+  })) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.className = 'filter-chip' + (key === next ? ' active' : '');
+  }
+  loadIncidents();
+}
+
+async function ackIncident(incidentId) {
+  const out = document.getElementById('reports-output');
+  out.className = 'output-box visible';
+  out.textContent = `Acknowledging ${incidentId}…`;
+  try {
+    const r = await fetch(API + '/api/incidents/ack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ incident_id: incidentId }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}`;
+    } else {
+      out.textContent = `Acknowledged ${d.incident_id} at ${fmtShort(d.reviewed_at)}`;
+      await loadSMO();
+      await loadIncidents();
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
 }
 
 // ---- Actions ----
@@ -964,8 +1531,66 @@ async function runEVF() {
   }
 }
 
+async function triggerEmergencyStop() {
+  const token = document.getElementById('emergency-token').value.trim();
+  const reason = document.getElementById('emergency-reason').value.trim();
+  const out = document.getElementById('emergency-output');
+  out.className = 'output-box visible';
+  out.textContent = 'Submitting emergency stop request…';
+  try {
+    const r = await fetch(API + '/api/emergency-stop', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm_token: token, reason }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}\nRequired token: ${d.required || ''}`;
+    } else {
+      out.textContent = `Emergency stop active at ${fmtShort(d.emergency_stop.activated_at)}\nReason: ${d.emergency_stop.reason}`;
+      await refreshAll();
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
+async function clearEmergencyStop() {
+  const token = document.getElementById('emergency-clear-token').value.trim();
+  const reason = document.getElementById('emergency-clear-reason').value.trim();
+  const out = document.getElementById('emergency-output');
+  out.className = 'output-box visible';
+  out.textContent = 'Submitting emergency stop clear request…';
+  try {
+    const r = await fetch(API + '/api/emergency-stop/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm_token: token, reason }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      out.textContent = `ERROR: ${d.error || r.status}\nRequired token: ${d.required || ''}`;
+    } else {
+      out.textContent = `Emergency stop cleared at ${fmtShort(d.emergency_stop.cleared_at)}\nClear reason: ${d.emergency_stop.clear_reason}`;
+      await refreshAll();
+    }
+  } catch (e) {
+    out.textContent = 'Request failed: ' + e.message;
+  }
+}
+
 async function refreshAll() {
-  await Promise.all([loadStatus(), loadSVOS(), loadEVF(), loadTrades()]);
+  await Promise.all([
+    loadStatus(),
+    loadSVOS(),
+    loadEVF(),
+    loadRGM(),
+    loadGovernance(),
+    loadSMO(),
+    loadReports(),
+    loadTrades(),
+    loadIncidents(),
+  ]);
 }
 
 // Auto-refresh every 30s

@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 """
-SVOS / EVF / Trade Status — Dashboard API server.
+ISOP Control Panel — Dashboard API server.
 
 Serves:
   GET /api/svos          — SVOS panel data (strategy catalog + last run)
   GET /api/evf           — EVF panel data (last validation report)
   GET /api/trades        — Live trade status (journal + open positions)
   GET /api/status        — System health summary
+  GET /api/rgm           — Risk qualification and emergency state
+  GET /api/governance    — Approval / promotion control-plane state
+  GET /api/smo           — Monitoring, incidents, drift-facing summary
+  GET /api/reports       — Report index
+  GET /api/reports/latest
+  GET /api/reports/<report_id>
+  POST /api/reports/generate
+  POST /api/reports/generate/all
+  POST /api/emergency-stop
+  POST /api/emergency-stop/clear
   POST /api/svos/run     — Trigger SVOS run (confirm token required)
   POST /api/evf/run      — Trigger EVF run  (confirm token required)
 
@@ -21,6 +31,7 @@ import json
 import os
 import subprocess
 import sys
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,6 +49,12 @@ except ImportError:
     sys.exit(1)
 
 from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
+from dashboard.audit_log import tail_audit_log, write_audit_log
+from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state, mark_incident_reviewed
+from dashboard.report_service import generate as generate_reports_payload
+from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
+from dashboard.status_mapper import health_to_status, recommendation_badge
+import scripts.health_check as health_check
 
 try:
     import yaml
@@ -52,8 +69,13 @@ _EVF_REPORTS_DIR = _ROOT / "execution_validation" / "reports"
 _JOURNAL_PATHS = [
     _ROOT / "logs" / "trades.jsonl",
     _ROOT / "logs" / "adaptive_trades.jsonl",
+    _ROOT / "logs" / "st_a2_demo_trades.jsonl",
+    _ROOT / "logs" / "portfolio_demo_trades.jsonl",
 ]
 _SVOS_REPORTS_DIR = _ROOT / "reports" / "current_strategy_svos"
+_ARCHITECTURE_PATH = _ROOT / "docs" / "SYSTEM_ARCHITECTURE.md"
+_BOT_LOG = _ROOT / "logs" / "bot.log"
+_RUNNER_LOG = _ROOT / "logs" / "st_a2_runner.log"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -119,12 +141,23 @@ def _all_trades() -> list[dict]:
 
 
 def _trade_stats(records: list[dict]) -> dict[str, Any]:
-    closed = [r for r in records if r.get("record_type") != "signal" and r.get("result_r") is not None]
+    closed = [
+        r for r in records
+        if r.get("record_type") != "signal"
+        and (r.get("result_r") is not None or r.get("result_R") is not None or r.get("r_multiple") is not None)
+    ]
     if not closed:
         return {"total": 0, "wins": 0, "losses": 0, "win_rate": 0.0, "avg_r": 0.0, "total_r": 0.0}
-    wins = [r for r in closed if (r.get("result_r") or 0) > 0]
-    losses = [r for r in closed if (r.get("result_r") or 0) <= 0]
-    total_r = sum(r.get("result_r", 0) for r in closed)
+    def _r_value(record: dict[str, Any]) -> float:
+        raw = record.get("result_r", record.get("result_R", record.get("r_multiple", 0))) or 0
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return 0.0
+
+    wins = [r for r in closed if _r_value(r) > 0]
+    losses = [r for r in closed if _r_value(r) <= 0]
+    total_r = sum(_r_value(r) for r in closed)
     avg_r = total_r / len(closed)
     win_rate = len(wins) / len(closed) * 100 if closed else 0
     return {
@@ -135,6 +168,163 @@ def _trade_stats(records: list[dict]) -> dict[str, Any]:
         "avg_r": round(avg_r, 3),
         "total_r": round(total_r, 3),
     }
+
+
+def _latest_architecture_status() -> dict[str, Any]:
+    text = _ARCHITECTURE_PATH.read_text(encoding="utf-8") if _ARCHITECTURE_PATH.exists() else ""
+    current = "SVOS transitional v1.7" if "SVOS transitional v1.7" in text else ""
+    target = "ISOP v2" if "ISOP v2" in text else ""
+    return {"current_architecture": current or "transitional", "target_architecture": target or "ISOP v2"}
+
+
+def _latest_log_lines(limit: int = 200) -> list[str]:
+    lines: list[str] = []
+    for path in (_BOT_LOG, _RUNNER_LOG):
+        if not path.exists():
+            continue
+        lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:])
+    return lines[-limit:]
+
+
+def _incident_summary(limit: int = 20) -> dict[str, Any]:
+    lines = _latest_log_lines(600)
+    incidents = [line for line in lines if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))]
+    audit = tail_audit_log(limit=limit)
+    return {
+        "incident_count": len(incidents),
+        "critical_count": sum(1 for line in incidents if "CRITICAL" in line or "FATAL" in line),
+        "recent_incidents": incidents[-limit:],
+        "recent_audit": audit[-limit:],
+    }
+
+
+def _incident_id(prefix: str, text: str) -> str:
+    digest = hashlib.sha1(f"{prefix}:{text}".encode("utf-8")).hexdigest()[:12]
+    return f"{prefix}-{digest}"
+
+
+def _decorate_incidents(lines: list[str], reviewed: dict[str, str], prefix: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for line in lines:
+        incident_id = _incident_id(prefix, line)
+        items.append({
+            "id": incident_id,
+            "text": line,
+            "reviewed_at": reviewed.get(incident_id, ""),
+            "acknowledged": incident_id in reviewed,
+        })
+    return items
+
+
+def _current_catalog_state() -> tuple[str, dict[str, Any], dict[str, Any]]:
+    catalog = _read_yaml(_CATALOG_PATH)
+    strategies = catalog.get("strategies", {})
+    current = catalog.get("current_strategy", "")
+    current_meta = strategies.get(current, {}) if isinstance(strategies, dict) else {}
+    if not isinstance(current_meta, dict):
+        current_meta = {}
+    return current, current_meta, catalog
+
+
+def _health_snapshot() -> dict[str, Any]:
+    backend, _ = health_check._infer_db_backend()  # type: ignore[attr-defined]
+    return {
+        "runner": health_check.check_runner(),
+        "risk": health_check.check_risk_engine(),
+        "portfolio": health_check.check_portfolio(),
+        "recovery": health_check.check_recovery(),
+        "execution": health_check.check_execution(),
+        "database": health_check.check_research_db(backend),
+    }
+
+
+def _governance_payload() -> dict[str, Any]:
+    current, current_meta, catalog = _current_catalog_state()
+    validation_map = _read_yaml(_ROOT / "config" / "validation.yaml")
+    architecture = _latest_architecture_status()
+    return {
+        "current_strategy": current,
+        "strategy_status": current_meta.get("status", "unknown"),
+        "approved": bool(current_meta.get("approved", False)),
+        "deployment_target": current_meta.get("deployment_target", "unknown"),
+        "last_svos_status": current_meta.get("last_svos_status", ""),
+        "last_svos_verification_ready": bool(current_meta.get("last_svos_verification_ready", False)),
+        "last_svos_promoted_stage": current_meta.get("last_svos_promoted_stage", ""),
+        "promotion_map": validation_map.get("promotion_map", {}),
+        "architecture": architecture,
+        "strategy_count": len((catalog.get("strategies") or {})),
+        "approval_status": "APPROVED" if current_meta.get("approved") else "PENDING",
+    }
+
+
+def _rgm_payload() -> dict[str, Any]:
+    health = _health_snapshot()
+    control = load_control_state()
+    incidents = _incident_summary(limit=10)
+    risk = health["risk"]
+    portfolio = health["portfolio"]
+    execution = health["execution"]
+    breaches = []
+    if risk.get("status") == "FAIL":
+        breaches.append(risk.get("detail", "risk guard failed"))
+    if portfolio.get("status") == "FAIL":
+        breaches.append(portfolio.get("detail", "portfolio guard failed"))
+    if control["emergency_stop"]["active"]:
+        breaches.append(control["emergency_stop"]["reason"] or "dashboard emergency stop active")
+    return {
+        "risk_status": risk.get("status", "UNKNOWN"),
+        "risk_summary": risk.get("detail", ""),
+        "portfolio_status": portfolio.get("status", "UNKNOWN"),
+        "portfolio_summary": portfolio.get("detail", ""),
+        "execution_mode_status": execution.get("status", "UNKNOWN"),
+        "recovery_status": health["recovery"].get("status", "UNKNOWN"),
+        "emergency_stop": control["emergency_stop"],
+        "incident_count": incidents["incident_count"],
+        "risk_breaches": breaches,
+        "qualification_status": "QUALIFIED" if not breaches and risk.get("status") == "PASS" else "REVIEW",
+    }
+
+
+def _smo_payload() -> dict[str, Any]:
+    health = _health_snapshot()
+    reports = latest_reports()
+    incidents = _incident_summary(limit=20)
+    control = load_control_state()
+    emergency = control.get("emergency_stop", {})
+    reviewed_incidents = control.get("incidents_reviewed", {})
+    recent_incident_items = _decorate_incidents(incidents["recent_incidents"], reviewed_incidents, "incident")
+    monitoring = health_to_status(health["runner"].get("status", "UNKNOWN"))
+    if incidents["critical_count"] > 0 or health["database"].get("status") == "FAIL":
+        monitoring = "ALERT"
+    elif health["risk"].get("status") != "PASS":
+        monitoring = "WATCH"
+    return {
+        "monitoring_status": monitoring,
+        "runner_status": health["runner"],
+        "database_status": health["database"],
+        "risk_status": health["risk"],
+        "execution_status": health["execution"],
+        "incident_count": incidents["incident_count"],
+        "critical_alerts": incidents["critical_count"],
+        "recent_incidents": recent_incident_items,
+        "recent_audit": incidents["recent_audit"],
+        "emergency_stop": emergency,
+        "control_timeline": [entry for entry in incidents["recent_audit"] if str(entry.get("action", "")).startswith("emergency_stop")],
+        "incident_reviewed": reviewed_incidents,
+        "unacknowledged_incident_count": sum(1 for item in recent_incident_items if not item["acknowledged"]),
+        "latest_reports": reports.get("latest", {}),
+        "recommendation_badge": reports.get("recommendation_badge", "REVIEW"),
+    }
+
+
+def _run_command(cmd: list[str], *, timeout: int = 120) -> tuple[int, str]:
+    proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        out, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise
+    return proc.returncode or 0, out[-4000:]
 
 # ---------------------------------------------------------------------------
 # SVOS API
@@ -181,17 +371,19 @@ def api_svos_run():
     confirm = body.get("confirm_token", "")
     strategy = body.get("strategy", "")
     if confirm != f"CONFIRM-SVOS-{strategy}":
+        write_audit_log("svos_run_denied", status="denied", detail={"strategy": strategy, "reason": "invalid_confirm_token"})
         return jsonify({"error": "Invalid or missing CONFIRM token", "required": f"CONFIRM-SVOS-{strategy}"}), 403
 
     cmd = [sys.executable, str(_ROOT / "scripts" / "run_current_strategy_svos.py"), "--strategy", strategy]
     try:
-        proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        out, _ = proc.communicate(timeout=_SUBPROCESS_TIMEOUT)
-        return jsonify({"status": "completed", "returncode": proc.returncode, "output": out[-4000:]})
+        rc, out = _run_command(cmd)
+        write_audit_log("svos_run", status="completed", detail={"strategy": strategy, "returncode": rc})
+        return jsonify({"status": "completed", "returncode": rc, "output": out})
     except subprocess.TimeoutExpired:
-        proc.kill()
+        write_audit_log("svos_run", status="timeout", detail={"strategy": strategy})
         return jsonify({"status": "timeout"}), 408
     except Exception as exc:
+        write_audit_log("svos_run", status="error", detail={"strategy": strategy, "error": str(exc)})
         return jsonify({"error": str(exc)}), 500
 
 # ---------------------------------------------------------------------------
@@ -237,19 +429,21 @@ def api_evf_run():
     strategy = body.get("strategy", "")
     payload_path = body.get("payload_path", "")
     if confirm != f"CONFIRM-EVF-{strategy}":
+        write_audit_log("evf_run_denied", status="denied", detail={"strategy": strategy, "reason": "invalid_confirm_token"})
         return jsonify({"error": "Invalid or missing CONFIRM token", "required": f"CONFIRM-EVF-{strategy}"}), 403
 
     cmd = [sys.executable, str(_ROOT / "scripts" / "run_evf.py"), "--strategy", strategy]
     if payload_path:
         cmd += ["--payload", payload_path]
     try:
-        proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        out, _ = proc.communicate(timeout=_SUBPROCESS_TIMEOUT)
-        return jsonify({"status": "completed", "returncode": proc.returncode, "output": out[-4000:]})
+        rc, out = _run_command(cmd)
+        write_audit_log("evf_run", status="completed", detail={"strategy": strategy, "returncode": rc, "payload_path": payload_path})
+        return jsonify({"status": "completed", "returncode": rc, "output": out})
     except subprocess.TimeoutExpired:
-        proc.kill()
+        write_audit_log("evf_run", status="timeout", detail={"strategy": strategy})
         return jsonify({"status": "timeout"}), 408
     except Exception as exc:
+        write_audit_log("evf_run", status="error", detail={"strategy": strategy, "error": str(exc)})
         return jsonify({"error": str(exc)}), 500
 
 # ---------------------------------------------------------------------------
@@ -270,10 +464,7 @@ def api_trades():
 
 @app.route("/api/status")
 def api_status():
-    catalog = _read_yaml(_CATALOG_PATH)
-    strategies = catalog.get("strategies", {})
-    current = catalog.get("current_strategy", "")
-    current_meta = strategies.get(current, {})
+    current, current_meta, _ = _current_catalog_state()
     port = int(os.getenv("DASHBOARD_PORT", "8080"))
     bind_host = dashboard_bind_host()
     public_host = dashboard_public_host(bind_host)
@@ -281,6 +472,10 @@ def api_status():
     records = _all_trades()
     stats = _trade_stats(records)
     evf = _latest_evf_report()
+    rgm = _rgm_payload()
+    governance = _governance_payload()
+    smo = _smo_payload()
+    control = load_control_state()
 
     return jsonify({
         "system": "ONLINE",
@@ -294,11 +489,120 @@ def api_status():
         "trade_count": stats["total"],
         "win_rate": stats["win_rate"],
         "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
+        "rgm_risk_status": rgm["qualification_status"],
+        "governance_approval": governance["approval_status"],
+        "smo_monitoring_status": smo["monitoring_status"],
+        "emergency_stop_active": bool(control["emergency_stop"]["active"]),
+        "emergency_stop_reason": control["emergency_stop"]["reason"],
         "dashboard_bind_host": bind_host,
         "dashboard_public_host": public_host,
         "dashboard_url": dashboard_url(public_host, port),
         "fetched_at": _now_iso(),
     })
+
+
+@app.route("/api/rgm")
+def api_rgm():
+    return jsonify({**_rgm_payload(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/governance")
+def api_governance():
+    return jsonify({**_governance_payload(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/smo")
+def api_smo():
+    return jsonify({**_smo_payload(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/reports")
+def api_reports():
+    payload = load_index()
+    return jsonify({
+        "generated_at": payload.get("generated_at", ""),
+        "reports": payload.get("reports", []),
+        "latest": payload.get("latest", {}),
+        "fetched_at": _now_iso(),
+    })
+
+
+@app.route("/api/reports/latest")
+def api_reports_latest():
+    return jsonify({**latest_reports(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/reports/<path:report_id>")
+def api_reports_by_id(report_id: str):
+    if request.args.get("reviewed") == "1":
+        review = mark_reviewed(report_id)
+        write_audit_log("report_reviewed", status="completed", detail=review)
+        return jsonify({**review, "fetched_at": _now_iso()})
+    try:
+        payload = read_report(report_id)
+    except FileNotFoundError:
+        return jsonify({"error": "Report not found", "report_id": report_id}), 404
+    return jsonify({**payload, "reviewed_at": load_control_state().get("reports_reviewed", {}).get(report_id, ""), "fetched_at": _now_iso()})
+
+
+@app.route("/api/reports/generate", methods=["POST"])
+def api_reports_generate():
+    body = request.get_json(silent=True) or {}
+    report_type = str(body.get("type", "")).strip()
+    if not report_type:
+        return jsonify({"error": "Missing report type"}), 400
+    try:
+        payload = generate_reports_payload(report_type)
+    except ValueError as exc:
+        write_audit_log("report_generate", status="denied", detail={"report_type": report_type, "error": str(exc)})
+        return jsonify({"error": str(exc)}), 400
+    write_audit_log("report_generate", status="completed", detail={"report_type": report_type, "artifact_count": len(payload.get("artifacts", []))})
+    return jsonify(payload)
+
+
+@app.route("/api/incidents/ack", methods=["POST"])
+def api_incidents_ack():
+    body = request.get_json(silent=True) or {}
+    incident_id = str(body.get("incident_id", "")).strip()
+    if not incident_id:
+        return jsonify({"error": "Missing incident_id"}), 400
+    review = mark_incident_reviewed(incident_id)
+    reviewed_at = review.get("incidents_reviewed", {}).get(incident_id, "")
+    write_audit_log("incident_acknowledged", status="completed", detail={"incident_id": incident_id, "reviewed_at": reviewed_at})
+    return jsonify({"incident_id": incident_id, "reviewed_at": reviewed_at, "fetched_at": _now_iso()})
+
+
+@app.route("/api/reports/generate/all", methods=["POST"])
+def api_reports_generate_all():
+    payload = generate_reports_payload("all")
+    write_audit_log("report_generate_all", status="completed", detail={"artifact_count": len(payload.get("artifacts", []))})
+    return jsonify(payload)
+
+
+@app.route("/api/emergency-stop", methods=["POST"])
+def api_emergency_stop():
+    body = request.get_json(silent=True) or {}
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-EMERGENCY-STOP":
+        write_audit_log("emergency_stop_denied", status="denied", detail={"reason": "invalid_confirm_token"})
+        return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-EMERGENCY-STOP"}), 403
+    reason = str(body.get("reason", "Manual operator stop")).strip() or "Manual operator stop"
+    state = activate_emergency_stop(reason=reason, activated_by="dashboard")
+    write_audit_log("emergency_stop", status="completed", detail=state["emergency_stop"])
+    return jsonify({"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
+
+
+@app.route("/api/emergency-stop/clear", methods=["POST"])
+def api_emergency_stop_clear():
+    body = request.get_json(silent=True) or {}
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-CLEAR-EMERGENCY-STOP":
+        write_audit_log("emergency_stop_clear_denied", status="denied", detail={"reason": "invalid_confirm_token"})
+        return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-CLEAR-EMERGENCY-STOP"}), 403
+    reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
+    state = clear_emergency_stop(reason=reason, cleared_by="dashboard")
+    write_audit_log("emergency_stop_clear", status="completed", detail=state["emergency_stop"])
+    return jsonify({"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
 
 # ---------------------------------------------------------------------------
 # Static dashboard
