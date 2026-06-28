@@ -21,7 +21,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -99,7 +99,6 @@ def _make_df_1h(hours: int = 48, base_price: float = 1.1000,
     Synthetic 1h OHLCV spanning `hours` candles starting at 2024-01-01 00:00 UTC.
     Generates mild sine-wave price movement.
     """
-    import numpy as np
 
     index  = pd.date_range("2024-01-01 00:00", periods=hours, freq="1h", tz="UTC")
     closes = base_price + amplitude * pd.Series(
@@ -340,7 +339,7 @@ class TestBuildSessionSignal:
             data = {"GBPUSD": {"df_4h": df_4h, "df_1h": df_1h}}
             cfg = {**CFG, "risk": {"max_concurrent_signals": 3}}
             with patch("smc_bot.session_range.build_session_signal", return_value=None) as mock_sig:
-                signals = scan_all(data, cfg, utc_now=utc_now)
+                scan_all(data, cfg, utc_now=utc_now)
                 # build_session_signal should never be called for GBPUSD/asian
                 asian_calls = [
                     c for c in mock_sig.call_args_list

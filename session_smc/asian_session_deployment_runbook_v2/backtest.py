@@ -14,11 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import logging
-import math
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,11 +25,7 @@ import pandas as pd
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from smc_bot import structure, tp_engine
 from smc_bot.session_range import (
-    build_session_box,
-    classify_session,
-    detect_sweep,
     build_session_signal,
 )
 
@@ -349,7 +341,6 @@ def run_backtest_for(
                            max_consec_loss, instrument, session}
     """
     session_cfg = CFG["sessions"][session_name]
-    start_h     = session_cfg["start_h"]
     end_h       = session_cfg["end_h"]
     instr_cfg   = CFG["instruments"][instrument]
 

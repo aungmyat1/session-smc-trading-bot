@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-asyncio
+
+      - name: Lint with ruff
+        run: |
+          ruff check session_smc/ tests/test_governance.py tests/test_risk_guards.py \
+            --ignore E501,E402
+
+      - name: Run governance smoke tests
+        run: |
+          python -m pytest tests/test_governance.py -v --tb=short
+
+      - name: Run risk guard smoke tests
+        run: |
+          python -m pytest tests/test_risk_guards.py -v --tb=short
+
+      - name: Run Phase-0 gate check (ST-A2 cached result)
+        run: |
+          python scripts/run_backtest.py --strategy-id ST-A2
