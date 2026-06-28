@@ -218,11 +218,17 @@ def test_new_isop_endpoints_work(client):
     governance = client.get("/api/governance")
     smo = client.get("/api/smo")
     reports = client.get("/api/reports")
+    platform = client.get("/api/platform")
+    registry = client.get("/api/platform/registry")
+    strategy = client.get("/api/platform/strategies/ST-A2")
 
     assert rgm.status_code == 200
     assert governance.status_code == 200
     assert smo.status_code == 200
     assert reports.status_code == 200
+    assert platform.status_code == 200
+    assert registry.status_code == 200
+    assert strategy.status_code == 200
 
     assert rgm.get_json()["qualification_status"] == "QUALIFIED"
     assert governance.get_json()["approval_status"] == "APPROVED"
@@ -230,6 +236,9 @@ def test_new_isop_endpoints_work(client):
     assert "control_timeline" in smo.get_json()
     assert "unacknowledged_incident_count" in smo.get_json()
     assert "reports" in reports.get_json()
+    assert platform.get_json()["service_status"]["research"] == "ONLINE"
+    assert registry.get_json()["strategy_count"] >= 1
+    assert strategy.get_json()["record"]["strategy"] == "ST-A2"
 
 
 def test_reports_generate_is_read_only_and_does_not_call_live_broker_checks(client, monkeypatch):

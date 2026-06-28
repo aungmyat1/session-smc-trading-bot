@@ -55,6 +55,7 @@ from dashboard.report_service import generate as generate_reports_payload
 from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
 from dashboard.status_mapper import health_to_status, recommendation_badge
 import scripts.health_check as health_check
+from svos.api.service import SVOSOperationalAPI
 
 try:
     import yaml
@@ -236,6 +237,16 @@ def _health_snapshot() -> dict[str, Any]:
         "execution": health_check.check_execution(),
         "database": health_check.check_research_db(backend),
     }
+
+
+def _platform_api() -> SVOSOperationalAPI:
+    return SVOSOperationalAPI(
+        root=_ROOT,
+        catalog_path=_CATALOG_PATH,
+        health_snapshot_factory=_health_snapshot,
+        latest_reports_factory=latest_reports,
+        control_state_factory=load_control_state,
+    )
 
 
 def _governance_payload() -> dict[str, Any]:
@@ -499,6 +510,25 @@ def api_status():
         "dashboard_url": dashboard_url(public_host, port),
         "fetched_at": _now_iso(),
     })
+
+
+@app.route("/api/platform")
+def api_platform():
+    return jsonify({**_platform_api().overview(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/platform/registry")
+def api_platform_registry():
+    return jsonify({**_platform_api().registry_snapshot(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/platform/strategies/<strategy>")
+def api_platform_strategy(strategy: str):
+    try:
+        payload = _platform_api().strategy_snapshot(strategy)
+    except KeyError:
+        return jsonify({"error": "Strategy not found", "strategy": strategy}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
 
 
 @app.route("/api/rgm")
