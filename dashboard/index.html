@@ -620,6 +620,8 @@ function _setSystemStatus(online) {
   const el = document.getElementById('system-status');
   if (online) {
     el.className = 'system-status online';
+    el.style.borderColor = '';
+    el.style.color = '';
     el.innerHTML = '<span class="dot"></span> ONLINE';
   } else {
     el.className = 'system-status';

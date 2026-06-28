@@ -71,3 +71,10 @@ def test_index_serves_html(client):
     r = client.get("/")
     assert r.status_code == 200
     assert b"SMC Trading Bot" in r.data
+
+
+def test_index_resets_system_status_styles_when_back_online(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert b"el.style.borderColor = '';" in r.data
+    assert b"el.style.color = '';" in r.data
