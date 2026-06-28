@@ -1,0 +1,111 @@
+# session_smc/config.yaml — Single source of truth for all strategy constants.
+# Version: ST-A2 (PASSED Phase-0, 2026-06-21)
+# DO NOT edit without registering a new trial in docs/VERDICT_LOG.md.
+
+# ---------------------------------------------------------------------------
+# Strategy identity
+# ---------------------------------------------------------------------------
+strategy_id: "ST-A2"
+strategy_name: "Session Liquidity + 15M SMC Confirmation"
+instruments:
+  - EURUSD
+  - GBPUSD
+broker: "VT Markets"
+
+# ---------------------------------------------------------------------------
+# Session windows (UTC)
+# ---------------------------------------------------------------------------
+sessions:
+  london:
+    start_hour: 7
+    end_hour: 10
+  new_york:
+    start_hour: 13
+    end_hour: 16
+
+# ---------------------------------------------------------------------------
+# Signal chain parameters (locked — ST-A2 PASS spec)
+# ---------------------------------------------------------------------------
+signal:
+  rr: 5.0                    # risk-reward ratio (ST-A2 uses RR5)
+  sl_buffer_pips: 2.0        # sweep wick ± buffer
+  displacement_mult: 1.2     # minimum ATR multiple for displacement candle
+  atr_period: 14
+  sweep_timeout_bars: 4      # bars after session close to detect sweep
+  min_sl_pips: 5.0           # minimum SL gate (ST-A2 differentiating param)
+  session_mode: "legacy"
+
+  # Minimum session range to trade (filter thin sessions)
+  min_range_pips:
+    EURUSD: 15.0
+    GBPUSD: 20.0
+
+  # HTF bias (4H swing detection)
+  bias:
+    swing_n: 3               # lookback bars for HH/HL/LL/LH swing detection
+    timeframe: "4H"
+
+  # Take-profit structure
+  tp:
+    tp1_r: 4.0               # close 75% at TP1
+    tp1_close_pct: 0.75
+    tp2_r: 5.0               # runner to TP2 or session structure
+    move_sl_be_at_tp1: true
+
+# ---------------------------------------------------------------------------
+# Cost model (VT Markets Standard)
+# ---------------------------------------------------------------------------
+cost_model:
+  EURUSD:
+    spread_typical_pip: 1.0
+    spread_max_pip: 1.2
+    commission_rt_pip: 0.6
+    total_typical_pip: 1.6   # spread + commission
+    slippage_typical_pip: 0.1
+  GBPUSD:
+    spread_typical_pip: 1.5
+    spread_max_pip: 1.8
+    commission_rt_pip: 0.6
+    total_typical_pip: 2.1
+    slippage_typical_pip: 0.15
+
+# ---------------------------------------------------------------------------
+# Risk parameters (non-bypassable per CLAUDE.md §4)
+# ---------------------------------------------------------------------------
+risk:
+  risk_per_trade_pct: 1.0      # % of account equity
+  max_daily_loss_r: 3.0        # halt trading for the day
+  max_drawdown_pct: 10.0       # kill switch from equity peak
+  max_consecutive_losses: 5    # halt until next trading day
+  kill_switch: true
+
+# ---------------------------------------------------------------------------
+# Execution
+# ---------------------------------------------------------------------------
+execution:
+  live_trading: false           # NEVER enable without owner manual override
+  magic_numbers:
+    EURUSD: 21001
+    GBPUSD: 21002
+  order_timeout_seconds: 10
+  max_retries: 2
+  retry_delay_seconds: 0.5
+
+# ---------------------------------------------------------------------------
+# Governance
+# ---------------------------------------------------------------------------
+governance:
+  phase: "0"                    # 0=Gate | 1=Paper | 2=Micro | 3=Small | 4=Scale
+  lifecycle_state: "verification_ready"  # ST-A2 has passed Phase-0 backtest
+  registry_path: "data/strategy_registry.json"
+
+# ---------------------------------------------------------------------------
+# Monitoring
+# ---------------------------------------------------------------------------
+monitoring:
+  heartbeat_interval_seconds: 30
+  broker_check_interval_seconds: 60
+  latency_warning_ms: 500
+  latency_critical_ms: 2000
+  log_dir: "logs"
+  log_file: "logs/bot.jsonl"
