@@ -1,54 +1,957 @@
-# Session SMC Trading Bot
+# Strategy Validation Operating System
 
-## What This Project Does
+This repository is an institutional-style strategy research, validation,
+execution-verification, and governance platform for quantitative trading
+workflows.
 
-This project is a strategy research and execution-validation system for SMC-style
-trading ideas. It is designed to:
+It is not just a backtester and it is not just a trading bot.
 
-- normalize raw market data into a research database
-- label sessions, swings, structure, liquidity sweeps, order blocks, and FVGs
-- audit a strategy before testing it
-- replay the strategy through historical candles
-- backtest and stress-test the rules
-- validate execution behavior with a virtual broker
-- keep demo trading separate from research and live execution
-- record the current strategy in the catalog so you can revalidate it safely
+It is designed to move a strategy through governed research stages, separate
+research from execution risk, and prevent uncontrolled promotion into demo or
+live deployment.
 
-In short: it helps you move from an idea to a verified trading setup without
-jumping straight into real-market exposure.
+## Overview
 
-## How To Apply It
+SVOS is the research and governance operating system for strategy qualification.
+EVF is the execution validation layer that checks whether a strategy can be
+operated safely once research has produced verification-ready evidence.
 
-1. Put the strategy into the catalog in `config/strategy_catalog.yaml`.
-2. Mark the strategy you want to validate as the current strategy.
-3. Build the research feature database if you need M1-derived features.
-4. Run replay, backtest, and virtual-broker validation on the current strategy.
-5. Review the validation report and update the strategy rules if needed.
-6. Re-run validation until the strategy is ready for demo use.
+SVOS validates whether a strategy has an edge.
+EVF validates whether that edge can actually be executed safely.
 
-For the current-strategy revalidation flow, use:
+The intended progression is:
 
-```bash
-python3 scripts/run_current_strategy_validation.py --sync-db \
-  --replay-json path/to/replay.json \
-  --backtest-json path/to/backtest.json \
-  --latest-json path/to/latest_metrics.json
+```text
+Strategy Idea
+  ↓
+SVOS Research Qualification
+  ↓
+Research Qualified
+  ↓
+Verification Ready
+  ↓
+EVF Execution Qualification
+  ↓
+Execution Qualified
+  ↓
+Operational Ready
+  ↓
+RGM Risk Qualification
+  ↓
+Risk Qualified
+  ↓
+Risk Approved
+  ↓
+Live Demo Authorization
+  ↓
+Live MT5 Demo
+  ↓
+Production Candidate
+  ↓
+Production Approval
+  ↓
+Production
+  ↓
+SMO Monitoring
+  ↓
+Drift Detection
+  ↓
+Revalidation
 ```
 
-For the full strategy-validation system, including the audited strategy spec
-and the SVOS stages, use:
+## Top-Level Architecture
 
-```bash
-python3 scripts/run_current_strategy_svos.py \
-  --replay-json path/to/replay.json \
-  --backtest-json path/to/backtest.json \
-  --robustness-json path/to/robustness.json \
-  --demo-json path/to/demo.json
+```text
+                    ISOP
+
+        Intelligent Strategy Operating Platform
+
+             Strategy Registry
+
+                    │
+
+        Governance Control Plane
+
+                    │
+                    │ controls transitions
+                    │
+ ---------------------------------------------------
+
+ ┌───────────────────────────────────────────┐
+ │                 SVOS                      │
+ │        Research Qualification             │
+ │ Audit → Replay → Backtest → Robustness   │
+ └───────────────────────────────────────────┘
+
+                    │
+                    ▼
+          Verification Ready
+                    │
+                    ▼
+ ┌───────────────────────────────────────────┐
+ │                  EVF                      │
+ │      Execution Qualification              │
+ │ Virtual Execution → Microstructure →      │
+ │ Cost → Latency → Recovery → Evidence      │
+ └───────────────────────────────────────────┘
+
+                    │
+                    ▼
+           Operational Ready
+                    │
+                    ▼
+ ┌───────────────────────────────────────────┐
+ │                  RGM                      │
+ │        Risk Qualification                 │
+ │ Allocation → Exposure → Preservation →    │
+ │ Constraints → Emergency Controls          │
+ └───────────────────────────────────────────┘
+
+                    │
+                    ▼
+        Deployment Lifecycle / Governance
+                    │
+                    ▼
+               Production
+                    │
+                    ▼
+                  SMO
+      Monitoring / Drift Detection / Revalidation
 ```
 
-## Research Feature Database
+## System Architecture
 
-Build the M1 research feature database with:
+```text
+                    Strategy Validation Operating System
+
+                    Strategy Intake
+                            │
+                            ▼
+                     Strategy Audit
+                            │
+                            ▼
+                    AI Strategy Editor
+                            │
+                            ▼
+                    Historical Replay
+                            │
+                            ▼
+                 Statistical Validation
+                            │
+                            ▼
+                  Robustness Validation
+                            │
+                            ▼
+                    Verification Ready
+                            │
+                            ▼
+               EVF Execution Qualification
+                            │
+ ┌───────────────────────────────────────────┐
+ │ Virtual Execution Engine                  │
+ │ Broker Simulation Engine                  │
+ │ Market Microstructure Engine              │
+ │ Cost Model: Spread / Commission / Swap /  │
+ │            Slippage                       │
+ │ Latency Model: Signal / Network / Broker  │
+ │ Order Lifecycle Simulator                 │
+ │ Failure Recovery Engine                   │
+ │ Execution Evidence Generator              │
+ └───────────────────────────────────────────┘
+                            │
+                            ▼
+                  Execution Qualified
+                            │
+                            ▼
+                     Operational Ready
+                            │
+                            ▼
+                 RGM Risk Qualification
+                            │
+      ┌──────────────┬──────────────┬──────────────┬──────────────┐
+      │              │              │              │              │
+      ▼              ▼              ▼              ▼              ▼
+ Risk Validation  Allocation     Exposure       Portfolio      Capital
+                  Validation     Validation     Impact         Preservation
+                                                 Validation    Engine
+                            │
+                            ▼
+                     Risk Qualified
+                            │
+                            ▼
+                      Risk Approved
+                            │
+                            ▼
+                Live Demo Authorization
+                            │
+                            ▼
+                      Live MT5 Demo
+                            │
+                            ▼
+                  Production Candidate
+                            │
+                            ▼
+                  Production Approval
+                            │
+                            ▼
+                         Production
+                            │
+                            ▼
+                       SMO Monitoring
+```
+
+## Architecture
+
+### Platform Layers
+
+```text
+Platform
+  │
+  ├── Research Layer
+  │
+  ├── Execution Layer
+  │
+  ├── Risk Layer
+  │
+  └── Governance Layer
+```
+
+### Research Layer
+
+- Strategy Intake
+- Strategy Audit
+- AI Strategy Editor
+- Historical Replay
+- Statistical Validation
+- Robustness Validation
+- Research Qualified
+- Verification Ready
+
+### Execution Layer
+
+- Virtual Execution Validation
+- Execution Validation Framework
+- Broker Simulation
+- Market Microstructure Engine
+- Slippage and Latency Testing
+- Order Lifecycle Simulation
+- Recovery Testing
+
+### Risk Layer
+
+- Risk Validation
+- Allocation Validation
+- Exposure Validation
+- Portfolio Impact Validation
+- Capital Preservation Engine
+- Emergency Controls
+
+### Governance Layer
+
+- Strategy Registry
+- Stage Gate Engine
+- Decision Engine
+- Approval Engine
+- Audit Logger
+- Promotion Controller
+- Live Demo Authorization
+- Production Approval
+
+The core design principle is separation of concerns:
+
+- Research decides whether a strategy appears valid.
+- Execution decides whether the strategy can be operated safely.
+- Risk decides whether the strategy is safe to allocate.
+- Governance decides whether promotion is allowed.
+
+### Decision Responsibility Model
+
+```text
+Research Layer
+Question:
+"Does this strategy have evidence of an edge?"
+
+Responsible:
+SVOS
+
+
+Execution Layer
+Question:
+"Can this strategy operate reliably?"
+
+Responsible:
+EVF
+
+
+Risk Layer
+Question:
+"Can we safely allocate capital?"
+
+Responsible:
+RGM
+
+
+Governance Layer
+Question:
+"Should this strategy move forward?"
+
+Responsible:
+Approval Engine
+```
+
+In practice the governance flow is:
+
+```text
+Metrics
+  ↓
+Decision Engine
+  ↓
+Promotion Recommendation
+  ↓
+Approval
+```
+
+## Workflow
+
+### SVOS Research Pipeline
+
+```text
+                    Strategy Validation Operating System (SVOS)
+
+        New Strategy
+              │
+              ▼
+      Phase 0 — Strategy Intake
+              │
+              ▼
+      Phase 1 — Strategy Audit
+              │
+              ▼
+      Phase 2 — AI Strategy Editor
+              │
+              ▼
+      Phase 3 — Historical Replay
+              │
+              ▼
+      Phase 4 — Statistical Validation
+              │
+              ▼
+      Phase 5 — Robustness Validation
+              │
+              ▼
+      Research Qualified
+              │
+              ▼
+      Verification Ready
+```
+
+### Execution Qualification Pipeline
+
+```text
+              Verification Ready
+                      │
+                      ▼
+      EVF Execution Qualification
+                      │
+      ├── Virtual Execution Validation
+      ├── Broker Simulation
+      ├── Market Microstructure Engine
+      ├── Cost Model
+      ├── Latency Model
+      ├── Order Lifecycle Simulation
+      ├── Failure Recovery Engine
+      └── Execution Evidence Generator
+      │
+      ▼
+          Execution Qualified
+                      │
+                      ▼
+              Operational Ready
+                      │
+                      ▼
+          RGM Risk Qualification
+                      │
+                      ▼
+              Risk Qualified
+                      │
+                      ▼
+                Risk Approved
+                      │
+                      ▼
+            Live Demo Authorization
+                      │
+                      ▼
+                Live MT5 Demo
+                      │
+                      ▼
+            Production Candidate
+                      │
+                      ▼
+             Production Approval
+                      │
+                      ▼
+                  Production
+```
+
+### Validation Progression
+
+```text
+Historical Replay
+      │
+      ▼
+Backtest
+      │
+      ▼
+Robustness
+      │
+      ▼
+Verification Ready
+      │
+      ▼
+EVF Execution Qualification
+      │
+      ├── Virtual Execution Validation
+      ├── Broker Simulation
+      ├── Market Microstructure Engine
+      ├── Cost / Latency Models
+      ├── Order Lifecycle Simulation
+      └── Recovery Testing
+      │
+      ▼
+Execution Qualified
+      │
+      ▼
+Operational Ready
+      │
+      ▼
+RGM Risk Qualification
+      │
+      ▼
+Risk Qualified
+      │
+      ▼
+Risk Approved
+      │
+      ▼
+Live Demo Authorization
+      │
+      ▼
+Live MT5 Demo
+(real-time market observation)
+      │
+      ▼
+Production Candidate
+      │
+      ▼
+Production
+```
+
+This repository distinguishes between two demo concepts:
+
+- `Historical Replay`: tests whether strategy logic works.
+- `Virtual Execution Validation`: simulated execution and recovery validation
+  before real-time exposure. It replays historical markets using a live-like
+  broker simulation so execution behaviour can be evaluated without waiting for
+  real market time. It is part of EVF execution qualification, not part of
+  research.
+- `Live MT5 Demo`: real broker demo observation after the strategy is already
+  operationally and risk approved.
+
+### Strategy Lifecycle
+
+```text
+Draft
+  ↓
+Research Candidate
+  ↓
+Audited
+  ↓
+Research Qualified
+  ↓
+Verification Ready
+  ↓
+Execution Qualified
+  ↓
+Operational Ready
+  ↓
+Risk Qualified
+  ↓
+Risk Approved
+  ↓
+Live Demo Authorization
+  ↓
+Live MT5 Demo
+  ↓
+Production Candidate
+  ↓
+Production Approved
+  ↓
+Production
+  ↓
+Monitoring
+  ↓
+Drift Detection
+  ↓
+Revalidation
+  ↓
+Retired
+```
+
+### Revalidation Loop
+
+```text
+Strategy Change
+      │
+      ▼
+Version Created
+      │
+      ▼
+Audit
+      │
+      ▼
+Replay
+      │
+      ▼
+Backtest
+      │
+      ▼
+Robustness
+      │
+      ▼
+Verification Ready
+      │
+      ▼
+EVF Execution Qualification
+      │
+      ├── Virtual Execution Validation
+      ├── Broker Simulation
+      ├── Market Microstructure Engine
+      ├── Cost / Latency Models
+      ├── Order Lifecycle Simulation
+      └── Recovery Testing
+      │
+      ▼
+Execution Qualified
+      │
+      ▼
+Operational Ready
+      │
+      ▼
+RGM Risk Qualification
+      │
+      ▼
+Risk Qualified
+      │
+      ▼
+Risk Approved
+      │
+      ▼
+Live Demo Authorization
+      │
+      ▼
+Live MT5 Demo
+      │
+      ▼
+Production Candidate
+      │
+      ▼
+Production
+      │
+      ▼
+Performance Drift
+      │
+      ▼
+Automatic Revalidation
+```
+
+SVOS is not a one-pass pipeline. Strategies remain continuously governed and
+revalidatable after deployment decisions.
+
+## Components
+
+### Verification Ready
+
+`Verification Ready` is the research-to-execution handoff point.
+
+It is the formal handoff point between research and execution.
+
+At this point the strategy has passed:
+
+- Strategy Audit
+- Historical Replay
+- Statistical Validation
+- Robustness Validation
+
+The strategy has research evidence of an edge.
+
+`Research Qualified` means the research evidence exists.
+
+`Verification Ready` means governance has accepted that evidence and approved
+entry into EVF execution qualification.
+
+It does not mean the strategy is:
+
+- executable
+- risk approved
+- demo approved
+- production approved
+
+It has not yet been exposed to live market conditions.
+
+### Virtual Execution Validation
+
+`Virtual Execution Validation` belongs to execution qualification rather than
+research qualification.
+
+Within the institutional lifecycle, it is one of the core EVF execution
+qualification checks.
+
+It answers:
+
+- Would this strategy behave correctly if executed in a live-like environment?
+
+It focuses on:
+
+- Order timing
+- Spread expansion
+- Slippage
+- Partial fills
+- Requotes
+- Latency
+- Position recovery
+- Stop/limit execution
+- Failure handling
+- Recovery logic
+
+### Market Microstructure Engine
+
+`Market Microstructure Engine` is a first-class EVF module rather than a hidden
+parameter inside the execution simulator.
+
+Typical inputs:
+
+- Tick data
+- Spread history
+- Liquidity model
+- Volatility regime
+- Session context
+- News events
+
+Typical outputs:
+
+- Expected fill quality
+- Slippage distribution
+- Spread expansion risk
+- Execution probability
+
+Institutionally the sequence is:
+
+```text
+Market Environment
+      │
+      ▼
+Market Microstructure Engine
+      │
+      ▼
+Execution Simulator
+```
+
+### Operational Ready
+
+`Operational Ready` means EVF has produced execution-qualified evidence and the
+execution stack is ready for controlled risk review.
+
+This distinction matters because a strategy can pass EVF and still fail RGM
+limits such as drawdown, exposure concentration, or portfolio interaction
+constraints.
+
+Operational Ready typically means:
+
+1. Execution behavior validated
+2. Broker simulation passed
+3. Slippage tolerance confirmed
+4. Latency tolerance confirmed
+5. Recovery procedures tested
+6. Operational monitoring configured
+
+### Research Principles
+
+- No strategy skips validation stages.
+- Every stage is reproducible.
+- Every decision is versioned.
+- Every promotion requires objective evidence.
+- No manual overrides should happen without audit logging.
+- Every strategy should remain continuously revalidatable.
+
+### Architecture Principles
+
+- Research and execution are isolated.
+- Every phase is independently reproducible.
+- All promotions are evidence-based.
+- Every decision is auditable.
+- Strategy versions are immutable.
+- Revalidation is continuous.
+- Configuration is preferred over hard-coded logic.
+- Every report is reproducible.
+
+### Platform Components
+
+- `SVOS`: research governance and lifecycle control
+- `EVF`: execution verification and operational readiness checks
+- `RGM`: risk governance and allocation control
+- `SMO`: strategy monitoring, drift detection, and revalidation operations
+- `Research Data Layer`: market data normalization and feature generation
+- `Strategy Registry`: version control and lifecycle state
+- `Governance`: approval workflow, gating, and audit traceability
+
+### AI Services
+
+- Strategy Parsing
+- Rule Extraction
+- Rule Refinement
+- Root Cause Analysis
+- Audit Assistance
+- Report Generation
+- Revalidation Recommendations
+
+### Governance
+
+Every phase is controlled by explicit gates.
+
+Possible outcomes include:
+
+- `PASS`
+- `FAIL`
+- `BLOCKED`
+- `REQUIRES REVIEW`
+- `CONDITIONAL APPROVAL`
+- `APPROVED`
+
+Progression should happen only when mandatory criteria are satisfied and the
+strategy registry permits the next lifecycle stage.
+
+Example conditional decision:
+
+```json
+{
+  "decision": "CONDITIONAL APPROVAL",
+  "allowed": "LIVE_DEMO",
+  "not_allowed": "PRODUCTION",
+  "reason": "Execution gates passed but exposure controls require monitoring"
+}
+```
+
+### Gate Output Schema
+
+Each gate should produce machine-readable output in a shape like:
+
+```yaml
+stage:
+  name: robustness_validation
+
+status:
+  PASS
+
+confidence:
+  91%
+
+evidence:
+  - robustness_report.json
+  - monte_carlo_test.json
+
+failures: []
+
+recommendation:
+  next_stage: evf_execution_qualification
+
+approved_by:
+  system
+```
+
+### Risk Governance Module
+
+`RGM` should be thought of as:
+
+```text
+Risk Governance Module (RGM)
+├── Risk Validation
+├── Allocation Validation
+├── Exposure Validation
+├── Portfolio Impact Validation
+├── Correlation Analysis
+├── Stress Testing
+├── Capital Preservation Engine
+└── Emergency Controls
+```
+
+This separates:
+
+- `Risk Validation`: can this strategy trade safely?
+- `Allocation Validation`: how much capital should this strategy receive?
+- `Capital Preservation Engine`: how do we prevent catastrophic loss?
+
+### RGM Runtime Monitoring
+
+After deployment, capital safety remains an RGM responsibility, but it belongs
+to runtime monitoring rather than qualification:
+
+```text
+RGM Monitoring
+├── Exposure Monitoring
+├── Drawdown Monitoring
+├── Risk Limit Monitoring
+├── Capital Protection
+└── Emergency Shutdown
+```
+
+### Strategy Registry
+
+Each strategy is expected to have auditable metadata in the catalog, including:
+
+- Strategy ID
+- Version
+- Status
+- Current phase
+- Validation history
+- Rule specification
+- Performance history
+- Deployment status
+- Approval history
+- Immutable strategy fingerprint
+
+The current catalog lives in `config/strategy_catalog.yaml`.
+
+An immutable fingerprint should tie together:
+
+```yaml
+strategy_identity:
+  strategy_hash: a81f92c77d21
+  rule_hash: 88ff921abc
+  data_version: dukascopy_2026_06
+  feature_version: feature_db_v3
+  replay_engine_version: replay_engine_v2.1
+  parameter_version: params_v4
+  execution_model_version: exec_model_v2
+  broker_model_version: broker_model_v3
+  slippage_model_version: slippage_model_v2
+  latency_model_version: latency_model_v1
+  risk_model_version: risk_model_v2
+  governance_version: governance_v1
+  environment: demo
+```
+
+In practice:
+
+```text
+Strategy =
+Rules
++
+Parameters
++
+Data
++
+Features
++
+Research Engine
++
+Execution Model
++
+Risk Model
++
+Governance Rules
++
+Software Version
++
+Broker Environment
+```
+
+### Quality Gates
+
+| Stage | Question | Evidence |
+|---|---|---|
+| Strategy Audit | Are rules complete? | Strategy specification |
+| Replay | Does logic behave correctly? | Replay report |
+| Backtest | Is there statistical edge? | Performance report |
+| Robustness | Does edge survive variation? | Robustness report |
+| Verification Ready | Is research qualified? | Verification certificate |
+| Execution Qualified | Has EVF certified execution behavior? | Execution certificate |
+| Operational Ready | Is the system ready for controlled risk evaluation? | Operational approval |
+| Risk Qualified | Has RGM validated capital preservation and exposure control? | Risk certificate |
+| Risk Approved | Is controlled capital exposure permitted? | Risk approval |
+| Live Demo Authorization | Is live demo observation authorized? | Demo authorization |
+| Live Demo | Does reality match model? | Demo report |
+| Production Approval | Is deployment allowed? | Approval certificate |
+
+Project-specific thresholds are configured in validation and strategy
+configuration files rather than hardcoded in the README.
+
+### Research Artifacts
+
+Each phase is expected to produce evidence.
+
+```text
+Strategy Specification
+      │
+      ▼
+Replay Report
+      │
+      ▼
+Performance Report
+      │
+      ▼
+Robustness Report
+      │
+      ▼
+Verification Certificate
+      │
+      ▼
+EVF Execution Report
+      │
+      ▼
+Operational Certificate
+      │
+      ▼
+Risk Certificate
+      │
+      ▼
+Live Demo Report
+      │
+      ▼
+Production Decision
+```
+
+### Failure Classification
+
+An AI diagnostic layer should classify failures into actionable buckets such as:
+
+- Strategy Logic Failure
+- Market Dependency Failure
+- Execution Failure
+- Data Failure
+
+This shortens the loop between failed validation and the next research action.
+
+### Research Data Layer
+
+The research data stack is layered as follows:
+
+```text
+Raw Tick Data
+      │
+      ▼
+OHLC Database
+      │
+      ▼
+Feature Extraction
+      │
+      ▼
+Research Database
+      │
+      ▼
+Strategy Validation
+```
+
+Build the M1 research data layer with:
 
 ```bash
 make research-db
@@ -60,7 +963,7 @@ That runs:
 python3 run_pipeline.py --symbols EURUSD GBPUSD XAUUSD
 ```
 
-Outputs:
+Key outputs:
 
 - `research_db/data/processed/candles_labeled.parquet`
 - `research_db/data/processed/structure.parquet`
@@ -76,7 +979,20 @@ Focused tests:
 make test-research-db
 ```
 
-Revalidate the current strategy without auto-promotion:
+## Quick Start
+
+1. Choose the strategy in `config/strategy_catalog.yaml`.
+2. Build the research data layer if fresh feature data is required.
+3. Run SVOS through the intended validation stage.
+4. Review the generated reports and registry state.
+5. Run EVF and live demo only after verification-ready evidence exists.
+
+## Operations Guide
+
+### Current-Strategy Revalidation
+
+Use this when replay, backtest, and recent metrics already exist and you want a
+non-promoting validation check:
 
 ```bash
 python3 scripts/run_current_strategy_validation.py --sync-db \
@@ -85,49 +1001,38 @@ python3 scripts/run_current_strategy_validation.py --sync-db \
   --latest-json path/to/latest_metrics.json
 ```
 
-## Validation Workflow
+### Research-Only SVOS Run
 
-The broader research-to-demo workflow is documented in
-[`docs/ESTIMATED_DEVELOPMENT_ROADMAP.md`](docs/ESTIMATED_DEVELOPMENT_ROADMAP.md).
-The combined SVOS and EVF operator manual is here:
-[`docs/SVOS_EVF_USER_MANUAL.md`](docs/SVOS_EVF_USER_MANUAL.md).
+Use this when you want the research workflow to stop at the verification-ready
+handoff:
 
-It now includes:
+```bash
+python3 scripts/run_current_strategy_svos.py \
+  --stop-after verification_ready \
+  --replay-json path/to/replay.json \
+  --backtest-json path/to/backtest.json \
+  --robustness-json path/to/robustness.json
+```
 
-- strategy audit
-- rule refinement
-- historical replay
-- backtest
-- robustness tests
-- virtual broker validation
-- demo validation
-- production approval
+### Full Qualification Run
 
-The recalculated research window before real demo exposure is roughly
-11-43 hours, with demo validation still requiring 2-4 weeks of live-market
-observation.
+Use this when you want the governed flow to include both the SVOS research
+stages and the EVF handoff evidence.
 
-## Execution Validation Framework
+The current CLI still uses the legacy `--virtual-demo-json` flag name for the
+virtual execution evidence payload:
 
-The Execution Validation Framework, or EVF, checks whether the validated
-strategy can execute correctly, safely, and consistently.
+```bash
+python3 scripts/run_current_strategy_svos.py \
+  --replay-json path/to/replay.json \
+  --backtest-json path/to/backtest.json \
+  --robustness-json path/to/robustness.json \
+  --virtual-demo-json path/to/demo.json
+```
 
-It is focused on execution quality, not profitability.
+### Execution Validation Framework
 
-Core checks:
-
-- signal integrity
-- order execution
-- risk engine behavior
-- position sizing and spread handling
-- slippage handling
-- exit management
-- duplicate order protection
-- restart recovery
-- broker failure handling
-- strategy version control
-
-Run EVF against a JSON payload:
+Use EVF when validating execution quality rather than strategy profitability:
 
 ```bash
 python3 scripts/run_evf.py \
@@ -137,7 +1042,7 @@ python3 scripts/run_evf.py \
   --rules execution_validation/config/validation_rules.yaml
 ```
 
-The older direct entrypoint still works:
+Legacy entrypoint:
 
 ```bash
 python3 scripts/run_execution_validation.py \
@@ -147,7 +1052,7 @@ python3 scripts/run_execution_validation.py \
   --rules execution_validation/config/validation_rules.yaml
 ```
 
-Run the replay bridge directly from candle data:
+Replay bridge:
 
 ```bash
 python3 scripts/run_replay_execution_validation.py \
@@ -158,26 +1063,252 @@ python3 scripts/run_replay_execution_validation.py \
   --report-dir execution_validation/reports
 ```
 
-The report is written to:
+## Reports
 
-- `execution_validation/reports/validation_report.json`
+At the end of a validation cycle, the desired operator view is a concise summary
+like this:
 
-An example payload you can run immediately is here:
+```text
+======================================
+Strategy Validation Summary
+======================================
 
-- `execution_validation/examples/example_execution_payload.json`
+Strategy:
+ST-A2
 
-The report includes:
+Current Stage:
+EVF Execution Qualification
 
-- signal accuracy
-- order accuracy
-- risk accuracy
-- spread handling
-- slippage statistics
-- exit management
-- broker simulation status
-- final score
+Stage Result:
+PASS
 
-Typical result:
+Rule Audit:
+PASS
 
-- `READY FOR DEMO` when the suite passes
-- `BLOCKED` when any critical execution check fails
+Historical Replay:
+PASS
+
+Backtest:
+PASS
+
+Robustness:
+PASS
+
+Virtual Execution:
+PASS
+
+Execution Validation:
+PASS
+
+Lifecycle State:
+Execution Qualified
+
+Verification Ready:
+YES
+
+Risk Qualified:
+YES
+
+Live Demo Authorization:
+NO
+
+Live Demo Required:
+YES
+
+Production Ready:
+NO
+
+Overall Confidence:
+92%
+
+Next Gate:
+RGM Risk Qualification
+
+Next Action:
+Authorize MT5 Live Demo
+```
+
+The report and stage artifacts are written under `reports/`.
+
+## Monitoring
+
+Production is not the end of the workflow.
+
+SMO and RGM have different jobs after deployment:
+
+- `SMO` monitors strategy behavior, drift, and revalidation triggers.
+- `RGM` monitors capital safety, drawdown integrity, and protection controls.
+
+```text
+Production
+      │
+      ▼
+SMO Monitoring
+      │
+      ▼
+Performance Drift Detection
+      │
+      ├── Revalidation Trigger
+      │
+      ▼
+RGM Risk Monitoring
+      │
+      ▼
+Decision Engine
+      │
+      ▼
+Action
+```
+
+Example:
+
+```text
+Expected PF: 1.8
+Observed PF over last 30 days: 0.9
+
+System:
+DRIFT DETECTED
+
+Action:
+Suspend
+Revalidate
+```
+
+## Developer Documentation
+
+More complete operator and developer guidance is documented in:
+
+- `docs/SVOS_EVF_USER_MANUAL.md`
+- `docs/SVOS_LIFECYCLE_WORKFLOW.md`
+- `docs/ESTIMATED_DEVELOPMENT_ROADMAP.md`
+
+## Repository Structure
+
+### Repository Layers
+
+The current repository already separates these concerns across multiple top-level
+packages. The grouping below shows the intended platform view over the existing
+layout.
+
+#### Research
+
+- `research/`
+- `research_db/`
+- `strategy_audit/`
+
+#### Execution
+
+- `execution/`
+- `execution_validation/`
+
+#### Risk and Monitoring
+
+- `monitoring/`
+- `models/`
+
+#### Governance
+
+- `config/`
+- `reports/`
+- `dashboard/`
+
+#### Infrastructure
+
+- `scripts/`
+
+```text
+session-smc-trading-bot/
+├── adaptive/
+├── config/
+├── core/
+├── dashboard/
+├── docs/
+├── execution/
+├── execution_validation/
+├── monitoring/
+├── pipeline/
+├── reports/
+├── research/
+├── research_db/
+├── scripts/
+├── src/
+├── strategies/
+├── strategy/
+├── strategy_audit/
+└── tests/
+```
+
+Practical navigation:
+
+- `research/`: research orchestration, robustness, validation helpers
+- `research/svos/`: SVOS orchestration and payload building
+- `execution_validation/`: execution validation framework and examples
+- `monitoring/`: runtime alerts, monitoring hooks, and operator visibility
+- `strategy_audit/`: audit framework and governance logic
+- `config/`: strategy catalog and validation configuration
+- `scripts/`: operational entrypoints
+- `tests/`: regression and validation coverage
+
+## Future Roadmap
+
+A useful way to think about the full target platform is:
+
+```text
+                 ISOP
+
+                    │
+ ------------------------------------------------
+ |                    |             |             |
+SVOS                 EVF           RGM        Governance
+Research             Execution     Risk       Approval
+
+ |                    |             |             |
+Edge Discovery       Reliability   Allocation   Promotion
+Validation           Validation    Control      Control
+
+                    │
+                   SMO
+
+              Monitoring / Drift /
+              Revalidation
+```
+
+A long-term architectural goal is a single operating-system-style entrypoint,
+for example:
+
+```bash
+python3 svos.py validate --strategy ST-A2
+```
+
+That controller would:
+
+```text
+Load Strategy
+      │
+      ▼
+Determine Current Phase
+      │
+      ▼
+Execute Required Stages
+      │
+      ▼
+Update Registry
+      │
+      ▼
+Generate Reports
+      │
+      ▼
+Evaluate Stage Gates
+      │
+      ▼
+Recommend Next Action
+```
+
+This would make the platform feel like a cohesive operating system rather than
+a set of related operator scripts.
+
+Near-term priorities:
+
+1. Strengthen the strategy registry, stage gate engine, and decision engine.
+2. Formalize the risk governance layer.
+3. Expand production monitoring, drift detection, and automated revalidation.

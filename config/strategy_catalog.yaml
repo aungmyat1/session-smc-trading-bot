@@ -1,7 +1,7 @@
 current_strategy: ST-A2
 strategies:
   ST-A2:
-    status: demo
+    status: walk_forward
     approved: true
     current: true
     version: '2.1'
@@ -19,12 +19,14 @@ strategies:
       replay: pass
       backtest: pass
       walk_forward: pending
-    last_svos_at: '2026-06-27T17:07:06.176274+00:00'
-    last_svos_status: PASS
-    last_svos_promoted_stage: live
+    last_svos_at: '2026-06-27T23:47:59.352747+00:00'
+    last_svos_status: FAIL
+    last_svos_promoted_stage: ''
     last_svos_report: /home/aungp/session-smc-trading-bot/reports/current_strategy_svos/ST-A2
     validation_mode: svos
     last_svos_payload_auto: false
+    last_svos_stop_after: production_approval
+    last_svos_verification_ready: true
   LondonBreakout:
     status: research
     approved: false

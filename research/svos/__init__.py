@@ -5,10 +5,10 @@ from .engine import (
     RobustnessValidationInput,
     SVOSRunner,
     StageResult,
+    VirtualDemoValidationInput,
     StrategyAuditEngine,
     StrategyIssue,
     StrategySpec,
     SVOSRunResult,
     audit_strategy_text,
 )
-

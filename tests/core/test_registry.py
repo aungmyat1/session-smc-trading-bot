@@ -80,7 +80,7 @@ class TestStrategyCatalog:
         assert manifest["version"] == "2.1"
         current = get_current_strategy_manifest()
         assert current is not None
-        assert current["status"] == "demo"
+        assert current["status"] == "walk_forward"
         spec_path = get_strategy_spec_path("ST-A2")
         assert spec_path is not None and spec_path.name == "strategy_spec.md"
         spec_text = get_strategy_spec_text("ST-A2")
@@ -92,12 +92,12 @@ class TestStrategyCatalog:
         assert "AdaptiveSMC" in strategies
 
     def test_lifecycle_status_normalized(self):
-        assert strategy_lifecycle_status("ST-A2") == "demo"
+        assert strategy_lifecycle_status("ST-A2") == "walk_forward"
         assert strategy_lifecycle_rank("draft") < strategy_lifecycle_rank("live")
 
     def test_approval_and_deploy_gate(self):
         assert is_strategy_approved("ST-A2") is True
-        assert can_deploy_strategy("ST-A2", target_stage="demo") is True
+        assert can_deploy_strategy("ST-A2", target_stage="walk_forward") is True
         assert can_deploy_strategy("D2E3", target_stage="demo") is False
 
     def test_catalog_can_be_loaded_from_custom_path(self, tmp_path):

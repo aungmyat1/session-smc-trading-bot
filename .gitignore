@@ -26,6 +26,10 @@ research_db/*.duckdb
 logs/
 *.log
 
+# Generated reports
+execution_validation/reports/
+reports/current_strategy_svos/
+
 # IDE
 .vscode/
 .idea/

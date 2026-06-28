@@ -1,0 +1,9 @@
+levels:
+  - Rejected
+  - Research
+  - Backtest
+  - Replay
+  - Demo
+  - Pilot Live
+  - Production
+

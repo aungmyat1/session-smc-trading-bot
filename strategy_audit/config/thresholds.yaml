@@ -1,0 +1,13 @@
+minimum_readiness: 80.0
+module_thresholds:
+  rule_audit: 80.0
+  integrity_audit: 80.0
+  performance: 70.0
+  regime_audit: 70.0
+  parameter_stability: 70.0
+  walk_forward: 70.0
+  monte_carlo: 70.0
+  execution_audit: 80.0
+  risk_metrics: 90.0
+  strategy_drift: 70.0
+

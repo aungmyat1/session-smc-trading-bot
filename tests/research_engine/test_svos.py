@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from research.svos.engine import (
@@ -5,6 +6,7 @@ from research.svos.engine import (
     RobustnessValidationInput,
     SVOSRunner,
     StrategyAuditEngine,
+    StrategyIntakeEngine,
     audit_strategy_text,
 )
 from research.validation.engine import BacktestValidationInput, ReplayTrade, ReplayValidationInput
@@ -65,6 +67,17 @@ def _valid_backtest() -> BacktestValidationInput:
     )
 
 
+def _valid_execution_report() -> dict[str, object]:
+    return {
+        "status": "READY FOR DEMO",
+        "readiness_status": "READY_FOR_DEMO",
+        "final_score": 100,
+        "broker_simulation_passed": True,
+        "recovery_passed": True,
+        "strategy_version_control_passed": True,
+    }
+
+
 def test_audit_requires_complete_spec():
     result = audit_strategy_text("London Session\nLiquidity Sweep\nRR 1:2\nRisk 0.3%")
     assert result.status == "FIX"
@@ -90,6 +103,45 @@ def test_audit_detects_contradiction():
     result = StrategyAuditEngine().audit(text, strategy_name="TEST")
     assert result.status == "FAIL"
     assert any(issue.code.startswith("contradictory") for issue in result.issues)
+
+
+def test_audit_flags_missing_data_dependencies():
+    strategy = {
+        "text": _complete_strategy_text(),
+        "required_data": ["order_book", "volume_profile"],
+        "available_data": ["ohlc"],
+    }
+    result = StrategyAuditEngine().audit(strategy, strategy_name="TEST")
+    assert result.status == "FAIL"
+    assert any(issue.code == "missing_data" for issue in result.issues)
+    assert result.metadata["data_availability"]["status"] == "MISSING"
+
+
+def test_audit_warns_on_many_fixed_parameters():
+    text = """
+    Market: FX
+    Session: London
+    Bias: Bullish
+    Entry Trigger: Sweep
+    Confirmation: FVG
+    Invalidation: If price closes back below the sweep
+    Stop Loss: 18 pips
+    Take Profit: 36 pips
+    Risk: 0.3%
+    Filters: EMA 20, EMA 21, EMA 22, RSI 43, ATR 2.3, Stop 18, Target 36, Lookback 15
+    Exit Rules: Close at target and scale out at 1.5R
+    """
+    result = StrategyAuditEngine().audit(text, strategy_name="TEST")
+    assert result.status == "FIX"
+    assert any(issue.code == "possible_overfitting" for issue in result.issues)
+
+
+def test_intake_creates_canonical_strategy_record():
+    result = StrategyIntakeEngine().intake(_complete_strategy_text(), strategy_name="TEST")
+    assert result.status == "PASS"
+    assert result.metadata["strategy_name"] == "TEST"
+    assert result.metadata["version_history_initialized"] is True
+    assert result.metadata["canonical_spec"]["fields"]["market"] == "FX"
 
 
 def test_runner_passes_all_stages_and_promotes(tmp_path):
@@ -137,16 +189,78 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
                 "expectancy": 0.099,
                 "max_drawdown": 4.9,
             },
+            execution_validation_report=_valid_execution_report(),
         ),
         promote=True,
         allow_live_promotion=True,
     )
     assert result.overall_status == "PASS"
+    assert any(stage.stage == "verification_ready" and stage.status == "PASS" for stage in result.stages)
+    assert result.stages[-2].stage == "virtual_demo"
     assert result.stages[-1].stage == "production_approval"
     assert result.stages[-1].status == "PASS"
     assert result.promoted_stage == "live"
     assert Path(tmp_path / "ST-A2" / "svos_result.json").exists()
+    stage_dir = tmp_path / "ST-A2" / "stages"
+    expected_stage_files = [
+        "00_intake",
+        "01_audit",
+        "02_enhancement",
+        "03_replay",
+        "04_backtest",
+        "05_robustness",
+        "06_verification_ready",
+        "07_virtual_demo",
+        "08_production_approval",
+    ]
+    for stem in expected_stage_files:
+        assert (stage_dir / f"{stem}.json").exists()
+        assert (stage_dir / f"{stem}.md").exists()
+    index = json.loads((stage_dir / "index.json").read_text(encoding="utf-8"))
+    assert index["overall_status"] == "PASS"
+    assert index["promoted_stage"] == "live"
+    production_report = json.loads((stage_dir / "08_production_approval.json").read_text(encoding="utf-8"))
+    assert production_report["current_stage"]["stage"] == "production_approval"
+    assert production_report["promoted_stage"] == "live"
     assert get_strategy_status(catalog_copy, "ST-A2") == "live"
+
+
+def test_runner_can_stop_at_verification_ready(tmp_path):
+    catalog_copy = tmp_path / "strategy_catalog.yaml"
+    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
+    result = runner.run_pipeline(
+        _complete_strategy_text(),
+        replay=_valid_replay(),
+        backtest=_valid_backtest(),
+        robustness=RobustnessValidationInput(
+            completed_successfully=True,
+            walk_forward_passed=True,
+            monte_carlo_passed=True,
+            parameter_stability_passed=True,
+            regime_analysis_passed=True,
+            execution_cost_passed=True,
+            latest_metrics={
+                "profit_factor": 1.22,
+                "win_rate": 0.36,
+                "expectancy": 0.11,
+                "max_drawdown": 4.8,
+            },
+            previous_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
+        ),
+        stop_after="verification_ready",
+    )
+    assert result.overall_status == "PASS"
+    assert result.stages[-1].stage == "verification_ready"
+    assert all(stage.stage != "virtual_demo" for stage in result.stages)
+    verification_stage = result.stages[-1]
+    assert verification_stage.metadata["verification_ready"] is True
+    assert verification_stage.next_stage == "virtual_demo"
 
 
 def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
@@ -194,10 +308,11 @@ def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
                 "expectancy": 0.099,
                 "max_drawdown": 4.9,
             },
+            execution_validation_report=_valid_execution_report(),
         ),
     )
     assert result.overall_status == "FAIL"
-    assert any(stage.stage == "demo" and stage.status == "FAIL" for stage in result.stages)
+    assert any(stage.stage == "virtual_demo" and stage.status == "FAIL" for stage in result.stages)
     assert get_strategy_status(catalog_copy, "ST-A2") != "live"
 
 
@@ -246,6 +361,7 @@ def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
                 "expectancy": 0.099,
                 "max_drawdown": 4.9,
             },
+            execution_validation_report=_valid_execution_report(),
         ),
         promote=True,
         allow_live_promotion=False,

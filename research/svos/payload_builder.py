@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -19,6 +20,7 @@ from research.robustness import (
     regime_analysis,
     walk_forward_analysis,
 )
+from execution_validation.replay_bridge import run_replay_validation_from_candles
 from scripts.replay_parquet import load_h4, load_m15
 from simulator.historical_replay import run_historical_replay
 
@@ -268,19 +270,53 @@ def build_robustness_payload(summary: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_demo_payload(summary: dict[str, Any], min_demo_days: int = 14, tolerance_pct: float = 0.05) -> dict[str, Any]:
+def build_virtual_demo_payload(
+    *,
+    strategy: str,
+    symbol: str,
+    start: str | None = None,
+    end: str | None = None,
+    summary: dict[str, Any],
+    min_demo_days: int = 14,
+    tolerance_pct: float = 0.05,
+    report_dir: Path | None = None,
+) -> dict[str, Any]:
+    try:
+        m15 = load_m15(symbol, start=start, end=end)
+        h4 = load_h4(symbol, start=start, end=end)
+    except FileNotFoundError:
+        m15 = []
+        h4 = []
+
+    execution_report = None
+    if m15 and h4:
+        execution_report = asyncio.run(
+            run_replay_validation_from_candles(
+                strategy=strategy,
+                period=f"{start or 'start'}-{end or 'end'}",
+                symbol=symbol,
+                candles_m15=m15,
+                candles_h4=h4,
+                report_dir=report_dir,
+            )
+        )
+
     metrics = _metrics_from_backtest(summary)
     gate = bool(summary.get("any_pass", False))
     return {
-        "completed_successfully": gate,
+        "completed_successfully": bool(execution_report and execution_report.status == "READY FOR DEMO"),
         "days_monitored": min_demo_days,
         "min_demo_days": min_demo_days,
         "tolerance_pct": tolerance_pct,
         "research_metrics": metrics,
         "live_metrics": dict(metrics),
-        "synthetic": True,
-        "source": "historical_backtest",
+        "execution_validation_report": execution_report.to_dict() if execution_report is not None else {},
+        "synthetic": False,
+        "source": "virtual_broker",
     }
+
+
+build_demo_payload = build_virtual_demo_payload
 
 
 @dataclass(slots=True)
@@ -331,8 +367,18 @@ def build_svos_payload_bundle(
     replay = build_replay_payload(strategy, resolved_symbols, start=start, end=end)
     backtest = build_backtest_payload(backtest_summary)
     robustness = build_robustness_payload(backtest_summary)
-    demo = build_demo_payload(backtest_summary)
-    if not allow_synthetic_demo:
+    demo_symbol = resolved_symbols[0] if resolved_symbols else "EURUSD"
+    demo = build_virtual_demo_payload(
+        strategy=strategy,
+        symbol=demo_symbol,
+        start=start,
+        end=end,
+        summary=backtest_summary,
+        min_demo_days=14,
+        tolerance_pct=0.05,
+        report_dir=Path(output_dir) / "virtual_demo" if output_dir is not None else None,
+    )
+    if not allow_synthetic_demo and not demo.get("execution_validation_report"):
         demo["completed_successfully"] = False
         demo["synthetic"] = False
 

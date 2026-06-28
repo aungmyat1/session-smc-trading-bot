@@ -90,6 +90,20 @@ class BacktestValidationInput:
     max_drawdown: float
     profit_factor: float
     metrics: dict[str, float] = field(default_factory=dict)
+    sharpe_ratio: float | None = None
+    sortino_ratio: float | None = None
+    recovery_factor: float | None = None
+    mar_ratio: float | None = None
+    exposure_pct: float | None = None
+    average_hold_time_minutes: float | None = None
+    spread_included: bool | None = None
+    commission_included: bool | None = None
+    slippage_included: bool | None = None
+    swap_included: bool | None = None
+    latency_included: bool | None = None
+    monte_carlo_passed: bool | None = None
+    bootstrap_passed: bool | None = None
+    confidence_interval_passed: bool | None = None
 
 
 @dataclass
@@ -323,6 +337,24 @@ class ValidationGate:
         expectancy = float(data.get("expectancy", metrics.get("expectancy", float("nan"))))
         max_drawdown = float(data.get("max_drawdown", metrics.get("max_drawdown", float("nan"))))
         profit_factor = float(data.get("profit_factor", metrics.get("profit_factor", float("nan"))))
+        sharpe_ratio = data.get("sharpe_ratio", metrics.get("sharpe_ratio"))
+        sortino_ratio = data.get("sortino_ratio", metrics.get("sortino_ratio"))
+        recovery_factor = data.get("recovery_factor", metrics.get("recovery_factor"))
+        mar_ratio = data.get("mar_ratio", metrics.get("mar_ratio"))
+        exposure_pct = data.get("exposure_pct", metrics.get("exposure_pct"))
+        average_hold_time_minutes = data.get("average_hold_time_minutes", metrics.get("average_hold_time_minutes"))
+        costs_flags = {
+            "spread_included": data.get("spread_included", metrics.get("spread_included")),
+            "commission_included": data.get("commission_included", metrics.get("commission_included")),
+            "slippage_included": data.get("slippage_included", metrics.get("slippage_included")),
+            "swap_included": data.get("swap_included", metrics.get("swap_included")),
+            "latency_included": data.get("latency_included", metrics.get("latency_included")),
+        }
+        robustness_flags = {
+            "monte_carlo_passed": data.get("monte_carlo_passed", metrics.get("monte_carlo_passed")),
+            "bootstrap_passed": data.get("bootstrap_passed", metrics.get("bootstrap_passed")),
+            "confidence_interval_passed": data.get("confidence_interval_passed", metrics.get("confidence_interval_passed")),
+        }
 
         checks.append(
             ValidationCheck(
@@ -356,6 +388,89 @@ class ValidationGate:
                 details={"profit_factor": profit_factor},
             )
         )
+
+        if sharpe_ratio is not None:
+            sharpe_ratio = float(sharpe_ratio)
+            checks.append(
+                ValidationCheck(
+                    "sharpe_ratio",
+                    sharpe_ratio >= 1.0,
+                    message=f"Sharpe ratio {sharpe_ratio:.4f} >= 1.0" if sharpe_ratio >= 1.0 else f"Sharpe ratio {sharpe_ratio:.4f} below 1.0",
+                    details={"sharpe_ratio": sharpe_ratio},
+                )
+            )
+        if sortino_ratio is not None:
+            sortino_ratio = float(sortino_ratio)
+            checks.append(
+                ValidationCheck(
+                    "sortino_ratio",
+                    sortino_ratio >= 1.0,
+                    message=f"Sortino ratio {sortino_ratio:.4f} >= 1.0" if sortino_ratio >= 1.0 else f"Sortino ratio {sortino_ratio:.4f} below 1.0",
+                    details={"sortino_ratio": sortino_ratio},
+                )
+            )
+        if recovery_factor is not None:
+            recovery_factor = float(recovery_factor)
+            checks.append(
+                ValidationCheck(
+                    "recovery_factor",
+                    recovery_factor >= 1.0,
+                    message=f"Recovery factor {recovery_factor:.4f} >= 1.0" if recovery_factor >= 1.0 else f"Recovery factor {recovery_factor:.4f} below 1.0",
+                    details={"recovery_factor": recovery_factor},
+                )
+            )
+        if mar_ratio is not None:
+            mar_ratio = float(mar_ratio)
+            checks.append(
+                ValidationCheck(
+                    "mar_ratio",
+                    mar_ratio >= 0.5,
+                    message=f"MAR ratio {mar_ratio:.4f} >= 0.5" if mar_ratio >= 0.5 else f"MAR ratio {mar_ratio:.4f} below 0.5",
+                    details={"mar_ratio": mar_ratio},
+                )
+            )
+        if exposure_pct is not None:
+            exposure_pct = float(exposure_pct)
+            checks.append(
+                ValidationCheck(
+                    "exposure_pct",
+                    0.0 <= exposure_pct <= 100.0,
+                    message=f"Exposure {exposure_pct:.2f}% within range" if 0.0 <= exposure_pct <= 100.0 else f"Exposure {exposure_pct:.2f}% outside valid range",
+                    details={"exposure_pct": exposure_pct},
+                )
+            )
+        if average_hold_time_minutes is not None:
+            average_hold_time_minutes = float(average_hold_time_minutes)
+            checks.append(
+                ValidationCheck(
+                    "average_hold_time_minutes",
+                    average_hold_time_minutes > 0,
+                    message=f"Average hold time {average_hold_time_minutes:.2f} min" if average_hold_time_minutes > 0 else "Average hold time must be positive",
+                    details={"average_hold_time_minutes": average_hold_time_minutes},
+                )
+            )
+        for name, value in costs_flags.items():
+            if value is None:
+                continue
+            checks.append(
+                ValidationCheck(
+                    name,
+                    bool(value),
+                    message=f"{name.replace('_', ' ').title()} included" if bool(value) else f"{name.replace('_', ' ').title()} not included",
+                    details={name: bool(value)},
+                )
+            )
+        for name, value in robustness_flags.items():
+            if value is None:
+                continue
+            checks.append(
+                ValidationCheck(
+                    name,
+                    bool(value),
+                    message=f"{name.replace('_', ' ').title()} passed" if bool(value) else f"{name.replace('_', ' ').title()} failed",
+                    details={name: bool(value)},
+                )
+            )
 
         metric_values = list(metrics.values()) + [trade_count, expectancy, max_drawdown, profit_factor]
         has_nan = any(_is_nan(value) for value in metric_values if isinstance(value, float))

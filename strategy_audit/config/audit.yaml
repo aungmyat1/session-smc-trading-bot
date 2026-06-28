@@ -1,0 +1,13 @@
+modules:
+  mandatory:
+    - rule_audit
+    - integrity_audit
+    - performance
+    - regime_audit
+    - parameter_stability
+    - walk_forward
+    - monte_carlo
+    - execution_audit
+    - risk_metrics
+    - strategy_drift
+

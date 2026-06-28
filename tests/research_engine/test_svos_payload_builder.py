@@ -72,6 +72,24 @@ def test_build_svos_payload_bundle(tmp_path, monkeypatch):
 
     monkeypatch.setattr(payload_builder.subprocess, "run", fake_run)
 
+    class DummyReport:
+        status = "READY FOR DEMO"
+
+        def to_dict(self):
+            return {
+                "status": self.status,
+                "readiness_status": "READY_FOR_DEMO",
+                "final_score": 100,
+                "broker_simulation_passed": True,
+                "recovery_passed": True,
+                "strategy_version_control_passed": True,
+            }
+
+    async def fake_execution_validation(*args, **kwargs):
+        return DummyReport()
+
+    monkeypatch.setattr(payload_builder, "run_replay_validation_from_candles", fake_execution_validation)
+
     bundle = payload_builder.build_svos_payload_bundle(
         strategy="ST-A2",
         symbols=["EURUSD"],
@@ -81,12 +99,13 @@ def test_build_svos_payload_bundle(tmp_path, monkeypatch):
     assert bundle.replay["trades"]
     assert bundle.backtest["completed_successfully"] is True
     assert bundle.robustness["walk_forward_passed"] is True
-    assert bundle.demo["synthetic"] is True
+    assert bundle.demo["synthetic"] is False
+    assert bundle.demo["execution_validation_report"]["status"] == "READY FOR DEMO"
     assert (tmp_path / "svos_payload.json").exists()
     assert (tmp_path / "backtest" / "backtest_summary.json").exists()
 
 
-def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path):
+def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path, capsys):
     recorded: dict[str, object] = {}
 
     class DummyRunner:
@@ -96,6 +115,31 @@ def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path):
         def run_pipeline(self, strategy_text, **kwargs):
             recorded["strategy_text"] = strategy_text
             recorded["run_kwargs"] = kwargs
+            observer = kwargs.get("stage_observer")
+            if observer is not None:
+                from types import SimpleNamespace
+
+                observer(
+                    SimpleNamespace(
+                        stage="audit",
+                        phase=0,
+                        status="PASS",
+                        next_stage="enhancement",
+                        can_promote=True,
+                        fix_instructions=[],
+                    ),
+                    [
+                        SimpleNamespace(
+                            stage="audit",
+                            phase=0,
+                            status="PASS",
+                            next_stage="enhancement",
+                            can_promote=True,
+                            fix_instructions=[],
+                        )
+                    ],
+                    None,
+                )
 
             class Result:
                 overall_status = "PASS"
@@ -109,7 +153,18 @@ def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path):
                 "replay": {"completed_successfully": True},
                 "backtest": {"completed_successfully": True},
                 "robustness": {"completed_successfully": True},
-                "demo": {"completed_successfully": True, "synthetic": True},
+                "demo": {
+                    "completed_successfully": True,
+                    "synthetic": False,
+                    "execution_validation_report": {
+                        "status": "READY FOR DEMO",
+                        "readiness_status": "READY_FOR_DEMO",
+                        "final_score": 100,
+                        "broker_simulation_passed": True,
+                        "recovery_passed": True,
+                        "strategy_version_control_passed": True,
+                    },
+                },
             }
 
     manifest = {"status": "demo"}
@@ -134,8 +189,12 @@ def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path):
     )
 
     exit_code = run_current_strategy_svos.main()
+    stderr = capsys.readouterr().err
 
     assert exit_code == 0
     assert recorded["run_kwargs"]["promote"] is False
-    assert recorded["run_kwargs"]["demo"]["synthetic"] is True
+    assert recorded["run_kwargs"]["virtual_demo"]["synthetic"] is False
+    assert callable(recorded["run_kwargs"]["stage_observer"])
+    assert "Virtual Demo Trading" in stderr or "virtual_demo" not in stderr
+    assert "next action: proceed to enhancement" in stderr
     assert updates and updates[0][1]["last_svos_payload_auto"] is True

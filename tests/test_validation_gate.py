@@ -141,7 +141,7 @@ def test_validation_runner_can_skip_promotion(tmp_path):
     )
     assert bundle.overall_status == "PASS"
     assert bundle.promoted is False
-    assert get_strategy_manifest("ST-A2", catalog_copy)["status"] == "demo"
+    assert get_strategy_manifest("ST-A2", catalog_copy)["status"] == "walk_forward"
 
 
 def test_config_loading():
