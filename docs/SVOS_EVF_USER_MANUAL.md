@@ -10,6 +10,14 @@ This manual covers the two validation layers in this repo:
 It describes what each system validates, how to run it, what its practical
 capacity is, and the minimum time needed to validate.
 
+Architecture reference:
+
+- Source of truth: `docs/SYSTEM_ARCHITECTURE.md`
+- Current implementation status: `docs/IMPLEMENTATION_STATUS.md`
+
+This manual primarily describes the current executable workflow in the
+repository, not the full future-state ISOP separation.
+
 ## 1. SVOS
 
 SVOS is the strategy-level gate. It checks whether a strategy is defined clearly
@@ -32,7 +40,7 @@ SVOS requires a strategy spec with these fields:
 - `filters`
 - `exit_rules`
 
-SVOS then follows this lifecycle:
+SVOS currently follows this lifecycle in code:
 
 ```text
 New Strategy
@@ -67,6 +75,10 @@ Virtual Demo Trading
       ▼
 Production Approval
 ```
+
+This is the current transitional implementation. The target architecture moves
+virtual execution and later approvals out of the unified SVOS pipeline; see
+`docs/SYSTEM_ARCHITECTURE.md`.
 
 ### How to run SVOS
 
@@ -134,8 +146,8 @@ For the standard step-by-step lifecycle loop, see
 There are two useful timings:
 
 - Audit-only validation: seconds, because it only needs the strategy text.
-- Full SVOS-to-live validation: at least 14 virtual demo days, because the
-  virtual demo stage requires `min_demo_days=14` by default.
+- Full current-implementation SVOS validation: at least 14 virtual demo days,
+  because the virtual demo stage requires `min_demo_days=14` by default.
 
 If replay, backtest, and robustness evidence already exist, the software run is
 fast. The long part is the live/demo observation window.

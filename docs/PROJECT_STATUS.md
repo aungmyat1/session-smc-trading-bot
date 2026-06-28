@@ -6,6 +6,16 @@
 
 ## Current Task
 
+This file is a manual operational snapshot, not the authoritative strategy
+state record.
+
+Authoritative strategy lifecycle and approval state live in:
+
+- `config/strategy_catalog.yaml`
+- `docs/SYSTEM_ARCHITECTURE.md`
+
+If this document disagrees with the registry, the registry wins.
+
 **E5 spread capture RUNNING** — `tmux spreads` live since 2026-06-24 06:01 UTC.
 Target: ≥5 London + ≥5 NY + ≥7,000 rows. Gate ~2026-06-30.
 Monitor: `python3 scripts/spread_status.py`

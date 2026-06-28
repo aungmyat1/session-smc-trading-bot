@@ -10,6 +10,43 @@ It is designed to move a strategy through governed research stages, separate
 research from execution risk, and prevent uncontrolled promotion into demo or
 live deployment.
 
+## Repository Status
+
+This repository is currently transitioning from a unified SVOS validation
+pipeline to the full ISOP target architecture.
+
+- Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
+- Implementation transition status: `docs/IMPLEMENTATION_STATUS.md`
+- Strategy state source of truth: `config/strategy_catalog.yaml`
+
+Current implementation:
+
+```text
+SVOS
+├── Research Validation
+├── Virtual Execution Validation
+└── Production Approval
+```
+
+Target architecture:
+
+```text
+SVOS
+  ↓
+Verification Ready
+  ↓
+EVF
+  ↓
+RGM
+  ↓
+Governance
+  ↓
+SMO
+```
+
+The repository is being refactored toward this separation while maintaining
+backward compatibility with the current SVOS-driven workflow.
+
 ## Overview
 
 SVOS is the research and governance operating system for strategy qualification.
@@ -19,7 +56,7 @@ operated safely once research has produced verification-ready evidence.
 SVOS validates whether a strategy has an edge.
 EVF validates whether that edge can actually be executed safely.
 
-The intended progression is:
+The target progression is:
 
 ```text
 Strategy Idea

@@ -12,6 +12,11 @@ Current phase: Phase-1 demo validation. ST-A2 has passed Phase-0 backtest
 (`n=169`, `PF_2x=1.025`). Code is deployed. Awaiting spread capture to unlock
 execution.
 
+For authoritative strategy state and lifecycle position, use:
+
+- `config/strategy_catalog.yaml`
+- `docs/SYSTEM_ARCHITECTURE.md`
+
 ## Fastest Path
 
 ### 1. Gate E5: Spread Capture
@@ -53,4 +58,3 @@ execution.
 - Historical replay validates execution logic and signal timing.
 - Backtest validates profitability and cost sensitivity.
 - Live trading remains owner-controlled.
-

@@ -1,8 +1,14 @@
 # SVOS Lifecycle Workflow
 
 This document sets up the standard SVOS promotion loop for a new strategy.
-It matches the implementation in `research/svos/engine.py` and the report
-artifacts written under `reports/current_strategy_svos/<strategy>/`.
+It matches the current implementation in `research/svos/engine.py` and the
+report artifacts written under `reports/current_strategy_svos/<strategy>/`.
+
+For the authoritative architecture and lifecycle definitions, see
+`docs/SYSTEM_ARCHITECTURE.md`.
+
+This file describes the current transitional SVOS workflow, not the full target
+ISOP architecture.
 
 ## Workflow
 
