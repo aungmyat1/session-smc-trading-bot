@@ -28,6 +28,8 @@ from typing import Any
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
+_SUBPROCESS_TIMEOUT = int(os.getenv("DASHBOARD_SUBPROCESS_TIMEOUT", "120"))
+
 try:
     from flask import Flask, jsonify, request, send_from_directory
     from flask_cors import CORS
@@ -184,7 +186,7 @@ def api_svos_run():
     cmd = [sys.executable, str(_ROOT / "scripts" / "run_current_strategy_svos.py"), "--strategy", strategy]
     try:
         proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        out, _ = proc.communicate(timeout=120)
+        out, _ = proc.communicate(timeout=_SUBPROCESS_TIMEOUT)
         return jsonify({"status": "completed", "returncode": proc.returncode, "output": out[-4000:]})
     except subprocess.TimeoutExpired:
         proc.kill()
@@ -242,7 +244,7 @@ def api_evf_run():
         cmd += ["--payload", payload_path]
     try:
         proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        out, _ = proc.communicate(timeout=120)
+        out, _ = proc.communicate(timeout=_SUBPROCESS_TIMEOUT)
         return jsonify({"status": "completed", "returncode": proc.returncode, "output": out[-4000:]})
     except subprocess.TimeoutExpired:
         proc.kill()

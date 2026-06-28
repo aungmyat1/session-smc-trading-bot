@@ -614,13 +614,33 @@
 <script>
 const API = window.location.origin;
 
+let _apiErrorCount = 0;
+
+function _setSystemStatus(online) {
+  const el = document.getElementById('system-status');
+  if (online) {
+    el.className = 'system-status online';
+    el.innerHTML = '<span class="dot"></span> ONLINE';
+  } else {
+    el.className = 'system-status';
+    el.style.borderColor = 'var(--red)';
+    el.style.color = 'var(--red)';
+    el.innerHTML = '<span class="dot" style="background:var(--red)"></span> OFFLINE';
+  }
+}
+
 async function apiFetch(path) {
   try {
     const r = await fetch(API + path);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
+    const data = await r.json();
+    _apiErrorCount = 0;
+    _setSystemStatus(true);
+    return data;
   } catch (e) {
     console.error('API error', path, e);
+    _apiErrorCount++;
+    if (_apiErrorCount >= 2) _setSystemStatus(false);
     return null;
   }
 }
