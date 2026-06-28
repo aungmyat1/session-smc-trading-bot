@@ -28,7 +28,6 @@ import csv
 import json
 import re
 import sys
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -630,7 +629,7 @@ def _load_costs_from_json(path):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
     profile_name = data.get("active_profile")
     if not profile_name:
-        print(f"[ERROR] costs.json missing 'active_profile' key.")
+        print("[ERROR] costs.json missing 'active_profile' key.")
         raise SystemExit(1)
     profile = data.get("profiles", {}).get(profile_name)
     if profile is None:
@@ -805,7 +804,7 @@ def main():
         print("       See docs/BACKTEST_FAILURE_ANALYSIS.md for root cause.")
         print("       Any parameter change = new trial row in docs/VERDICT_LOG.md.")
 
-    print(f"\nResults: docs/BACKTEST_RESULTS.md")
+    print("\nResults: docs/BACKTEST_RESULTS.md")
     print(f"Run ID:  {run_id}\n")
 
 

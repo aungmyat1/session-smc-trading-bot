@@ -1,8 +1,6 @@
 """Tests for execution/trade_journal.py"""
 
-import json
 import pytest
-from pathlib import Path
 from execution.trade_journal import DemoTradeJournal
 
 

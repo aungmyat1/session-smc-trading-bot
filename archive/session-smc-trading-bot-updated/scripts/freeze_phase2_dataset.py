@@ -153,10 +153,10 @@ def main():
     gate_met = gate_exit == 0
 
     if gate_met:
-        print(f"  ✅  Gate: READY_FOR_COST_REVALIDATION")
+        print("  ✅  Gate: READY_FOR_COST_REVALIDATION")
     else:
-        print(f"  ⚠️   Gate: NOT YET MET — snapshot recorded as partial")
-        print(f"       Run freeze again after gate opens for production use.")
+        print("  ⚠️   Gate: NOT YET MET — snapshot recorded as partial")
+        print("       Run freeze again after gate opens for production use.")
     for line in gate_output.splitlines():
         print(f"       {line}")
 
@@ -293,7 +293,7 @@ def main():
     print("╔══════════════════════════════════════════════════════╗")
     print("║  Snapshot Complete                                   ║")
     print("╚══════════════════════════════════════════════════════╝")
-    print(f"  Location:   research/e6_dataset_snapshot/")
+    print("  Location:   research/e6_dataset_snapshot/")
     print(f"  Rows:       {total:,}")
     print(f"  Symbols:    {', '.join(symbols)}")
     print(f"  London:     {london_days}/5 sessions")

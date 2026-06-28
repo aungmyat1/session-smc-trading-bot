@@ -3,8 +3,7 @@
 import pytest
 from adaptive.strategies import AdaptiveSignal
 from adaptive.engine.risk_manager import (
-    new_state, check_risk, record_trade, register_open_position, reset_daily,
-    DEFAULT_CONFIG,
+    new_state, check_risk, record_trade, reset_daily,
 )
 
 

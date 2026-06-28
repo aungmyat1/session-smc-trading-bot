@@ -16,7 +16,6 @@ Run only after bash scripts/run_e6_revalidation.sh completes.
 """
 
 import re
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -137,9 +136,9 @@ def main():
 
     if run_id in BASELINE_RUN_IDS:
         print(f"[INFO]  BACKTEST_RESULTS.md still contains baseline run ({run_id}).")
-        print(f"        E6 has not yet been executed.")
-        print(f"        Run:  bash scripts/run_e6_revalidation.sh")
-        print(f"        Then: python3 scripts/compare_e6_to_baseline.py")
+        print("        E6 has not yet been executed.")
+        print("        Run:  bash scripts/run_e6_revalidation.sh")
+        print("        Then: python3 scripts/compare_e6_to_baseline.py")
         raise SystemExit(1)
 
     if e6 is None:
@@ -186,7 +185,7 @@ def main():
 
     # ── Print to stdout ───────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print(f"  E6 vs PRE_E6_BASELINE Comparison")
+    print("  E6 vs PRE_E6_BASELINE Comparison")
     print(f"  Baseline run:  {BASELINE['run_id']}")
     print(f"  E6 run:        {run_id}")
     print(f"{'='*60}")
@@ -211,9 +210,9 @@ def main():
         "| Field | Baseline | E6 |",
         "|---|---|---|",
         f"| Run ID | `{BASELINE['run_id']}` | `{run_id}` |",
-        f"| Cost profile | PLACEHOLDER_vt_markets_assumption | vantage_measured |",
-        f"| EURUSD cost (std) | 1.4 pip | from measured data |",
-        f"| GBPUSD cost (std) | 1.8 pip | from measured data |",
+        "| Cost profile | PLACEHOLDER_vt_markets_assumption | vantage_measured |",
+        "| EURUSD cost (std) | 1.4 pip | from measured data |",
+        "| GBPUSD cost (std) | 1.8 pip | from measured data |",
         f"| Generated | 2026-06-21 | {now_str[:10]} |",
         "",
         "---",

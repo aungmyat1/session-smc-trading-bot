@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
 
 from research.svos.engine import audit_strategy_text
 
-from ._helpers import _clean_text
 from .module_base import AuditModule
 from .models import AuditContext, AuditResult
 

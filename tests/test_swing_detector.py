@@ -1,5 +1,4 @@
 """Tests for session_smc/swing_detector.py"""
-import pytest
 from session_smc.swing_detector import (
     swing_highs,
     swing_lows,

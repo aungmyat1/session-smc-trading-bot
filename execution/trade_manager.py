@@ -16,7 +16,6 @@ Public API:
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 
 from execution.vantage_demo_executor import VantageDemoExecutor

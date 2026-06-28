@@ -6,7 +6,7 @@ of the signal chain is satisfied, verify a Signal is returned, then break one
 phase at a time and verify None is returned.
 """
 import pytest
-from session_smc.confirmation_entry import generate_signal_A, Signal, DEFAULT_CONFIG
+from session_smc.confirmation_entry import generate_signal_A, DEFAULT_CONFIG
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

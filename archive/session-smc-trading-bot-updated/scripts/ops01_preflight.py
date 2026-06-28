@@ -193,7 +193,7 @@ def write_report(data: dict) -> None:
         f"| Equity | {data.get('equity',0):,.2f} {data.get('currency','USD')} |",
         f"| Leverage | 1:{data.get('leverage',0)} |",
         f"| Open positions | {data.get('open_positions',-1)} |",
-        f"| LIVE_TRADING | false (enforced) |",
+        "| LIVE_TRADING | false (enforced) |",
         "",
         "---",
         "",

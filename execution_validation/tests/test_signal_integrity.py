@@ -2,7 +2,6 @@ from __future__ import annotations
 
 __test__ = False
 
-from dataclasses import asdict
 from typing import Any
 
 from execution_validation.common import CheckResult

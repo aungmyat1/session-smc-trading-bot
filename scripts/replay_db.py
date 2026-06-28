@@ -320,14 +320,14 @@ def write_winner_loser_analysis(trades: list, run_id: str):
     # Winner characteristics
     if winners:
         w_rs = [t["gross_r"] for t in winners]
-        w_lines += ["", f"## Winner Stats", f"- Count: {len(winners)}",
+        w_lines += ["", "## Winner Stats", f"- Count: {len(winners)}",
                     f"- Avg gross R: {sum(w_rs)/len(w_rs):.3f}",
                     f"- Max win: {max(w_rs):.3f}R",
                     f"- Sessions: London={sum(1 for t in winners if t['session']=='london')} "
                     f"NY={sum(1 for t in winners if t['session']=='new_york')}"]
     if losers:
         l_rs = [t["gross_r"] for t in losers]
-        l_lines += ["", f"## Loss Stats", f"- Count: {len(losers)}",
+        l_lines += ["", "## Loss Stats", f"- Count: {len(losers)}",
                     f"- Avg gross R: {sum(l_rs)/len(l_rs):.3f}",
                     f"- Max loss: {min(l_rs):.3f}R",
                     f"- Sessions: London={sum(1 for t in losers if t['session']=='london')} "
@@ -350,8 +350,8 @@ def write_session_analysis(trades: list, run_id: str):
         return [
             f"### {name}",
             "",
-            f"| Metric | Std spread | 2× stress |",
-            f"|---|---|---|",
+            "| Metric | Std spread | 2× stress |",
+            "|---|---|---|",
             f"| Trades | {m['n']} | {m2['n']} |",
             f"| Win Rate | {pct(m['win_rate'])} | {pct(m2['win_rate'])} |",
             f"| PF | {pfmt(m['pf'])} | {pfmt(m2['pf'])} |",

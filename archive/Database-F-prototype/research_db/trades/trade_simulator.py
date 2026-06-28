@@ -85,14 +85,14 @@ def run_simulation(rr: float = 2.0) -> pl.DataFrame:
     output_path = TRADES_DIR / "trades.parquet"
     trades_df.write_parquet(output_path, compression="zstd")
 
-    print(f"\n✅ Simulation complete!")
+    print("\n✅ Simulation complete!")
     print(f"   Total trades simulated: {len(trades_df):,}")
     print(f"   Saved to: {output_path}")
 
     # Quick summary
     win_rate = (trades_df["outcome"] == "WIN").mean() * 100
     avg_r = trades_df["result_r"].mean()
-    print(f"\n📊 Quick Stats:")
+    print("\n📊 Quick Stats:")
     print(f"   Win Rate: {win_rate:.1f}%")
     print(f"   Average R-multiple: {avg_r:.2f}R")
 

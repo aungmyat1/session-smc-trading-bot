@@ -11,9 +11,8 @@ their own test modules).
 from __future__ import annotations
 
 import sys
-import types
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 import asyncio
 import pytest
 
@@ -136,7 +135,6 @@ async def _run_tick(strategy_map, signal_map, mode="shadow",
     portmgr.stats.return_value = {}
     portmgr.record_trade = MagicMock()
 
-    from execution.demo_risk_manager import new_state
 
     with (
         patch("scripts.run_portfolio._STRATEGY_MAP",   strategy_map),
@@ -441,7 +439,6 @@ class TestStrategyMapFromConfig:
     """_STRATEGY_MAP falls back to hardcoded defaults when yaml unavailable."""
 
     def test_fallback_map_has_all_five_strategies(self):
-        import importlib
         with patch("builtins.open", side_effect=FileNotFoundError):
             # Re-evaluate the _load_strategy_config call
             from scripts import run_portfolio as rp

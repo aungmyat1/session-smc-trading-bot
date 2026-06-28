@@ -4,14 +4,13 @@ tests/database_test.py
 Validation tests for the Trading Research Database.
 """
 
-import os
 import sys
 from pathlib import Path
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from research_database.database import SessionLocal
 from research_database.models import Trade, ReplayRun, Strategy
 from datetime import datetime, date

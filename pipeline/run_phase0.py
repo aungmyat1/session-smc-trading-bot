@@ -16,7 +16,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from datetime import date
 
@@ -25,8 +24,6 @@ import polars as pl
 from db.runtime import resolve_database_url
 from .config import (
     FEATURES_DIR,
-    PHASE0_MIN_NET_PF,
-    PHASE0_MIN_TRADES,
     SPREAD_STANDARD,
     SPREAD_STRESS_2X,
     SYMBOLS,

@@ -7,7 +7,6 @@ Import Parquet data into PostgreSQL (candles, SMC events, trades).
 import pandas as pd
 from sqlalchemy import create_engine
 import os
-from pathlib import Path
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://trading_user:trading_research_2025@localhost:5432/trading_research")
 engine = create_engine(DATABASE_URL)

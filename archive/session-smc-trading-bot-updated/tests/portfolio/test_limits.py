@@ -1,7 +1,6 @@
 """Tests: daily trade limit, daily/weekly/monthly loss limits, circuit breaker."""
 
-from datetime import date, datetime, timedelta, timezone
-import pytest
+from datetime import date, datetime, timezone
 from core.signal import Signal
 from core.portfolio_manager import PortfolioManager
 from core.circuit_breaker import CircuitBreaker

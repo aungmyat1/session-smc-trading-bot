@@ -1,14 +1,10 @@
 """Tests for execution/risk_manager.py"""
 
-import json
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from execution.risk_manager import RiskManager, STATE_FILE
+from execution.risk_manager import RiskManager
 
 
 BASE_CONFIG = {

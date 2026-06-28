@@ -35,7 +35,7 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
+from strategy.session_liquidity.session_strategy import run_strategy
 from strategy.session_liquidity.session_builder import classify_session
 from session_smc.structure_detector import (
     htf_bias as htf_bias_combined,
@@ -626,8 +626,8 @@ def _write_recommendation(
         "",
         "## EXP05 Targets (all four must hold)",
         "",
-        f"| Gate | Target |",
-        f"|---|---|",
+        "| Gate | Target |",
+        "|---|---|",
         f"| PF (2× spread) | > {TARGETS['pf_2x']} |",
         f"| Win Rate | > {TARGETS['win_rate']*100:.0f}% |",
         f"| Max DD | < {TARGETS['max_dd']}R |",
@@ -754,7 +754,7 @@ def main() -> None:
     b2 = _metrics(base_trades, "net_r_2x")
     print(f"    n={bm['n']} | PF_std={_pf(bm['pf'])} | PF_2x={_pf(b2['pf'])} "
           f"| WR={bm['win_rate']*100:.1f}% | MaxDD={bm['max_dd']:.2f}R")
-    print(f"    (Documented baseline: n=169 | PF_2x=1.025 at RR=5)")
+    print("    (Documented baseline: n=169 | PF_2x=1.025 at RR=5)")
 
     # ── Apply variant filters ─────────────────────────────────────────────────
     print("\n[+] Applying variant filters ...")
@@ -872,7 +872,7 @@ def main() -> None:
         print(f"  {vid:<10} {ms['n']:>5} {_pf(ms['pf']):>9} {_pf(m2['pf']):>9} "
               f"{ms['win_rate']*100:>6.1f}% {ms['max_dd']:>7.2f}  {g}")
 
-    print(f"\n  Outputs → research/EXP05_*.md\n")
+    print("\n  Outputs → research/EXP05_*.md\n")
 
 
 if __name__ == "__main__":

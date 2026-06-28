@@ -5,7 +5,6 @@ LIVE_TRADING=false  → connect for data only; order calls are logged, not sent.
 LIVE_TRADING=true   → orders execute on the connected account (demo or live).
 """
 
-import asyncio
 import logging
 import os
 from dataclasses import dataclass

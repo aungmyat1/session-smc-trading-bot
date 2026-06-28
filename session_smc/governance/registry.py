@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from .lifecycle import LifecycleState, StrategyLifecycle, LifecycleTransitionError
+from .lifecycle import LifecycleState, StrategyLifecycle
 
 logger = logging.getLogger(__name__)
 

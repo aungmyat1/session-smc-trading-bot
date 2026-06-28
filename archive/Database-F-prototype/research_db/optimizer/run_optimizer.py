@@ -5,7 +5,6 @@ Main Stage 6 Strategy Optimizer runner.
 """
 
 from pathlib import Path
-import json
 import polars as pl
 
 from strategy_generator import generate_strategies
@@ -42,7 +41,7 @@ def main():
 
     # 4. Rank strategies
     ranking = rank_strategies(trades)
-    print(f"\nTop 10 Strategies by Edge Score:")
+    print("\nTop 10 Strategies by Edge Score:")
     print(ranking.head(10))
 
     # 5. Eliminate weak strategies

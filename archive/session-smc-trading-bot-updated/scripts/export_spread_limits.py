@@ -79,7 +79,7 @@ def main():
         "# Methodology: P95 of combined killzone (london + new_york),",
         "#              rounded UP to next 0.05 pip. stress2x = standard × 2.",
         "",
-        f"active_profile: vantage_measured",
+        "active_profile: vantage_measured",
         f"generated_at:   {now_str}",
         "",
         "symbols:",
@@ -115,7 +115,7 @@ def main():
 
     _COSTS_JSON.write_text(json.dumps(costs, indent=2), encoding="utf-8")
     print(f"[+] Updated:  {_COSTS_JSON.relative_to(_ROOT)}")
-    print(f"    active_profile → vantage_measured")
+    print("    active_profile → vantage_measured")
 
     # Print summary
     print(f"\n{'Symbol':<10} {'KZ_avg':>8} {'KZ_p95':>8} {'standard':>10} {'stress2x':>10}")

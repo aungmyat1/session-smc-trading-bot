@@ -130,8 +130,8 @@ def main():
         f"| London sessions  | {london_days}/5 |",
         f"| NY sessions      | {ny_days}/5 |",
         f"| Total rows       | {meta['total_rows']:,} |",
-        f"| Poll interval    | ~30 s (target) |",
-        f"| Symbol dropouts  | see Section 2 |",
+        "| Poll interval    | ~30 s (target) |",
+        "| Symbol dropouts  | see Section 2 |",
         "",
         "---",
         "",
@@ -295,7 +295,7 @@ def main():
 
     # Stdout summary
     print(f"\n{'='*60}")
-    print(f"  Spread Analysis Summary")
+    print("  Spread Analysis Summary")
     print(f"{'='*60}")
     print(f"  Rows:    {meta['total_rows']:,}  |  London: {london_days}/5  |  NY: {ny_days}/5")
     print(f"\n  {'Symbol':<10} {'Session':<12} {'n':>6} {'Avg':>6} {'P95':>6}")
@@ -306,7 +306,7 @@ def main():
             if not st:
                 continue
             print(f"  {sym:<10} {sess:<12} {st['n']:>6} {st['avg']:>6.2f} {st['p95']:>6.2f}")
-    print(f"\nNext: python3 scripts/build_cost_model.py")
+    print("\nNext: python3 scripts/build_cost_model.py")
 
 
 if __name__ == "__main__":

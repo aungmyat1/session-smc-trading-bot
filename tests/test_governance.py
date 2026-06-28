@@ -7,7 +7,6 @@ Tests:
 - StrategyRegistry CRUD + persistence
 """
 
-import json
 import tempfile
 from pathlib import Path
 

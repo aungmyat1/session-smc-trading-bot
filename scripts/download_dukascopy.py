@@ -21,7 +21,6 @@ CLAUDE.md §0: do not download data without explicit user instruction.
 import argparse
 import asyncio
 import json
-import io
 import logging
 import lzma
 import struct

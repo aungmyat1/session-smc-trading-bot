@@ -117,7 +117,7 @@ def main() -> None:
                    help=f"End date YYYY-MM-DD. Default: {_DEFAULT_END}")
     p.add_argument("--strategies", nargs="+", default=_ALL_STRATEGIES,
                    choices=_ALL_STRATEGIES, metavar="NAME",
-                   help=f"Strategies to include. Default: all 5")
+                   help="Strategies to include. Default: all 5")
     p.add_argument("--smoke-only", action="store_true",
                    help="Run smoke test only (signal counts, no full metrics)")
     p.add_argument("--no-preflight", action="store_true",
@@ -130,7 +130,7 @@ def main() -> None:
     data_dir = Path(args.data_dir) if args.data_dir else (_ROOT / "data" / "historical")
 
     print(f"\n{'='*60}")
-    print(f"  Historical Replay — Pre-Demo Validation")
+    print("  Historical Replay — Pre-Demo Validation")
     print(f"  Period   : {args.start} → {args.end}")
     print(f"  Symbols  : {args.symbols}")
     print(f"  Strategies: {args.strategies}")
@@ -202,7 +202,7 @@ def main() -> None:
 
     # ── Final verdict ─────────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print(f"  OUTPUT FILES")
+    print("  OUTPUT FILES")
     print(f"  Trades  : {csv_path.relative_to(_ROOT)}")
     print(f"  Report  : {report_path.relative_to(_ROOT)}")
     print(f"  Smoke   : {smoke_path.relative_to(_ROOT)}")
@@ -224,7 +224,7 @@ def main() -> None:
         failed = [g.strategy for g in gate.strategies if g.mode == "demo" and not g.overall]
         print(f"  ❌ REPLAY GATE FAIL — {', '.join(failed)}")
         print(f"     Review: {report_path.relative_to(_ROOT)}")
-        print(f"     Do NOT connect to Vantage Demo until all demo strategies pass.")
+        print("     Do NOT connect to Vantage Demo until all demo strategies pass.")
     print()
 
 

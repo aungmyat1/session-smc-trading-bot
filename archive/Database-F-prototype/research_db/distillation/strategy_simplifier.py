@@ -4,7 +4,6 @@ Converts discovered patterns into simple, readable trading rules.
 """
 
 import polars as pl
-from .pattern_miner import load_trades, mine_patterns
 
 
 def simplify_strategies(patterns: pl.DataFrame, top_n: int = 10) -> list:

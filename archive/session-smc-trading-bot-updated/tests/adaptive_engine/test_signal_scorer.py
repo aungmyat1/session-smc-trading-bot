@@ -1,6 +1,5 @@
 """Tests for bot/engine/signal_scorer.py"""
 
-import pytest
 from adaptive.strategies import AdaptiveSignal
 from adaptive.engine.signal_scorer import score_signal, MIN_SCORE
 

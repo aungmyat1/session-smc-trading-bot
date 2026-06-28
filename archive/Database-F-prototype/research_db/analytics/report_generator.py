@@ -5,11 +5,7 @@ Generates a comprehensive performance report.
 
 from .metrics_engine import (
     load_trades,
-    session_stats,
-    pair_stats,
-    setup_stats,
     win_rate,
-    calculate_drawdown,
     edge_score,
 )
 from .session_analysis import run_session_analysis

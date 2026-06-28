@@ -30,7 +30,6 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 
 from simulator.forward_test import ForwardTestSimulator
-from strategy.session_liquidity.entry_engine import Signal
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

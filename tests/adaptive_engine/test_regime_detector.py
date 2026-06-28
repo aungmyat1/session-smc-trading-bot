@@ -1,6 +1,5 @@
 """Tests for bot/engine/regime_detector.py"""
 
-import pytest
 from adaptive.engine.regime_detector import detect_regime, _compute_atr, _compute_adx
 
 

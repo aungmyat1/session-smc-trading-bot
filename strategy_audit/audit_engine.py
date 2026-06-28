@@ -1,20 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Iterable
 
 from research.lineage import build_release_metadata
 
-from .data import DataAuditModule, IntegrityAuditModule, SessionAuditModule, SpreadAuditModule, TimestampAuditModule
+from .data import IntegrityAuditModule
 from .deployment_gate import DeploymentGate
-from .execution import BrokerCompareAuditModule, ExecutionReplayAuditModule, LatencyAuditModule, SlippageAuditModule, SpreadModelAuditModule
-from .monitoring import AlertEngineAuditModule, HealthChecksAuditModule, ProductionMonitorAuditModule, StrategyDriftAuditModule
+from .monitoring import StrategyDriftAuditModule
 from .models import AuditContext, AuditReport, AuditResult
-from .regime import NewsAuditModule, RegimeAuditModule, SeasonalityAuditModule, SessionRegimeAuditModule, TrendAuditModule, VolatilityAuditModule
-from .risk import CapitalAllocationAuditModule, DrawdownAuditModule, PortfolioAuditModule, RiskLimitsAuditModule, RiskMetricsAuditModule
-from .robustness import ParameterStabilityAuditModule, ScenarioTestingAuditModule, SensitivityAuditModule, StressTestAuditModule
-from .rules import ExecutionAuditModule, RuleAuditModule, SignalAuditModule
-from .statistics import BootstrapAuditModule, DistributionAuditModule, ExpectancyAuditModule, MonteCarloAuditModule, PerformanceAuditModule, WalkForwardAuditModule
+from .regime import RegimeAuditModule
+from .risk import RiskMetricsAuditModule
+from .robustness import ParameterStabilityAuditModule
+from .rules import ExecutionAuditModule, RuleAuditModule
+from .statistics import MonteCarloAuditModule, PerformanceAuditModule, WalkForwardAuditModule
 
 
 DEFAULT_MODULES = [

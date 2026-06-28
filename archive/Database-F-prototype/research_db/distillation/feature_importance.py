@@ -4,7 +4,6 @@ Ranks SMC features by statistical importance.
 """
 
 import polars as pl
-from pattern_miner import load_trades
 
 
 def compute_feature_importance(df: pl.DataFrame) -> pl.DataFrame:

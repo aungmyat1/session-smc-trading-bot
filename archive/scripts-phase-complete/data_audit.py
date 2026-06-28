@@ -160,7 +160,7 @@ def generate_report(audits: dict, target_years: float) -> str:
     all_pass = True
 
     for symbol in SYMBOLS:
-        lines.append(f"---")
+        lines.append("---")
         lines.append(f"## {symbol}")
         lines.append("")
 
@@ -200,7 +200,7 @@ def generate_report(audits: dict, target_years: float) -> str:
             lines.append("")
 
     lines.append("---")
-    lines.append(f"## Overall Verdict")
+    lines.append("## Overall Verdict")
     lines.append("")
     lines.append(f"**{'✅ ALL PASS — data ready for backtest' if all_pass else '❌ FAILURES — fix data gaps before backtesting'}**")
     lines.append("")

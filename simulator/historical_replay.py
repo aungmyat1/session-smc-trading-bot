@@ -15,9 +15,8 @@ What it does NOT answer:
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict, dataclass
-from datetime import date as date_cls, datetime, timedelta, timezone
-from pathlib import Path
+from dataclasses import dataclass
+from datetime import date as date_cls, datetime, timezone
 from typing import Iterable
 
 from simulator.forward_test import (

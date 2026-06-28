@@ -621,7 +621,7 @@ if __name__ == "__main__":
     parser.add_argument("--daily", action="store_true", help="Daily summary only")
     parser.add_argument("--weekly", action="store_true", help="Weekly summary only")
     parser.add_argument("--log", type=Path, default=_TRADE_LOG, metavar="PATH",
-                        help=f"JSONL log file (default: logs/trades.jsonl)")
+                        help="JSONL log file (default: logs/trades.jsonl)")
     parser.add_argument("--quiet", action="store_true", help="Suppress console output")
     args = parser.parse_args()
 

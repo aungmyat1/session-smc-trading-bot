@@ -4,7 +4,6 @@ Ranks strategies by multiple metrics.
 """
 
 import polars as pl
-from pathlib import Path
 
 
 def rank_strategies(trades_df: pl.DataFrame) -> pl.DataFrame:

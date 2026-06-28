@@ -19,7 +19,7 @@ No trade execution. No order placement. Audit mode only.
 import argparse
 import csv
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -28,12 +28,11 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from strategy.session_liquidity.session_builder import (
-    AsianRange,
     build_asian_range,
     classify_session,
 )
 from strategy.session_liquidity.bias_filter import htf_bias
-from strategy.session_liquidity.sweep_detector import detect_sweep, SweepResult
+from strategy.session_liquidity.sweep_detector import detect_sweep
 from strategy.session_liquidity.displacement_detector import (
     detect_displacement,
     wilder_atr as _wilder_atr_module,
@@ -335,7 +334,7 @@ def generate_report(results: list[dict], trade_date: date) -> str:
     lines = [
         f"# DRY_RUN_{date_str.replace('-', '_')}.md",
         f"# VALIDATION-01 — Session Liquidity Dry Run: {date_str}",
-        f"# Audit mode only. No trades executed.",
+        "# Audit mode only. No trades executed.",
         "",
         "---",
         "",

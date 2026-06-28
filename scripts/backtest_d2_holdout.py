@@ -13,9 +13,9 @@ Data note: M15 bars used as proxy (no 5M data).
   confirm_bars=12 M15 = 3h confirm window (spec: 12×5M = 1h).
 """
 from __future__ import annotations
-import json, math
+import json
+import math
 from pathlib import Path
-import numpy as np
 import pandas as pd
 
 import sys
@@ -23,10 +23,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from backtest_d2_daily_bias import (
     OUTDIR as DATA_DIR, add_context, pivot_swings, PIP_SIZE,
-    INITIAL_CAPITAL, RISK_PER_TRADE, SL_BUFFER_PIPS, SPREAD_FILTER_MULT,
-    prepare_data,
+    INITIAL_CAPITAL, RISK_PER_TRADE, prepare_data,
 )
-from optimize_d2_rules import backtest, summarize, Params
+from optimize_d2_rules import backtest, Params
 
 OUTDIR = Path('backtest_output_d2_holdout')
 OUTDIR.mkdir(exist_ok=True)

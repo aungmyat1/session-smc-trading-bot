@@ -251,8 +251,8 @@ def write_report(results, today_utc):
         "",
         "## Baseline (ST-A, RR=5, combined)",
         "",
-        f"| Trades | Net PF (std) | Net PF (2×) | Gap to gate |",
-        f"|---|---|---|---|",
+        "| Trades | Net PF (std) | Net PF (2×) | Gap to gate |",
+        "|---|---|---|---|",
         f"| {BASELINE['n']} | {BASELINE['pf_std']:.3f} | {BASELINE['pf_2x']:.3f} |"
         f" +{1.0 - BASELINE['pf_2x']:.3f} needed |",
         "",

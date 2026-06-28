@@ -5,7 +5,6 @@ High-level research database API (save/query functions).
 
 from sqlalchemy.orm import Session
 from .models import Trade, ReplayRun, SmcEvent, StrategyMetric
-from datetime import datetime
 
 
 def save_trade(db: Session, trade_data: dict):

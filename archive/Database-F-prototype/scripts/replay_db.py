@@ -7,12 +7,11 @@ Reads M1 Parquet data and simulates trades into PostgreSQL.
 """
 
 import argparse
-from datetime import datetime, date
+from datetime import datetime
 from pathlib import Path
 import polars as pl
 import pandas as pd
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
 import os
 
 # Database connection
@@ -131,7 +130,7 @@ def run_replay(symbol: str, start: str, end: str, rr: float = 2.0):
 
         conn.commit()
 
-    print(f"✅ Replay complete. Trades written to PostgreSQL.")
+    print("✅ Replay complete. Trades written to PostgreSQL.")
 
 
 if __name__ == "__main__":

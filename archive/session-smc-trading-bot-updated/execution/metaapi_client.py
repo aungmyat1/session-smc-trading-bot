@@ -11,7 +11,7 @@ No strategy logic. No position sizing. Pure broker interface.
 import asyncio
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)

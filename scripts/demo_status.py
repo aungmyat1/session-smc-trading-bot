@@ -8,7 +8,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,7 +67,7 @@ async def _status() -> None:
     print(f"  Last HB:       {hb['last_heartbeat']}")
 
     # Account
-    print(f"\n  ACCOUNT")
+    print("\n  ACCOUNT")
     print(f"  Balance:       {acct['balance']:.2f} {acct['currency']}")
     print(f"  Equity:        {acct['equity']:.2f} {acct['currency']}")
     print(f"  Free margin:   {acct['free_margin']:.2f} {acct['currency']}")
@@ -80,7 +79,7 @@ async def _status() -> None:
               f"{p['lots']}lot  entry={p['entry']}  P&L={p['profit']:.2f}")
 
     # Journal summary
-    print(f"\n  JOURNAL SUMMARY")
+    print("\n  JOURNAL SUMMARY")
     print(f"  Total opened:  {summ['total_opened']}")
     print(f"  Total closed:  {summ['total_closed']}")
     print(f"  Wins:          {summ['wins']}")

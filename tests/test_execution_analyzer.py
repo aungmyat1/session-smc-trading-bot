@@ -1,7 +1,6 @@
 """Tests for research/execution_analyzer.py — RESEARCH-05 execution quality metrics."""
 
 import json
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,7 +17,6 @@ from research.execution_analyzer import (
     compute_execution_failures,
     compute_reconnect_during_trade,
     compute_duplicate_signal_attempts,
-    compute_execution_summary,
     _percentile,
     run,
 )
@@ -585,9 +583,6 @@ class TestRunIntegration:
         weekly_out = tmp_path / "execution_weekly.json"
         self._write_trades_jsonl(trade_log)
 
-        from research.execution_analyzer import (
-            _DAILY_OUT, _WEEKLY_OUT, _TRADE_LOG, _BOT_LOG
-        )
         from unittest.mock import patch
         import research.execution_analyzer as ea
 

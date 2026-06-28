@@ -6,7 +6,6 @@ Creates the professional trade_journal.db with all recommended tables.
 
 import sqlite3
 from pathlib import Path
-from datetime import datetime
 
 DB_PATH = Path("research_db/trade_journal.db")
 

@@ -12,7 +12,7 @@ Public API:
 from datetime import datetime, timezone
 
 from strategy.session_liquidity.session_builder import (
-    AsianRange, build_asian_range, classify_session,
+    build_asian_range, classify_session,
     classify_session_v2,
 )
 from strategy.session_liquidity.bias_filter import htf_bias

@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -352,9 +352,9 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
 
     lines += [
         "",
-        f"## Exit Breakdown",
+        "## Exit Breakdown",
         "",
-        f"| Exit | Count |",
+        "| Exit | Count |",
         "|---|---|",
     ]
     for ex, cnt in sorted(by_exit.items()):
@@ -408,9 +408,9 @@ def main():
 
     print(f"  Loading M15 (ctx from {ctx_start}) …")
     m15 = load_parquet(sym, "M15", ctx_start, args.end)
-    print(f"  Loading H4 …")
+    print("  Loading H4 …")
     h4  = load_parquet(sym, "H4", None, args.end)
-    print(f"  Loading H1 …")
+    print("  Loading H1 …")
     h1  = load_parquet(sym, "H1", None, args.end)
 
     if not m15 or not h4:
@@ -418,7 +418,7 @@ def main():
         sys.exit(1)
 
     print(f"  M15={len(m15)} bars | H4={len(h4)} bars | H1={len(h1)} bars")
-    print(f"  Running signal chain …")
+    print("  Running signal chain …")
 
     cfg = {
         **DEFAULT_CONFIG,

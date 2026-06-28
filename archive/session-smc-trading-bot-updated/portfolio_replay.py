@@ -11,7 +11,9 @@ Usage:
 """
 
 from __future__ import annotations
-import csv, json, os, sys
+import csv
+import os
+import sys
 from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -280,8 +282,8 @@ def write_symbol_report(sym: str, trades: list[dict], m: dict) -> None:
         "",
         "## Summary",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| M15 bars (replay window) | {m['m15_bars_replay']:,} |",
         f"| Signals generated | {m['signals']} |",
         f"| Trades simulated | {m['total']} |",
@@ -350,8 +352,8 @@ def write_portfolio_report(all_trades: list[dict], pm: dict, sym_metrics: dict) 
         "",
         "## Portfolio Combined",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total trades | {pm['total']} |",
         f"| Wins / Losses / Timeouts | {pm['wins']} / {pm['losses']} / {pm['timeouts']} |",
         f"| Win rate | {pm['win_rate']}% |",
@@ -382,7 +384,7 @@ def write_portfolio_report(all_trades: list[dict], pm: dict, sym_metrics: dict) 
         "",
         "| Gate | Threshold | Result | Status |",
         "|------|-----------|--------|--------|",
-        f"| Trade count (5yr) | ≥ 50 | 169 (5yr validated) | ✅ PASS |",
+        "| Trade count (5yr) | ≥ 50 | 169 (5yr validated) | ✅ PASS |",
         f"| Trade count (6-month) | ≥ 30 | {pm['total']} | {'✅' if pm['total'] >= 30 else '⚠'} {'PASS' if pm['total'] >= 30 else 'WARN — below sample gate'} |",
         f"| Profit Factor (std) | > 1.0 | {pm['profit_factor']} | {'✅ PASS' if pm['profit_factor'] > 1.0 else '❌ FAIL'} |",
         f"| Profit Factor (2× stress) | > 1.0 | ~{round(pm['profit_factor'] * 0.8, 3)} est. | "
@@ -423,15 +425,15 @@ def write_final_verdict(pm: dict, sym_metrics: dict) -> None:
     lines = [
         "# FINAL REPLAY VERDICT",
         f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
-        f"**Strategy:** ST-A2 — Session Liquidity Sweep + Displacement",
+        "**Strategy:** ST-A2 — Session Liquidity Sweep + Displacement",
         f"**Period:** {REPLAY_START} → {REPLAY_END}",
         "",
         f"## VERDICT: {verdict}",
         "",
         "## Key Metrics",
         "",
-        f"| Metric | Value |",
-        f"|--------|-------|",
+        "| Metric | Value |",
+        "|--------|-------|",
         f"| Total trades | {pm['total']} |",
         f"| Profit Factor | {pf} |",
         f"| Net R | {pm['net_r']:+.3f}R |",
@@ -441,8 +443,8 @@ def write_final_verdict(pm: dict, sym_metrics: dict) -> None:
         "",
         "## Gate Results",
         "",
-        f"| Gate | Status |",
-        f"|------|--------|",
+        "| Gate | Status |",
+        "|------|--------|",
         f"| PF > 1.0 (standard) | {'✅ PASS' if gate_pf else '❌ FAIL'} — {pf} |",
         f"| PF > 1.0 (2× stress est.) | {'✅ PASS' if gate_pf2x else '⚠ MARGINAL'} — {pf2x} |",
         f"| 30-trade 6-month sample | {'PASS' if gate_count else 'WARN — ' + str(pm['total']) + ' < 30 (5yr=169 PASS)'} |",

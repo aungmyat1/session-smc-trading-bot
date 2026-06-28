@@ -11,7 +11,6 @@ Read-only — does not modify any files.
 import csv
 import statistics
 import subprocess
-import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -73,7 +72,7 @@ def main() -> None:
     ny_n = len(sess_days["new_york"])
     gate_met = london_n >= 5 and ny_n >= 5
 
-    print(f"  Session coverage:")
+    print("  Session coverage:")
     print(f"    London:   {london_n}/5  {sorted(sess_days['london'])}")
     print(f"    New York: {ny_n}/5  {sorted(sess_days['new_york'])}")
     print(f"    Gate (5+5): {'✅ MET' if gate_met else f'⏳ {5 - london_n}L + {5 - ny_n}NY remaining'}")
@@ -125,7 +124,7 @@ def main() -> None:
         pf_std = 1.151
         est_pf_2x = pf_std - drag_ph * ratio
         tag = "✅ projected PASS" if est_pf_2x >= 1.0 else "❌ projected FAIL"
-        print(f"  PF_2x projection (linear approx, preliminary):")
+        print("  PF_2x projection (linear approx, preliminary):")
         print(f"    Measured EURUSD avg: {eur_avg:.2f}pip  GBPUSD avg: {gbp_avg:.2f}pip")
         print(f"    Weighted 2× cost: measured={meas_w:.3f}  placeholder=3.103")
         print(f"    Estimated PF_2x: {est_pf_2x:.3f}  {tag}")
@@ -136,7 +135,7 @@ def main() -> None:
     if not gate_met:
         sessions_left = max(5 - london_n, 5 - ny_n)
         print(f"  Estimated gate completion: ~{sessions_left} more trading day(s)")
-        print(f"  No action needed. Run: python3 scripts/spread_status.py each morning.")
+        print("  No action needed. Run: python3 scripts/spread_status.py each morning.")
 
 
 if __name__ == "__main__":

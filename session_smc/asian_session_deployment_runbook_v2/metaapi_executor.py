@@ -10,10 +10,8 @@ Requires:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +95,7 @@ class MetaApiExecutor:
         Returns negative float if net loss, positive if net profit.
         """
         self._check_connected()
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timezone
 
         today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0

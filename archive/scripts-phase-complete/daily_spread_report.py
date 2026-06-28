@@ -12,7 +12,7 @@ import csv
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -112,7 +112,7 @@ def main() -> None:
     gate_sessions = london_days >= 5 and ny_days >= 5
     gate_met = gate_7k and gate_sessions
 
-    print(f"Gate progress:")
+    print("Gate progress:")
     print(f"  London sessions:   {london_days}/5  {'✅' if london_days >= 5 else '⏳'}")
     print(f"  NY sessions:       {ny_days}/5  {'✅' if ny_days >= 5 else '⏳'}")
     print(f"  ≥7,000 rows:       {total_rows:,}/7,000  {'✅' if gate_7k else '⏳'}")

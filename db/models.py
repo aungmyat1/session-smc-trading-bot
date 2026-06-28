@@ -3,7 +3,7 @@ db/models.py
 SQLAlchemy ORM models — mirrors db/schema_v2.sql exactly.
 """
 from __future__ import annotations
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy import (
     BigInteger, Boolean, Column, Date, DateTime, ForeignKey,
     Integer, JSON, Numeric, String, Text, UniqueConstraint,

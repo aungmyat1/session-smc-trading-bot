@@ -1,8 +1,6 @@
 """Tests for adaptive/journal/trade_journal.py"""
 
-import json
 import pytest
-from pathlib import Path
 from adaptive.strategies import AdaptiveSignal
 from adaptive.journal.trade_journal import TradeJournal
 

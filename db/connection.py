@@ -5,7 +5,6 @@ SQLAlchemy engine + session factory.
 DATABASE_URL env var overrides the default (useful for CI or Docker).
 """
 from __future__ import annotations
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy.pool import QueuePool

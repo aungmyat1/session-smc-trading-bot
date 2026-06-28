@@ -79,7 +79,7 @@ async def main() -> None:
     await conn.close()
 
     print("\n" + "=" * 60)
-    print(f"✅ Account configured and connected.")
+    print("✅ Account configured and connected.")
     print(f"   Account ID : {NEW_ACCOUNT_ID}")
     print(f"   Server     : {account.server}")
     print(f"   Login      : {account.login}")
@@ -89,7 +89,7 @@ async def main() -> None:
     # ── Step 7: Update .env ───────────────────────────────────────
     env_path = _ROOT / ".env"
     env_text = env_path.read_text()
-    old_line = f"METAAPI_ACCOUNT_ID=21649455-718b-494b-8f34-ed54fde80b5d"
+    old_line = "METAAPI_ACCOUNT_ID=21649455-718b-494b-8f34-ed54fde80b5d"
     new_line = f"METAAPI_ACCOUNT_ID={NEW_ACCOUNT_ID}"
     if old_line in env_text:
         env_path.write_text(env_text.replace(old_line, new_line))

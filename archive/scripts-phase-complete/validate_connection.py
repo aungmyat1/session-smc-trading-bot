@@ -397,7 +397,7 @@ def generate_report(data: dict, out_path: Path) -> None:
         "",
         "| Field | Value |",
         "|---|---|",
-        f"| Broker | Vantage (VT Markets) via MetaAPI |",
+        "| Broker | Vantage (VT Markets) via MetaAPI |",
         f"| Account ID | `{os.getenv('METAAPI_ACCOUNT_ID','')[:8]}…` |",
         f"| Balance | {account.get('balance', 0):.2f} {account.get('currency','?')} |",
         f"| Equity | {account.get('equity', 0):.2f} {account.get('currency','?')} |",
@@ -462,8 +462,8 @@ def generate_report(data: dict, out_path: Path) -> None:
         lines.append(f"| {c['name']} | {icon} | {c['value']} |")
     lines += [
         "",
-        f"> All orders return `order_id=DRY_RUN` and `dry_run=True`.",
-        f"> No real orders were sent to the broker.",
+        "> All orders return `order_id=DRY_RUN` and `dry_run=True`.",
+        "> No real orders were sent to the broker.",
         "",
     ]
 

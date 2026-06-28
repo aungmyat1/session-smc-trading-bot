@@ -5,7 +5,6 @@ Downloads clean historical M1 data for EURUSD, GBPUSD, XAUUSD (2020 → present)
 and stores it as Parquet files.
 """
 
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
 

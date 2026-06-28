@@ -17,7 +17,6 @@ The script is safe to re-run. All seed inserts use ON CONFLICT DO NOTHING.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 

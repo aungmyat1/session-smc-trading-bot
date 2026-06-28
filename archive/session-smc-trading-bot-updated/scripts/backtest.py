@@ -17,7 +17,6 @@ Output:
 
 import argparse
 import csv
-import os
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
@@ -437,7 +436,7 @@ def main(symbols: list[str], start: str, end: str, trial_id: str) -> None:
         else:
             candles_1h = []
             print(f"[{symbol}] H1 not found — using M15 proxy for 1H bias (lower fidelity).")
-            print(f"  To fix: python3 scripts/fetch_data.py --granularities M15 H1 H4")
+            print("  To fix: python3 scripts/fetch_data.py --granularities M15 H1 H4")
 
         if not candles_15m:
             print(f"[{symbol}] No M15 data in range {start}–{end}")

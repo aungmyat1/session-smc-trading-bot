@@ -2,7 +2,6 @@
 
 import json
 import pytest
-from pathlib import Path
 from adaptive.state.state_store import StateStore
 
 

@@ -1,6 +1,5 @@
 """Tests for core.PortfolioManager."""
 
-import pytest
 from core.signal import Signal
 from core.portfolio_manager import PortfolioManager
 
