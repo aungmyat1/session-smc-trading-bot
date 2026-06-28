@@ -25,6 +25,12 @@ Current lifecycle source of truth:
 - `docs/SYSTEM_ARCHITECTURE.md`
 - `config/strategy_catalog.yaml`
 
+AI-assisted development workflow references:
+
+- `docs/AI_WORKFLOW_ARCHITECTURE.md`
+- `docs/DEVELOPER_HANDBOOK.md`
+- `docs/templates/implementation_spec_template.md`
+
 Current practical flow:
 
 1. Research builds evidence.

@@ -11,6 +11,12 @@ If the lifecycle changes, update these in order:
 2. `docs/SYSTEM_ARCHITECTURE.md`
 3. generated or status-facing project documents
 
+Related workflow governance documents:
+
+- `docs/AI_WORKFLOW_ARCHITECTURE.md`
+- `docs/DEVELOPER_HANDBOOK.md`
+- `docs/templates/implementation_spec_template.md`
+
 ## Architecture Status
 
 - Architecture target: `ISOP v2`
@@ -30,6 +36,8 @@ The code currently implements a transitional lifecycle centered on SVOS:
 Strategy Intake
   ↓
 Strategy Audit
+  ↓
+Strategy Enhancement
   ↓
 Historical Replay
   ↓
@@ -52,6 +60,15 @@ The current implementation is reflected in:
 
 In the current codebase, `virtual_demo` and `production_approval` remain SVOS
 pipeline stages for backward compatibility.
+
+In practical terms, the repository is designed as a research gate rather than a
+"backtest first" tool. The intended operational behavior is:
+
+- strategy logic is normalized before replay
+- ambiguous or contradictory rules are blocked before backtest
+- enhancement exists to clarify and harden the rulebook before evidence stages
+- statistical testing only happens after the specification is sufficiently
+  objective and machine-readable
 
 ## Target Architecture
 
@@ -107,6 +124,7 @@ Owns:
 
 - strategy intake
 - strategy audit
+- strategy enhancement
 - historical replay
 - statistical validation
 - robustness validation

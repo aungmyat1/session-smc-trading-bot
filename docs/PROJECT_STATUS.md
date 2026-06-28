@@ -30,6 +30,8 @@ Fastest path to micro-live: ~14–21 days from capture start.
 
 **Recorded objective:** `docs/PROJECT_OBJECTIVE_FASTEST_PATH.md`
 
+**Live timeline view:** `docs/PROJECT_LIVE_STATUS_TIMELINE.md`
+
 Parallel track: OPS-01 stability run still in progress through 2026-06-28 (see below).
 
 ## Strategy Focus

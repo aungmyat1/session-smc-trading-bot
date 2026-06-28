@@ -18,6 +18,10 @@ pipeline to the full ISOP target architecture.
 - Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
 - Implementation transition status: `docs/IMPLEMENTATION_STATUS.md`
 - Strategy state source of truth: `config/strategy_catalog.yaml`
+- AI workflow and prompt layering: `docs/AI_WORKFLOW_ARCHITECTURE.md`
+- Repository implementation constitution: `docs/DEVELOPER_HANDBOOK.md`
+- Implementation task contract template:
+  `docs/templates/implementation_spec_template.md`
 
 Current implementation:
 
