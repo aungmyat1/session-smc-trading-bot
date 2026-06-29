@@ -43,9 +43,6 @@ SVOS requires a strategy spec with these fields:
 SVOS currently follows this lifecycle in code:
 
 ```text
-New Strategy
-      │
-      ▼
 Strategy Intake
       │
       ▼
@@ -65,7 +62,7 @@ Backtest
       │
       ├── FAIL → Improve logic or filters → Backtest again
       ▼
-Robustness Tests
+Robustness
       │
       ├── FAIL → Adjust parameters or simplify rules → Retest
       ▼

@@ -26,7 +26,7 @@ This platform should be designed as a **Strategy Validation Operating System
 ### Overall Workflow
 
 ```text
-                 New Strategy
+               Strategy Intake
                       │
                       ▼
         Phase 0 ─ Strategy Audit
@@ -55,7 +55,7 @@ This platform should be designed as a **Strategy Validation Operating System
            PASS / FAIL / FIX
                       │
                       ▼
-        Phase 4 ─ Robustness Tests
+        Phase 4 ─ Robustness
                       │
  Walk Forward
  Monte Carlo

@@ -11,7 +11,7 @@ firms gate strategy research before replay and backtesting.
 The reference model is:
 
 ```text
-New Strategy
+Strategy Intake
   ↓
 Phase 0 ─ Strategy Audit
   ↓
@@ -21,11 +21,13 @@ Phase 2 ─ Historical Replay
   ↓
 Phase 3 ─ Backtesting
   ↓
-Phase 4 ─ Robustness Tests
+Phase 4 ─ Robustness
   ↓
-Phase 5 ─ Demo Trading
+Phase 5 ─ Verification Ready
   ↓
-Phase 6 ─ Production Approval
+Phase 6 ─ Virtual Demo Trading
+  ↓
+Phase 7 ─ Production Approval
 ```
 
 ## Executive Verdict

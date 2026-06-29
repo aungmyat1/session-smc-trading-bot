@@ -16,12 +16,16 @@ It shows:
 ## Project Workflow
 
 ```text
-New Strategy
+Strategy Intake
       │
       ▼
 Strategy Audit
       │
       ├── FAIL -> AI edits specification -> Audit again
+      ▼
+Strategy Enhancement
+      │
+      ├── FAIL -> Resolve unresolved rule questions -> Enhance again
       ▼
 Historical Replay
       │
@@ -31,11 +35,15 @@ Backtest
       │
       ├── FAIL -> Improve logic or filters -> Backtest again
       ▼
-Robustness Tests
+Robustness
       │
       ├── FAIL -> Adjust parameters or simplify rules -> Retest
       ▼
-Virtual Demo
+Verification Ready
+      │
+      ├── FAIL -> Resolve research-stage gaps -> Return to research
+      ▼
+Virtual Demo Trading
       │
       ├── FAIL -> Analyze live drift -> Return to research
       ▼
@@ -55,12 +63,15 @@ Production Approval
 
 | Stage | Status | Current understanding | Target |
 |---|---|---|---|
+| Strategy Intake | Implemented | raw strategy text/spec enters the SVOS runner | normalize the strategy into a tracked validation run |
 | Strategy Audit | Implemented | strategy validation exists | clear, codable rules |
+| Strategy Enhancement | Implemented | audit findings turn into structured clarifications and rewrite guidance | produce a replay-ready rulebook |
 | Historical Replay | Implemented | replay capability exists | confirm signal behavior |
 | Backtest | Implemented | backtest tooling exists | test profitability after clear rules |
-| Robustness Tests | Implemented | robustness stage exists | reject fragile behavior |
-| Virtual Demo | Partially active | execution layer exists; gates still active | safe broker-connected validation on Vantage without production capital |
-| Production Approval | Not ready for live promotion | approval remains evidence-gated | controlled live promotion only after acceptable Virtual Demo evidence |
+| Robustness | Implemented | robustness stage exists | reject fragile behavior |
+| Verification Ready | Implemented | research evidence is consolidated into a pre-demo gate | confirm the strategy can move into controlled broker-connected validation |
+| Virtual Demo Trading | Partially active | execution layer exists; gates still active | safe broker-connected validation on Vantage without production capital |
+| Production Approval | Not ready for live promotion | approval remains evidence-gated | controlled live promotion only after acceptable Virtual Demo Trading evidence |
 
 ## Current Operational Position
 
@@ -71,7 +82,7 @@ Backtest PASS
   ↓
 Robustness sufficient for current promotion path
   ↓
-Virtual Demo preparation
+Verification-ready handoff
   ↓
 E5 spread capture running
   ↓
@@ -141,7 +152,7 @@ Status:
 
 Target:
 
-- approve only after Virtual Demo evidence remains acceptable
+- approve only after Virtual Demo Trading evidence remains acceptable
 
 ## Next Task To Execute
 

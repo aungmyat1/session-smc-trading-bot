@@ -13,15 +13,19 @@ The system should work like this:
 - process: run it through the `SVOS` engine
 - output: a production-approved strategy only if it passes all stages
 
-In this repository, `SVOS` means this practical stage-gate loop:
+In this repository, `SVOS` currently means this practical stage-gate loop:
 
 ```text
-New Strategy
+Strategy Intake
       │
       ▼
 Strategy Audit
       │
       ├── FAIL -> AI edits specification -> Audit again
+      ▼
+Strategy Enhancement
+      │
+      ├── FAIL -> Resolve unresolved rule questions -> Enhance again
       ▼
 Historical Replay
       │
@@ -31,18 +35,23 @@ Backtest
       │
       ├── FAIL -> Improve logic or filters -> Backtest again
       ▼
-Robustness Tests
+Robustness
       │
       ├── FAIL -> Adjust parameters or simplify rules -> Retest
       ▼
-Demo Trading
+Verification Ready
+      │
+      ├── FAIL -> Resolve research-stage gaps -> Return to research
+      ▼
+Virtual Demo Trading
       │
       ├── FAIL -> Analyze live drift -> Return to research
       ▼
 Production Approval
 ```
 
-Each stage should answer one question before the next stage begins.
+Each stage should answer one question before the next stage begins. This is the
+current operational pipeline in code.
 
 ## Scope Rule
 
@@ -56,6 +65,9 @@ running a validated strategy through demo and live execution.
 The repo currently has:
 
 - an SVOS-style workflow in code
+- `Strategy Intake` as the first operational stage
+- `Strategy Enhancement` between audit and replay
+- `Verification Ready` before broker-connected virtual demo
 - a simple execution path aimed at Vantage demo/live trading
 - a strategy-validation objective rather than a single-strategy identity
 

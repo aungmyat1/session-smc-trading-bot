@@ -264,12 +264,12 @@ Purpose:
 Provide stage-by-stage validation evidence for the current strategy as it moves
 through the operational SVOS pipeline.
 
-Canonical public sequence:
-`Strategy Audit -> Historical Replay -> Backtest -> Robustness Tests -> Virtual Demo -> Production Approval`
+Current operational sequence:
+`Strategy Intake -> Strategy Audit -> Strategy Enhancement -> Historical Replay -> Backtest -> Robustness -> Verification Ready -> Virtual Demo Trading -> Production Approval`
 
-Strategy intake and enhancement are supporting evidence inside the Strategy
-Audit report. Verification readiness is supporting evidence inside the Virtual
-Demo report.
+The canonical immutable report set still includes the stage packages that drive
+automation and dashboard summaries, while the compatibility view under
+`reports/current_strategy_svos/` exposes each stage as owner-facing evidence.
 
 Input data:
 Strategy specification, audit findings, enhancement plan, replay evidence,
@@ -309,11 +309,13 @@ is implemented in:
 - `dashboard/app.py`
 - `dashboard/index.html`
 
-The SVOS dashboard uses the canonical six-stage run as its primary view. It
-shows the strategy identity and version, run ID, latest passed gate, active
-blocker, next task, diagnostic scores, promotion decisions, remediation route,
-and Virtual Demo signal/trade evidence. Canonical Markdown reports can be
-opened from each stage card or from the run summary.
+The SVOS dashboard shows the current strategy validation path, including intake,
+audit, enhancement, replay, backtest, robustness, verification readiness,
+virtual demo, and production approval evidence. It shows the strategy identity
+and version, run ID, latest passed gate, active blocker, next task, diagnostic
+scores, promotion decisions, remediation route, and virtual-demo signal/trade
+evidence. Canonical Markdown reports can be opened from each stage card or from
+the run summary.
 
 The compatibility reports under `reports/current_strategy_svos/` remain the
 fallback when no canonical run exists. Canonical immutable reports are indexed

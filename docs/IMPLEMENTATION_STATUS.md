@@ -24,11 +24,14 @@ The main function of `SVOS` is the failure loop.
 
 This is the essential behavior:
 
+- fail in `Strategy Intake` -> correct the source specification or ingestion payload
 - fail in `Strategy Audit` -> fix the specification
+- fail in `Strategy Enhancement` -> resolve unanswered rule questions and regenerate the rulebook
 - fail in `Historical Replay` -> fix the logic interpretation
 - fail in `Backtest` -> improve logic or filters
-- fail in `Robustness Tests` -> simplify or retune
-- fail in `Virtual Demo` -> analyze execution drift and return to research
+- fail in `Robustness` -> simplify or retune
+- fail in `Verification Ready` -> close research-stage gaps before demo promotion
+- fail in `Virtual Demo Trading` -> analyze execution drift and return to research
 
 That means `SVOS` is not just a linear pipeline.
 
@@ -38,12 +41,16 @@ strategy until it is genuinely ready for production approval.
 ## Target Workflow
 
 ```text
-New Strategy
+Strategy Intake
       │
       ▼
 Strategy Audit
       │
       ├── FAIL -> AI edits specification -> Audit again
+      ▼
+Strategy Enhancement
+      │
+      ├── FAIL -> Resolve unresolved rule questions -> Enhance again
       ▼
 Historical Replay
       │
@@ -53,16 +60,22 @@ Backtest
       │
       ├── FAIL -> Improve logic or filters -> Backtest again
       ▼
-Robustness Tests
+Robustness
       │
       ├── FAIL -> Adjust parameters or simplify rules -> Retest
       ▼
-Virtual Demo
+Verification Ready
+      │
+      ├── FAIL -> Resolve research-stage gaps -> Return to research
+      ▼
+Virtual Demo Trading
       │
       ├── FAIL -> Analyze live drift -> Return to research
       ▼
 Production Approval
 ```
+
+This is the current operational pipeline in the repository.
 
 ## Implementation Priorities
 
@@ -191,7 +204,7 @@ Remaining implementation focus:
 - keep this stage downstream of audit and replay
 - make failed backtests route into logic/filter improvement, not blind retesting
 
-### Phase 4. Robustness Tests
+### Phase 4. Robustness
 
 Purpose:
 
@@ -221,7 +234,7 @@ Remaining implementation focus:
 - make robustness failures produce specific correction guidance
 - route failures to simplification, retuning, or rule changes
 
-### Phase 5. Virtual Demo
+### Phase 5. Verification Ready + Virtual Demo Trading
 
 Purpose:
 
@@ -240,7 +253,7 @@ Desired output:
 
 - virtual-demo execution evidence
 - drift findings
-- PASS/FAIL Virtual Demo verdict
+- PASS/FAIL Virtual Demo Trading verdict
 
 Current implementation position:
 
@@ -251,7 +264,7 @@ Current implementation position:
 
 Remaining implementation focus:
 
-- make Virtual Demo failure explicitly route back into research analysis
+- make Virtual Demo Trading failure explicitly route back into research analysis
 - keep the bot simple, stable, and well-instrumented
 
 Implemented report contract:
@@ -260,7 +273,7 @@ Implemented report contract:
 - immutable artifacts are stored under
   `reports/svos/<strategy-id>/<version>/<run-id>/`
 - internal intake and enhancement evidence is included in `Strategy Audit`
-- internal verification-ready evidence is included in `Virtual Demo`
+- internal verification-ready evidence is carried into `Virtual Demo Trading`
 - reports use `PASS`, `FAIL`, `BLOCKED`, `IN_PROGRESS`, and `NOT_RUN`
 - downstream stages become `BLOCKED` after a failed or blocked hard gate
 - the append-only SVOS registry records report hashes and strategy versions
@@ -275,7 +288,7 @@ Minimum delivery timeline for this reporting and lifecycle consolidation:
 | Days 1-2 | lifecycle and report contracts |
 | Days 3-5 | immutable storage, indexing, and version identity |
 | Days 6-8 | audit, replay, and backtest integration |
-| Days 9-11 | robustness, Virtual Demo, drift, and approval integration |
+| Days 9-11 | robustness, verification-ready handoff, virtual demo drift, and approval integration |
 | Days 12-13 | blocked-stage handling and dashboard report access |
 | Days 14-15 | regression tests and end-to-end acceptance |
 
@@ -287,7 +300,7 @@ Purpose:
 
 What this stage should do:
 
-- review audit, replay, backtest, robustness, and Virtual Demo evidence
+- review audit, enhancement, replay, backtest, robustness, verification-ready, and Virtual Demo Trading evidence
 - approve or reject live promotion
 
 Desired output:
@@ -393,8 +406,8 @@ The current operational work remains:
 1. finish `E5` spread capture
 2. run `E6` cost revalidation
 3. complete `E1-E4` execution gate
-4. continue Virtual Demo only if evidence holds
-5. allow controlled live approval only after Virtual Demo evidence is acceptable
+4. continue Virtual Demo Trading only if evidence holds
+5. allow controlled live approval only after Virtual Demo Trading evidence is acceptable
 
 ## In Scope
 
@@ -403,7 +416,7 @@ The current operational work remains:
 - replay correctness
 - backtest correctness
 - robustness diagnostics
-- Virtual Demo drift analysis
+- Virtual Demo Trading drift analysis
 - simple Vantage demo/live bot
 - execution reliability
 

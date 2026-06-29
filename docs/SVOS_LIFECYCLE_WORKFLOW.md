@@ -1,6 +1,7 @@
 # SVOS Lifecycle Workflow
 
-This document sets up the standard SVOS promotion loop for a new strategy.
+This document sets up the standard SVOS promotion loop for a strategy entering
+the current intake pipeline.
 It matches the current implementation in `research/svos/engine.py` and the
 report artifacts written under `reports/current_strategy_svos/<strategy>/`.
 
@@ -13,9 +14,6 @@ ISOP architecture.
 ## Workflow
 
 ```text
-New Strategy
-    │
-    ▼
 Strategy Intake
     │
     ▼
@@ -35,7 +33,7 @@ Backtest
     │
     ├── FAIL → Improve logic or filters → Backtest again
     ▼
-Robustness Tests
+Robustness
     │
     ├── FAIL → Adjust parameters or simplify rules → Retest
     ▼
