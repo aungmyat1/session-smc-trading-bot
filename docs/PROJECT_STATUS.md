@@ -67,6 +67,10 @@ deployment approval. See `config/strategy_catalog.yaml` and
 | RESEARCH-14 | `config/strategy_change_pipeline.yaml` + blocked promotion stages | [x] 2026-06-26 |
 | RESEARCH-15 | Validation gate engine + regression engine + promotion reports | [x] 2026-06-26 |
 | RESEARCH-16 | `scripts/run_current_strategy_validation.py` + `scripts/run_current_strategy_svos.py` + catalog-linked strategy spec loading | [x] 2026-06-27 |
+| RESEARCH-17 | `strategy_validation/` Stage 1 specification validation engine + reports/tests/docs | [x] 2026-06-28 |
+| RESEARCH-18 | Canonical SVOS audit integration: `SVOSRunner` now uses `strategy_validation/` for Stage 0/1 audit decisions | [x] 2026-06-28 |
+| RESEARCH-19 | Structured `Strategy Enhancement` editor plan + stage report propagation | [x] 2026-06-28 |
+| RESEARCH-20 | Dashboard stage-report surfacing for SVOS stages + markdown report rendering | [x] 2026-06-28 |
 | BUG-02 | Telegram parse_mode Markdown on raw heartbeat string → 400 errors | [x] fixed 2026-06-23 |
 
 ---
@@ -186,6 +190,30 @@ Research plan: `docs/ST_B_RESEARCH_PLAN.md`
 
 ---
 
+## SVOS Audit Workflow
+
+The repository now has an explicit Stage 0/1 strategy-specification quality
+layer before replay.
+
+Current implemented sequence:
+
+`Strategy Intake -> Strategy Audit -> Strategy Enhancement -> Historical Replay -> Backtest -> Robustness -> Verification Ready -> Virtual Demo Trading -> Production Approval`
+
+Completed audit-workflow deliverables:
+
+- canonical validation engine in `strategy_validation/`
+- JSON/Markdown/HTML audit reports + audit log
+- SVOS runner integration using the canonical validator
+- enhancement-stage clarification plan generation
+- per-stage SVOS reports rendered on the dashboard
+
+Remaining gap:
+
+- the enhancement plan is structured and persisted, but not yet a fully
+  interactive answer-capture session that rewrites the spec automatically
+
+---
+
 ## Backtest Results Log
 
 | Trial | Pairs | RR | Trades | PF (std) | PF (2×) | Verdict |
@@ -212,6 +240,9 @@ Research plan: `docs/ST_B_RESEARCH_PLAN.md`
 ## Test Suite Health
 
 ```
+strategy_validation/  4/4    passing  (Stage 1 validation engine)
+svos workflow/        9/9    passing  (canonical audit + enhancement + pipeline)
+dashboard/           13/13   passing  (stage reports + markdown rendering)
 session_smc/        127/127 passing
 session_liquidity/  262/262 passing  (SA-01…SA-07 + SA-10 min_sl_pips)
 research/            29/29  passing  (RESEARCH-01)
@@ -223,7 +254,7 @@ ops/                 21/21  passing  (OPS-01: safety, dedup, heartbeat, state pe
 research/            50/50  passing  (RESEARCH-05: execution quality metrics)
 execution/bug01      19/19  passing  (BUG-01: RPC timeout, reconnect, watchdog)
 scripts/             51/51  passing  (OPS-02A: capture_spreads — session, pip, csv, agg, summary, reconnect)
-total               751/751
+total               777/777
 ```
 
 ---

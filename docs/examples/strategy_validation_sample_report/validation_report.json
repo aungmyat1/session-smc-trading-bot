@@ -1,0 +1,246 @@
+{
+  "audit_log": [
+    {
+      "created_at": "2026-06-28T10:21:52.538935+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 100.0,
+      "result_status": "PASS",
+      "validator_name": "Input Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.538995+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 83.33,
+      "result_status": "PARTIAL",
+      "validator_name": "Rule Completeness Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539014+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 100.0,
+      "result_status": "PASS",
+      "validator_name": "Ambiguity Detection",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539029+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 100.0,
+      "result_status": "PASS",
+      "validator_name": "Logical Consistency Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539043+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 90.0,
+      "result_status": "PARTIAL",
+      "validator_name": "Measurability Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539057+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 68.0,
+      "result_status": "PARTIAL",
+      "validator_name": "Institutional Rule Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539071+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 100.0,
+      "result_status": "PASS",
+      "validator_name": "Risk Management Validation",
+      "version": "1.0"
+    },
+    {
+      "created_at": "2026-06-28T10:21:52.539084+00:00",
+      "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+      "result_score": 100.0,
+      "result_status": "PASS",
+      "validator_name": "Testability Validation",
+      "version": "1.0"
+    }
+  ],
+  "critical_issues": [],
+  "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+  "generated_at": "2026-06-28T10:21:52.539125+00:00",
+  "overall_score": 93.3,
+  "overall_status": "PARTIAL",
+  "readiness_decision": "REQUIRES_REVISION",
+  "recommendations": [
+    {
+      "code": "complete_rule_dimension",
+      "expected_improvement": "Improves rule completeness and reviewer alignment.",
+      "improved": "",
+      "message": "Add explicit 'why' criteria to the entry/exit flow.",
+      "original": "",
+      "priority": "MEDIUM",
+      "reason": "Each strategy rule should answer when, where, why, how, exit, and cancel."
+    },
+    {
+      "code": "make_rule_measurable",
+      "expected_improvement": "Improves testability and reproducibility.",
+      "improved": "Add a numeric threshold or exact comparison for this rule.",
+      "message": "Rewrite the rule with thresholds, comparators, or explicit state transitions.",
+      "original": "Use liquidity sweep, BOS, market structure, and session filter only.",
+      "priority": "HIGH",
+      "reason": "Replay and coding require objective criteria."
+    }
+  ],
+  "source_path": "",
+  "strategy_name": "ReplayReady",
+  "summary": "Specification scored 93.3% across 8 validators. Decision: REQUIRES_REVISION.",
+  "validator_results": [
+    {
+      "findings": [],
+      "metadata": {
+        "completeness_score": 100.0,
+        "missing_fields": []
+      },
+      "recommendations": [],
+      "score": 100.0,
+      "status": "PASS",
+      "validator_name": "Input Validation"
+    },
+    {
+      "findings": [
+        {
+          "code": "incomplete_rule_dimension",
+          "details": {},
+          "evidence": "",
+          "location": "why",
+          "message": "Trading rules do not clearly answer 'why'.",
+          "severity": "WARN"
+        }
+      ],
+      "metadata": {
+        "missing_dimensions": [
+          "why"
+        ],
+        "rule_completeness_score": 83.33
+      },
+      "recommendations": [
+        {
+          "code": "complete_rule_dimension",
+          "expected_improvement": "Improves rule completeness and reviewer alignment.",
+          "improved": "",
+          "message": "Add explicit 'why' criteria to the entry/exit flow.",
+          "original": "",
+          "priority": "MEDIUM",
+          "reason": "Each strategy rule should answer when, where, why, how, exit, and cancel."
+        }
+      ],
+      "score": 83.33,
+      "status": "PARTIAL",
+      "validator_name": "Rule Completeness Validation"
+    },
+    {
+      "findings": [],
+      "metadata": {
+        "ambiguous_phrases": []
+      },
+      "recommendations": [],
+      "score": 100.0,
+      "status": "PASS",
+      "validator_name": "Ambiguity Detection"
+    },
+    {
+      "findings": [],
+      "metadata": {
+        "conflict_count": 0
+      },
+      "recommendations": [],
+      "score": 100.0,
+      "status": "PASS",
+      "validator_name": "Logical Consistency Validation"
+    },
+    {
+      "findings": [
+        {
+          "code": "non_measurable_rule",
+          "details": {},
+          "evidence": "Use liquidity sweep, BOS, market structure, and session filter only.",
+          "location": "",
+          "message": "Rule cannot be converted to objective logic without assumptions.",
+          "severity": "WARN"
+        }
+      ],
+      "metadata": {
+        "measurability_score": 90.0,
+        "measurable_rules": [
+          "Enter long when price sweeps the prior day's low by at least 2 pips and closes back above that low.",
+          "Confirm BOS on M15 with close > prior swing high.",
+          "Require ATR(14) >= 0.0008 and displacement candle body > 1.2 x ATR(14).",
+          "Enter long when price sweeps the prior day's low by at least 2 pips and closes back above that low.",
+          "Confirm BOS on M15 with close > prior swing high.",
+          "Require ATR(14) >= 0.0008 and displacement candle body > 1.2 x ATR(14).",
+          "Stop Loss: 3 pips below the sweep low.",
+          "Take Profit: 2R fixed target.",
+          "Cancel if BOS does not occur within 3 candles after the sweep."
+        ],
+        "non_measurable_rules": [
+          "Use liquidity sweep, BOS, market structure, and session filter only."
+        ]
+      },
+      "recommendations": [
+        {
+          "code": "make_rule_measurable",
+          "expected_improvement": "Improves testability and reproducibility.",
+          "improved": "Add a numeric threshold or exact comparison for this rule.",
+          "message": "Rewrite the rule with thresholds, comparators, or explicit state transitions.",
+          "original": "Use liquidity sweep, BOS, market structure, and session filter only.",
+          "priority": "HIGH",
+          "reason": "Replay and coding require objective criteria."
+        }
+      ],
+      "score": 90.0,
+      "status": "PARTIAL",
+      "validator_name": "Measurability Validation"
+    },
+    {
+      "findings": [],
+      "metadata": {
+        "detected_concepts": [
+          "market structure",
+          "bos",
+          "liquidity sweep",
+          "session filter"
+        ],
+        "institutional_quality_score": 68.0
+      },
+      "recommendations": [],
+      "score": 68.0,
+      "status": "PARTIAL",
+      "validator_name": "Institutional Rule Validation"
+    },
+    {
+      "findings": [],
+      "metadata": {
+        "missing_controls": [],
+        "risk_score": 100.0
+      },
+      "recommendations": [],
+      "score": 100.0,
+      "status": "PASS",
+      "validator_name": "Risk Management Validation"
+    },
+    {
+      "findings": [],
+      "metadata": {
+        "testability_score": 100.0
+      },
+      "recommendations": [],
+      "score": 100.0,
+      "status": "PASS",
+      "validator_name": "Testability Validation"
+    }
+  ],
+  "warnings": [
+    "Trading rules do not clearly answer 'why'.",
+    "Rule cannot be converted to objective logic without assumptions."
+  ]
+}

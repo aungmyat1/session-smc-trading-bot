@@ -74,9 +74,22 @@ _JOURNAL_PATHS = [
     _ROOT / "logs" / "portfolio_demo_trades.jsonl",
 ]
 _SVOS_REPORTS_DIR = _ROOT / "reports" / "current_strategy_svos"
+_SVOS_CANONICAL_REPORTS_DIR = _ROOT / "reports" / "svos"
 _ARCHITECTURE_PATH = _ROOT / "docs" / "SYSTEM_ARCHITECTURE.md"
 _BOT_LOG = _ROOT / "logs" / "bot.log"
 _RUNNER_LOG = _ROOT / "logs" / "st_a2_runner.log"
+
+_SVOS_STAGE_FILE_MAP = {
+    "intake": ("00_intake.md", "00_intake.json"),
+    "audit": ("01_audit.md", "01_audit.json"),
+    "enhancement": ("02_enhancement.md", "02_enhancement.json"),
+    "replay": ("03_replay.md", "03_replay.json"),
+    "backtest": ("04_backtest.md", "04_backtest.json"),
+    "robustness": ("05_robustness.md", "05_robustness.json"),
+    "verification_ready": ("06_verification_ready.md", "06_verification_ready.json"),
+    "virtual_demo": ("07_virtual_demo.md", "07_virtual_demo.json"),
+    "production_approval": ("08_production_approval.md", "08_production_approval.json"),
+}
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -131,6 +144,176 @@ def _latest_svos_report(strategy: str) -> dict[str, Any]:
         except Exception:
             continue
     return {}
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _svos_stage_report_payload(strategy: str) -> dict[str, Any]:
+    stage_dir = _SVOS_REPORTS_DIR / strategy / "stages"
+    index_path = stage_dir / "index.json"
+    index = _read_json(index_path)
+    entries = index.get("stages", []) if isinstance(index.get("stages"), list) else []
+    stage_reports: list[dict[str, Any]] = []
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        stage_name = str(entry.get("stage", "")).strip()
+        file_pair = _SVOS_STAGE_FILE_MAP.get(stage_name)
+        markdown_rel = ""
+        json_rel = ""
+        markdown_exists = False
+        json_exists = False
+        if file_pair:
+            markdown_path = stage_dir / file_pair[0]
+            json_path = stage_dir / file_pair[1]
+            markdown_exists = markdown_path.exists()
+            json_exists = json_path.exists()
+            if markdown_exists:
+                markdown_rel = markdown_path.relative_to(_ROOT).as_posix()
+            if json_exists:
+                json_rel = json_path.relative_to(_ROOT).as_posix()
+        stage_reports.append({
+            "phase": entry.get("phase"),
+            "stage": stage_name,
+            "status": entry.get("status", "UNKNOWN"),
+            "can_promote": bool(entry.get("can_promote", False)),
+            "next_stage": entry.get("next_stage"),
+            "created_at": entry.get("created_at", ""),
+            "markdown_path": markdown_rel,
+            "json_path": json_rel,
+            "markdown_report_id": markdown_rel.replace("/", "__") if markdown_rel else "",
+            "json_report_id": json_rel.replace("/", "__") if json_rel else "",
+            "has_markdown": markdown_exists,
+            "has_json": json_exists,
+            "label": stage_name.replace("_", " ").title(),
+        })
+
+    return {
+        "strategy": strategy,
+        "stage_index_path": index_path.relative_to(_ROOT).as_posix() if index_path.exists() else "",
+        "stage_reports": stage_reports,
+        "overall_status": index.get("overall_status", ""),
+        "promoted_stage": index.get("promoted_stage"),
+        "updated_at": index.get("updated_at", ""),
+    }
+
+
+def _report_path_payload(path_value: Any, fallback: Path) -> dict[str, Any]:
+    path = Path(str(path_value)) if path_value else fallback
+    if not path.is_absolute():
+        path = _ROOT / path
+    try:
+        resolved = path.resolve()
+        relative = resolved.relative_to(_ROOT.resolve()).as_posix()
+    except (OSError, ValueError):
+        return {"path": "", "report_id": "", "exists": False}
+    return {
+        "path": relative if resolved.is_file() else "",
+        "report_id": relative.replace("/", "__") if resolved.is_file() else "",
+        "exists": resolved.is_file(),
+    }
+
+
+def _latest_canonical_svos_payload(strategy: str) -> dict[str, Any]:
+    if not _SVOS_CANONICAL_REPORTS_DIR.exists():
+        return {}
+    candidates = sorted(
+        _SVOS_CANONICAL_REPORTS_DIR.glob("**/run_summary.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    summary: dict[str, Any] = {}
+    summary_path: Path | None = None
+    for candidate in candidates:
+        payload = _read_json(candidate)
+        if payload.get("strategy_name") == strategy or payload.get("strategy_id") == strategy:
+            summary = payload
+            summary_path = candidate
+            break
+    if summary_path is None:
+        return {}
+
+    stage_reports: list[dict[str, Any]] = []
+    for entry in summary.get("stages", []):
+        if not isinstance(entry, dict):
+            continue
+        stage = str(entry.get("stage", ""))
+        json_fallback = summary_path.parent / f"{stage}.json"
+        markdown_fallback = summary_path.parent / f"{stage}.md"
+        json_report = _report_path_payload(entry.get("json_path"), json_fallback)
+        markdown_report = _report_path_payload(entry.get("markdown_path"), markdown_fallback)
+        detail = _read_json(_ROOT / json_report["path"]) if json_report["path"] else {}
+        remediation = detail.get("remediation", {}) if isinstance(detail.get("remediation"), dict) else {}
+        findings = detail.get("findings", []) if isinstance(detail.get("findings"), list) else []
+        stage_reports.append(
+            {
+                "stage": stage,
+                "label": entry.get("stage_label", stage.replace("_", " ").title()),
+                "status": entry.get("status", "NOT_RUN"),
+                "score": entry.get("score"),
+                "promotion_allowed": bool(entry.get("promotion_allowed", False)),
+                "report_id": entry.get("report_id", ""),
+                "markdown_path": markdown_report["path"],
+                "markdown_report_id": markdown_report["report_id"],
+                "json_path": json_report["path"],
+                "json_report_id": json_report["report_id"],
+                "remediation_route": remediation.get("route", ""),
+                "remediation_actions": remediation.get("actions", []),
+                "finding_count": len(findings),
+                "metrics": detail.get("metrics", {}),
+                "thresholds": detail.get("thresholds", {}),
+                "sections": detail.get("sections", {}),
+                "visualizations": detail.get("visualizations", []),
+                "decision": (detail.get("sections", {}) or {}).get("decision", {}),
+                "next_action": (detail.get("sections", {}) or {}).get("next_action", ""),
+            }
+        )
+
+    summary_markdown = _report_path_payload("", summary_path.with_suffix(".md"))
+    summary_json = _report_path_payload(summary_path, summary_path)
+    supporting_reports = []
+    for stem, label in (
+        ("00_strategy_summary", "New Strategy Summary"),
+        ("strategy_evolution", "Strategy Evolution"),
+        ("failure_analysis", "Failure Analysis"),
+        ("improvement_report", "Improvement Report"),
+        ("final_qualification", "Final Qualification"),
+    ):
+        json_report = _report_path_payload("", summary_path.parent / f"{stem}.json")
+        markdown_report = _report_path_payload("", summary_path.parent / f"{stem}.md")
+        if json_report["exists"] or markdown_report["exists"]:
+            supporting_reports.append(
+                {
+                    "report_type": stem,
+                    "label": label,
+                    "json_report_id": json_report["report_id"],
+                    "markdown_report_id": markdown_report["report_id"],
+                }
+            )
+    return {
+        "run_id": summary.get("run_id", ""),
+        "strategy_id": summary.get("strategy_id", strategy),
+        "strategy_version": summary.get("strategy_version", ""),
+        "overall_status": summary.get("overall_status", ""),
+        "latest_passed_stage": summary.get("latest_passed_stage", ""),
+        "active_blocker": summary.get("active_blocker", ""),
+        "next_task": summary.get("next_task", ""),
+        "promoted_stage": summary.get("promoted_stage"),
+        "generated_at": summary.get("generated_at", ""),
+        "summary_markdown_report_id": summary_markdown["report_id"],
+        "summary_json_report_id": summary_json["report_id"],
+        "report_dir": summary_path.parent.relative_to(_ROOT).as_posix(),
+        "stages": stage_reports,
+        "supporting_reports": supporting_reports,
+    }
 
 
 def _all_trades() -> list[dict]:
@@ -367,11 +550,17 @@ def api_svos():
         })
 
     current_report = _latest_svos_report(current) if current else {}
+    stage_reports = _svos_stage_report_payload(current) if current else {"stage_reports": []}
+    canonical_run = _latest_canonical_svos_payload(current) if current else {}
 
     return jsonify({
         "current_strategy": current,
         "strategies": strategy_list,
         "current_report": current_report,
+        "stage_reports": stage_reports.get("stage_reports", []),
+        "stage_report_index_path": stage_reports.get("stage_index_path", ""),
+        "stage_report_updated_at": stage_reports.get("updated_at", ""),
+        "canonical_run": canonical_run,
         "fetched_at": _now_iso(),
     })
 
@@ -487,14 +676,16 @@ def api_status():
     governance = _governance_payload()
     smo = _smo_payload()
     control = load_control_state()
+    canonical_run = _latest_canonical_svos_payload(current) if current else {}
 
     return jsonify({
         "system": "ONLINE",
         "current_strategy": current,
         "strategy_status": current_meta.get("status", "unknown"),
         "strategy_approved": current_meta.get("approved", False),
-        "last_svos_status": current_meta.get("last_svos_status", ""),
-        "last_svos_at": current_meta.get("last_svos_at", ""),
+        "last_svos_status": canonical_run.get("overall_status") or current_meta.get("last_svos_status", ""),
+        "last_svos_at": canonical_run.get("generated_at") or current_meta.get("last_svos_at", ""),
+        "last_svos_active_blocker": canonical_run.get("active_blocker", ""),
         "evf_status": evf.get("status", "NO REPORT"),
         "evf_score": evf.get("final_score", 0),
         "trade_count": stats["total"],

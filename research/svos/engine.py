@@ -11,11 +11,10 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from hashlib import sha1
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
-from core.strategy_registry import can_deploy_strategy, promote_strategy_stage
+from core.strategy_registry import can_deploy_strategy, get_strategy_manifest, promote_strategy_stage
 from execution_validation.engine import ExecutionValidationReport
 from research.regression.engine import RegressionEngine
 from research.validation.engine import (
@@ -26,6 +25,13 @@ from research.validation.engine import (
     load_validation_config,
 )
 from research.lineage import build_release_metadata
+from strategy_validation.ai.editor_engine import StrategyEditorEngine
+from strategy_validation.models import StrategyDocument as ValidationStrategyDocument
+from strategy_validation.models import ValidationRecommendation, ValidationReport as StrategyValidationReport
+from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
+from svos.orchestration import SVOSPlatform
+from svos.registry import StrategyRegistryService
+from svos.reports.stage_package import write_stage_report_package
 
 _ROOT = Path(__file__).resolve().parents[2]
 
@@ -415,6 +421,14 @@ class VirtualDemoValidationInput:
     live_metrics: dict[str, float] = field(default_factory=dict)
     execution_validation_report: ExecutionValidationReport | dict[str, Any] | None = None
     require_ready_for_demo: bool = True
+    expected_signals: int | None = None
+    observed_signals: int | None = None
+    expected_trades: int | None = None
+    observed_trades: int | None = None
+    execution_metrics: dict[str, float] = field(default_factory=dict)
+    order_outcomes: dict[str, int] = field(default_factory=dict)
+    risk_controls: dict[str, bool] = field(default_factory=dict)
+    broker_comparison: dict[str, Any] = field(default_factory=dict)
 
 
 DemoValidationInput = VirtualDemoValidationInput
@@ -428,12 +442,50 @@ class SVOSRunResult:
     promoted_stage: str | None = None
     created_at: str = field(default_factory=_now)
     release: dict[str, Any] = field(default_factory=build_release_metadata)
+    canonical_report: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2, sort_keys=True, default=str)
+
+
+class StrategyValidationAuditAdapter:
+    """Bridge the canonical Stage 1 validator into the legacy SVOS stage model."""
+
+    def __init__(self, pipeline: StrategyValidationPipeline | None = None) -> None:
+        self.pipeline = pipeline or StrategyValidationPipeline()
+
+    def audit(self, strategy: str | dict[str, Any], strategy_name: str | None = None) -> StageResult:
+        raw_text = _strategy_text(strategy)
+        document = ValidationStrategyDocument.from_text(raw_text)
+        strategy_label = strategy_name or document.strategy_name or _extract_strategy_name(strategy) or "UNNAMED"
+        report = self.pipeline.run_text(raw_text)
+        spec = _strategy_spec_from_validation_document(document, strategy_label, strategy, report)
+        issues = _strategy_issues_from_validation_report(report)
+        fix_instructions = _fix_instructions_from_validation_report(report)
+        clarifying_questions = _clarifying_questions_from_validation_report(report)
+        status = _stage_status_from_validation_report(report)
+        next_stage = "enhancement" if status == "PASS" else None
+        return StageResult(
+            phase=1,
+            stage="audit",
+            status=status,
+            issues=issues,
+            fix_instructions=fix_instructions,
+            next_stage=next_stage,
+            can_promote=status == "PASS",
+            spec=spec,
+            clarifying_questions=clarifying_questions,
+            metadata={
+                "validation_report": report.to_dict(),
+                "readiness_decision": report.readiness_decision,
+                "overall_score": report.overall_score,
+                "warning_count": len(report.warnings),
+                "critical_issue_count": len(report.critical_issues),
+            },
+        )
 
 
 class StrategyAuditEngine:
@@ -624,6 +676,7 @@ class SVOSRunner:
         strategy_name: str,
         registry_path: Path | str | None = None,
         output_dir: Path | str | None = None,
+        canonical_output_dir: Path | str | None = None,
         validation_config: Any | None = None,
     ) -> None:
         self.strategy_name = strategy_name
@@ -632,9 +685,21 @@ class SVOSRunner:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.validation_config = validation_config or load_validation_config()
         self.intake_engine = StrategyIntakeEngine()
-        self.audit_engine = StrategyAuditEngine()
+        self.audit_engine = StrategyValidationAuditAdapter()
+        self.editor_engine = StrategyEditorEngine()
         self.validation_gate = ValidationGate(self.validation_config)
         self.regression_engine = RegressionEngine(self.validation_config.regression_thresholds)
+        self._run_strategy_text = ""
+        self._run_input_payloads: dict[str, Any] = {}
+        self._strategy_id = re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-") or "UNNAMED"
+        self._strategy_version = "0.0.0"
+        self._previous_version: str | None = None
+        self._platform: SVOSPlatform | None = None
+        self._canonical_output_dir = (
+            Path(canonical_output_dir)
+            if canonical_output_dir is not None
+            else self._resolve_canonical_output_dir()
+        )
 
     def run_pipeline(
         self,
@@ -651,6 +716,13 @@ class SVOSRunner:
     ) -> SVOSRunResult:
         stages: list[StageResult] = []
         promoted_stage: str | None = None
+        self._prepare_run(
+            strategy,
+            replay=replay,
+            backtest=backtest,
+            robustness=robustness,
+            virtual_demo=virtual_demo if virtual_demo is not None else demo,
+        )
 
         intake = self.intake_engine.intake(strategy, strategy_name=self.strategy_name)
         stages.append(intake)
@@ -665,8 +737,6 @@ class SVOSRunner:
         stages.append(audit)
         self._write_stage_report(stages, promoted_stage)
         self._notify_stage_observer(stage_observer, stages, promoted_stage)
-        if audit.status != "PASS":
-            return self._finish(stages, promoted_stage)
         if stop_after == "audit":
             return self._finish(stages, promoted_stage)
 
@@ -674,6 +744,8 @@ class SVOSRunner:
         stages.append(enhancement)
         self._write_stage_report(stages, promoted_stage)
         self._notify_stage_observer(stage_observer, stages, promoted_stage)
+        if audit.status != "PASS":
+            return self._finish(stages, promoted_stage)
         if enhancement.status != "PASS":
             return self._finish(stages, promoted_stage)
         if stop_after == "enhancement":
@@ -772,26 +844,149 @@ class SVOSRunner:
             overall_status=overall,
             promoted_stage=promoted_stage,
         )
+        result.canonical_report = self._write_canonical_report_package(result)
         self._write_report(result)
         return result
 
+    def _resolve_project_root(self) -> Path:
+        if self.registry_path is None:
+            return _ROOT
+        parent = self.registry_path.resolve().parent
+        return parent.parent if parent.name == "config" else parent
+
+    def _resolve_canonical_output_dir(self) -> Path:
+        project_root = self._resolve_project_root()
+        try:
+            self.output_dir.resolve().relative_to(_ROOT.resolve())
+        except ValueError:
+            return project_root / "reports" / "svos"
+        return _ROOT / "reports" / "svos"
+
+    def _prepare_run(self, strategy: str | dict[str, Any], **payloads: Any) -> None:
+        self._run_strategy_text = _strategy_text(strategy)
+        self._run_input_payloads = {name: _as_dict(value) if value is not None else None for name, value in payloads.items()}
+        catalog_path = self.registry_path or (_ROOT / "config" / "strategy_catalog.yaml")
+        manifest = get_strategy_manifest(self.strategy_name, catalog_path)
+        if manifest is None:
+            return
+        project_root = self._resolve_project_root()
+        registry = StrategyRegistryService(root=project_root, catalog_path=catalog_path)
+        versions_before = registry.versions(self.strategy_name)
+        version = registry.ensure_spec_version(
+            self.strategy_name,
+            specification=self._run_strategy_text,
+            actor="svos",
+            reason="SVOS strategy specification snapshot",
+        )
+        self._strategy_id = str(version.manifest.get("strategy_id", self._strategy_id))
+        self._strategy_version = version.version
+        if versions_before:
+            previous = str(versions_before[-1].get("version", ""))
+            self._previous_version = previous or None
+        self._platform = SVOSPlatform(root=project_root, catalog_path=catalog_path, registry=registry)
+
+    def _validation_config_snapshot(self) -> dict[str, Any]:
+        return {
+            "minimum_trade_count": self.validation_config.minimum_trade_count,
+            "minimum_profit_factor": self.validation_config.minimum_profit_factor,
+            "maximum_drawdown": self.validation_config.maximum_drawdown,
+            "minimum_expectancy": self.validation_config.minimum_expectancy,
+            "regression_thresholds": self.validation_config.regression_thresholds,
+        }
+
+    def _write_canonical_report_package(self, result: SVOSRunResult) -> dict[str, Any]:
+        package = write_stage_report_package(
+            output_root=self._canonical_output_dir,
+            strategy_name=self.strategy_name,
+            strategy_id=self._strategy_id,
+            strategy_version=self._strategy_version,
+            strategy_text=self._run_strategy_text,
+            stages=result.stages,
+            promoted_stage=result.promoted_stage,
+            validation_config=self._validation_config_snapshot(),
+            input_payloads=self._run_input_payloads,
+            release=result.release,
+            previous_version=self._previous_version,
+        )
+        artifacts = [
+            {
+                "stage": "run_summary",
+                "status": result.overall_status,
+                "json_path": str(package.summary_json),
+                "markdown_path": str(package.summary_markdown),
+            }
+        ]
+        artifacts.extend(
+            {
+                "stage": item["stage"],
+                "status": item["status"],
+                "json_path": item["json_path"],
+                "markdown_path": item["markdown_path"],
+            }
+            for item in package.stage_artifacts
+        )
+        artifacts.extend(
+            {
+                "stage": item["report_type"],
+                "status": result.overall_status,
+                "json_path": item["json_path"],
+                "markdown_path": item["markdown_path"],
+            }
+            for item in package.supporting_artifacts
+        )
+        if self._platform is not None:
+            for artifact in artifacts:
+                for report_type, path_key in (("json", "json_path"), ("markdown", "markdown_path")):
+                    self._platform.record_report_evidence(
+                        strategy=self.strategy_name,
+                        stage=artifact["stage"],
+                        service="svos",
+                        report_type=report_type,
+                        artifact_path=artifact[path_key],
+                        status=artifact["status"],
+                        metadata={
+                            "run_id": package.run_id,
+                            "strategy_id": package.strategy_id,
+                            "strategy_version": package.strategy_version,
+                        },
+                    )
+        return {
+            "run_id": package.run_id,
+            "strategy_id": package.strategy_id,
+            "strategy_version": package.strategy_version,
+            "report_dir": str(package.report_dir),
+            "summary_json": str(package.summary_json),
+            "summary_markdown": str(package.summary_markdown),
+        }
+
     def _enhance(self, audit: StageResult) -> StageResult:
+        spec = audit.spec
+        validation_report = audit.metadata.get("validation_report", {})
+        validation_recommendations = list(validation_report.get("recommendations", []))
+        document = ValidationStrategyDocument.from_text(spec.raw_text if spec is not None else "", source_path="")
+        enhancement_plan = self.editor_engine.build_plan(
+            document,
+            [_validation_recommendation_from_dict(item) for item in validation_recommendations if isinstance(item, dict)],
+            str(audit.metadata.get("readiness_decision", "")),
+        )
         if audit.status != "PASS":
             return StageResult(
                 phase=2,
                 stage="enhancement",
-                status=audit.status,
+                status="FIX" if enhancement_plan.questions else audit.status,
                 issues=list(audit.issues),
-                fix_instructions=list(audit.fix_instructions),
+                fix_instructions=_dedupe_text(list(audit.fix_instructions) + [item.proposed_revision for item in enhancement_plan.questions if item.proposed_revision]),
                 next_stage=None,
                 can_promote=False,
-                spec=audit.spec,
-                clarifying_questions=list(audit.clarifying_questions),
-                metadata={"source_stage": "audit"},
+                spec=spec,
+                clarifying_questions=_dedupe_text(list(audit.clarifying_questions) + [item.prompt for item in enhancement_plan.questions]),
+                metadata={"source_stage": "audit", "enhancement_plan": enhancement_plan.to_dict()},
             )
-        spec = audit.spec
         assert spec is not None
-        recommendations = self._suggest_enhancements(spec)
+        recommendations = _dedupe_text(
+            [str(item.get("message", "")).strip() for item in validation_recommendations if isinstance(item, dict)]
+            + self._suggest_enhancements(spec)
+        )
         return StageResult(
             phase=2,
             stage="enhancement",
@@ -801,10 +996,12 @@ class SVOSRunner:
             next_stage="replay",
             can_promote=True,
             spec=spec,
-            clarifying_questions=[],
+            clarifying_questions=[item.prompt for item in enhancement_plan.questions],
             metadata={
                 "recommendations": recommendations,
                 "source_stage": "audit",
+                "audit_readiness_decision": audit.metadata.get("readiness_decision", ""),
+                "enhancement_plan": enhancement_plan.to_dict(),
             },
         )
 
@@ -1149,6 +1346,17 @@ class SVOSRunner:
                 "research_metrics": research_metrics,
                 "live_metrics": live_metrics,
                 "execution_validation_report": execution_report or None,
+                "virtual_demo_evidence": {
+                    "expected_signals": data.get("expected_signals"),
+                    "observed_signals": data.get("observed_signals"),
+                    "expected_trades": data.get("expected_trades"),
+                    "observed_trades": data.get("observed_trades"),
+                    "execution_metrics": data.get("execution_metrics", {}),
+                    "order_outcomes": data.get("order_outcomes", {}),
+                    "risk_controls": data.get("risk_controls", {}),
+                    "broker_comparison": data.get("broker_comparison", {}),
+                    "tolerance_pct": float(data.get("tolerance_pct", 0.05)),
+                },
             },
         )
 
@@ -1439,9 +1647,9 @@ def _detect_source_type(strategy: str | dict[str, Any]) -> str:
 
 
 def _strategy_id(strategy_name: str, raw_text: str) -> str:
+    del raw_text
     slug = re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-") or "UNNAMED"
-    digest = sha1(raw_text.encode("utf-8")).hexdigest()[:8]
-    return f"{slug}-{digest}"
+    return slug
 
 
 def _metric_dict(value: Any) -> dict[str, float]:
@@ -1466,6 +1674,110 @@ def _as_dict(value: Any) -> dict[str, Any]:
     if hasattr(value, "__dict__"):
         return dict(vars(value))
     raise TypeError(f"Unsupported SVOS payload type: {type(value)!r}")
+
+
+def _strategy_spec_from_validation_document(
+    document: ValidationStrategyDocument,
+    strategy_name: str,
+    strategy: str | dict[str, Any],
+    report: StrategyValidationReport,
+) -> StrategySpec:
+    available_data: list[str] = []
+    required_data: list[str] = []
+    if isinstance(strategy, dict):
+        available_data = _normalize_data_tokens(strategy.get("available_data", []))
+        required_data = _normalize_data_tokens(strategy.get("required_data", []))
+
+    missing_fields = [
+        finding.location
+        for result in report.validator_results
+        for finding in result.findings
+        if finding.code == "missing_field" and finding.location
+    ]
+    return StrategySpec(
+        name=strategy_name,
+        raw_text=document.raw_text,
+        fields={key: str(value) for key, value in document.extracted_fields.items()},
+        missing_fields=_dedupe_text(missing_fields),
+        inferred_fields=[],
+        required_data=required_data,
+        available_data=available_data,
+    )
+
+
+def _stage_status_from_validation_report(report: StrategyValidationReport) -> StageStatus:
+    if report.readiness_decision == "READY_FOR_REPLAY":
+        return "PASS"
+    if report.readiness_decision in {"REQUIRES_REVISION", "INCOMPLETE"}:
+        return "FIX"
+    return "FAIL"
+
+
+def _issue_severity_from_validation_severity(severity: str) -> str:
+    value = str(severity or "").upper()
+    if value == "ERROR":
+        return "HIGH"
+    if value in {"WARN", "WARNING"}:
+        return "MEDIUM"
+    return "LOW"
+
+
+def _strategy_issues_from_validation_report(report: StrategyValidationReport) -> list[StrategyIssue]:
+    issues: list[StrategyIssue] = []
+    for result in report.validator_results:
+        for finding in result.findings:
+            issues.append(
+                StrategyIssue(
+                    code=finding.code,
+                    field=finding.location,
+                    severity=_issue_severity_from_validation_severity(finding.severity),
+                    message=f"[{result.validator_name}] {finding.message}",
+                    suggestion=str(finding.details.get("recommendation", "")).strip() if isinstance(finding.details, dict) else "",
+                )
+            )
+    return _dedupe_issues(issues)
+
+
+def _fix_instructions_from_validation_report(report: StrategyValidationReport) -> list[str]:
+    instructions = [item.message for item in report.recommendations if item.message]
+    return _dedupe_text(instructions)
+
+
+def _clarifying_question_from_recommendation(item: ValidationRecommendation) -> str:
+    message = item.message.strip()
+    original = item.original.strip()
+    improved = item.improved.strip()
+    if original:
+        return f"How should this rule be defined explicitly: {original}?"
+    if improved:
+        return f"Should the rule be clarified as: {improved}?"
+    lowered = message.lower()
+    if lowered.startswith("add an explicit "):
+        target = message[len("Add an explicit ") :].rstrip(".")
+        return f"What is the explicit {target.lower()}?"
+    if lowered.startswith("document the "):
+        target = message[len("Document the ") :].rstrip(".")
+        return f"What is the explicit {target.lower()}?"
+    if lowered.startswith("replace '"):
+        return message.replace("Replace", "How should we replace", 1).rstrip(".") + "?"
+    return message.rstrip(".") + "?"
+
+
+def _clarifying_questions_from_validation_report(report: StrategyValidationReport) -> list[str]:
+    questions = [_clarifying_question_from_recommendation(item) for item in report.recommendations]
+    return _dedupe_text(questions)
+
+
+def _validation_recommendation_from_dict(payload: dict[str, Any]) -> ValidationRecommendation:
+    return ValidationRecommendation(
+        code=str(payload.get("code", "")),
+        message=str(payload.get("message", "")),
+        priority=str(payload.get("priority", "MEDIUM")),
+        original=str(payload.get("original", "")),
+        improved=str(payload.get("improved", "")),
+        reason=str(payload.get("reason", "")),
+        expected_improvement=str(payload.get("expected_improvement", "")),
+    )
 
 
 def _dedupe_text(values: Iterable[str]) -> list[str]:
@@ -1577,6 +1889,20 @@ def _append_stage_block(lines: list[str], stage: dict[str, Any]) -> None:
         lines.append("- Issues:")
         for issue in stage["issues"]:
             lines.append(f"  - {issue['severity']}: {issue['message']}")
+    enhancement_plan = stage.get("metadata", {}).get("enhancement_plan", {}) if isinstance(stage.get("metadata", {}), dict) else {}
+    if enhancement_plan:
+        lines.append("- Enhancement Plan:")
+        if enhancement_plan.get("status"):
+            lines.append(f"  - Status: `{enhancement_plan['status']}`")
+        if enhancement_plan.get("summary"):
+            lines.append(f"  - Summary: {enhancement_plan['summary']}")
+        for question in enhancement_plan.get("questions", [])[:5]:
+            prompt = question.get("prompt", "")
+            if prompt:
+                lines.append(f"  - Question: {prompt}")
+            proposed = question.get("proposed_revision", "")
+            if proposed:
+                lines.append(f"    Proposed Revision: {proposed}")
 
 
 def _overall_status(stages: list[StageResult]) -> StageStatus:

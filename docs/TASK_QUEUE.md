@@ -4,6 +4,59 @@
 
 ---
 
+## SVOS Audit Workflow
+
+### SVOS-01 — Canonical Audit Engine Integration
+**Files:** `research/svos/engine.py`, `strategy_validation/`
+**Deliverable:** `SVOSRunner` uses `strategy_validation/` as the authoritative strategy audit layer
+**Status:** COMPLETE
+
+---
+
+### SVOS-02 — Structured Enhancement Plan
+**Files:** `research/svos/engine.py`, `strategy_validation/ai/question_engine.py`, `strategy_validation/ai/editor_engine.py`
+**Deliverable:** Enhancement stage emits clarification questions, proposed revisions, and structured editor metadata
+**Status:** COMPLETE
+
+---
+
+### SVOS-03 — Dashboard Stage Reports
+**Files:** `dashboard/app.py`, `dashboard/index.html`, `dashboard/report_service.py`
+**Deliverable:** Each SVOS stage exposes and renders its related report on the dashboard
+**Status:** COMPLETE
+
+---
+
+### SVOS-04 — Interactive Enhancement Session
+**Files:** `strategy_validation/ai/`, `research/svos/engine.py`, dashboard UI
+**Deliverable:** Answerable clarification session that persists selected resolutions and produces a revised spec
+**Status:** PENDING
+- Verify: unresolved audit findings create enhancement prompts
+- Verify: selected answers are saved
+- Verify: revised rulebook is emitted as a stage artifact
+- Verify: replay stays blocked until blocking questions are resolved
+
+---
+
+### SVOS-05 — Multi-Format Intake
+**Files:** `strategy_validation/intake/`
+**Deliverable:** Support for PDF, DOCX, and screenshots in Stage 0 intake
+**Status:** PENDING
+- Verify: PDF text extraction works
+- Verify: DOCX ingestion works
+- Verify: screenshot OCR fallback works
+- Verify: extraction confidence is recorded in metadata
+
+---
+
+### SVOS-06 — Audit Summary Counters
+**Files:** `strategy_validation/models.py`, `strategy_validation/reports/report_generator.py`, dashboard UI
+**Deliverable:** Explicit counts for ambiguous rules, missing parameters, contradictions, undefined filters, and execution conflicts
+**Status:** PENDING
+- Verify: counts appear in JSON, markdown, and dashboard report views
+
+---
+
 ## Strategy A — Session Liquidity Reversal
 
 ### SA-01 — Asian Session Builder

@@ -1,262 +1,196 @@
-# Project Live Status Timeline
+# Project Timeline
 
 Date: 2026-06-28
 
-This document is the operator-facing timeline for understanding:
+## Purpose
 
-- where the project stands now
-- what is already complete
-- what is currently running
-- what task executes next
-- what target each timeline step is trying to reach
+This is the live timeline for the current project plan.
 
-Use this as the single high-level status view.
+It shows:
 
-If this document disagrees with the strategy registry, the registry wins:
+- the workflow being implemented
+- the current project position
+- the next task to execute
+- the target of each stage
 
-- `config/strategy_catalog.yaml`
-- `docs/SYSTEM_ARCHITECTURE.md`
+## Project Workflow
+
+```text
+New Strategy
+      │
+      ▼
+Strategy Audit
+      │
+      ├── FAIL -> AI edits specification -> Audit again
+      ▼
+Historical Replay
+      │
+      ├── FAIL -> Refine rules -> Replay again
+      ▼
+Backtest
+      │
+      ├── FAIL -> Improve logic or filters -> Backtest again
+      ▼
+Robustness Tests
+      │
+      ├── FAIL -> Adjust parameters or simplify rules -> Retest
+      ▼
+Virtual Demo
+      │
+      ├── FAIL -> Analyze live drift -> Return to research
+      ▼
+Production Approval
+```
 
 ## Current Snapshot
 
-- Current production-path strategy: `ST-A2`
-- Current strategy registry status: `walk_forward`
-- Registry approval flag: `approved: true`
-- Current implementation mode: `SVOS transitional v1.7`
-- Current practical phase: `Phase-1 demo validation`
-- Current live-trading mode: `LIVE_TRADING=false`
-- Current active gate: `E5 spread capture`
-- Current blocker before execution gate: `E6 cost revalidation`
-- Current target milestone: `E1-E4 7-day execution gate`
-- Current end target: `controlled micro-live on Vantage`
+- canonical branch: `main`
+- current scope: `SVOS research and verification engine + simple Vantage trading bot`
+- system role: `input strategy -> verify -> approve or reject`
+- current active operational gate: `E5 spread capture`
+- current next operational gate: `E6 cost revalidation`
+- current target after that: `E1-E4` execution gate
 
-## What Is Already Done
+## Timeline By Stage
 
-### Strategy Qualification
-
-- ST-A2 passed Phase-0 backtest
-- Backtest result: `n=169`, `PF_std=1.151`, `PF_2x=1.025`
-- Locked passing run: `20260621T100458-183aaa`
-- Strategy is verification-ready in the current workflow
-
-### Execution Readiness
-
-- execution layer deployed
-- demo bot connected and running
-- forward-test simulator complete
-- runtime safety fixes complete
-- spread capture tooling complete
-- E6 revalidation package complete
-
-### Research / Platform Foundation
-
-- strategy registry implemented
-- canonical SVOS audit engine integrated
-- enhancement-stage plan generation implemented
-- stage reports rendered on the dashboard
-- dataset coverage and validation completed for current research window
-
-## Timeline Overview
-
-| Stage | Status | What it means | Target |
+| Stage | Status | Current understanding | Target |
 |---|---|---|---|
-| Strategy Audit | Complete | Strategy can be checked for ambiguity and completeness | machine-readable rulebook |
-| Strategy Enhancement | Complete, but not interactive | Clarification plan exists | fully persisted answer-capture loop later |
-| Historical Replay | Complete for production path | ST-A2 cleared replay path | replay-safe signal logic |
-| Backtest | Complete for ST-A2 | Phase-0 profitability gate passed | retain PF > 1.0 under real-cost revalidation |
-| Robustness | Complete for current promotion path | ST-A2 advanced to verification-ready | maintain evidence quality |
-| Verification Ready | Complete | Research path cleared | eligible for execution qualification |
-| E5 Spread Capture | Running | collecting real Vantage spread data | 5 London + 5 NY sessions + 7,000 rows |
-| E6 Cost Revalidation | Ready, blocked on E5 | rerun ST-A2 at measured costs | `PF_2x >= 1.00` |
-| E1-E4 Execution Gate | Not started, blocked on E6 | verify runtime and order lifecycle in demo conditions | 7-day clean execution window |
-| Micro-Live | Not started | owner-controlled first live capital stage | $1,000 account, 0.25% risk |
+| Strategy Audit | Implemented | strategy validation exists | clear, codable rules |
+| Historical Replay | Implemented | replay capability exists | confirm signal behavior |
+| Backtest | Implemented | backtest tooling exists | test profitability after clear rules |
+| Robustness Tests | Implemented | robustness stage exists | reject fragile behavior |
+| Virtual Demo | Partially active | execution layer exists; gates still active | safe broker-connected validation on Vantage without production capital |
+| Production Approval | Not ready for live promotion | approval remains evidence-gated | controlled live promotion only after acceptable Virtual Demo evidence |
 
-## Live Go-To-Market Timeline
+## Current Operational Position
 
-### Stage 1. E5 Spread Capture
+For the current execution candidate, the project is here:
+
+```text
+Backtest PASS
+  ↓
+Robustness sufficient for current promotion path
+  ↓
+Virtual Demo preparation
+  ↓
+E5 spread capture running
+  ↓
+E6 cost revalidation blocked on E5
+  ↓
+E1-E4 execution gate blocked on E6
+```
+
+## What Is Running Now
+
+### E5 Spread Capture
 
 Status:
 `RUNNING`
 
 Current state:
 
-- process started: `2026-06-24 06:01 UTC`
-- capture process: `tmux spreads`
-- monitor command: `python3 scripts/spread_status.py`
+- started: `2026-06-24 06:01 UTC`
+- process: `tmux spreads`
+- monitor: `python3 scripts/spread_status.py`
 
 Target:
 
-- at least 5 London sessions
-- at least 5 New York sessions
-- at least 7,000 rows
-- output file: `research/spread_samples.csv`
+- 5 London sessions
+- 5 New York sessions
+- 7,000+ rows
+- output: `research/spread_samples.csv`
 
-Projected target date:
+Projected target:
 
 - around `2026-06-30`
 
-Why it matters:
-
-- this converts placeholder spread assumptions into measured broker costs
-
-### Stage 2. E6 Cost Revalidation
+### E6 Cost Revalidation
 
 Status:
 `READY BUT BLOCKED ON E5`
 
-Execution command:
-
-```bash
-bash scripts/run_e6_revalidation.sh
-```
-
-Precondition:
+Command:
 
 ```bash
 python3 scripts/check_phase2_completion.py
+bash scripts/run_e6_revalidation.sh
 ```
 
 Target:
 
-- fill measured Vantage costs
-- rerun ST-A2 under real broker costs
+- measured Vantage costs
+- rerun the current execution candidate under real costs
 - confirm `PF_2x >= 1.00`
 
-Decision targets:
-
-- `PF_2x > 1.05` -> continue toward micro-live path
-- `PF_2x 1.00-1.05` -> demo-only caution zone
-- `PF_2x < 1.00` -> stop production path and prepare recovery strategy
-
-### Stage 3. E1-E4 Execution Gate
+### E1-E4 Execution Gate
 
 Status:
 `BLOCKED ON E5 AND E6`
 
-This is the next execution milestone after E6.
+Target:
 
-Target window:
+- 7-day runtime
+- signal lifecycle validation
+- order lifecycle validation
+- restart safety validation
 
-- one 7-day demo execution window with `LIVE_TRADING=true`
-
-Success targets:
-
-- E1: 7 days, 0 crashes, heartbeat gaps under 600 seconds
-- E2: at least 1 signal lifecycle event recorded correctly
-- E3: at least 1 complete order lifecycle or valid rejection
-- E4: manual restart test passes with state intact
-
-### Stage 4. Micro-Live
+### Production Approval / Controlled Live
 
 Status:
-`NOT STARTED`
+`NOT READY YET`
 
-Target configuration:
+Target:
 
-- broker: Vantage live
-- account size: `$1,000`
-- risk per trade: `0.25%`
-- max open position: `1`
-- daily loss limit: `3R`
-- drawdown kill switch: `10%`
-- first `20 trades` treated as validation-only
+- approve only after Virtual Demo evidence remains acceptable
 
-## Next Executable Task
+## Next Task To Execute
 
-The next real task to execute is:
+The next task is:
 
-`Finish E5 spread capture and wait for gate completion.`
+`Finish E5 spread capture.`
 
-When E5 completes, the immediate next command is:
+Immediately after E5 passes:
 
 ```bash
 python3 scripts/check_phase2_completion.py
 bash scripts/run_e6_revalidation.sh
 ```
 
-That is the most important next action in the entire project timeline.
-
-## Current Blockers
-
-### Blocker 1. E5 not complete yet
-
-Effect:
-
-- E6 cannot run
-- E1-E4 cannot start
-- micro-live cannot be evaluated
-
-### Blocker 2. E6 outcome unknown until E5 completes
-
-Effect:
-
-- production viability at real broker costs is not yet confirmed
-
-### Blocker 3. Execution gate depends on cost gate
-
-Effect:
-
-- demo execution validation remains intentionally blocked
-
-## Platform Build Timeline
-
-The production path is close to execution, but the full platform architecture
-is still incomplete.
-
-### Already Implemented
-
-- SVOS audit workflow
-- strategy registry and catalog-linked validation
-- stage report dashboard
-- execution validation package
-- execution simulator and virtual broker support
-- monitoring scripts and execution analytics
-
-### Still Pending To Finish The Master Platform
-
-- `SVOS-04` interactive enhancement session
-- `SVOS-05` multi-format intake
-- `SVOS-06` audit summary counters
-- first-class EVF separation from the transitional SVOS path
-- distinct RGM qualification pipeline
-- more independent governance control plane
-- more explicit SMO runtime service separation
-
-These are important for finishing the institutional platform, but they are not
-the immediate blockers for ST-A2 go-live.
-
-## Timeline Targets By Horizon
+## Timeline Targets
 
 ### Now
 
-- keep E5 running
-- monitor spread capture health
-- preserve bot stability
+- keep spread capture running
+- keep the bot stable
+- avoid unnecessary expansion
 
 ### Next
 
-- execute E6 immediately after E5 passes
-- decide whether ST-A2 remains deployable at measured costs
+- run cost revalidation
+- decide whether the current approved strategy still passes under measured costs
 
 ### Near-Term
 
-- run E1-E4 7-day execution gate
-- validate signal, order, restart, and runtime behavior
+- complete the demo execution gate
 
-### Go-Live Target
+### After That
 
-- controlled micro-live deployment for ST-A2
+- continue demo if valid
+- promote to controlled live only after evidence supports it
 
-### Longer-Term Platform Target
+## Scope Reminder
 
-- complete EVF, RGM, Governance, and SMO separation
-- finish the pending SVOS workflow enhancements
+This timeline is for:
 
-## Source References
+- a simple SVOS loop
+- a simple bot
+- Vantage demo/live readiness
 
-- `config/strategy_catalog.yaml`
-- `docs/PROJECT_STATUS.md`
+It is not a roadmap for a larger platform build-out.
+
+## References
+
+- `docs/CURRENT_SCOPE.md`
 - `docs/PROJECT_OBJECTIVE_FASTEST_PATH.md`
 - `docs/IMPLEMENTATION_STATUS.md`
-- `docs/OPS02_REVISED_GATE.md`
-- `docs/SYSTEM_ARCHITECTURE.md`
+- `config/strategy_catalog.yaml`

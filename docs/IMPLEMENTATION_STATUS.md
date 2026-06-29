@@ -1,143 +1,423 @@
-# Implementation Status
+# Current Implementation Plan
 
 Date: 2026-06-28
 
-This document summarizes the current repository transition toward the target
-ISOP architecture described in `docs/SYSTEM_ARCHITECTURE.md`.
+## Purpose
 
-Related implementation workflow references:
+This document defines what should be implemented now for `SVOS`.
 
-- `docs/AI_WORKFLOW_ARCHITECTURE.md`
-- `docs/DEVELOPER_HANDBOOK.md`
-- `docs/templates/implementation_spec_template.md`
+`SVOS` is not just a backtester.
 
-## Current State
+It is a research and verification system whose job is to take:
 
-- Target architecture: `ISOP v2`
-- Current implementation: `SVOS transitional v1.7`
-- Strategy state authority: `config/strategy_catalog.yaml`
-- Implementation task contract template:
-  `docs/templates/implementation_spec_template.md`
+- a new trade idea
+- or a new strategy specification
 
-## Transition Progress
+and turn it into either:
 
-### Research Layer
+- a production-approved strategy
+- or a rejected strategy that must return to refinement
 
-- Status: largely implemented
-- Evidence:
-  - `research/svos/`
-  - `strategy_validation/`
-  - `strategy_audit/`
-  - replay / backtest / robustness stages
-- Recent upgrade:
-  - the canonical strategy-spec audit engine now lives in `strategy_validation/`
-    and is used by `SVOSRunner` in `research/svos/engine.py` for audit-stage
-    decisions
-- Remaining gap:
-  - the enhancement/editor stage is now structured, but still not a full
-    interactive answer-capture loop with automatic spec rewrite persistence
-    (SVOS-04 PENDING)
+## Core Function
 
-### Execution Layer
+The main function of `SVOS` is the failure loop.
 
-- Status: partially migrated
-- Evidence:
-  - `execution_validation/`
-  - execution evidence integrated into SVOS virtual-demo stage
-  - `virtual_broker/` and `execution_simulator/` provide deterministic
-    simulation ahead of broker exposure
-- Remaining gap:
-  - execution qualification is still invoked through the SVOS pipeline rather
-    than fully separated as a first-class EVF workflow
+This is the essential behavior:
 
-### Risk Layer
+- fail in `Strategy Audit` -> fix the specification
+- fail in `Historical Replay` -> fix the logic interpretation
+- fail in `Backtest` -> improve logic or filters
+- fail in `Robustness Tests` -> simplify or retune
+- fail in `Virtual Demo` -> analyze execution drift and return to research
 
-- Status: design ahead of implementation
-- Evidence:
-  - risk concepts documented in README and architecture docs
-  - runtime risk controls present in `execution/demo_risk_manager.py` and
-    `execution/risk_manager.py`
-  - per-trade limits, daily loss guard, consecutive-loss guard, drawdown
-    kill switch, and `MAX_OPEN_TRADES=1` are implemented and tested
-- Remaining gap:
-  - no fully separated RGM qualification pipeline yet; risk is embedded in
-    execution code rather than owned by a distinct backend module
+That means `SVOS` is not just a linear pipeline.
 
-### Governance
+It is a controlled refinement engine that keeps improving or rejecting a
+strategy until it is genuinely ready for production approval.
 
-- Status: partially implemented
-- Evidence:
-  - strategy registry in `core/strategy_registry.py`
-  - promotion and approval logic in `research/validation/engine.py` and
-    the SVOS registry flow
-  - `config/strategy_catalog.yaml` is the current source of truth for
-    lifecycle state and deployment approval
-- Remaining gap:
-  - governance is not yet a fully independent control plane; promotion policy
-    is scattered across config files, validation code, and scripts
-
-### Monitoring
-
-- Status: basic implementation present
-- Evidence:
-  - operational monitoring scripts (`scripts/health_check.py`,
-    `scripts/demo_status.py`, `scripts/generate_reports.py`)
-  - analytics tooling in `research/execution_analyzer.py` and
-    `research/live_trade_analyzer.py`
-  - Flask dashboard in `dashboard/app.py`
-- Remaining gap:
-  - SMO and RGM runtime monitoring are synthesized from logs and config
-    rather than backed by distinct backend service packages; the dashboard
-    panels imply services that do not yet fully exist
-
-## Source-of-Truth Rule
-
-- Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
-- Strategy state source of truth: `config/strategy_catalog.yaml`
-- Transitional SVOS orchestrator: `research/svos/engine.py`
-- Canonical audit implementation: `strategy_validation/`
-- Execution validation: `execution_validation/engine.py`
-
-If these disagree:
-
-1. registry state wins for strategy status
-2. `SYSTEM_ARCHITECTURE.md` wins for intended lifecycle semantics
-3. code wins for what the repository can actually execute today
-
-## Current SVOS Workflow (implemented)
-
-The current executable SVOS research workflow as reflected in
-`research/svos/engine.py` and `docs/SVOS_LIFECYCLE_WORKFLOW.md`:
+## Target Workflow
 
 ```text
-Strategy Intake
-  ↓
+New Strategy
+      │
+      ▼
 Strategy Audit
-  ↓
-Strategy Enhancement
-  ↓
+      │
+      ├── FAIL -> AI edits specification -> Audit again
+      ▼
 Historical Replay
-  ↓
+      │
+      ├── FAIL -> Refine rules -> Replay again
+      ▼
 Backtest
-  ↓
-Robustness
-  ↓
-Verification Ready
-  ↓
-Virtual Demo Trading
-  ↓
+      │
+      ├── FAIL -> Improve logic or filters -> Backtest again
+      ▼
+Robustness Tests
+      │
+      ├── FAIL -> Adjust parameters or simplify rules -> Retest
+      ▼
+Virtual Demo
+      │
+      ├── FAIL -> Analyze live drift -> Return to research
+      ▼
 Production Approval
 ```
 
-Important current-state notes:
+## Implementation Priorities
 
-- audit is backed by the dedicated `strategy_validation/` engine, not a legacy
-  parser; it scores rules, identifies ambiguities, and blocks replay until
-  blocking findings are resolved
-- enhancement now produces a structured clarification plan and rewrite snippets
-  (SVOS-02 COMPLETE); interactive answer-capture with automatic spec persistence
-  is SVOS-04 (PENDING)
-- the dashboard renders stage-specific SVOS reports as markdown (SVOS-03 COMPLETE)
-- `virtual_demo` and `production_approval` remain SVOS pipeline stages for
-  backward compatibility; in the target architecture they will migrate to the
-  EVF and Governance layers respectively
+### Phase 0. Strategy Audit
+
+Purpose:
+
+- understand the strategy before testing it
+- convert rules into objective, machine-checkable logic
+- block ambiguous or contradictory specifications
+
+What this stage should do:
+
+- rule extraction from strategy text
+- ambiguity detection
+- contradiction detection
+- missing-parameter detection
+- data-availability checks
+- execution-conflict detection
+- audit summary and readiness verdict
+
+Desired output:
+
+- structured rulebook
+- audit findings
+- pass/fail readiness decision
+
+Current implementation position:
+
+- canonical validation engine exists in `strategy_validation/`
+- SVOS runner already uses the validation engine for audit-stage decisions
+- structured enhancement artifacts exist
+
+Remaining implementation focus:
+
+- make the fail-loop explicit and operator-friendly
+- ensure audit findings map cleanly into revision actions
+- prioritize unresolved ambiguity as a hard block before replay
+
+### Phase 1. Strategy Enhancement
+
+Purpose:
+
+- refine failed strategies immediately after audit
+- let AI propose corrections before testing begins
+
+What this stage should do:
+
+- ask targeted clarification questions
+- rewrite ambiguous rules
+- propose parameter defaults only when justified
+- emit a revised strategy specification candidate
+
+Desired output:
+
+- cleaner rulebook
+- revision suggestions
+- explicit unresolved questions
+
+Current implementation position:
+
+- structured clarification plan and rewrite snippets already exist
+
+Remaining implementation focus:
+
+- persist answers
+- produce a revised spec artifact cleanly
+- loop directly back into audit until readiness is achieved
+
+### Phase 2. Historical Replay
+
+Purpose:
+
+- verify that strategy behavior makes sense candle by candle
+- validate logic interpretation before profitability claims
+
+What this stage should do:
+
+- replay historical candles one step at a time
+- verify event sequencing
+- verify session logic
+- verify entry/exit timing
+- detect missing or spurious signals
+
+Desired output:
+
+- replay report
+- logic findings
+- pass/fail replay verdict
+
+Current implementation position:
+
+- replay capability exists in the current workflow
+
+Remaining implementation focus:
+
+- strengthen replay diagnostics around why a strategy failed
+- make replay failure feed directly into rule refinement
+
+### Phase 3. Backtest
+
+Purpose:
+
+- test statistical profitability only after rules are clear
+
+What this stage should do:
+
+- run strategy on historical data
+- evaluate profitability and cost sensitivity
+- produce statistical evidence
+
+Desired output:
+
+- trade count
+- profit factor
+- expectancy
+- drawdown and distribution evidence
+- pass/fail backtest verdict
+
+Current implementation position:
+
+- backtest tooling exists
+
+Remaining implementation focus:
+
+- keep this stage downstream of audit and replay
+- make failed backtests route into logic/filter improvement, not blind retesting
+
+### Phase 4. Robustness Tests
+
+Purpose:
+
+- reject fragile or overfit strategies
+- verify stability across different assumptions and conditions
+
+Core robustness modules to support:
+
+- walk-forward testing
+- parameter stability
+- regime analysis
+- execution cost sensitivity
+- distribution stress tests where appropriate
+
+Desired output:
+
+- robustness report
+- fragility findings
+- stable/fragile verdict
+
+Current implementation position:
+
+- robustness stage exists in the current workflow
+
+Remaining implementation focus:
+
+- make robustness failures produce specific correction guidance
+- route failures to simplification, retuning, or rule changes
+
+### Phase 5. Virtual Demo
+
+Purpose:
+
+- validate the strategy in live demo market conditions
+- detect drift between research behavior and execution behavior
+
+What this stage should do:
+
+- run the validated strategy on Vantage demo
+- verify signal lifecycle
+- verify order lifecycle
+- verify reconnect/restart safety
+- detect live drift and execution mismatch
+
+Desired output:
+
+- virtual-demo execution evidence
+- drift findings
+- PASS/FAIL Virtual Demo verdict
+
+Current implementation position:
+
+- execution layer exists
+- demo bot is deployed
+- current operational gating depends on spread capture, cost revalidation, and
+  execution checks
+
+Remaining implementation focus:
+
+- make Virtual Demo failure explicitly route back into research analysis
+- keep the bot simple, stable, and well-instrumented
+
+Implemented report contract:
+
+- every run writes six canonical JSON reports and six matching Markdown reports
+- immutable artifacts are stored under
+  `reports/svos/<strategy-id>/<version>/<run-id>/`
+- internal intake and enhancement evidence is included in `Strategy Audit`
+- internal verification-ready evidence is included in `Virtual Demo`
+- reports use `PASS`, `FAIL`, `BLOCKED`, `IN_PROGRESS`, and `NOT_RUN`
+- downstream stages become `BLOCKED` after a failed or blocked hard gate
+- the append-only SVOS registry records report hashes and strategy versions
+- the shared JSON contract is `svos/reports/stage_report.schema.json`
+- `scripts/run_svos_sample.py` provides an isolated six-stage PASS verification
+  without changing the active catalog or requesting live promotion
+
+Minimum delivery timeline for this reporting and lifecycle consolidation:
+
+| Period | Target |
+|---|---|
+| Days 1-2 | lifecycle and report contracts |
+| Days 3-5 | immutable storage, indexing, and version identity |
+| Days 6-8 | audit, replay, and backtest integration |
+| Days 9-11 | robustness, Virtual Demo, drift, and approval integration |
+| Days 12-13 | blocked-stage handling and dashboard report access |
+| Days 14-15 | regression tests and end-to-end acceptance |
+
+### Phase 6. Production Approval
+
+Purpose:
+
+- approve only strategies that have survived the full fail-loop
+
+What this stage should do:
+
+- review audit, replay, backtest, robustness, and Virtual Demo evidence
+- approve or reject live promotion
+
+Desired output:
+
+- production approval decision
+- approval artifact
+- rationale for deployment or rejection
+
+Current implementation position:
+
+- partial registry/config-driven approval logic already exists
+
+Remaining implementation focus:
+
+- keep approval evidence-based and simple
+- avoid broad governance-system expansion unless the direct workflow needs it
+
+## Audit Modules To Prioritize
+
+The next valuable implementation work should strengthen the audit layer above
+the existing data, replay, simulator, and execution components.
+
+Priority audit modules:
+
+### 1. Rule Audit
+
+Checks:
+
+- session timing
+- sweep/BOS/CHOCH sequencing
+- FVG/OB logic
+- entry timing
+- stop placement
+- take-profit logic
+- position sizing
+- risk-limit compliance
+
+### 2. Market Data Audit
+
+Checks:
+
+- missing candles
+- duplicate bars
+- weekend leakage
+- spread anomalies
+- timestamp ordering
+- session-boundary correctness
+
+### 3. Statistical Audit
+
+Checks:
+
+- profit factor
+- expectancy
+- payoff ratio
+- drawdown
+- trade distribution
+- edge consistency
+
+### 4. Regime Audit
+
+Checks:
+
+- trending vs ranging
+- high vs low volatility
+- session segmentation
+- seasonal and time-window segmentation
+
+### 5. Parameter Stability Audit
+
+Checks:
+
+- plateau behavior instead of sharp peaks
+- sensitivity across parameter ranges
+
+### 6. Walk-Forward / Robustness Audit
+
+Checks:
+
+- rolling validation
+- out-of-sample behavior
+- stability under changed conditions
+
+## Simple Bot Principle
+
+The trading bot should remain simple.
+
+It should do these things well:
+
+- run approved strategy logic
+- place or simulate trades safely
+- log signals and order lifecycle clearly
+- survive reconnects and restarts
+- respect risk controls
+
+It should not grow into a larger control plane unless that becomes necessary
+for the direct SVOS-to-demo/live path.
+
+## Active Work Right Now
+
+The current operational work remains:
+
+1. finish `E5` spread capture
+2. run `E6` cost revalidation
+3. complete `E1-E4` execution gate
+4. continue Virtual Demo only if evidence holds
+5. allow controlled live approval only after Virtual Demo evidence is acceptable
+
+## In Scope
+
+- fail-loop clarity
+- audit quality
+- replay correctness
+- backtest correctness
+- robustness diagnostics
+- Virtual Demo drift analysis
+- simple Vantage demo/live bot
+- execution reliability
+
+## Out Of Scope For Now
+
+- broad EVF/RGM/Governance/SMO expansion
+- major architecture separation not needed for the current fail-loop
+- multi-strategy platform growth
+- dashboard/control-plane expansion that does not directly improve the current
+  research-to-demo/live workflow
+
+## References
+
+- `docs/CURRENT_SCOPE.md`
+- `docs/PROJECT_OBJECTIVE_FASTEST_PATH.md`
+- `docs/PROJECT_LIVE_STATUS_TIMELINE.md`
+- `config/strategy_catalog.yaml`

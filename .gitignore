@@ -29,6 +29,7 @@ logs/
 # Generated reports
 execution_validation/reports/
 reports/current_strategy_svos/
+reports/svos/
 
 # IDE
 .vscode/

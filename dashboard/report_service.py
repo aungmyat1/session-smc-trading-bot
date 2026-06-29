@@ -27,6 +27,10 @@ REPORT_TYPE_TO_DIR = {
     "live-readiness": "live_readiness",
 }
 
+STATIC_REPORTS = {
+    "strategy-audit-loop": Path("docs") / "SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+}
+
 
 @dataclass
 class ReportRecord:
@@ -66,8 +70,33 @@ def scan_reports() -> list[ReportRecord]:
             continue
         for path in sorted(directory.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
             records.append(_build_record(path, report_type))
+    for report_type, relative_path in STATIC_REPORTS.items():
+        path = ROOT / relative_path
+        if path.exists():
+            records.append(_build_record(path, report_type))
+    svos_directory = REPORTS_ROOT / "svos"
+    if svos_directory.exists():
+        for path in sorted(svos_directory.glob("**/*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+            records.append(_build_record(path, "svos-stage"))
     records.sort(key=lambda item: item.created_at, reverse=True)
     return records
+
+
+def _safe_report_path(report_id: str) -> Path | None:
+    relative = Path(report_id.replace("__", "/"))
+    path = ROOT / relative
+    try:
+        resolved = path.resolve()
+        root_resolved = ROOT.resolve()
+    except Exception:
+        return None
+    if not resolved.is_file():
+        return None
+    if not str(resolved).startswith(str(root_resolved)):
+        return None
+    if resolved.suffix.lower() not in {".md", ".json", ".html"}:
+        return None
+    return resolved
 
 
 def write_index() -> dict[str, Any]:
@@ -132,6 +161,15 @@ def read_report(report_id: str) -> dict[str, Any]:
         return {
             **record,
             "content": path.read_text(encoding="utf-8"),
+        }
+    fallback = _safe_report_path(report_id)
+    if fallback is not None:
+        rel = fallback.relative_to(ROOT).as_posix()
+        return {
+            **_build_record(fallback, "ad-hoc").__dict__,
+            "report_id": report_id,
+            "path": rel,
+            "content": fallback.read_text(encoding="utf-8"),
         }
     raise FileNotFoundError(report_id)
 

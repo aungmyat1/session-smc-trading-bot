@@ -1,0 +1,66 @@
+[
+  {
+    "validator_name": "Input Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.538935+00:00",
+    "result_status": "PASS",
+    "result_score": 100.0
+  },
+  {
+    "validator_name": "Rule Completeness Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.538995+00:00",
+    "result_status": "PARTIAL",
+    "result_score": 83.33
+  },
+  {
+    "validator_name": "Ambiguity Detection",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539014+00:00",
+    "result_status": "PASS",
+    "result_score": 100.0
+  },
+  {
+    "validator_name": "Logical Consistency Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539029+00:00",
+    "result_status": "PASS",
+    "result_score": 100.0
+  },
+  {
+    "validator_name": "Measurability Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539043+00:00",
+    "result_status": "PARTIAL",
+    "result_score": 90.0
+  },
+  {
+    "validator_name": "Institutional Rule Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539057+00:00",
+    "result_status": "PARTIAL",
+    "result_score": 68.0
+  },
+  {
+    "validator_name": "Risk Management Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539071+00:00",
+    "result_status": "PASS",
+    "result_score": 100.0
+  },
+  {
+    "validator_name": "Testability Validation",
+    "version": "1.0",
+    "document_hash": "a007a46f94bf17528dab0fd2fd4bbc6c3e60d13d8c6d7fde630098b278c152fd",
+    "created_at": "2026-06-28T10:21:52.539084+00:00",
+    "result_status": "PASS",
+    "result_score": 100.0
+  }
+]

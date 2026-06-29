@@ -1,5 +1,23 @@
 {
-  "generated_at": "",
-  "latest": {},
-  "reports": []
+  "generated_at": "2026-06-28T18:42:34.424659+00:00",
+  "latest": {
+    "strategy-audit-loop": {
+      "created_at": "2026-06-28T11:43:43.203844+00:00",
+      "filename": "SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "path": "docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "report_id": "docs__SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "report_type": "strategy-audit-loop",
+      "title": "SVOS Strategy Audit Feedback Loop Report"
+    }
+  },
+  "reports": [
+    {
+      "created_at": "2026-06-28T11:43:43.203844+00:00",
+      "filename": "SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "path": "docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "report_id": "docs__SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+      "report_type": "strategy-audit-loop",
+      "title": "SVOS Strategy Audit Feedback Loop Report"
+    }
+  ]
 }

@@ -1,0 +1,63 @@
+{
+  "completed_successfully": true,
+  "days_monitored": 20,
+  "min_demo_days": 14,
+  "tolerance_pct": 0.1,
+  "research_metrics": {
+    "profit_factor": 1.2,
+    "win_rate": 0.35,
+    "expectancy": 0.1,
+    "max_drawdown": 4.7
+  },
+  "live_metrics": {
+    "profit_factor": 1.18,
+    "win_rate": 0.34,
+    "expectancy": 0.099,
+    "max_drawdown": 4.9
+  },
+  "execution_validation_report": {
+    "status": "READY FOR DEMO",
+    "readiness_status": "READY_FOR_DEMO",
+    "final_score": 100,
+    "broker_simulation_passed": true,
+    "recovery_passed": true,
+    "strategy_version_control_passed": true
+  },
+  "expected_signals": 12,
+  "observed_signals": 12,
+  "expected_trades": 5,
+  "observed_trades": 5,
+  "execution_metrics": {
+    "average_spread_pips": 0.8,
+    "slippage_pips": 0.1,
+    "latency_ms": 90
+  },
+  "order_outcomes": {
+    "rejected": 0,
+    "missed": 0,
+    "duplicated": 0,
+    "delayed": 0
+  },
+  "risk_controls": {
+    "position_sizing": true,
+    "daily_loss_limit": true,
+    "maximum_open_positions": true
+  },
+  "broker_comparison": {
+    "broker": "isolated-fixture",
+    "feed_difference_pips": 0.1
+  },
+  "equity_curve": [
+    {"label": "Day 1", "value": 10000},
+    {"label": "Day 4", "value": 10120},
+    {"label": "Day 8", "value": 10280},
+    {"label": "Day 12", "value": 10410},
+    {"label": "Day 16", "value": 10370},
+    {"label": "Day 20", "value": 10520}
+  ],
+  "monitoring_intervals": {
+    "daily": "PASS",
+    "weekly": "PASS",
+    "monthly": "PENDING"
+  }
+}

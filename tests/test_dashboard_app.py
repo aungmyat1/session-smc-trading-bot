@@ -22,6 +22,8 @@ def _setup_dashboard_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         "config",
         "logs",
         "reports/current_strategy_svos/ST-A2",
+        "reports/current_strategy_svos/ST-A2/stages",
+        "reports/svos/ST-A2/2.1/run-001",
         "reports/daily",
         "reports/strategy",
         "reports/risk",
@@ -85,9 +87,119 @@ analytics:
         "Current implementation: SVOS transitional v1.7\nTarget architecture: ISOP v2\n",
     )
     _write(
+        tmp_path / "docs" / "SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
+        "# SVOS Strategy Audit Feedback Loop Report\n\n- FAIL -> AI edits specification -> Audit again\n",
+    )
+    _write(
         tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "latest.json",
         json.dumps({"status": "PASS", "strategy": "ST-A2"}),
     )
+    _write(
+        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "index.json",
+        json.dumps(
+            {
+                "strategy": "ST-A2",
+                "overall_status": "PASS",
+                "promoted_stage": "backtest",
+                "updated_at": "2026-06-28T04:05:00+00:00",
+                "stages": [
+                    {"phase": 0, "stage": "intake", "status": "PASS", "can_promote": True, "next_stage": "audit", "created_at": "2026-06-28T04:00:00+00:00"},
+                    {"phase": 1, "stage": "audit", "status": "PASS", "can_promote": True, "next_stage": "enhancement", "created_at": "2026-06-28T04:01:00+00:00"},
+                    {"phase": 2, "stage": "enhancement", "status": "PASS", "can_promote": True, "next_stage": "replay", "created_at": "2026-06-28T04:02:00+00:00"},
+                    {"phase": 3, "stage": "replay", "status": "PASS", "can_promote": True, "next_stage": "backtest", "created_at": "2026-06-28T04:03:00+00:00"},
+                    {"phase": 4, "stage": "backtest", "status": "PASS", "can_promote": True, "next_stage": "robustness", "created_at": "2026-06-28T04:04:00+00:00"},
+                ],
+            }
+        ),
+    )
+    _write(
+        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "01_audit.md",
+        "# SVOS Audit Stage\n\n- Status: `PASS`\n- Notes: Strategy spec is complete.\n",
+    )
+    _write(
+        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "01_audit.json",
+        json.dumps({"strategy": "ST-A2", "current_stage": {"stage": "audit", "status": "PASS"}}),
+    )
+    _write(
+        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "03_replay.md",
+        "# SVOS Replay Stage\n\n- Status: `PASS`\n",
+    )
+    _write(
+        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "03_replay.json",
+        json.dumps({"strategy": "ST-A2", "current_stage": {"stage": "replay", "status": "PASS"}}),
+    )
+    canonical_dir = tmp_path / "reports" / "svos" / "ST-A2" / "2.1" / "run-001"
+    canonical_stages = [
+        ("strategy_audit", "Strategy Audit", "01_strategy_audit", "PASS", 96.0, True),
+        ("historical_replay", "Historical Replay", "02_historical_replay", "PASS", 100.0, True),
+        ("backtest", "Backtest", "03_backtest", "PASS", 100.0, True),
+        ("robustness", "Robustness Tests", "04_robustness", "PASS", 100.0, True),
+        ("virtual_demo", "Virtual Demo", "05_virtual_demo", "BLOCKED", 75.0, False),
+        ("production_approval", "Production Approval", "06_production_approval", "BLOCKED", None, False),
+    ]
+    summary_stages = []
+    for stage, label, stem, status, score, promotion_allowed in canonical_stages:
+        json_path = canonical_dir / f"{stem}.json"
+        markdown_path = canonical_dir / f"{stem}.md"
+        metrics = {}
+        if stage == "virtual_demo":
+            metrics = {
+                "execution": {
+                    "expected_signals": 12,
+                    "observed_signals": 10,
+                    "expected_trades": 5,
+                    "observed_trades": 4,
+                }
+            }
+        _write(
+            json_path,
+            json.dumps(
+                {
+                    "stage": stage,
+                    "status": status,
+                    "score": score,
+                    "metrics": metrics,
+                    "thresholds": {},
+                    "findings": [{"severity": "HIGH", "message": "Virtual Demo evidence is incomplete."}] if stage == "virtual_demo" else [],
+                    "remediation": {
+                        "route": "research" if stage == "virtual_demo" else stage,
+                        "actions": ["Complete the Virtual Demo observation window."] if stage == "virtual_demo" else [],
+                    },
+                }
+            ),
+        )
+        _write(markdown_path, f"# SVOS {label} Report\n\n- Status: **{status}**\n")
+        summary_stages.append(
+            {
+                "stage": stage,
+                "stage_label": label,
+                "status": status,
+                "score": score,
+                "promotion_allowed": promotion_allowed,
+                "report_id": f"ST-A2:2.1:run-001:{stage}",
+                "json_path": str(json_path),
+                "markdown_path": str(markdown_path),
+            }
+        )
+    _write(
+        canonical_dir / "run_summary.json",
+        json.dumps(
+            {
+                "run_id": "run-001",
+                "strategy_name": "ST-A2",
+                "strategy_id": "ST-A2",
+                "strategy_version": "2.1",
+                "overall_status": "BLOCKED",
+                "latest_passed_stage": "robustness",
+                "active_blocker": "virtual_demo",
+                "next_task": "Complete the Virtual Demo observation window.",
+                "promoted_stage": "walk_forward",
+                "generated_at": "2026-06-28T05:00:00+00:00",
+                "stages": summary_stages,
+            }
+        ),
+    )
+    _write(canonical_dir / "run_summary.md", "# SVOS Run Summary\n\n- Overall Status: **BLOCKED**\n")
     _write(
         tmp_path / "execution_validation" / "reports" / "run1" / "validation_report.json",
         json.dumps(
@@ -140,6 +252,7 @@ analytics:
     monkeypatch.setattr(dashboard_app, "_CATALOG_PATH", tmp_path / "config" / "strategy_catalog.yaml")
     monkeypatch.setattr(dashboard_app, "_EVF_REPORTS_DIR", tmp_path / "execution_validation" / "reports")
     monkeypatch.setattr(dashboard_app, "_SVOS_REPORTS_DIR", tmp_path / "reports" / "current_strategy_svos")
+    monkeypatch.setattr(dashboard_app, "_SVOS_CANONICAL_REPORTS_DIR", tmp_path / "reports" / "svos")
     monkeypatch.setattr(dashboard_app, "_JOURNAL_PATHS", [tmp_path / "logs" / "trades.jsonl"])
     monkeypatch.setattr(dashboard_app, "_ARCHITECTURE_PATH", tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md")
     monkeypatch.setattr(dashboard_app, "_BOT_LOG", tmp_path / "logs" / "bot.log")
@@ -192,7 +305,7 @@ def client(tmp_path, monkeypatch):
 def test_dashboard_loads(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert b"ISOP Control Panel" in response.data
+    assert b"SVOS Control Panel" in response.data
     assert b"el.style.borderColor = '';" in response.data
     assert b"el.style.color = '';" in response.data
 
@@ -239,6 +352,78 @@ def test_new_isop_endpoints_work(client):
     assert platform.get_json()["service_status"]["research"] == "ONLINE"
     assert registry.get_json()["strategy_count"] >= 1
     assert strategy.get_json()["record"]["strategy"] == "ST-A2"
+
+
+def test_svos_endpoint_exposes_stage_reports(client):
+    response = client.get("/api/svos")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload["stage_reports"]
+    audit_stage = next(item for item in payload["stage_reports"] if item["stage"] == "audit")
+    assert audit_stage["has_markdown"] is True
+    assert audit_stage["markdown_report_id"] == "reports__current_strategy_svos__ST-A2__stages__01_audit.md"
+
+    detail = client.get(f"/api/reports/{audit_stage['markdown_report_id']}")
+    assert detail.status_code == 200
+    assert "Strategy spec is complete" in detail.get_json()["content"]
+
+
+def test_svos_endpoint_exposes_canonical_six_stage_run(client):
+    response = client.get("/api/svos")
+    payload = response.get_json()
+    canonical = payload["canonical_run"]
+
+    assert response.status_code == 200
+    assert canonical["run_id"] == "run-001"
+    assert canonical["strategy_id"] == "ST-A2"
+    assert canonical["strategy_version"] == "2.1"
+    assert canonical["overall_status"] == "BLOCKED"
+    assert canonical["latest_passed_stage"] == "robustness"
+    assert canonical["active_blocker"] == "virtual_demo"
+    assert len(canonical["stages"]) == 6
+
+    virtual_demo = next(stage for stage in canonical["stages"] if stage["stage"] == "virtual_demo")
+    assert virtual_demo["score"] == 75.0
+    assert virtual_demo["promotion_allowed"] is False
+    assert virtual_demo["remediation_route"] == "research"
+    assert virtual_demo["metrics"]["execution"]["expected_signals"] == 12
+
+    report = client.get(f"/api/reports/{virtual_demo['markdown_report_id']}")
+    assert report.status_code == 200
+    assert "Virtual Demo Report" in report.get_json()["content"]
+
+    status = client.get("/api/status").get_json()
+    assert status["last_svos_status"] == "BLOCKED"
+    assert status["last_svos_active_blocker"] == "virtual_demo"
+
+
+def test_dashboard_uses_public_six_stage_svos_view(client):
+    response = client.get("/")
+    page = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "SVOS Control Panel" in page
+    assert "SVOS Research and Verification" in page
+    assert "const STAGES = ['strategy_audit','historical_replay','backtest','robustness','virtual_demo','production_approval']" in page
+    assert "Immutable Version" in page
+    assert "Active Blocker" in page
+    assert "Virtual Demo" in page
+
+
+def test_reports_include_strategy_audit_loop_report(client):
+    response = client.get("/api/reports/latest")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert "strategy-audit-loop" in payload["latest"]
+    report = payload["latest"]["strategy-audit-loop"]
+    assert report["path"] == "docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md"
+
+    detail = client.get(f"/api/reports/{report['report_id']}")
+    detail_payload = detail.get_json()
+    assert detail.status_code == 200
+    assert "AI edits specification" in detail_payload["content"]
 
 
 def test_reports_generate_is_read_only_and_does_not_call_live_broker_checks(client, monkeypatch):

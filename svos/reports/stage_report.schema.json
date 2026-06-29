@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://svos.local/schemas/stage-report-2.0.0.json",
+  "title": "SVOS Stage Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "report_id",
+    "run_id",
+    "strategy_id",
+    "strategy_version",
+    "stage",
+    "status",
+    "score",
+    "promotion_allowed",
+    "thresholds",
+    "hard_gate_results",
+    "metrics",
+    "findings",
+    "evidence_hashes",
+    "remediation",
+    "version_comparison",
+    "generated_at",
+    "sections",
+    "visualizations"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "report_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "strategy_id": {"type": "string", "minLength": 1},
+    "strategy_version": {"type": "string", "minLength": 1},
+    "stage": {
+      "enum": [
+        "strategy_audit",
+        "historical_replay",
+        "backtest",
+        "robustness",
+        "virtual_demo",
+        "production_approval"
+      ]
+    },
+    "status": {"enum": ["PASS", "FAIL", "BLOCKED", "IN_PROGRESS", "NOT_RUN"]},
+    "score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+    "promotion_allowed": {"type": "boolean"},
+    "thresholds": {"type": "object"},
+    "hard_gate_results": {"type": "array"},
+    "metrics": {"type": "object"},
+    "findings": {"type": "array"},
+    "evidence_hashes": {"type": "object"},
+    "remediation": {
+      "type": "object",
+      "required": ["route", "actions"]
+    },
+    "version_comparison": {"type": "object"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "sections": {
+      "type": "object",
+      "required": [
+        "report_header",
+        "executive_summary",
+        "objective",
+        "scope",
+        "inputs",
+        "evaluation_results",
+        "evidence",
+        "issues",
+        "recommendations",
+        "decision",
+        "next_action",
+        "appendices"
+      ]
+    },
+    "visualizations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "title"]
+      }
+    }
+  }
+}

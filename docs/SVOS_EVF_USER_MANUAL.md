@@ -53,6 +53,10 @@ Strategy Audit
       │
       ├── FAIL → AI edits specification → Audit again
       ▼
+Strategy Enhancement
+      │
+      ├── FAIL → Resolve rule ambiguities and regenerate the rulebook
+      ▼
 Historical Replay
       │
       ├── FAIL → Refine rules → Replay again
@@ -79,6 +83,11 @@ Production Approval
 This is the current transitional implementation. The target architecture moves
 virtual execution and later approvals out of the unified SVOS pipeline; see
 `docs/SYSTEM_ARCHITECTURE.md`.
+
+The important operating principle is that SVOS is not meant to send a vague
+strategy directly into backtesting. Audit and enhancement exist to force the
+strategy into a sufficiently explicit, machine-readable rulebook before replay
+and statistical testing begin.
 
 ### How to run SVOS
 
@@ -129,6 +138,7 @@ SVOS is designed to validate one strategy at a time. In practice, it can:
 - normalize incomplete input into a structured spec
 - detect missing fields
 - detect ambiguous or contradictory wording
+- apply an enhancement stage between audit and replay
 - flag likely overfitting from excessive fixed parameters
 - verify required data availability when the strategy declares it
 - emit a verification-ready handoff artifact after the research gates pass

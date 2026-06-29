@@ -77,7 +77,7 @@ This platform should be designed as a **Strategy Validation Operating System
            PASS / FAIL / FIX
                       │
                       ▼
-        Phase 6 ─ Demo Trading
+        Phase 6 ─ Virtual Demo Trading
                       │
  Live Market Validation
                       │

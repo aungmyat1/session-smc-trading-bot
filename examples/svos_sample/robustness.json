@@ -1,0 +1,60 @@
+{
+  "completed_successfully": true,
+  "walk_forward_passed": true,
+  "monte_carlo_passed": true,
+  "parameter_stability_passed": true,
+  "regime_analysis_passed": true,
+  "execution_cost_passed": true,
+  "latest_metrics": {
+    "profit_factor": 1.22,
+    "win_rate": 0.36,
+    "expectancy": 0.11,
+    "max_drawdown": 4.8
+  },
+  "previous_metrics": {
+    "profit_factor": 1.2,
+    "win_rate": 0.35,
+    "expectancy": 0.1,
+    "max_drawdown": 4.7
+  },
+  "walk_forward": [
+    {"period": "2022 OOS", "net_profit": 2342, "profit_factor": 1.71, "max_drawdown": 7.21, "status": "PASS"},
+    {"period": "2023 OOS", "net_profit": 3018, "profit_factor": 1.63, "max_drawdown": 8.11, "status": "PASS"},
+    {"period": "2024 OOS", "net_profit": 2212, "profit_factor": 1.59, "max_drawdown": 8.67, "status": "PASS"},
+    {"period": "2025 OOS", "net_profit": 1270, "profit_factor": 1.48, "max_drawdown": 9.02, "status": "PASS"}
+  ],
+  "monte_carlo": {
+    "simulations": 5000,
+    "mean_final_balance": 17610,
+    "fifth_percentile": 12380,
+    "ninety_fifth_percentile": 34420,
+    "probability_of_profit_pct": 98.2,
+    "distribution": [10300, 12100, 13500, 14800, 15400, 16000, 16600, 17300, 18100, 19400, 21200, 24600]
+  },
+  "parameter_sensitivity": {
+    "sweep_lookback": [
+      {"value": 10, "profit_factor": 1.45},
+      {"value": 15, "profit_factor": 1.62},
+      {"value": 20, "profit_factor": 1.58},
+      {"value": 25, "profit_factor": 1.47}
+    ],
+    "fvg_expiry_candles": [
+      {"value": 5, "profit_factor": 1.39},
+      {"value": 10, "profit_factor": 1.62},
+      {"value": 15, "profit_factor": 1.56},
+      {"value": 20, "profit_factor": 1.42}
+    ]
+  },
+  "regime_analysis": [
+    {"regime": "Trending", "trades": 60, "profit_factor": 1.74, "drawdown": 7.12, "status": "PASS"},
+    {"regime": "Ranging", "trades": 38, "profit_factor": 1.38, "drawdown": 9.11, "status": "PASS"},
+    {"regime": "High Volatility", "trades": 22, "profit_factor": 1.45, "drawdown": 8.73, "status": "PASS"}
+  ],
+  "execution_cost_impact": [
+    {"spread_pips": 0.0, "profit_factor": 1.62},
+    {"spread_pips": 0.5, "profit_factor": 1.55},
+    {"spread_pips": 1.0, "profit_factor": 1.48},
+    {"spread_pips": 1.5, "profit_factor": 1.39},
+    {"spread_pips": 2.0, "profit_factor": 1.31}
+  ]
+}

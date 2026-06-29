@@ -23,6 +23,10 @@ Strategy Audit
     │
     ├── FAIL → AI edits specification → Audit again
     ▼
+Strategy Enhancement
+    │
+    ├── FAIL → Resolve unresolved rule questions → Enhance again
+    ▼
 Historical Replay
     │
     ├── FAIL → Refine rules → Replay again
@@ -51,7 +55,8 @@ Production Approval
 1. Start with a strategy intake record and canonical strategy text.
 1. Run the SVOS audit after intake.
 1. If audit fails, revise the strategy text and rerun audit.
-1. If audit passes, continue through replay, backtest, robustness, and the verification-ready handoff.
+1. If audit passes, run the enhancement step to convert findings and recommendations into a cleaner machine-readable rulebook.
+1. If enhancement passes, continue through replay, backtest, robustness, and the verification-ready handoff.
 1. Use the verification-ready report as the research signoff before demo evidence starts.
 1. If any later stage fails, fix the underlying issue and rerun from the failed
    stage or earlier, depending on the change.
@@ -84,6 +89,8 @@ The final rollup remains in:
 - The stage report files are meant to support audit review, change tracking, and
   step-by-step promotion decisions.
 - The audit stage can flag missing data dependencies and likely overfitting.
+- The enhancement stage is the bridge between audit findings and a replay-ready
+  rulebook, even though the current interactive editor is still incomplete.
 - `--stop-after verification_ready` is the intended research-only handoff mode.
 - The virtual demo stage expects execution-validation evidence from the virtual
   broker process rather than a purely synthetic placeholder payload.

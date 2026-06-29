@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ISOP Control Panel</title>
+<title>SVOS Control Panel</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -178,6 +178,7 @@
     min-width: 80px;
     position: relative;
   }
+  .stage.has-report { cursor: pointer; }
   .stage:not(:last-child)::after {
     content: '';
     position: absolute;
@@ -204,9 +205,75 @@
   }
   .stage-dot.pass    { border-color: var(--green);  background: var(--green-dim);  color: var(--green); }
   .stage-dot.fail    { border-color: var(--red);    background: var(--red-dim);    color: var(--red); }
+  .stage-dot.blocked { border-color: var(--yellow); background: var(--yellow-dim); color: var(--yellow); }
   .stage-dot.pending { border-color: var(--border); background: var(--surface2);   color: var(--muted); }
   .stage-dot.active  { border-color: var(--blue);   background: var(--blue-dim);   color: var(--blue); animation: pulse 1.5s infinite; }
   .stage-label { font-size: 10px; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stage-note { font-size: 9px; color: var(--blue); text-align: center; margin-top: 3px; }
+  .stage-reports {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+  .stage-report-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .stage-report-card h4 {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+  .stage-report-card .meta {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .stage-report-card .open-btn {
+    margin-top: 8px;
+    width: 100%;
+  }
+  .svos-run-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .svos-run-fact {
+    background: linear-gradient(145deg, rgba(88, 166, 255, 0.08), var(--surface2));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    min-width: 0;
+  }
+  .svos-run-fact.wide { grid-column: span 2; }
+  .svos-run-fact .fact-label {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.45px;
+  }
+  .svos-run-fact .fact-value {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .stage-score {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    margin: 7px 0 3px;
+  }
+  .stage-evidence {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+  }
 
   /* --- Strategy table --- */
   table { width: 100%; border-collapse: collapse; }
@@ -318,6 +385,60 @@
     display: none;
   }
   .output-box.visible { display: block; }
+  .output-box.markdown-view {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--text);
+    white-space: normal;
+    line-height: 1.6;
+  }
+  .output-box.markdown-view h1,
+  .output-box.markdown-view h2,
+  .output-box.markdown-view h3,
+  .output-box.markdown-view h4 {
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+  .output-box.markdown-view h1 { font-size: 18px; }
+  .output-box.markdown-view h2 { font-size: 16px; margin-top: 14px; }
+  .output-box.markdown-view h3 { font-size: 14px; margin-top: 12px; }
+  .output-box.markdown-view h4 { font-size: 13px; margin-top: 10px; }
+  .output-box.markdown-view p {
+    margin: 0 0 10px;
+    color: var(--text);
+  }
+  .output-box.markdown-view ul {
+    margin: 0 0 10px 18px;
+    padding: 0;
+  }
+  .output-box.markdown-view li { margin-bottom: 4px; }
+  .output-box.markdown-view code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 11px;
+  }
+  .output-box.markdown-view pre {
+    margin: 0 0 12px;
+    padding: 10px;
+    overflow-x: auto;
+    background: #0b1220;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .output-box.markdown-view pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: 11px;
+  }
+  .output-box.markdown-view hr {
+    border: 0;
+    border-top: 1px solid var(--border);
+    margin: 12px 0;
+  }
 
   .kv-grid {
     display: grid;
@@ -470,8 +591,8 @@
   <div class="header-left">
     <span style="font-size:20px;">📊</span>
     <div>
-      <h1>ISOP Control Panel</h1>
-      <div class="subtitle">SVOS &bull; EVF &bull; RGM &bull; Governance &bull; SMO</div>
+      <h1>SVOS Control Panel</h1>
+      <div class="subtitle">Research &bull; Verification &bull; Virtual Demo &bull; Production Approval</div>
     </div>
   </div>
   <div class="header-right">
@@ -540,16 +661,22 @@
       <div class="panel-header-left">
         <span>🔬</span>
         <div>
-          <div class="panel-title">SVOS Research Qualification</div>
-          <div class="panel-subtitle">Stage-gate research and validation pipeline</div>
+          <div class="panel-title">SVOS Research and Verification</div>
+          <div class="panel-subtitle">Strategy idea to production approval through six hard gates</div>
         </div>
       </div>
       <span id="svos-current-badge" class="badge badge-unknown">—</span>
     </div>
     <div class="panel-body">
+      <div id="svos-run-overview" class="svos-run-overview">
+        <div class="loading">Loading canonical SVOS run…</div>
+      </div>
       <!-- Pipeline stages -->
       <div id="svos-pipeline" class="pipeline">
         <div class="loading">Loading SVOS data…</div>
+      </div>
+      <div id="svos-stage-reports" class="stage-reports">
+        <div class="loading">Loading stage reports…</div>
       </div>
 
       <!-- Strategy table -->
@@ -873,6 +1000,7 @@ const API = window.location.origin;
 let latestReportsCache = {};
 let latestOpenReportId = '';
 let incidentFilter = 'all';
+let svosStageReportsCache = {};
 
 let _apiErrorCount = 0;
 
@@ -953,6 +1081,131 @@ function recBadgeClass(value) {
   return 'badge-unknown';
 }
 
+function escapeHtml(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderInlineMarkdown(text) {
+  return escapeHtml(text || '')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+
+function markdownToHtml(markdown) {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  const html = [];
+  let inList = false;
+  let inCode = false;
+  let codeLines = [];
+  let paragraph = [];
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    html.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`);
+    paragraph = [];
+  };
+
+  const flushList = () => {
+    if (!inList) return;
+    html.push('</ul>');
+    inList = false;
+  };
+
+  const flushCode = () => {
+    if (!inCode) return;
+    html.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+    inCode = false;
+    codeLines = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine || '';
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('```')) {
+      flushParagraph();
+      flushList();
+      if (inCode) {
+        flushCode();
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const heading = trimmed.match(/^(#{1,4})\s+(.*)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      const level = heading[1].length;
+      html.push(`<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    if (/^---+$/.test(trimmed)) {
+      flushParagraph();
+      flushList();
+      html.push('<hr>');
+      continue;
+    }
+
+    const bullet = trimmed.match(/^[-*]\s+(.*)$/);
+    if (bullet) {
+      flushParagraph();
+      if (!inList) {
+        html.push('<ul>');
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(bullet[1])}</li>`);
+      continue;
+    }
+
+    const numbered = trimmed.match(/^\d+\.\s+(.*)$/);
+    if (numbered) {
+      flushParagraph();
+      if (!inList) {
+        html.push('<ul>');
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(numbered[1])}</li>`);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(trimmed);
+  }
+
+  flushParagraph();
+  flushList();
+  flushCode();
+  return html.join('');
+}
+
+function renderMarkdownOutput(element, markdown) {
+  element.className = 'output-box visible markdown-view';
+  element.innerHTML = markdownToHtml(markdown || '');
+}
+
+function renderTextOutput(element, text) {
+  element.className = 'output-box visible';
+  element.textContent = text || '';
+}
+
 // ---- Status summary ----
 async function loadStatus() {
   const d = await apiFetch('/api/status');
@@ -963,8 +1216,8 @@ async function loadStatus() {
 
   const svosEl = document.getElementById('hdr-svos');
   svosEl.textContent = d.last_svos_status || '—';
-  svosEl.className = 'value ' + (d.last_svos_status === 'PASS' ? 'green' : d.last_svos_status === 'FAIL' ? 'red' : 'muted');
-  document.getElementById('hdr-svos-at').textContent = fmtShort(d.last_svos_at);
+  svosEl.className = 'value ' + (d.last_svos_status === 'PASS' ? 'green' : d.last_svos_status === 'FAIL' ? 'red' : d.last_svos_status === 'BLOCKED' ? 'yellow' : 'muted');
+  document.getElementById('hdr-svos-at').textContent = d.last_svos_active_blocker ? `Blocked at ${STAGE_LABELS[d.last_svos_active_blocker] || d.last_svos_active_blocker}` : fmtShort(d.last_svos_at);
 
   const evfScore = d.evf_score || 0;
   const evfEl = document.getElementById('hdr-evf-score');
@@ -1009,8 +1262,52 @@ async function loadStatus() {
 }
 
 // ---- SVOS Panel ----
-const STAGES = ['audit','enhancement','replay','backtest','robustness','demo','production'];
-const STAGE_ICONS = { pass:'✓', fail:'✗', pending:'○', active:'◈' };
+const STAGES = ['strategy_audit','historical_replay','backtest','robustness','virtual_demo','production_approval'];
+const STAGE_ICONS = { pass:'✓', fail:'✗', blocked:'!', pending:'○', active:'◈' };
+const STAGE_LABELS = {
+  strategy_audit: 'Strategy Audit',
+  historical_replay: 'Historical Replay',
+  backtest: 'Backtest',
+  robustness: 'Robustness Tests',
+  virtual_demo: 'Virtual Demo',
+  production_approval: 'Production Approval',
+};
+
+const LEGACY_STAGE_MAP = {
+  strategy_audit: 'audit',
+  historical_replay: 'replay',
+  backtest: 'backtest',
+  robustness: 'robustness',
+  virtual_demo: 'virtual_demo',
+  production_approval: 'production_approval',
+};
+
+function svosVisualStatus(value) {
+  const normalized = String(value || '').toUpperCase();
+  if (normalized === 'PASS') return 'pass';
+  if (normalized === 'FAIL') return 'fail';
+  if (normalized === 'BLOCKED') return 'blocked';
+  if (normalized === 'IN_PROGRESS') return 'active';
+  return 'pending';
+}
+
+function svosBadgeClass(value) {
+  const visual = svosVisualStatus(value);
+  if (visual === 'pass') return 'badge-pass';
+  if (visual === 'fail') return 'badge-fail';
+  if (visual === 'blocked' || visual === 'active') return 'badge-pending';
+  return 'badge-unknown';
+}
+
+function virtualDemoEvidence(stage) {
+  if (!stage || stage.stage !== 'virtual_demo') return '';
+  const execution = ((stage.metrics || {}).execution || {});
+  const expectedSignals = execution.expected_signals ?? '—';
+  const observedSignals = execution.observed_signals ?? '—';
+  const expectedTrades = execution.expected_trades ?? '—';
+  const observedTrades = execution.observed_trades ?? '—';
+  return `<div class="stage-evidence">Signals ${escapeHtml(expectedSignals)} / ${escapeHtml(observedSignals)} expected/observed<br>Trades ${escapeHtml(expectedTrades)} / ${escapeHtml(observedTrades)} expected/observed</div>`;
+}
 
 async function loadSVOS() {
   const d = await apiFetch('/api/svos');
@@ -1020,35 +1317,88 @@ async function loadSVOS() {
   const strategies = d.strategies || [];
   const current = strategies.find(s => s.name === currentStrategy);
   const currentStatus = current ? current.status : 'unknown';
+  const canonicalRun = d.canonical_run || {};
+  const canonicalStages = canonicalRun.stages || [];
+  const legacyReports = d.stage_reports || [];
+  const legacyByName = Object.fromEntries(legacyReports.map(item => [item.stage, item]));
+  const stageReports = canonicalStages.length
+    ? canonicalStages
+    : STAGES.map(stage => {
+        const legacy = legacyByName[LEGACY_STAGE_MAP[stage]] || {};
+        return {
+          ...legacy,
+          stage,
+          label: STAGE_LABELS[stage],
+          score: null,
+          promotion_allowed: Boolean(legacy.can_promote),
+          status: legacy.status || 'NOT_RUN',
+        };
+      });
+  svosStageReportsCache = Object.fromEntries(stageReports.map(item => [item.stage, item]));
 
   // Badge
   const badge = document.getElementById('svos-current-badge');
-  badge.textContent = currentStatus.toUpperCase();
-  badge.className = 'badge ' + badgeClass(currentStatus);
+  const headlineStatus = canonicalRun.overall_status || currentStatus;
+  badge.textContent = String(headlineStatus).toUpperCase();
+  badge.className = 'badge ' + svosBadgeClass(headlineStatus);
+
+  const overview = document.getElementById('svos-run-overview');
+  if (canonicalRun.run_id) {
+    const blocker = canonicalRun.active_blocker || 'none';
+    overview.innerHTML = `
+      <div class="svos-run-fact"><div class="fact-label">Strategy Identity</div><div class="fact-value mono">${escapeHtml(canonicalRun.strategy_id || currentStrategy || '—')}</div></div>
+      <div class="svos-run-fact"><div class="fact-label">Immutable Version</div><div class="fact-value mono">v${escapeHtml(canonicalRun.strategy_version || '—')}</div></div>
+      <div class="svos-run-fact"><div class="fact-label">Latest Passed Gate</div><div class="fact-value">${escapeHtml(STAGE_LABELS[canonicalRun.latest_passed_stage] || canonicalRun.latest_passed_stage || 'none')}</div></div>
+      <div class="svos-run-fact"><div class="fact-label">Active Blocker</div><div class="fact-value ${blocker === 'none' ? 'green' : 'yellow'}">${escapeHtml(STAGE_LABELS[blocker] || blocker)}</div></div>
+      <div class="svos-run-fact wide"><div class="fact-label">Next Task</div><div class="fact-value">${escapeHtml(canonicalRun.next_task || 'No further validation task.')}</div></div>
+      <div class="svos-run-fact"><div class="fact-label">Run</div><div class="fact-value mono">${escapeHtml(canonicalRun.run_id)}</div></div>
+      ${canonicalRun.summary_markdown_report_id ? '<button class="refresh-btn" onclick="openSVOSRunSummary()">Open Run Summary</button>' : ''}
+    `;
+  } else {
+    overview.innerHTML = '<div class="svos-run-fact wide"><div class="fact-label">Canonical Run</div><div class="fact-value muted">No immutable six-stage report package yet. Run SVOS to create one.</div></div>';
+  }
 
   // Pipeline
   const pipelineEl = document.getElementById('svos-pipeline');
-  const reqs = current ? current.requirements : {};
-  const lastStage = current ? current.last_svos_promoted_stage : '';
-
   const stageStatus = (stage) => {
-    if (reqs[stage] === 'pass') return 'pass';
-    if (reqs[stage] === 'fail') return 'fail';
-    if (stage === lastStage) return 'active';
-    return 'pending';
+    const reportStage = svosStageReportsCache[stage];
+    return svosVisualStatus(reportStage && reportStage.status);
   };
 
   pipelineEl.innerHTML = STAGES.map((stage, i) => {
     const st = stageStatus(stage);
     const icon = STAGE_ICONS[st] || '○';
+    const report = svosStageReportsCache[stage];
+    const clickable = report && report.markdown_report_id;
     return `
       ${i > 0 ? '<span class="stage-arrow">›</span>' : ''}
-      <div class="stage">
+      <div class="stage ${clickable ? 'has-report' : ''}" ${clickable ? `onclick="openSVOSStageReport('${report.stage}')"` : ''}>
         <div class="stage-dot ${st}">${icon}</div>
-        <div class="stage-label">${stage}</div>
+        <div class="stage-label">${escapeHtml(STAGE_LABELS[stage] || stage)}</div>
+        ${clickable ? '<div class="stage-note">report</div>' : ''}
       </div>
     `;
   }).join('');
+
+  document.getElementById('svos-stage-reports').innerHTML = stageReports.length
+    ? stageReports.map(item => {
+        const statusClass = svosBadgeClass(item.status || 'unknown');
+        const hasReport = item.markdown_report_id;
+        const score = item.score === null || item.score === undefined ? '—' : Number(item.score).toFixed(1);
+        return `
+          <div class="stage-report-card">
+            <h4>${escapeHtml(item.label || item.stage)}</h4>
+            <div class="meta"><span class="badge ${statusClass}">${escapeHtml(item.status || 'UNKNOWN')}</span></div>
+            <div class="stage-score">${escapeHtml(score)}</div>
+            <div class="meta">Diagnostic score / 100</div>
+            <div class="meta">Promotion: ${item.promotion_allowed ? '<span class="green">allowed</span>' : '<span class="muted">blocked</span>'}</div>
+            ${item.remediation_route ? `<div class="meta">Route: ${escapeHtml(item.remediation_route)}</div>` : ''}
+            ${virtualDemoEvidence(item)}
+            ${hasReport ? `<button class="refresh-btn open-btn" onclick="openSVOSStageReport('${item.stage}')">Open Stage Report</button>` : '<div class="meta">Report not available yet</div>'}
+          </div>
+        `;
+      }).join('')
+    : '<div class="mini-row"><span>Stage reports</span><span>No stage reports yet</span></div>';
 
   // Strategy select
   const sel = document.getElementById('svos-strategy-select');
@@ -1078,6 +1428,39 @@ async function loadSVOS() {
       <td class="timestamp">${s.last_svos_at ? '<span class="badge ' + badgeClass(s.last_svos_status) + '">' + (s.last_svos_status || '—') + '</span> ' + fmtShort(s.last_svos_at) : '—'}</td>
     </tr>`;
   }).join('');
+}
+
+async function openSVOSRunSummary() {
+  const d = await apiFetch('/api/svos');
+  const out = document.getElementById('svos-output');
+  const reportId = d && d.canonical_run && d.canonical_run.summary_markdown_report_id;
+  if (!reportId) {
+    renderTextOutput(out, 'No canonical SVOS run summary is available.');
+    return;
+  }
+  renderTextOutput(out, 'Loading canonical SVOS run summary…');
+  const report = await apiFetch('/api/reports/' + encodeURIComponent(reportId));
+  if (!report) {
+    renderTextOutput(out, 'Failed to load the canonical SVOS run summary.');
+    return;
+  }
+  renderMarkdownOutput(out, report.content || '# Empty Run Summary');
+}
+
+async function openSVOSStageReport(stageName) {
+  const stage = svosStageReportsCache[stageName];
+  const out = document.getElementById('svos-output');
+  if (!stage || !stage.markdown_report_id) {
+    renderTextOutput(out, `No stage report available for ${stageName}.`);
+    return;
+  }
+  renderTextOutput(out, `Loading ${stage.label || stage.stage} report…`);
+  const d = await apiFetch('/api/reports/' + encodeURIComponent(stage.markdown_report_id));
+  if (!d) {
+    renderTextOutput(out, `Failed to load report for ${stageName}.`);
+    return;
+  }
+  renderMarkdownOutput(out, d.content || '# Empty Report');
 }
 
 // ---- EVF Panel ----
@@ -1305,14 +1688,16 @@ async function loadReports() {
   const latestExecution = latestReportsCache['execution'];
   const latestSystem = latestReportsCache['system-health'];
   const latestReadiness = latestReportsCache['live-readiness'];
+  const latestAuditLoop = latestReportsCache['strategy-audit-loop'];
   const rec = d.recommendation_badge || 'REVIEW';
-  latestOpenReportId = (latestReadiness || latestDaily || latestRisk || latestSystem || latestStrategy || latestExecution || {}).report_id || '';
+  latestOpenReportId = (latestAuditLoop || latestReadiness || latestDaily || latestRisk || latestSystem || latestStrategy || latestExecution || {}).report_id || '';
 
   const badge = document.getElementById('reports-rec-badge');
   badge.textContent = rec;
   badge.className = 'badge ' + recBadgeClass(rec);
 
   document.getElementById('reports-grid').innerHTML = [
+    renderReportCard('SVOS strategy audit loop report', latestAuditLoop, reviewed[latestAuditLoop && latestAuditLoop.report_id]),
     renderReportCard('Latest daily report', latestDaily, reviewed[latestDaily && latestDaily.report_id]),
     renderReportCard('Latest strategy report', latestStrategy, reviewed[latestStrategy && latestStrategy.report_id]),
     renderReportCard('Latest risk report', latestRisk, reviewed[latestRisk && latestRisk.report_id]),
@@ -1366,17 +1751,16 @@ async function generateAllReports() {
 
 async function openLatestReport() {
   const out = document.getElementById('reports-output');
-  out.className = 'output-box visible';
   if (!latestOpenReportId) {
-    out.textContent = 'No latest report found.';
+    renderTextOutput(out, 'No latest report found.');
     return;
   }
   const d = await apiFetch('/api/reports/' + encodeURIComponent(latestOpenReportId));
   if (!d) {
-    out.textContent = 'Failed to open report.';
+    renderTextOutput(out, 'Failed to open report.');
     return;
   }
-  out.textContent = d.content || 'Empty report.';
+  renderMarkdownOutput(out, d.content || '# Empty Report');
 }
 
 async function downloadLatestReport() {

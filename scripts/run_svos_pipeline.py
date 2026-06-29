@@ -61,7 +61,7 @@ def _overall_status(stages) -> str:
 
 def _stage_label(stage_name: str) -> str:
     labels = {
-        "virtual_demo": "Virtual Demo Trading",
+        "virtual_demo": "Virtual Demo",
         "production_approval": "Production Approval",
     }
     return labels.get(stage_name, stage_name.replace("_", " ").title())

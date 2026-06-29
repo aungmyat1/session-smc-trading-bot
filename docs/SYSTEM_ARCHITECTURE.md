@@ -5,6 +5,13 @@ Date: 2026-06-28
 This document is the authoritative architecture and lifecycle reference for the
 repository.
 
+Branching note:
+
+- `main` is the canonical branch for the current platform stage of this
+  repository
+- the repository name remains `session-smc-trading-bot`, but the system has
+  grown into a broader strategy validation and execution platform
+
 If the lifecycle changes, update these in order:
 
 1. `config/strategy_catalog.yaml`
@@ -27,6 +34,9 @@ The repository is currently transitioning from a unified SVOS-driven validation
 pipeline into the full target separation of:
 
 `SVOS -> EVF -> RGM -> Governance -> SMO`
+
+In other words, the current `main` branch should be interpreted as the
+platform's canonical state rather than as a narrow session-bot-only branch.
 
 ## Current Implementation
 

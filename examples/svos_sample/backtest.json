@@ -1,0 +1,58 @@
+{
+  "completed_successfully": true,
+  "trade_count": 120,
+  "expectancy": 0.12,
+  "max_drawdown": 4.5,
+  "profit_factor": 1.25,
+  "metrics": {
+    "trade_count": 120,
+    "expectancy": 0.12,
+    "max_drawdown": 4.5,
+    "profit_factor": 1.25,
+    "win_rate": 0.35,
+    "net_return": 12.0,
+    "sharpe_ratio": 1.47,
+    "recovery_factor": 2.8,
+    "risk_of_ruin_pct": 0.8
+  },
+  "test_period": {
+    "start": "2022-01-01",
+    "end": "2025-05-31"
+  },
+  "account": {
+    "initial_balance": 10000,
+    "final_balance": 17842,
+    "net_profit": 7842
+  },
+  "equity_curve": [
+    {"label": "2022-01", "value": 10000},
+    {"label": "2022-07", "value": 10820},
+    {"label": "2023-01", "value": 11640},
+    {"label": "2023-07", "value": 12480},
+    {"label": "2024-01", "value": 13820},
+    {"label": "2024-07", "value": 15110},
+    {"label": "2025-01", "value": 16420},
+    {"label": "2025-05", "value": 17842}
+  ],
+  "monthly_returns": [
+    {"label": "Jan", "value": 420},
+    {"label": "Feb", "value": -180},
+    {"label": "Mar", "value": 610},
+    {"label": "Apr", "value": 340},
+    {"label": "May", "value": 720},
+    {"label": "Jun", "value": -260}
+  ],
+  "trade_distribution": {
+    "winners": 66,
+    "losers": 54
+  },
+  "performance_breakdown": {
+    "London": {"trades": 72, "profit_factor": 1.38},
+    "New York": {"trades": 48, "profit_factor": 1.11}
+  },
+  "risk_analysis": {
+    "maximum_drawdown": "PASS",
+    "risk_of_ruin": "PASS",
+    "exposure": "PASS"
+  }
+}

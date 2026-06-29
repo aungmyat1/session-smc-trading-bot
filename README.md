@@ -10,13 +10,37 @@ It is designed to move a strategy through governed research stages, separate
 research from execution risk, and prevent uncontrolled promotion into demo or
 live deployment.
 
+Repository identity note:
+
+- repository name: `session-smc-trading-bot`
+- current canonical branch: `main`
+- current meaning of `main`: the branch now represents the platform stage of
+  the project, not a narrow single-strategy bot snapshot
+
+In this stage, the repository should be understood as a trading strategy
+validation and execution platform with these core capabilities:
+
+- research and strategy audit
+- replay and backtesting
+- robustness and validation gates
+- execution simulation and demo trading
+- governance before live deployment
+
+Current scope note:
+
+- the repository contains broader platform-oriented components
+- but the current development scope is intentionally narrower
+- current priority is an SVOS research-and-verification engine plus a simple
+  Vantage demo/live trading bot
+- see `docs/CURRENT_SCOPE.md`
+
 ## Repository Status
 
 This repository is currently transitioning from a unified SVOS validation
 pipeline to the full ISOP target architecture.
 
 - Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
-- Implementation transition status: `docs/IMPLEMENTATION_STATUS.md`
+- Current implementation plan: `docs/IMPLEMENTATION_STATUS.md`
 - Strategy state source of truth: `config/strategy_catalog.yaml`
 - AI workflow and prompt layering: `docs/AI_WORKFLOW_ARCHITECTURE.md`
 - Repository implementation constitution: `docs/DEVELOPER_HANDBOOK.md`
@@ -50,6 +74,21 @@ SMO
 
 The repository is being refactored toward this separation while maintaining
 backward compatibility with the current SVOS-driven workflow.
+
+Branch policy:
+
+- `main` is the canonical branch for the current platform state
+- branch swaps are not required to express the broader platform identity
+- strategy-specific or experimental work should live on separate branches until
+  intentionally promoted
+
+Current delivery focus:
+
+- do not expand the project unnecessarily
+- prioritize the direct path to a simple strategy verification workflow and
+  Vantage demo/live execution
+- treat broader platform build-out as deferred unless it directly supports that
+  goal
 
 ## Overview
 

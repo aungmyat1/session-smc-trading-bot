@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import re
 from pathlib import Path
 from typing import Any
 
@@ -7,6 +9,20 @@ from core.strategy_registry import get_strategy_manifest, list_catalog_strategie
 from svos.lifecycle.manager import StrategyLifecycleManager
 from svos.shared.models import EvidenceRecord, StrategyRecord, TransitionRecord, VersionRecord
 from svos.shared.support import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
+
+
+def _stable_strategy_id(strategy: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "-", strategy.strip().upper()).strip("-") or "UNNAMED"
+
+
+def _next_patch_version(version: str) -> str:
+    match = re.fullmatch(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?", version.strip())
+    if match is None:
+        return "0.0.1"
+    major = int(match.group(1))
+    minor = int(match.group(2) or 0)
+    patch = int(match.group(3) or 0) + 1
+    return f"{major}.{minor}.{patch}"
 
 
 class StrategyRegistryService:
@@ -105,6 +121,51 @@ class StrategyRegistryService:
         )
         write_json(self._state_path(strategy), state)
         return record
+
+    def ensure_spec_version(
+        self,
+        strategy: str,
+        *,
+        specification: str,
+        actor: str = "svos",
+        reason: str = "strategy specification registered",
+    ) -> VersionRecord:
+        """Register a stable strategy identity and version a changed specification."""
+        current = self.ensure_strategy(strategy, actor=actor, reason="strategy registry initialized")
+        manifest = dict(get_strategy_manifest(strategy, self.catalog_path) or {})
+        spec_hash = hashlib.sha256(specification.encode("utf-8")).hexdigest()
+        previous_hash = str(manifest.get("strategy_spec_hash", ""))
+        strategy_id = str(manifest.get("strategy_id", "")).strip() or _stable_strategy_id(strategy)
+        version = str(manifest.get("version", current.latest_version or "0.0.0"))
+        changed = bool(previous_hash and previous_hash != spec_hash)
+        if changed:
+            version = _next_patch_version(version)
+
+        if previous_hash == spec_hash and manifest.get("strategy_id"):
+            versions = self.versions(strategy)
+            if versions:
+                latest = versions[-1]
+                return VersionRecord(
+                    version_id=str(latest["version_id"]),
+                    strategy=strategy,
+                    version=str(latest.get("version", version)),
+                    created_at=str(latest.get("created_at", "")),
+                    actor=str(latest.get("actor", actor)),
+                    reason=str(latest.get("reason", reason)),
+                    manifest=dict(latest.get("manifest", manifest)),
+                )
+
+        updated = update_strategy_manifest(
+            strategy,
+            {
+                "strategy_id": strategy_id,
+                "strategy_spec_hash": spec_hash,
+                "version": version,
+            },
+            self.catalog_path,
+        )
+        change_reason = f"{reason}; specification changed" if changed else reason
+        return self.record_version(strategy, manifest=updated, actor=actor, reason=change_reason)
 
     def record_evidence(
         self,
