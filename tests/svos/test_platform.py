@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from svos.lifecycle import LifecycleTransitionError, StrategyLifecycleManager
+from svos.governance import GovernanceGateError
 from svos.orchestration import SVOSPlatform
 from svos.registry import StrategyRegistryService
 
@@ -38,6 +39,14 @@ def test_lifecycle_rejects_illegal_transition():
     manager = StrategyLifecycleManager()
     with pytest.raises(LifecycleTransitionError):
         manager.validate_transition("DRAFT", "STATISTICAL_VALIDATION")
+
+
+def test_lifecycle_supports_research_failure_loop_without_execution_promotion():
+    manager = StrategyLifecycleManager()
+    manager.validate_transition("ROBUSTNESS_VALIDATION", "REFINEMENT")
+    manager.validate_transition("REFINEMENT", "AUDIT")
+    with pytest.raises(LifecycleTransitionError):
+        manager.validate_transition("REFINEMENT", "VIRTUAL_DEMO")
 
 
 def test_registry_bootstraps_and_preserves_append_only_history(tmp_path):
@@ -77,7 +86,7 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
 
     recorded = platform.record_report_evidence(
         strategy="ST-A2",
-        stage="AUDIT",
+        stage="ROBUSTNESS_VALIDATION",
         service="svos",
         report_type="audit.json",
         artifact_path=artifact,
@@ -86,7 +95,7 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
     )
     transition = platform.audited_transition(
         "ST-A2",
-        to_stage="VIRTUAL_DEMO",
+        to_stage="VERIFICATION_READY",
         actor="governance",
         reason="Research evidence accepted",
     )
@@ -94,5 +103,100 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
     assert recorded["report"]["artifact_hash"]
     assert recorded["evidence"]["metadata"]["report_id"] == recorded["report"]["report_id"]
     assert transition["from_stage"] == "ROBUSTNESS_VALIDATION"
-    assert transition["to_stage"] == "VIRTUAL_DEMO"
+    assert transition["to_stage"] == "VERIFICATION_READY"
+    assert transition["metadata"]["governance_decision_id"]
     assert platform.strategy_summary("ST-A2")["record"]["transition_count"] == 1
+
+
+def test_governance_blocks_transition_without_current_version_pass_evidence(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog)
+    platform.bootstrap()
+
+    with pytest.raises(GovernanceGateError, match="No PASS evidence"):
+        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY", reason="Qualification review")
+
+    summary = platform.strategy_summary("ST-A2")
+    assert summary["record"]["current_stage"] == "ROBUSTNESS_VALIDATION"
+    assert summary["gate_decisions"][-1]["allowed"] is False
+
+
+def test_direct_registry_transition_cannot_bypass_governance(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    registry = StrategyRegistryService(root=tmp_path, catalog_path=catalog)
+    registry.ensure_strategy("ST-A2")
+
+    with pytest.raises(LifecycleTransitionError, match="governance gate decision"):
+        registry.transition("ST-A2", to_stage="VERIFICATION_READY")
+
+
+def test_evidence_from_previous_strategy_version_does_not_qualify(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog)
+    platform.bootstrap()
+    artifact = tmp_path / "reports" / "robustness.json"
+    artifact.write_text('{"status":"PASS"}', encoding="utf-8")
+    platform.record_report_evidence(
+        strategy="ST-A2",
+        stage="ROBUSTNESS_VALIDATION",
+        service="svos",
+        report_type="robustness.json",
+        artifact_path=artifact,
+        status="PASS",
+    )
+    platform.registry.record_version("ST-A2", actor="tester", reason="new version")
+
+    with pytest.raises(GovernanceGateError, match="strategy version"):
+        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY", reason="Qualification review")
+
+
+def test_live_and_production_transitions_require_explicit_approval(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog)
+    platform.bootstrap()
+    state_path = tmp_path / "data" / "svos" / "registry" / "ST-A2" / "state.json"
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state["current_stage"] = "PAPER_TRADING"
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    artifact = tmp_path / "reports" / "paper.json"
+    artifact.write_text('{"status":"PASS"}', encoding="utf-8")
+    platform.record_report_evidence(
+        strategy="ST-A2",
+        stage="PAPER_TRADING",
+        service="svos",
+        report_type="paper.json",
+        artifact_path=artifact,
+        status="PASS",
+    )
+
+    with pytest.raises(GovernanceGateError, match="explicit approval"):
+        platform.audited_transition("ST-A2", to_stage="LIVE_DEMO", reason="Request live demo")
+
+    approval = platform.approve_transition(
+        "ST-A2",
+        to_stage="LIVE_DEMO",
+        approver="risk-committee",
+        reason="Paper execution evidence reviewed",
+    )
+    transition = platform.audited_transition("ST-A2", to_stage="LIVE_DEMO", reason="Approved live demo entry")
+    assert approval["approval_id"]
+    assert transition["to_stage"] == "LIVE_DEMO"
+
+
+def test_governance_requires_an_audit_reason(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog)
+    platform.bootstrap()
+    artifact = tmp_path / "reports" / "robustness.json"
+    artifact.write_text('{"status":"PASS"}', encoding="utf-8")
+    platform.record_report_evidence(
+        strategy="ST-A2",
+        stage="ROBUSTNESS_VALIDATION",
+        service="svos",
+        report_type="robustness.json",
+        artifact_path=artifact,
+        status="PASS",
+    )
+
+    with pytest.raises(GovernanceGateError, match="audit reason"):
+        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY")

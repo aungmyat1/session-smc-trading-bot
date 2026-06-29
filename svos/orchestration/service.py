@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from core.strategy_registry import list_catalog_strategies
+from svos.governance.service import GovernanceService
 from svos.lifecycle.manager import StrategyLifecycleManager
 from svos.registry.service import StrategyRegistryService
 from svos.reports.service import StandardizedReportService
@@ -20,12 +21,14 @@ class SVOSPlatform:
         lifecycle: StrategyLifecycleManager | None = None,
         registry: StrategyRegistryService | None = None,
         reports: StandardizedReportService | None = None,
+        governance: GovernanceService | None = None,
     ) -> None:
         self.root = Path(root)
         self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
         self.lifecycle = lifecycle or StrategyLifecycleManager()
         self.registry = registry or StrategyRegistryService(root=self.root, catalog_path=self.catalog_path, lifecycle=self.lifecycle)
         self.reports = reports or StandardizedReportService(self.root)
+        self.governance = governance or GovernanceService(root=self.root, registry=self.registry, lifecycle=self.lifecycle)
 
     def bootstrap(self) -> dict[str, Any]:
         strategies = []
@@ -74,7 +77,7 @@ class SVOSPlatform:
         reason: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        transition = self.registry.transition(
+        transition = self.governance.transition(
             strategy,
             to_stage=to_stage,
             actor=actor,
@@ -83,6 +86,21 @@ class SVOSPlatform:
         )
         return transition.to_dict()
 
+    def approve_transition(
+        self,
+        strategy: str,
+        *,
+        to_stage: str,
+        approver: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        return self.governance.record_approval(
+            strategy,
+            to_stage=to_stage,
+            approver=approver,
+            reason=reason,
+        ).to_dict()
+
     def strategy_summary(self, strategy: str) -> dict[str, Any]:
         record = self.registry.ensure_strategy(strategy)
         return {
@@ -90,4 +108,6 @@ class SVOSPlatform:
             "versions": self.registry.versions(strategy),
             "transitions": self.registry.transitions(strategy),
             "evidence": self.registry.evidence(strategy),
+            "gate_decisions": self.governance.decisions(strategy),
+            "approvals": self.governance.approvals(strategy),
         }

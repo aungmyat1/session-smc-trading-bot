@@ -11,8 +11,8 @@ class StrategyStage(str, Enum):
     HISTORICAL_REPLAY = "HISTORICAL_REPLAY"
     STATISTICAL_VALIDATION = "STATISTICAL_VALIDATION"
     ROBUSTNESS_VALIDATION = "ROBUSTNESS_VALIDATION"
-    VIRTUAL_DEMO = "VIRTUAL_DEMO"
     VERIFICATION_READY = "VERIFICATION_READY"
+    VIRTUAL_DEMO = "VIRTUAL_DEMO"
     EXECUTION_VALIDATION = "EXECUTION_VALIDATION"
     PAPER_TRADING = "PAPER_TRADING"
     LIVE_DEMO = "LIVE_DEMO"
@@ -35,8 +35,8 @@ _ORDER = [
     StrategyStage.HISTORICAL_REPLAY,
     StrategyStage.STATISTICAL_VALIDATION,
     StrategyStage.ROBUSTNESS_VALIDATION,
-    StrategyStage.VIRTUAL_DEMO,
     StrategyStage.VERIFICATION_READY,
+    StrategyStage.VIRTUAL_DEMO,
     StrategyStage.EXECUTION_VALIDATION,
     StrategyStage.PAPER_TRADING,
     StrategyStage.LIVE_DEMO,
@@ -53,6 +53,13 @@ _ALLOWED: dict[StrategyStage, set[StrategyStage]] = {
 }
 _ALLOWED[StrategyStage.MONITORING].update({StrategyStage.REVALIDATION, StrategyStage.RETIRED})
 _ALLOWED[StrategyStage.REVALIDATION].update({StrategyStage.HISTORICAL_REPLAY, StrategyStage.RETIRED})
+# Explicit research failure loops. These are corrective transitions, not
+# promotions, and keep failed strategies away from execution stages.
+_ALLOWED[StrategyStage.REFINEMENT].add(StrategyStage.AUDIT)
+_ALLOWED[StrategyStage.HISTORICAL_REPLAY].add(StrategyStage.REFINEMENT)
+_ALLOWED[StrategyStage.STATISTICAL_VALIDATION].add(StrategyStage.REFINEMENT)
+_ALLOWED[StrategyStage.ROBUSTNESS_VALIDATION].add(StrategyStage.REFINEMENT)
+_ALLOWED[StrategyStage.VIRTUAL_DEMO].update({StrategyStage.REFINEMENT, StrategyStage.HISTORICAL_REPLAY})
 
 _LEGACY_STAGE_MAP = {
     "draft": StrategyStage.DRAFT,
@@ -102,4 +109,3 @@ class StrategyLifecycleManager:
             raise LifecycleTransitionError(
                 f"Illegal lifecycle transition: {current.value} -> {target.value}. Allowed next stages: {allowed}."
             )
-

@@ -36,6 +36,12 @@ Current scope note:
 
 ## Repository Status
 
+Architecture review update (2026-06-29): the repository is currently assessed
+as **NOT READY** for further feature expansion. The review found Critical
+governance-bypass, control-state persistence, and operator API security risks.
+Complete stabilization Phases 0–2 before resuming bounded feature development.
+See `docs/svos/architecture-review-2026-06-29/README.md`.
+
 This repository is currently transitioning from a unified SVOS validation
 pipeline to the full ISOP target architecture.
 

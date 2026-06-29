@@ -398,17 +398,19 @@ def test_svos_endpoint_exposes_canonical_six_stage_run(client):
     assert status["last_svos_active_blocker"] == "virtual_demo"
 
 
-def test_dashboard_uses_public_six_stage_svos_view(client):
+def test_dashboard_uses_operational_nine_stage_svos_view(client):
     response = client.get("/")
     page = response.get_data(as_text=True)
 
     assert response.status_code == 200
     assert "SVOS Control Panel" in page
     assert "SVOS Research and Verification" in page
-    assert "const STAGES = ['strategy_audit','historical_replay','backtest','robustness','virtual_demo','production_approval']" in page
+    assert "const STAGES = ['intake','audit','enhancement','replay','backtest','robustness','verification_ready','virtual_demo','production_approval']" in page
     assert "Immutable Version" in page
     assert "Active Blocker" in page
-    assert "Virtual Demo" in page
+    assert "Strategy Enhancement" in page
+    assert "Verification Ready" in page
+    assert "Virtual Demo Trading" in page
 
 
 def test_reports_include_strategy_audit_loop_report(client):

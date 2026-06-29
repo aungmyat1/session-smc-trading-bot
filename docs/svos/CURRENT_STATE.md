@@ -2,6 +2,21 @@
 
 Date: 2026-06-28
 
+> Update (2026-06-29): the missing operating-system core identified by this
+> audit has now been implemented in `svos/lifecycle`, `svos/registry`,
+> `svos/governance`, `svos/orchestration`, `svos/reports`, `svos/monitoring`,
+> `svos/deployment`, `svos/api`, and `svos/shared`. Lifecycle promotion is now
+> evidence- and version-gated, direct registry transition bypass is blocked,
+> high-risk transitions require explicit approval, and failure routes return to
+> research refinement. See `docs/svos/CORE_ARCHITECTURE.md`. The “missing
+> modules” section below is retained as the point-in-time audit that motivated
+> this implementation, not as the current package inventory.
+
+> Architecture-review decision (2026-06-29): **NOT READY**. Although the new
+> core exists, it is not yet the exclusive lifecycle authority; legacy runners
+> can still mutate catalog stage directly. The current controlling review and
+> upgrade gates are in `docs/svos/architecture-review-2026-06-29/README.md`.
+
 This audit reviews the active repository as an SVOS transitional platform and
 evaluates it against the stated project direction:
 

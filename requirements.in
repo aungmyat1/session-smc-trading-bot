@@ -1,0 +1,26 @@
+# Core runtime and configuration
+python-dotenv>=1.0,<2
+aiohttp>=3.9,<4
+aiofiles>=23,<25
+requests>=2.31,<3
+pyyaml>=6,<7
+pydantic>=2.8,<3
+jsonschema>=4.20,<5
+
+# Control-plane persistence
+sqlalchemy>=2.0,<3
+psycopg2-binary>=2.9,<3
+alembic>=1.13,<2
+
+# Research data and analytics
+polars>=0.20,<2
+pyarrow>=14,<25
+duckdb>=1.5,<2
+pandas>=2.2,<4
+
+# Compatibility HTTP interface
+flask>=3.0,<4
+flask-cors>=4,<7
+
+# Future isolated Vantage/MetaAPI execution adapter
+metaapi-cloud-sdk>=29,<30

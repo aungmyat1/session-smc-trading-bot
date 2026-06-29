@@ -66,3 +66,37 @@ class StrategyRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(slots=True)
+class GateDecision:
+    decision_id: str
+    strategy: str
+    from_stage: str
+    to_stage: str
+    allowed: bool
+    decided_at: str
+    actor: str
+    reason: str
+    evidence_ids: list[str] = field(default_factory=list)
+    blockers: list[str] = field(default_factory=list)
+    approval_id: str = ""
+    current_version_id: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class ApprovalRecord:
+    approval_id: str
+    strategy: str
+    from_stage: str
+    to_stage: str
+    approved_at: str
+    approver: str
+    reason: str
+    current_version_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)

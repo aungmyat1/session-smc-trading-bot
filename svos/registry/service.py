@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from core.strategy_registry import get_strategy_manifest, list_catalog_strategies, update_strategy_manifest
-from svos.lifecycle.manager import StrategyLifecycleManager
-from svos.shared.models import EvidenceRecord, StrategyRecord, TransitionRecord, VersionRecord
+from svos.lifecycle.manager import LifecycleTransitionError, StrategyLifecycleManager
+from svos.shared.models import EvidenceRecord, GateDecision, StrategyRecord, TransitionRecord, VersionRecord
 from svos.shared.support import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
 
 
@@ -179,7 +179,7 @@ class StrategyRegistryService:
         status: str,
         metadata: dict[str, Any] | None = None,
     ) -> EvidenceRecord:
-        self.ensure_strategy(strategy)
+        current = self.ensure_strategy(strategy)
         recorded_at = now_iso()
         evidence_id = stable_manifest_hash(
             {
@@ -202,7 +202,11 @@ class StrategyRegistryService:
             artifact_path=artifact_path,
             artifact_hash=artifact_hash,
             recorded_at=recorded_at,
-            metadata=metadata or {},
+            metadata={
+                "current_version_id": current.current_version_id,
+                "strategy_version": current.latest_version,
+                **(metadata or {}),
+            },
         )
         append_jsonl(self._evidence_path(strategy), record.to_dict())
         state = read_json(self._state_path(strategy), {})
@@ -218,9 +222,21 @@ class StrategyRegistryService:
         actor: str = "system",
         reason: str = "",
         metadata: dict[str, Any] | None = None,
+        governance_decision: GateDecision | None = None,
     ) -> TransitionRecord:
         current = self.ensure_strategy(strategy)
         self.lifecycle.validate_transition(current.current_stage, to_stage)
+        if governance_decision is None:
+            raise LifecycleTransitionError("Lifecycle transitions require an allowed governance gate decision.")
+        if not governance_decision.allowed:
+            raise LifecycleTransitionError("The governance gate decision denied this lifecycle transition.")
+        if (
+            governance_decision.strategy != strategy
+            or governance_decision.from_stage != current.current_stage
+            or governance_decision.to_stage != to_stage
+            or governance_decision.current_version_id != current.current_version_id
+        ):
+            raise LifecycleTransitionError("The governance gate decision does not match the current strategy state.")
         recorded_at = now_iso()
         transition_id = stable_manifest_hash(
             {
@@ -239,7 +255,7 @@ class StrategyRegistryService:
             recorded_at=recorded_at,
             actor=actor,
             reason=reason,
-            metadata=metadata or {},
+            metadata={"governance_decision_id": governance_decision.decision_id, **(metadata or {})},
         )
         append_jsonl(self._transitions_path(strategy), record.to_dict())
         state = read_json(self._state_path(strategy), {})

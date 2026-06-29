@@ -35,8 +35,9 @@ def test_isolated_sample_runs_and_verifies_all_six_reports(tmp_path):
     summary = json.loads((report_dir / "run_summary.json").read_text(encoding="utf-8"))
     assert summary["latest_passed_stage"] == "production_approval"
     assert summary["active_blocker"] == ""
-    assert len(list(report_dir.glob("*.json"))) == 7
-    assert len(list(report_dir.glob("*.md"))) == 7
+    # Six stage reports, the run summary, and five cross-stage evidence reports.
+    assert len(list(report_dir.glob("*.json"))) == 12
+    assert len(list(report_dir.glob("*.md"))) == 12
 
 
 def test_sample_virtual_demo_report_contains_execution_evidence(tmp_path):

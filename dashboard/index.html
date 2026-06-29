@@ -1262,22 +1262,30 @@ async function loadStatus() {
 }
 
 // ---- SVOS Panel ----
-const STAGES = ['strategy_audit','historical_replay','backtest','robustness','virtual_demo','production_approval'];
+const STAGES = ['intake','audit','enhancement','replay','backtest','robustness','verification_ready','virtual_demo','production_approval'];
 const STAGE_ICONS = { pass:'✓', fail:'✗', blocked:'!', pending:'○', active:'◈' };
 const STAGE_LABELS = {
+  intake: 'Strategy Intake',
+  audit: 'Strategy Audit',
+  enhancement: 'Strategy Enhancement',
+  replay: 'Historical Replay',
+  verification_ready: 'Verification Ready',
   strategy_audit: 'Strategy Audit',
   historical_replay: 'Historical Replay',
   backtest: 'Backtest',
-  robustness: 'Robustness Tests',
-  virtual_demo: 'Virtual Demo',
+  robustness: 'Robustness',
+  virtual_demo: 'Virtual Demo Trading',
   production_approval: 'Production Approval',
 };
 
-const LEGACY_STAGE_MAP = {
-  strategy_audit: 'audit',
-  historical_replay: 'replay',
+const CANONICAL_STAGE_MAP = {
+  intake: 'strategy_audit',
+  audit: 'strategy_audit',
+  enhancement: 'strategy_audit',
+  replay: 'historical_replay',
   backtest: 'backtest',
   robustness: 'robustness',
+  verification_ready: 'virtual_demo',
   virtual_demo: 'virtual_demo',
   production_approval: 'production_approval',
 };
@@ -1321,17 +1329,25 @@ async function loadSVOS() {
   const canonicalStages = canonicalRun.stages || [];
   const legacyReports = d.stage_reports || [];
   const legacyByName = Object.fromEntries(legacyReports.map(item => [item.stage, item]));
-  const stageReports = canonicalStages.length
-    ? canonicalStages
-    : STAGES.map(stage => {
-        const legacy = legacyByName[LEGACY_STAGE_MAP[stage]] || {};
+  const canonicalByName = Object.fromEntries(canonicalStages.map(item => [item.stage, item]));
+  const stageReports = STAGES.map(stage => {
+        const legacy = legacyByName[stage];
+        if (legacy) {
+          return {
+            ...legacy,
+            label: STAGE_LABELS[stage] || legacy.label || stage,
+            promotion_allowed: Boolean(legacy.promotion_allowed ?? legacy.can_promote),
+            status: legacy.status || 'NOT_RUN',
+          };
+        }
+        const canonical = canonicalByName[CANONICAL_STAGE_MAP[stage]] || {};
         return {
-          ...legacy,
+          ...canonical,
           stage,
           label: STAGE_LABELS[stage],
-          score: null,
-          promotion_allowed: Boolean(legacy.can_promote),
-          status: legacy.status || 'NOT_RUN',
+          score: canonical.score ?? null,
+          promotion_allowed: Boolean(canonical.promotion_allowed),
+          status: canonical.status || 'NOT_RUN',
         };
       });
   svosStageReportsCache = Object.fromEntries(stageReports.map(item => [item.stage, item]));
@@ -1355,7 +1371,7 @@ async function loadSVOS() {
       ${canonicalRun.summary_markdown_report_id ? '<button class="refresh-btn" onclick="openSVOSRunSummary()">Open Run Summary</button>' : ''}
     `;
   } else {
-    overview.innerHTML = '<div class="svos-run-fact wide"><div class="fact-label">Canonical Run</div><div class="fact-value muted">No immutable six-stage report package yet. Run SVOS to create one.</div></div>';
+    overview.innerHTML = '<div class="svos-run-fact wide"><div class="fact-label">Canonical Run</div><div class="fact-value muted">No immutable SVOS report package yet. Run SVOS to create one.</div></div>';
   }
 
   // Pipeline
