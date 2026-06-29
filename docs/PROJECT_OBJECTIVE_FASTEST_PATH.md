@@ -1,120 +1,83 @@
-# Project Objective And Fastest Path To Live Trading
+# Project Objective
+
+Date: 2026-06-28
 
 ## Objective
 
-Deploy ST-A2 (Session Liquidity Sweep Reversal) as a live automated forex
-trading bot on EURUSD and GBPUSD via Vantage MT5, generating consistent
-risk-adjusted returns at 0.25% to 1.0% risk per trade with automated circuit
-breakers, Telegram alerts, and a two-VPS architecture separating execution from
-research.
+The project objective is to build and operate an `SVOS` research and
+verification system plus a simple trading bot.
 
-Current phase: Phase-1 demo validation.
+The system should work like this:
 
-ST-A2 has passed Phase-0 backtest (`n=169`, `PF_2x=1.025`, run
-`20260621T100458-183aaa`). The execution layer is deployed and the bot is
-running (`LIVE_TRADING=false`). The remaining blockers before live execution are
-cost validation (E5+E6) and a 7-day execution gate (E1-E4).
+- input: a new trade idea or strategy
+- process: run it through the `SVOS` engine
+- output: a production-approved strategy only if it passes all stages
 
-Strategy registry state: `walk_forward` - `last_svos_verification_ready: true`
-(see `config/strategy_catalog.yaml`).
-
-For authoritative strategy state and lifecycle position, use:
-
-- `config/strategy_catalog.yaml`
-- `docs/SYSTEM_ARCHITECTURE.md`
-- `docs/SVOS_LIFECYCLE_WORKFLOW.md`
-- `docs/OPS02_REVISED_GATE.md`
-- `docs/PROJECT_LIVE_STATUS_TIMELINE.md`
-
-Current operational validation pipeline in this repo:
+In this repository, `SVOS` means this practical stage-gate loop:
 
 ```text
-Strategy Intake
-  ↓
+New Strategy
+      │
+      ▼
 Strategy Audit
-  ↓
-Strategy Enhancement
-  ↓
+      │
+      ├── FAIL -> AI edits specification -> Audit again
+      ▼
 Historical Replay
-  ↓
+      │
+      ├── FAIL -> Refine rules -> Replay again
+      ▼
 Backtest
-  ↓
-Robustness
-  ↓
-Verification Ready
-  ↓
-Virtual Demo Trading
-  ↓
+      │
+      ├── FAIL -> Improve logic or filters -> Backtest again
+      ▼
+Robustness Tests
+      │
+      ├── FAIL -> Adjust parameters or simplify rules -> Retest
+      ▼
+Demo Trading
+      │
+      ├── FAIL -> Analyze live drift -> Return to research
+      ▼
 Production Approval
 ```
 
-This is the current implemented workflow. It is different from the older
-"target architecture" phrasing because audit failures now feed into a concrete
-enhancement stage before replay and backtest.
+Each stage should answer one question before the next stage begins.
 
-## Fastest Path to Live
+## Scope Rule
 
-The revised demo gate (`docs/OPS02_REVISED_GATE.md`, owner-approved 2026-06-24)
-replaces the original 30-day/50-trade requirement. The correct sequence is:
+The goal is not to expand the repository into a broader institutional platform.
 
-### Gate E5 - Spread Capture (IN PROGRESS)
+The goal is to keep the workflow practical, repeatable, and directly useful for
+running a validated strategy through demo and live execution.
 
-- VPS 1. Running since 2026-06-24 06:01 UTC (`tmux spreads`).
-- Pass condition: at least 5 London sessions and 5 New York sessions captured.
-  Output: `research/spread_samples.csv`
-- Monitor: `python3 scripts/spread_status.py`
-- Projected gate: ~2026-06-30.
-- Preliminary (1 session): EURUSD 1.35pip, GBPUSD 1.56pip - both below
-  placeholder costs. Projected `PF_2x` ~1.035.
+## Current State
 
-### Gate E6 - Cost Revalidation (BLOCKED on E5)
+The repo currently has:
 
-- VPS 2. Run immediately when `python3 scripts/check_phase2_completion.py`
-  exits 0. Package is ready: `bash scripts/run_e6_revalidation.sh`.
-- Pass condition: `PF_2x >= 1.00` at real Vantage costs.
-- Decision table (from `docs/OPS02_REVISED_GATE.md`):
-  - `PF_2x > 1.05` -> continue to E1-E4
-  - `PF_2x 1.00-1.05` -> demo only; no micro-live until confirmed
-  - `PF_2x < 1.00` -> stop. No demo. No live. Prepare ST-A3 recovery options.
+- an SVOS-style workflow in code
+- a simple execution path aimed at Vantage demo/live trading
+- a strategy-validation objective rather than a single-strategy identity
 
-### Gates E1-E4 - 7-Day Execution Gate (BLOCKED on E5+E6)
+## Current Fastest Path
 
-All four run concurrently inside a single 7-day window (`LIVE_TRADING=true`).
+The current live path for the active execution candidate is:
 
-- E1: 7-day runtime - 0 crashes, heartbeat gaps < 600s, health checks clean.
-- E2: at least 1 `SIGNAL_CREATED` event in `logs/trades.jsonl` with correct fields.
-- E3: at least 1 complete order lifecycle (fill or valid broker rejection).
-- E4: manual restart test on Day 2-3; state intact, no spurious orders.
+1. finish `E5` spread capture
+2. run `E6` cost revalidation
+3. complete `E1-E4` demo execution gate
+4. continue demo only if evidence remains acceptable
+5. allow controlled live promotion only after approval
 
-OPS-01 stability prerequisite: 7-day run in progress, expires 2026-06-28.
+## Primary Deliverable
 
-### Micro-Live (Owner Decision - BLOCKED on E1-E4)
+The primary deliverable is:
 
-Owner-stated parameters (from `docs/OPS02_REVISED_GATE.md`):
+`SVOS research and verification engine + simple Vantage demo/live trading bot`
 
-- $1,000 Vantage live account
-- 0.25% risk per trade
-- 1 max open position
-- 3R daily loss limit, 10% account drawdown kill switch
-- first 20 trades = validation period before any size increase
+## References
 
-Fastest path to micro-live: ~14-21 days from spread capture start.
-
-## VPS Split
-
-- VPS 1: execution, demo/live bot, spread capture
-- VPS 2: backtesting, holdout evaluation, research queue, E6 revalidation
-
-## Notes
-
-- Strategy audit validates whether the specification is complete,
-  measurable, and replay-ready before any data is consumed.
-- Strategy enhancement converts audit failures into concrete fixes,
-  clarifying questions, and proposed specification revisions.
-- Historical replay validates execution logic and signal timing after the
-  strategy has cleared audit and enhancement.
-- Backtest validates profitability and cost sensitivity; ST-A2 has passed
-  this gate (`docs/VERDICT_LOG.md`, run `20260621T100458-183aaa`).
-- The original 30-day/50-trade demo requirement is replaced by the owner-
-  approved E5+E6+E1-E4 gate sequence. Demo validates execution correctness,
-  not profitability (which is Phase-0's job).
+- `docs/CURRENT_SCOPE.md`
+- `docs/IMPLEMENTATION_STATUS.md`
+- `docs/PROJECT_LIVE_STATUS_TIMELINE.md`
+- `config/strategy_catalog.yaml`
