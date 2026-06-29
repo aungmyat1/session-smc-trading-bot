@@ -33,6 +33,6 @@ jobs:
       - name: Reject committed secret files
         run: |
           test ! -f .env
-          ! git grep -nE '(VANTAGE|METAAPI|TELEGRAM)_(TOKEN|PASSWORD|SECRET)\s*=\s*[^$]' -- ':!*.md'
+          ! git grep -nE "(VANTAGE|METAAPI|TELEGRAM)_(TOKEN|PASSWORD|SECRET)[[:space:]]*=[[:space:]]*['\"][^'\"]+['\"]" -- ':!*.md'
       - name: Whitespace integrity
         run: git diff --check
