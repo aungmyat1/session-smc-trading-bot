@@ -3,6 +3,23 @@
 from pathlib import Path
 
 from core.strategy_registry import get_strategy_manifest
+
+
+def _fixture_catalog_text() -> str:
+    """Fixture catalog with ST-A2 in walk_forward state for pipeline tests."""
+    return """
+current_strategy: ST-A2
+strategies:
+  ST-A2:
+    status: walk_forward
+    approved: true
+    current: true
+    version: "2.1"
+    owner: quant
+    description: Fixture catalog for validation gate tests
+    symbols: [EURUSD, GBPUSD]
+    timeframes: [M15, H4]
+""".strip() + "\n"
 from research.regression.engine import RegressionEngine
 from research.validation.engine import (
     BacktestValidationInput,
@@ -104,7 +121,7 @@ def test_regression_detection_warning_and_fail():
 def test_lifecycle_promotion_and_reports(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(
-        Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"),
+        _fixture_catalog_text(),
         encoding="utf-8",
     )
     runner = ValidationRunner("ST-A2", output_dir=tmp_path, registry_path=catalog_copy)
@@ -127,7 +144,7 @@ def test_lifecycle_promotion_and_reports(tmp_path):
 def test_validation_runner_can_skip_promotion(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(
-        Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"),
+        _fixture_catalog_text(),
         encoding="utf-8",
     )
     runner = ValidationRunner("ST-A2", output_dir=tmp_path, registry_path=catalog_copy)

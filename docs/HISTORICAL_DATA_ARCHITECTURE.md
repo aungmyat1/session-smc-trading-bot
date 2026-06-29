@@ -1,250 +1,436 @@
 # Historical Data Architecture
-# Session & SMC Trading Bot — Institutional Data Pipeline
-# Date: 2026-06-25
+# Recorded 2026-06-29 | Professional quantitative research data platform standard
 
 ---
 
-## §1 — Directory Layout
+## 1. Architecture Overview
+
+### Purpose
+
+Support multi-asset, multi-strategy portfolio research, deterministic historical
+replay, incremental data ingestion, and reproducible backtesting — while remaining
+scalable as the platform grows from a single-strategy system to a full research
+platform.
+
+### Design Principles
+
+- **Raw data is immutable.** Never modify or overwrite raw vendor files.
+- **Features are independent datasets.** No detector modifies OHLC; every detector
+  writes its own Parquet layer.
+- **Replay never recomputes.** Everything is precomputed and loaded at replay time.
+- **Every backtest is reproducible.** Dataset version + feature version + strategy
+  version + git commit are recorded together.
+- **Parquet is the primary format.** Never use CSV for storage — only for importing
+  vendor data.
+- **Incremental updates only.** New partitions are appended; historical data is
+  never rebuilt.
+
+### Data Lifecycle Layers
+
+```
+Raw Data (immutable vendor data)
+  ↓
+Normalized Data (unified tick schema across all vendors)
+  ↓
+Market Data (OHLCV bars at all timeframes)
+  ↓
+Derived Datasets (sessions, structure, liquidity, imbalances, orderflow, confluence)
+  ↓
+Feature Store (independent, versioned, strategy-aware)
+  ↓
+Labels (trade outcomes, entry quality, future returns)
+  ↓
+Strategy Dataset (pre-joined table consumed by each strategy)
+  ↓
+Replay Dataset (precomputed frames, load-only at replay time)
+  ↓
+Backtesting Dataset (simulations, portfolios, optimization)
+  ↓
+Analytics (performance, statistics, equity curves, Monte Carlo)
+```
+
+---
+
+## 2. Directory Structure
 
 ```
 data/
-  raw/
-    dukascopy/
-      {SYMBOL}/
-        {YEAR}/
-          {MONTH:02d}/
-            ticks.parquet         ← raw bi5 ticks, one file per month
-  processed/
-    {SYMBOL}/
-      M1.parquet                  ← OHLCV + spread, all years concatenated
-      M5.parquet
-      M15.parquet
-      H1.parquet
-      H4.parquet
-      D1.parquet
-  features/
-    sweeps/
-      {SYMBOL}.parquet            ← session sweep events
-    choch/
-      {SYMBOL}.parquet            ← CHoCH events (15M)
-    bos/
-      {SYMBOL}.parquet            ← BOS events (15M)
-    fvg/
-      {SYMBOL}.parquet            ← Fair Value Gap events (15M)
-    sessions/
-      {SYMBOL}.parquet            ← session range events (high/low/mid/classification)
+│
+├── raw/                           # Immutable vendor data — never modify
+│   ├── dukascopy/
+│   │   ├── EURUSD/
+│   │   │   ├── 2020/
+│   │   │   ├── 2021/
+│   │   │   └── ...
+│   │   ├── GBPUSD/
+│   │   ├── USDJPY/
+│   │   └── XAUUSD/
+│   ├── vantage/
+│   ├── mt5/
+│   └── other_vendors/
+│
+├── normalized/                    # Unified tick schema across all vendors
+│   ├── tick/
+│   │   ├── EURUSD/
+│   │   ├── GBPUSD/
+│   │   ├── USDJPY/
+│   │   └── XAUUSD/
+│   └── metadata/
+│
+├── market/                        # OHLCV bars at all timeframes
+│   ├── m1/
+│   ├── m5/
+│   ├── m15/
+│   ├── m30/
+│   ├── h1/
+│   ├── h4/
+│   ├── d1/
+│   └── w1/
+│
+├── sessions/                      # Session-sliced market data
+│   ├── london/
+│   ├── new_york/
+│   ├── asian/
+│   └── overlap/
+│
+├── structure/                     # Market structure features
+│   ├── swings/
+│   ├── trend/
+│   ├── bos/
+│   ├── choch/
+│   ├── internal_structure/
+│   └── external_structure/
+│
+├── liquidity/                     # Liquidity features
+│   ├── equal_highs/
+│   ├── equal_lows/
+│   ├── liquidity_sweeps/
+│   ├── stop_hunts/
+│   └── inducements/
+│
+├── imbalances/                    # Price imbalance features
+│   ├── fvg/
+│   ├── inverse_fvg/
+│   ├── gaps/
+│   └── imbalance_clusters/
+│
+├── orderflow/                     # Order flow and block features
+│   ├── order_blocks/
+│   ├── breaker_blocks/
+│   ├── mitigation_blocks/
+│   └── rejection_blocks/
+│
+├── confluence/                    # Multi-layer confluence features
+│   ├── premium_discount/
+│   ├── fib_levels/
+│   ├── daily_bias/
+│   ├── weekly_bias/
+│   └── higher_timeframe_context/
+│
+├── features/                      # Feature store (strategy-aware)
+│   ├── strategy_independent/
+│   ├── strategy_specific/
+│   │   ├── ST_A2/
+│   │   ├── London_Breakout/
+│   │   ├── NY_Momentum/
+│   │   └── Adaptive_SMC/
+│   └── ml_features/
+│
+├── labels/                        # Trade outcomes and quality labels
+│   ├── trades/
+│   ├── outcomes/
+│   ├── entry_quality/
+│   ├── risk_reward/
+│   └── future_returns/
+│
+├── replay/                        # Precomputed replay frames — load only
+│   ├── candles/
+│   ├── ticks/
+│   ├── sessions/
+│   ├── snapshots/
+│   └── playback_cache/
+│
+├── backtests/                     # Backtest datasets and results
+│   ├── datasets/
+│   ├── simulations/
+│   ├── portfolios/
+│   └── optimization/
+│
+├── analytics/                     # Performance and statistical analysis
+│   ├── performance/
+│   ├── statistics/
+│   ├── equity_curves/
+│   ├── drawdowns/
+│   ├── monte_carlo/
+│   └── reports/
+│
+├── metadata/                      # Symbol and broker reference data
+│   ├── symbols.parquet
+│   ├── calendars.parquet
+│   ├── trading_sessions.parquet
+│   ├── holidays.parquet
+│   ├── pip_values.parquet
+│   └── spreads.parquet
+│
+└── cache/                         # Temporary computation cache
 ```
 
 ---
 
-## §2 — Raw Tick Schema
+## 3. Storage Standards
 
-File: `data/raw/dukascopy/{SYMBOL}/{YEAR}/{MONTH:02d}/ticks.parquet`
+### Primary format: Parquet
 
-| Column | dtype | Description |
-|---|---|---|
-| timestamp_ms | int64 | UTC epoch milliseconds (absolute, not offset) |
-| ask | float32 | Ask price (actual, after price_div applied) |
-| bid | float32 | Bid price (actual, after price_div applied) |
-| ask_vol | float32 | Ask volume (lots) |
-| bid_vol | float32 | Bid volume (lots) |
+All stored data is Parquet. Reasons:
+- Columnar — reads only the columns needed
+- Compressed — smaller than CSV by 5–10×
+- Vectorized — DuckDB and Polars operate directly on Parquet
+- Native to DuckDB, Polars, and Pandas
+- Fast replay — load precomputed frames without recalculation
 
-**Index:** None (integer RangeIndex). Sort by `timestamp_ms` ascending.
+CSV is only acceptable for importing raw vendor data. Once imported, all data is
+converted to Parquet.
 
-**Price divisors per symbol:**
-```python
-PRICE_DIV = {
-    "EURUSD": 100_000,
-    "GBPUSD": 100_000,
-    "USDJPY": 100_000,
-    "XAUUSD": 1_000,   # gold — different divisor
-}
+### Partitioning Standard
+
+Partition by year and month, not by file-per-symbol.
+
+```
+market/m1/EURUSD/year=2025/month=06/part-000.parquet
 ```
 
-**Dukascopy bi5 wire format (20 bytes/tick, big-endian):**
+Not:
 ```
-[4B uint32] ms_offset  — milliseconds since start of hour
-[4B uint32] ask_raw    — ask price × price_div (integer)
-[4B uint32] bid_raw    — bid price × price_div (integer)
-[4B float32] ask_vol
-[4B float32] bid_vol
+EURUSD_M1.parquet
 ```
-The absolute timestamp = `hour_epoch_ms + ms_offset`.
 
-**Parquet settings:** `snappy` compression, row group size 100,000 rows.
+Benefits of partitioning:
+- Incremental updates (append new partition only)
+- Fast filtering (DuckDB prunes irrelevant partitions)
+- Lower memory (load only the time range needed)
+- Supports distributed processing later
 
 ---
 
-## §3 — Processed OHLCV Schema
+## 4. Data Schemas
 
-File: `data/processed/{SYMBOL}/{TF}.parquet`
-
-| Column | dtype | Description |
-|---|---|---|
-| timestamp_utc | datetime64[ns, UTC] | Bar open time |
-| open | float64 | Mid open = (ask_open + bid_open) / 2 |
-| high | float64 | Mid high = max mid across ticks in bar |
-| low | float64 | Mid low = min mid across ticks in bar |
-| close | float64 | Mid close = last mid in bar |
-| volume | float64 | Sum of (ask_vol + bid_vol) |
-| ask_open | float32 | Ask at bar open |
-| bid_open | float32 | Bid at bar open |
-| spread_avg | float32 | Mean (ask − bid) across all ticks in bar |
-| spread_max | float32 | Max spread in bar (for stress test) |
-| tick_count | int32 | Number of ticks in bar |
-
-**Index:** `timestamp_utc` (DatetimeIndex).
-
-**Resampling logic:**
-- `mid = (ask + bid) / 2`
-- open = first mid in bar
-- high = max mid
-- low = min mid
-- close = last mid
-- volume = sum(ask_vol + bid_vol)
-- ask_open = first ask in bar
-- bid_open = first bid in bar
-- spread_avg = mean(ask − bid)
-- spread_max = max(ask − bid)
-- tick_count = count of ticks
-
-**Supported timeframes:** M1, M5, M15, H1, H4, D1
-
----
-
-## §4 — Feature Event Table Schemas
-
-### sweeps — `data/features/sweeps/{SYMBOL}.parquet`
-
-| Column | dtype | Description |
-|---|---|---|
-| timestamp_utc | datetime64[ns, UTC] | Bar that completed the sweep |
-| session | str | `london` / `new_york` |
-| direction | str | `bullish` (low swept) / `bearish` (high swept) |
-| sweep_level | float64 | Session H/L that was swept |
-| sweep_close | float64 | Close price after sweep (must close back inside) |
-| session_high | float64 | Full session high |
-| session_low | float64 | Full session low |
-| htf_bias | str | `bullish` / `bearish` / `neutral` (from bias_filter) |
-
-### sessions — `data/features/sessions/{SYMBOL}.parquet`
-
-| Column | dtype | Description |
-|---|---|---|
-| session_open | datetime64[ns, UTC] | Session open time |
-| session_close | datetime64[ns, UTC] | Session close time |
-| session | str | `london` / `new_york` |
-| session_high | float64 | |
-| session_low | float64 | |
-| session_mid | float64 | (high + low) / 2 |
-| range_pips | float64 | high − low in pips |
-| session_type | str | `range` / `trend` |
-
-### fvg — `data/features/fvg/{SYMBOL}.parquet`
-
-| Column | dtype | Description |
-|---|---|---|
-| timestamp_utc | datetime64[ns, UTC] | Bar that created the FVG |
-| direction | str | `bullish` / `bearish` |
-| fvg_high | float64 | Top of gap |
-| fvg_low | float64 | Bottom of gap |
-| fvg_mid | float64 | (fvg_high + fvg_low) / 2 |
-| atr_mult | float64 | Displacement candle body / ATR(14) |
-| filled | bool | Whether FVG has been filled (set in post-processing) |
-
-### choch / bos — `data/features/{choch,bos}/{SYMBOL}.parquet`
-
-| Column | dtype | Description |
-|---|---|---|
-| timestamp_utc | datetime64[ns, UTC] | Bar that confirmed CHoCH/BOS |
-| direction | str | `bullish` / `bearish` |
-| break_level | float64 | Level that was broken |
-| lookback_n | int32 | Swing lookback used |
-
----
-
-## §5 — Data Flow
+### Standard Tick Schema
 
 ```
-Dukascopy bi5 (LZMA + HTTP)
-         │
-         ▼
-download_dukascopy.py
-  ├── decode struct (20 bytes/tick)
-  ├── apply price_div
-  ├── convert ms_offset → UTC epoch ms
-  └── write data/raw/dukascopy/{SYM}/{Y}/{M}/ticks.parquet
-         │
-         ▼
-build_timeframes.py
-  ├── read raw tick Parquet month-by-month
-  ├── pandas.resample() per TF
-  ├── compute mid, spread columns
-  └── write data/processed/{SYM}/{TF}.parquet
-         │
-         ▼
-extract_features.py
-  ├── read processed M15 + H4
-  ├── run session scanner (session.py)
-  ├── run sweep scanner (sweep_detector.py debug)
-  ├── run FVG scanner (fvg.py)
-  ├── run CHoCH/BOS scanner
-  └── write data/features/{type}/{SYM}.parquet
-         │
-         ▼
-validate_dataset.py
-  ├── check raw tick coverage by month
-  ├── check processed TF continuity (no gaps > 1 bar)
-  ├── OHLC integrity check (high ≥ max(O,C), low ≤ min(O,C))
-  ├── spread anomaly check (spread > 10pip = flag)
-  ├── weekend bar check (Sat/Sun rows)
-  └── write reports/dataset_validation_report.md
-         │
-         ▼
-replay_parquet.py (adapter)
-  └── loads processed/{SYM}/M15.parquet + H4.parquet
-      → same interface as existing CSV loaders
-      → plugs into backtest_session_liquidity.py unchanged
+timestamp       datetime (UTC, nanosecond precision)
+symbol          string
+bid             float64
+ask             float64
+mid             float64
+spread          float64
+volume          float64
+vendor          string
+session         string
 ```
 
----
+### Standard Candle Schema (OHLCV)
 
-## §6 — Resume / Incremental Download Logic
-
-`download_dukascopy.py` checks:
-```python
-path = data/raw/dukascopy/{sym}/{year}/{month:02d}/ticks.parquet
-if path.exists() and parquet_row_count(path) > 0:
-    skip  # already downloaded
-else:
-    download + decode + write
+```
+timestamp       datetime (UTC)
+symbol          string
+timeframe       string
+open            float64
+high            float64
+low             float64
+close           float64
+tick_volume     int64
+real_volume     int64
+spread_mean     float64
+spread_max      float64
+session         string
 ```
 
-Resume is month-granular. A partially-downloaded month must be re-downloaded (LZMA decompresses all-or-nothing).
+### Feature Dataset Schema
 
----
+Every detector writes one independent Parquet dataset.
 
-## §7 — Compatibility with Existing CSV Pipeline
+Example path: `features/liquidity_sweeps/EURUSD/year=2025/part-001.parquet`
 
-`replay_parquet.py` adapter exposes:
-```python
-def load_m15(symbol: str) -> pd.DataFrame  # columns matching existing CSV format
-def load_h4(symbol: str) -> pd.DataFrame
-def load_h1(symbol: str) -> pd.DataFrame
+Example columns (liquidity sweep):
+```
+timestamp       datetime
+symbol          string
+direction       string (bullish / bearish)
+sweep_price     float64
+swing_id        string
+session         string
+strength        float64
+validated       bool
 ```
 
-The existing `backtest_session_liquidity.py` and `replay_6m.py` call these same function signatures — zero changes to backtest code needed.
+Rule: no detector modifies OHLC. Features are separate datasets.
+
+### Strategy Dataset Schema (pre-joined, per strategy)
+
+```
+timestamp           datetime
+symbol              string
+htf_bias            string
+bos                 bool
+choch               bool
+fvg                 bool
+sweep               bool
+order_block         bool
+atr                 float64
+session             string
+spread              float64
+entry               float64
+sl                  float64
+tp                  float64
+outcome             string
+```
+
+Each strategy consumes this pre-joined table directly rather than recomputing
+features at runtime.
 
 ---
 
-## §8 — Phase-B Constraints (from CLAUDE.md §0)
+## 5. Data Processing Pipeline (Incremental)
 
-1. Do NOT download data automatically — `download_dukascopy.py` only runs when explicitly invoked.
-2. Do NOT modify live trading logic, execution code, risk controls, or broker integration.
-3. Do NOT modify ST-A2 backtest assumptions or signal chain.
-4. Never commit secrets (no tokens in any script).
-5. `LIVE_TRADING = False` — this pipeline is research-only.
+```
+Download new Dukascopy tick data
+  ↓
+Normalize to unified tick schema
+  ↓
+Append to normalized/tick/ partition (new partition only)
+  ↓
+Generate new candles at all timeframes
+  ↓
+Update structure, liquidity, imbalance, orderflow, confluence features
+  ↓
+Update labels
+  ↓
+Refresh replay cache
+  ↓
+Ready for backtest
+```
+
+No historical data is rebuilt. Only new partitions are processed.
 
 ---
 
-*HISTORICAL_DATA_ARCHITECTURE.md | Written 2026-06-25*
+## 6. Feature Store Design
+
+Features are **independent, versioned, strategy-aware** Parquet datasets.
+
+- Strategy-independent features (BOS, FVG, liquidity sweeps) are computed once
+  and shared by all strategies.
+- Strategy-specific features live under `features/strategy_specific/<strategy>/`.
+- ML features are a separate layer under `features/ml_features/`.
+
+No feature dataset has a hard dependency on another feature dataset. Each is
+computed from OHLC or normalized ticks only.
+
+---
+
+## 7. Replay System Design
+
+Replay never recomputes. Every frame is preloaded from existing datasets.
+
+```
+Replay Frame
+  ↓
+M1 Candle (from market/m1/)
+  ↓
+Market Structure (from structure/)
+  ↓
+Liquidity (from liquidity/)
+  ↓
+FVG (from imbalances/fvg/)
+  ↓
+Order Block (from orderflow/order_blocks/)
+  ↓
+Higher TF Bias (from confluence/)
+  ↓
+Signals (computed from loaded features)
+  ↓
+Trade Outcome (from labels/)
+```
+
+Replay is deterministic because all inputs are frozen Parquet files. The same
+dataset version always produces the same replay.
+
+---
+
+## 8. Backtesting and Portfolio Support
+
+```
+backtests/
+  datasets/      — frozen input datasets per backtest run
+  simulations/   — per-strategy simulation results
+  portfolios/    — multi-strategy portfolio simulations
+  optimization/  — parameter sweep results
+```
+
+Multi-strategy portfolio backtests read from the shared feature store —
+no per-strategy data rebuild required.
+
+---
+
+## 9. Metadata and Versioning
+
+### Symbol Metadata (stored in metadata/ as Parquet)
+
+- pip size, point value, tick size, digits
+- market open / close, DST adjustments, session changes, broker offset
+- commission, swap, contract size, leverage
+
+### Dataset Versioning
+
+Every backtest records:
+
+```
+dataset_version
+feature_version
+strategy_version
+git_commit
+broker
+spread_model
+commission_model
+```
+
+Stored under `dataset_versions/v1/`, `v2/`, etc.
+Every historical result is reproducible by restoring the exact dataset version.
+
+---
+
+## 10. Performance and Scalability
+
+### DuckDB Integration
+
+Maintain a lightweight DuckDB catalog that registers Parquet paths as virtual
+tables — no data duplication:
+
+```sql
+market_m1          → data/market/m1/
+market_m15         → data/market/m15/
+market_h1          → data/market/h1/
+features_liquidity → data/liquidity/liquidity_sweeps/
+features_bos       → data/structure/bos/
+features_choch     → data/structure/choch/
+features_fvg       → data/imbalances/fvg/
+labels             → data/labels/
+strategy_dataset   → data/features/strategy_specific/
+analytics          → data/analytics/
+```
+
+Parquet is the single source of truth. DuckDB provides SQL-based research queries
+without duplicating storage.
+
+### Scalability Path
+
+| Expansion | How this architecture supports it |
+|---|---|
+| Additional symbols | Add raw/dukascopy/USDJPY/ — features auto-partition by symbol |
+| Multiple brokers | raw/ has separate vendor directories |
+| Data vendor comparison | raw/ isolates vendors; normalized/ unifies |
+| Machine learning | features/ml_features/ layer already present |
+| Portfolio research | backtests/portfolios/ layer already present |
+| Hundreds of strategies | strategy_specific/ per strategy; base features shared |
+
+Incremental partitioning means adding a new year of data is an append, not a rebuild.

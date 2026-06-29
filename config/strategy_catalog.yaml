@@ -1,9 +1,9 @@
-current_strategy: ST-A2
+current_strategy: null
 strategies:
   ST-A2:
-    status: walk_forward
-    approved: true
-    current: true
+    status: DEFERRED_REVALIDATION
+    approved: false
+    current: false
     version: '2.1'
     owner: quant
     strategy_spec_path: docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/strategy_spec.md
@@ -13,20 +13,14 @@ strategies:
     timeframes:
     - M15
     - H4
-    deployment_target: execution
-    description: Session liquidity reversal production candidate
+    deployment_target: null
+    description: Session liquidity reversal — deferred, legacy research only
+    deferred_reason: Platform construction in progress. Revalidate later via full pipeline from Intake.
+    phase0_result: PASS (PF_2x=1.025, n=169) — result preserved, not current evidence
     requirements:
       replay: pass
       backtest: pass
       walk_forward: pending
-    last_svos_at: '2026-06-27T23:47:59.352747+00:00'
-    last_svos_status: FAIL
-    last_svos_promoted_stage: ''
-    last_svos_report: /home/aungp/session-smc-trading-bot/reports/current_strategy_svos/ST-A2
-    validation_mode: svos
-    last_svos_payload_auto: false
-    last_svos_stop_after: production_approval
-    last_svos_verification_ready: true
   LondonBreakout:
     status: research
     approved: false

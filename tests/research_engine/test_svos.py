@@ -12,6 +12,28 @@ from research.svos.engine import (
 from research.validation.engine import BacktestValidationInput, ReplayTrade, ReplayValidationInput
 
 
+def _fixture_catalog_text() -> str:
+    """Fixture catalog with ST-A2 in an approved/walk_forward state.
+
+    Tests that exercise the SVOS pipeline need a strategy in the catalog that can
+    be approved for demo — they should not depend on the real catalog's current state.
+    """
+    return """
+current_strategy: ST-A2
+strategies:
+  ST-A2:
+    status: walk_forward
+    approved: true
+    current: true
+    version: "2.1"
+    owner: quant
+    description: Fixture catalog for SVOS pipeline tests
+    deployment_target: execution
+    symbols: [EURUSD, GBPUSD]
+    timeframes: [M15, H4]
+""".strip() + "\n"
+
+
 def _complete_strategy_text() -> str:
     return """
 Market: FX
@@ -156,7 +178,7 @@ def test_intake_creates_canonical_strategy_record():
 
 def test_runner_passes_all_stages_and_promotes(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(
         _complete_strategy_text(),
@@ -237,7 +259,7 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
 
 def test_runner_audit_stage_uses_canonical_strategy_validation_report(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(_complete_strategy_text(), stop_after="audit")
 
@@ -250,7 +272,7 @@ def test_runner_audit_stage_uses_canonical_strategy_validation_report(tmp_path):
 
 def test_runner_enhancement_stage_produces_structured_editor_plan(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(_complete_strategy_text(), stop_after="enhancement")
 
@@ -267,7 +289,7 @@ def test_runner_enhancement_stage_produces_structured_editor_plan(tmp_path):
 
 def test_runner_generates_enhancement_stage_for_failed_audit(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline("London Session\nLiquidity Sweep\nRR 1:2\nRisk 0.3%")
 
@@ -285,7 +307,7 @@ def test_runner_generates_enhancement_stage_for_failed_audit(tmp_path):
 
 def test_runner_can_stop_at_verification_ready(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(
         _complete_strategy_text(),
@@ -323,7 +345,7 @@ def test_runner_can_stop_at_verification_ready(tmp_path):
 
 def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(
         _complete_strategy_text(),
@@ -376,7 +398,7 @@ def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
 
 def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path)
     result = runner.run_pipeline(
         _complete_strategy_text(),
@@ -436,7 +458,7 @@ def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
 
 def test_runner_writes_immutable_six_stage_report_package(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy")
     result = runner.run_pipeline(
         _complete_strategy_text(),
@@ -501,7 +523,7 @@ def test_runner_writes_immutable_six_stage_report_package(tmp_path):
 
 def test_canonical_reports_block_downstream_stages_after_missing_replay(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     result = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
         _complete_strategy_text()
     )
@@ -518,7 +540,7 @@ def test_canonical_reports_block_downstream_stages_after_missing_replay(tmp_path
 
 def test_virtual_demo_drift_routes_back_to_backtest(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     result = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
         _complete_strategy_text(),
         replay=_valid_replay(),
@@ -556,7 +578,7 @@ def test_virtual_demo_drift_routes_back_to_backtest(tmp_path):
 
 def test_changed_spec_creates_patch_version_without_overwriting_reports(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
     first = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
         _complete_strategy_text(), stop_after="audit"
     )

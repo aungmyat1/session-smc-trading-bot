@@ -68,22 +68,41 @@ class TestRegistry:
 
 class TestStrategyCatalog:
     def test_catalog_loads_default_entries(self):
+        # Verifies real catalog state: platform under construction, no active strategy.
         catalog = load_strategy_catalog()
         assert "ST-A2" in catalog
-        assert catalog["ST-A2"]["approved"] is True
+        assert catalog["ST-A2"]["approved"] is False
+        assert catalog["ST-A2"]["status"] == "DEFERRED_REVALIDATION"
         assert catalog["D2E3"]["status"] == "research"
-        assert get_current_strategy_name() == "ST-A2"
+        assert get_current_strategy_name() is None
 
-    def test_get_manifest(self):
-        manifest = get_strategy_manifest("ST-A2")
+    def test_get_manifest(self, tmp_path):
+        # Uses a fixture catalog so this test does not depend on real catalog state.
+        spec = tmp_path / "strategy_spec.md"
+        spec.write_text("# Strategy: ST-A2\n", encoding="utf-8")
+        fixture = tmp_path / "catalog.yaml"
+        fixture.write_text(
+            f"""
+current_strategy: ST-A2
+strategies:
+  ST-A2:
+    status: walk_forward
+    approved: true
+    current: true
+    version: "2.1"
+    strategy_spec_path: {spec}
+""".strip(),
+            encoding="utf-8",
+        )
+        manifest = get_strategy_manifest("ST-A2", fixture)
         assert manifest is not None
         assert manifest["version"] == "2.1"
-        current = get_current_strategy_manifest()
+        current = get_current_strategy_manifest(fixture)
         assert current is not None
         assert current["status"] == "walk_forward"
-        spec_path = get_strategy_spec_path("ST-A2")
+        spec_path = get_strategy_spec_path("ST-A2", fixture)
         assert spec_path is not None and spec_path.name == "strategy_spec.md"
-        spec_text = get_strategy_spec_text("ST-A2")
+        spec_text = get_strategy_spec_text("ST-A2", fixture)
         assert spec_text is not None and spec_text.startswith("# Strategy: ST-A2")
 
     def test_list_catalog_strategies_sorted(self):
@@ -91,14 +110,44 @@ class TestStrategyCatalog:
         assert strategies == sorted(strategies)
         assert "AdaptiveSMC" in strategies
 
-    def test_lifecycle_status_normalized(self):
-        assert strategy_lifecycle_status("ST-A2") == "walk_forward"
+    def test_lifecycle_status_normalized(self, tmp_path):
+        # Uses a fixture catalog so this test does not depend on real catalog state.
+        fixture = tmp_path / "catalog.yaml"
+        fixture.write_text(
+            """
+current_strategy: null
+strategies:
+  TestStrat:
+    status: walk_forward
+    approved: false
+    version: "1.0"
+""".strip(),
+            encoding="utf-8",
+        )
+        assert strategy_lifecycle_status("TestStrat", fixture) == "walk_forward"
         assert strategy_lifecycle_rank("draft") < strategy_lifecycle_rank("live")
 
-    def test_approval_and_deploy_gate(self):
-        assert is_strategy_approved("ST-A2") is True
-        assert can_deploy_strategy("ST-A2", target_stage="walk_forward") is True
-        assert can_deploy_strategy("D2E3", target_stage="demo") is False
+    def test_approval_and_deploy_gate(self, tmp_path):
+        # Uses a fixture catalog so this test does not depend on real catalog state.
+        fixture = tmp_path / "catalog.yaml"
+        fixture.write_text(
+            """
+current_strategy: null
+strategies:
+  ApprovedStrat:
+    status: walk_forward
+    approved: true
+    version: "1.0"
+  DraftStrat:
+    status: research
+    approved: false
+    version: "0.1"
+""".strip(),
+            encoding="utf-8",
+        )
+        assert is_strategy_approved("ApprovedStrat", fixture) is True
+        assert can_deploy_strategy("ApprovedStrat", target_stage="walk_forward", path=fixture) is True
+        assert can_deploy_strategy("DraftStrat", target_stage="demo", path=fixture) is False
 
     def test_catalog_can_be_loaded_from_custom_path(self, tmp_path):
         spec = tmp_path / "spec.md"
