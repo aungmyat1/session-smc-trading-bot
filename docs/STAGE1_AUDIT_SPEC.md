@@ -1,6 +1,13 @@
 # Stage 1 — Strategy Specification Validation Engine
 # Implementation Specification | Recorded 2026-06-29
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Quant Research
+Authority: Level 5 — Phase Specification
+Related: STRATEGY_AUDIT_FRAMEWORK.md, SVOS_DESIGN_REFERENCE.md
+
 ---
 
 ## Purpose

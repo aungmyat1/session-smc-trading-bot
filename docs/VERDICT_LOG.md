@@ -1,5 +1,13 @@
 # Verdict Log — Session & SMC Trading Bot
 
+Date: 2026-06-21 (original) | Updated: 2026-06-29
+Status: Authoritative
+Version: append-only
+Owner: Quant Research
+Authority: Level 7 — Research Evidence
+Note: This log is append-only. Never modify or delete existing rows.
+Gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread stress
+
 One row per trial. Never delete entries. Every parameter change = new row.
 Fee model: VT Markets Standard — spread + 0.6pip commission RT.
 Gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread stress.

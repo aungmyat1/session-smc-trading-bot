@@ -1,6 +1,12 @@
 # SVOS Core Architecture
 
-Status: implemented and acceptance-tested  
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform Architecture
+Authority: Level 3 — Implementation
+Related: SYSTEM_ARCHITECTURE.md, ADR-0001-STABILIZATION-FOUNDATION.md, DOC_AUTHORITY.md
+
 Scope: subsystem 1 of the incremental SVOS delivery plan
 
 ## Functional specification
@@ -36,6 +42,10 @@ must not mutate lifecycle state directly.
 
 ## Lifecycle
 
+> **Vocabulary note:** These stage names are the canonical identifiers used
+> in `svos/lifecycle/manager.py`, all code, and all documentation. Legacy
+> "Phase N" numbering is a summary view only. See `docs/00_Project/DOC_AUTHORITY.md`.
+
 The canonical progression begins:
 
 ```text
@@ -44,6 +54,42 @@ DRAFT -> INTAKE -> AUDIT -> REFINEMENT -> HISTORICAL_REPLAY
  -> VERIFICATION_READY -> VIRTUAL_DEMO -> EXECUTION_VALIDATION
  -> PAPER_TRADING -> LIVE_DEMO -> PRODUCTION_CANDIDATE
  -> PRODUCTION -> MONITORING -> REVALIDATION -> RETIRED
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT
+    DRAFT --> INTAKE : intake_submission
+    INTAKE --> AUDIT : intake_pass
+    AUDIT --> REFINEMENT : audit_fail
+    AUDIT --> HISTORICAL_REPLAY : audit_pass
+    REFINEMENT --> AUDIT : resubmit
+    HISTORICAL_REPLAY --> REFINEMENT : replay_fail
+    HISTORICAL_REPLAY --> STATISTICAL_VALIDATION : replay_pass
+    STATISTICAL_VALIDATION --> REFINEMENT : validation_fail
+    STATISTICAL_VALIDATION --> ROBUSTNESS_VALIDATION : validation_pass
+    ROBUSTNESS_VALIDATION --> REFINEMENT : robustness_fail
+    ROBUSTNESS_VALIDATION --> VERIFICATION_READY : robustness_pass
+    VERIFICATION_READY --> VIRTUAL_DEMO : governance_approved
+    VIRTUAL_DEMO --> REFINEMENT : demo_fail
+    VIRTUAL_DEMO --> EXECUTION_VALIDATION : demo_pass
+    EXECUTION_VALIDATION --> PAPER_TRADING : evf_pass
+    PAPER_TRADING --> LIVE_DEMO : paper_pass
+    LIVE_DEMO --> PRODUCTION_CANDIDATE : demo_pass
+    PRODUCTION_CANDIDATE --> PRODUCTION : production_approved
+    PRODUCTION --> MONITORING : deployed
+    MONITORING --> REVALIDATION : drift_detected
+    REVALIDATION --> HISTORICAL_REPLAY : requires_research
+    REVALIDATION --> RETIRED : no_edge
+    MONITORING --> RETIRED : retired
+    RETIRED --> [*]
+
+    note right of VIRTUAL_DEMO : OFFLINE only
+No broker connection
+No network access
+    note right of LIVE_DEMO : ONLINE
+Post-approval only
+Requires Live Demo Authorization
 ```
 
 Monitoring may retire a strategy. Revalidation may return it to historical

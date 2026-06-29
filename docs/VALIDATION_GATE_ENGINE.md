@@ -2,6 +2,13 @@
 # Session Trading Bot
 # Date: 2026-06-26
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform
+Authority: Level 5 — Gate Engine Specification
+Related: CORE_ARCHITECTURE.md, SVOS_DESIGN_REFERENCE.md
+
 ---
 
 ## Purpose

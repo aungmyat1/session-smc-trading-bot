@@ -1,6 +1,15 @@
 # Historical Data Architecture
 # Recorded 2026-06-29 | Professional quantitative research data platform standard
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Data
+Authority: Level 5 — Data Specification
+Note: Parquet/DuckDB is authoritative for market and feature data.
+PostgreSQL is authoritative for lifecycle control state.
+Related: RESEARCH_FEATURE_DATABASE.md, ADR-0001-STABILIZATION-FOUNDATION.md
+
 ---
 
 ## 1. Architecture Overview

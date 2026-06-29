@@ -1,5 +1,13 @@
 # AI Workflow Architecture
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform Architecture
+Authority: Level 2 — Architectural
+Related: SYSTEM_ARCHITECTURE.md, DOC_AUTHORITY.md, AGENT_RULES.md
+Note: For AI agent documentation rules specifically, see DOC_AUTHORITY.md §AI Coding Agent Rules.
+
 Date: 2026-06-28
 
 This document defines how AI-assisted work should be structured in this

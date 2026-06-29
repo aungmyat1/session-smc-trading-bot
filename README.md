@@ -1,5 +1,17 @@
 # Strategy Validation Operating System
 
+## Documentation Navigation
+
+**Start here:**
+- [Documentation Authority Hierarchy](docs/00_Project/DOC_AUTHORITY.md) — which document wins on conflict
+- [Glossary](docs/00_Project/GLOSSARY.md) — canonical definitions for all domain terms
+- [Governing Plan](docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md) — product authority
+- [System Architecture](docs/SYSTEM_ARCHITECTURE.md) — lifecycle and responsibility model
+- [Developer Handbook](docs/DEVELOPER_HANDBOOK.md) — implementation standards
+- [Architecture Review (2026-06-29)](docs/svos/architecture-review-2026-06-29/README.md) — current NOT READY status
+
+**Current status:** NOT READY for feature expansion. See architecture review above.
+
 This repository is an institutional-style strategy research, validation,
 execution-verification, and governance platform for quantitative trading
 workflows.
@@ -1044,12 +1056,6 @@ Strategy Validation
 Build the M1 research data layer with:
 
 ```bash
-make research-db
-```
-
-That runs:
-
-```bash
 python3 run_pipeline.py --symbols EURUSD GBPUSD XAUUSD
 ```
 
@@ -1063,15 +1069,9 @@ Key outputs:
 - `research_db/feature_database.parquet`
 - `research_db/feature_database.duckdb`
 
-Focused tests:
-
-```bash
-make test-research-db
-```
-
 ## Quick Start
 
-1. Choose the strategy in `config/strategy_catalog.yaml`.
+1. Register a new strategy in `config/strategy_catalog.yaml`.
 2. Build the research data layer if fresh feature data is required.
 3. Run SVOS through the intended validation stage.
 4. Review the generated reports and registry state.
@@ -1127,7 +1127,7 @@ Use EVF when validating execution quality rather than strategy profitability:
 ```bash
 python3 scripts/run_evf.py \
   --payload path/to/execution_payload.json \
-  --strategy ST-A2 \
+  --strategy YOUR-STRATEGY-ID \
   --period 2023-2026 \
   --rules execution_validation/config/validation_rules.yaml
 ```
@@ -1137,7 +1137,7 @@ Legacy entrypoint:
 ```bash
 python3 scripts/run_execution_validation.py \
   --payload path/to/execution_payload.json \
-  --strategy ST-A2 \
+  --strategy YOUR-STRATEGY-ID \
   --period 2023-2026 \
   --rules execution_validation/config/validation_rules.yaml
 ```
@@ -1147,7 +1147,7 @@ Replay bridge:
 ```bash
 python3 scripts/run_replay_execution_validation.py \
   --payload path/to/candle_payload.json \
-  --strategy ST-A2 \
+  --strategy YOUR-STRATEGY-ID \
   --period 2023-2026 \
   --symbol EURUSD \
   --report-dir execution_validation/reports

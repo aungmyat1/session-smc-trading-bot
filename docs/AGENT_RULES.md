@@ -2,6 +2,15 @@
 # Session Trading Bot — Agent Standing Instructions
 # v1.0 — Read this before every task
 
+Date: (preserve existing date if present)
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform Architecture
+Authority: Level 5 — AI Constraints
+Related: DOC_AUTHORITY.md, GLOSSARY.md, SYSTEM_ARCHITECTURE.md
+Superseded by DOC_AUTHORITY.md §AI Coding Agent Rules for the AI-specific rules.
+
 ---
 
 ## Project Name

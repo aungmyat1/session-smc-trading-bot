@@ -1,5 +1,12 @@
 # SVOS and EVF User Manual
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform
+Authority: Level 6 — User Manual
+Related: SVOS_DESIGN_REFERENCE.md, EXECUTION_LAYER_VALIDATION_SPEC.md
+
 Date: 2026-06-27
 
 This manual covers the two validation layers in this repo:

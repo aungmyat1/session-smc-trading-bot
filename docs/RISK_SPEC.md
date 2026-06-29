@@ -2,6 +2,13 @@
 # Risk Management Specification
 # v1.0 | DO NOT MODIFY without explicit task approval
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Quant Research
+Authority: Level 5 — Risk Specification
+Related: EXECUTION_LAYER_VALIDATION_SPEC.md, SYSTEM_ARCHITECTURE.md
+
 ---
 
 ## Position Sizing

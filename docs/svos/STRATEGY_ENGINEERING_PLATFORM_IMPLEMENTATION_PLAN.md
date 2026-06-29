@@ -1,7 +1,13 @@
 # Strategy Engineering Platform Implementation Plan
 
-Date: 2026-06-29  
-Status: Governing implementation plan  
+Date: 2026-06-29
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform Lead
+Authority: Level 1 — Product
+Supersedes: CURRENT_SCOPE.md, IMPLEMENTATION_STATUS.md, ESTIMATED_DEVELOPMENT_ROADMAP.md (all archived)
+
 Current readiness: **NOT READY — platform construction only**
 
 Implementation prerequisites and reusable-component inventory:

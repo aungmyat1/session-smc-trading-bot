@@ -1,5 +1,15 @@
 # Strategy Audit Framework
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Quant Research
+Authority: Level 5 — Phase Specification
+Note: This document and STAGE1_AUDIT_SPEC.md are complementary.
+STRATEGY_AUDIT_FRAMEWORK covers the overall audit design;
+STAGE1_AUDIT_SPEC defines the 10-validator interface contract.
+Related: STAGE1_AUDIT_SPEC.md, SVOS_DESIGN_REFERENCE.md
+
 This repository now includes an institutional-style audit layer above the
 research pipeline.
 

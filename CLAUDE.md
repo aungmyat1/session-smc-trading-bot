@@ -99,10 +99,12 @@ Phase 4  Robustness Tests
          Records stable regions and failure boundaries, not just a score.
          Output: PASS / FAIL / FIX
 
-Phase 5  Virtual Demo Trading
-         Live market validation on a Vantage demo account —
-         real prices, virtual orders, no real capital.
-         Drift detection: compares live execution vs backtest expectations.
+Phase 5  Offline Virtual Demo
+         Historical replay through the same order, risk, and position-management
+         interfaces intended for the live bot. No broker connection. No network.
+         Fully deterministic. Drift detection: compares virtual execution vs
+         backtest expectations. Part of SVOS research qualification.
+         NOT the same as a live Vantage demo account (that is post-approval only).
          Output: PASS / FAIL
 
 Phase 6  Production Approval  [RECORD ONLY — do not build]
@@ -122,11 +124,15 @@ The canonical lifecycle lives in `svos/lifecycle/manager.py`. Stages map directl
 the §2 pipeline phases:
 
 ```
-DRAFT → AUDIT → REFINEMENT → HISTORICAL_REPLAY
+DRAFT → INTAKE → AUDIT → REFINEMENT → HISTORICAL_REPLAY
 → STATISTICAL_VALIDATION → ROBUSTNESS_VALIDATION
-→ VIRTUAL_DEMO → PRODUCTION_APPROVAL [record only]
-→ RETIRED
+→ VERIFICATION_READY → VIRTUAL_DEMO → EXECUTION_VALIDATION
+→ PAPER_TRADING → LIVE_DEMO → PRODUCTION_CANDIDATE
+→ PRODUCTION → MONITORING → REVALIDATION → RETIRED
 ```
+
+Note: LIVE_DEMO (online Vantage demo) is post-approval, not Phase 5.
+Phase 5 VIRTUAL_DEMO is OFFLINE — no broker, no network.
 
 Failure at any phase loops back to REFINEMENT (for Phases 0–4) or blocks (Phase 5).
 `svos/lifecycle/manager.py` is the exclusive mutation authority. No script, runner, or

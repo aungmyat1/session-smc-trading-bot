@@ -1,7 +1,13 @@
 # SVOS Two-Node Deployment Topology
 
-Date: 2026-06-29  
-Status: Infrastructure preparation in progress  
+Date: 2026-06-29
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform Architecture
+Authority: Level 5 — Infrastructure Specification
+Related: SYSTEM_ARCHITECTURE.md, VPS_DEPLOYMENT_RUNBOOK.md
+
 Safety mode: `LIVE_TRADING=false`, `DEMO_ONLY=true`
 
 ## 1. Deployment Decision

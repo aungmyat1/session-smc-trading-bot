@@ -1,7 +1,12 @@
 # ADR-0001: Stabilization Foundation Decisions
 
 Date: 2026-06-29
-Status: Accepted
+Status: Authoritative — Accepted
+Version: 1.0
+Updated: 2026-06-29
+Owner: Lead Architect
+Authority: Level 4 — Decision
+Related: CORE_ARCHITECTURE.md, SYSTEM_ARCHITECTURE.md, STABILIZATION_STATUS.md
 
 ## Context
 

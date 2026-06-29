@@ -1,5 +1,12 @@
 # Signal Specification — Session Liquidity + 15M SMC
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Quant Research
+Authority: Level 5 — Strategy Specification
+Related: SMC_FEATURE_SPEC.md, RESEARCH_FEATURE_DATABASE.md
+
 **Strategy ID:** `SESSION_SMC_A` (Sweep Reversal — Setup A)
 **Status:** PENDING Phase-0 gate
 **Locked:** TBD — lock before running backtest; any change = new trial

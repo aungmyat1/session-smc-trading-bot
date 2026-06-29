@@ -1,6 +1,12 @@
 # System Architecture
 
 Date: 2026-06-28
+Status: Authoritative
+Version: 2.0
+Updated: 2026-06-29
+Owner: Platform Architecture
+Authority: Level 2 — Architectural
+Related: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
 
 This document is the authoritative architecture and lifecycle reference for the
 repository.
@@ -38,6 +44,33 @@ pipeline into the full target separation of:
 
 In other words, the current `main` branch should be interpreted as the
 platform's canonical state rather than as a narrow session-bot-only branch.
+
+## Lifecycle Vocabulary Reference
+
+All lifecycle stage references in code and documentation must use these
+canonical enum names from `svos/lifecycle/manager.py`. See
+`docs/00_Project/DOC_AUTHORITY.md` for the complete mapping from legacy
+phase numbers to these canonical names.
+
+| Canonical Stage | Summary |
+|---|---|
+| `DRAFT` | Created, not submitted |
+| `INTAKE` | Intake review |
+| `AUDIT` | Rule quality gate |
+| `REFINEMENT` | Specification improvement |
+| `HISTORICAL_REPLAY` | Logic verification |
+| `STATISTICAL_VALIDATION` | Backtest, n≥50, PF>1.0 at 2× |
+| `ROBUSTNESS_VALIDATION` | Walk-forward, MC, parameter stability |
+| `VERIFICATION_READY` | Research-to-execution handoff |
+| `VIRTUAL_DEMO` | **Offline** replay via bot interfaces — no broker |
+| `EXECUTION_VALIDATION` | EVF qualification |
+| `PAPER_TRADING` | Simulated real-time trading |
+| `LIVE_DEMO` | **Online** Vantage demo — post-approval only |
+| `PRODUCTION_CANDIDATE` | Awaiting final approval |
+| `PRODUCTION` | Authorized live deployment |
+| `MONITORING` | SMO performance observation |
+| `REVALIDATION` | Drift-triggered re-entry |
+| `RETIRED` | Permanently removed |
 
 ## Current Implementation
 

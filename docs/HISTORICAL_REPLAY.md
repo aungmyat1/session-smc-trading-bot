@@ -1,5 +1,12 @@
 # Historical Replay vs Backtest
 
+Status: Authoritative
+Version: 1.0
+Updated: 2026-06-29
+Owner: Platform
+Authority: Level 5 — Phase Specification
+Related: STAGE1_AUDIT_SPEC.md, BACKTEST_SPEC.md
+
 Historical replay is a deterministic execution audit.
 Backtest is the profitability test.
 
