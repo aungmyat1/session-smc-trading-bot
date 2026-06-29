@@ -9,7 +9,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.models import Artifact, ReportRecord
+from db.models import Artifact, ArtifactBinding, ReportRecord
 from svos.adapters.artifacts import StoredArtifact
 
 
@@ -106,3 +106,41 @@ class PostgresEvidenceRepository:
         session.add(artifact)
         session.flush()
         return artifact
+
+    def bind_evidence(
+        self,
+        *,
+        strategy_id: UUID,
+        version_id: UUID,
+        stage: str,
+        artifact_sha256: str,
+        trust: str = "QUALIFYING_REAL",
+    ) -> UUID:
+        """Create an ArtifactBinding for a previously stored artifact.
+
+        Returns the binding UUID, which can be passed as evidence_ids to
+        PostgresControlPlane.commit_transition().
+        """
+        if trust not in TRUST_VALUES:
+            raise ValueError(f"unsupported evidence trust: {trust}")
+        with self.session_factory() as session:
+            with session.begin():
+                artifact = session.scalar(
+                    select(Artifact).where(
+                        Artifact.sha256 == artifact_sha256,
+                        Artifact.strategy_id == strategy_id,
+                    )
+                )
+                if artifact is None:
+                    raise ValueError(f"artifact not found: sha256={artifact_sha256[:16]}… strategy={strategy_id}")
+                binding = ArtifactBinding(
+                    strategy_id=strategy_id,
+                    version_id=version_id,
+                    stage=stage,
+                    artifact_id=artifact.id,
+                    status="active",
+                    trust=trust,
+                )
+                session.add(binding)
+                session.flush()
+                return binding.id

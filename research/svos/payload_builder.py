@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from core.strategy_registry import get_strategy_manifest
+from core.strategy_registry import get_backtest_script, get_strategy_manifest
 from research.lineage import build_lineage_metadata
 from research.robustness import (
     monte_carlo_resampling,
@@ -66,12 +66,16 @@ def _backtest_summary_path(output_dir: Path) -> Path:
     return output_dir / "backtest_summary.json"
 
 
-def _run_backtest_session_liquidity(costs_json: Path | None = None, output_dir: Path | None = None) -> dict[str, Any]:
+def _run_backtest_script(
+    script_path: Path,
+    costs_json: Path | None = None,
+    output_dir: Path | None = None,
+) -> dict[str, Any]:
     tmp_dir = output_dir or Path(tempfile.mkdtemp(prefix="svos-backtest-"))
     summary_path = _backtest_summary_path(tmp_dir)
     cmd = [
         sys.executable,
-        str(_ROOT / "scripts" / "backtest_session_liquidity.py"),
+        str(script_path),
         "--json-out",
         str(summary_path),
     ]
@@ -86,21 +90,42 @@ def _run_backtest_session_liquidity(costs_json: Path | None = None, output_dir: 
         if "missing" in stderr.lower() or "file not found" in stderr.lower():
             raise RuntimeError(
                 "SVOS auto-payload generation could not find the required historical data file. "
-                "Expected data/historical/EUR_USD_M15.csv and data/historical/EUR_USD_H4.csv "
-                "for the default ST-A2 backtest. Run `python3 scripts/download_dukascopy.py "
-                "--symbols EURUSD GBPUSD --start 2021-01 --end 2026-06` or place the CSV files "
-                "under data/historical/ before retrying."
+                f"Script: {script_path.name}. Run the appropriate data-download script before retrying."
             ) from None
         raise RuntimeError(
-            "SVOS auto-payload generation failed while running backtest_session_liquidity.py. "
+            f"SVOS auto-payload generation failed while running {script_path.name}. "
             f"stdout={stdout!r} stderr={stderr!r}"
         ) from None
     if not summary_path.exists():
         raise RuntimeError(
-            "backtest_session_liquidity.py did not write the expected JSON summary"
+            f"{script_path.name} did not write the expected JSON summary"
             f" (stdout={completed.stdout!r}, stderr={completed.stderr!r})"
         )
     return json.loads(summary_path.read_text(encoding="utf-8"))
+
+
+def _no_backtest_summary(strategy_id: str) -> dict[str, Any]:
+    """Stub summary for strategies that have no registered backtest script."""
+    return {
+        "any_pass": False,
+        "run_id": f"{strategy_id}-no-backtest",
+        "best_rr": None,
+        "rr_results": {},
+        "strategy": strategy_id,
+        "strategy_version": "0.0.0",
+        "best_result": {
+            "gate": False,
+            "trades": [],
+            "std_metrics": {
+                "trade_count": 0,
+                "avg_r": 0.0,
+                "max_dd": 0.0,
+                "net_pf": 0.0,
+                "win_rate": 0.0,
+                "total_net_r": 0.0,
+            },
+        },
+    }
 
 
 def build_replay_payload(
@@ -360,10 +385,15 @@ def build_svos_payload_bundle(
         raise KeyError(f"strategy not found in catalog: {strategy}")
 
     resolved_symbols = list(symbols or manifest.get("symbols", []) or ["EURUSD"])
-    backtest_summary = _run_backtest_session_liquidity(
-        costs_json=Path(costs_json) if costs_json is not None else None,
-        output_dir=Path(output_dir) / "backtest" if output_dir is not None else None,
-    )
+    script_path = get_backtest_script(strategy, catalog_path)
+    if script_path is not None:
+        backtest_summary = _run_backtest_script(
+            script_path=script_path,
+            costs_json=Path(costs_json) if costs_json is not None else None,
+            output_dir=Path(output_dir) / "backtest" if output_dir is not None else None,
+        )
+    else:
+        backtest_summary = _no_backtest_summary(strategy)
     replay = build_replay_payload(strategy, resolved_symbols, start=start, end=end)
     backtest = build_backtest_payload(backtest_summary)
     robustness = build_robustness_payload(backtest_summary)

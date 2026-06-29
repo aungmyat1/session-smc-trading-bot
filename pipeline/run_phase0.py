@@ -22,6 +22,7 @@ from datetime import date
 
 import polars as pl
 
+from core.strategy_registry import get_strategy_manifest
 from db.runtime import resolve_database_url
 from .config import (
     FEATURES_DIR,
@@ -38,6 +39,8 @@ from .pipeline_04_write_db import write_all
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase-0 Gate — full pipeline")
+    parser.add_argument("--strategy",      default="ST-A2",
+                        help="Strategy ID (must match catalog or have a registered signal function)")
     parser.add_argument("--symbol",        choices=SYMBOLS, help="Restrict to one symbol")
     parser.add_argument("--start",         default="2020-01-01")
     parser.add_argument("--end",           default="2025-01-01")
@@ -47,12 +50,16 @@ def main() -> None:
                         help="Skip PostgreSQL write (dry-run / no DB needed)")
     args = parser.parse_args()
 
+    strategy_id = args.strategy
+    manifest = get_strategy_manifest(strategy_id) or {}
+    strategy_version = str(manifest.get("version", "0.0.0"))
+
     targets = [args.symbol] if args.symbol else SYMBOLS
     start   = date.fromisoformat(args.start)
     end     = date.fromisoformat(args.end)
 
     print("=" * 60)
-    print("Phase-0 Gate  |  ST-A2 Sweep Reversal")
+    print(f"Phase-0 Gate  |  {strategy_id}")
     print(f"Period: {start} → {end}  |  Symbols: {targets}")
     print("=" * 60)
 
@@ -74,8 +81,8 @@ def main() -> None:
     ]:
         print(f"\n  Scenario: {scenario_name}")
         for sym in targets:
-            run_id = f"ST-A-{sym}-{scenario_name}-{start}-{end}"
-            trades = replay_symbol(sym, start, end, spread_map[sym], run_id)
+            run_id = f"{strategy_id}-{sym}-{scenario_name}-{start}-{end}"
+            trades = replay_symbol(sym, start, end, spread_map[sym], run_id, strategy_id=strategy_id)
             gate   = evaluate_gate(trades, f"{sym}/{scenario_name}")
             # Tag each trade with run_id (replay_symbol already does this,
             # but scenario may need re-tagging if run_id carries it)
@@ -106,7 +113,7 @@ def main() -> None:
             )
         eng = create_engine(db_url, pool_pre_ping=True)
         df = pl.read_parquet(FEATURES_DIR / "_replay_results.parquet")
-        write_all(eng, df)
+        write_all(eng, df, strategy_name=strategy_id, strategy_version=strategy_version)
     elif args.skip_db:
         print("\n[3/3] Skipped (--skip-db)")
 

@@ -34,10 +34,9 @@ config.py               Single source of truth for all parameters and cost model
        |
        v
 pipeline_02_build_features.py
-  Reads raw OHLCV Parquets → derives Asian range, session ranges, raw signal audit
+  Reads raw OHLCV Parquets → derives Asian range and session ranges
   Writes: data/features/{SYMBOL}/asian_range.parquet
           data/features/{SYMBOL}/session_range.parquet
-          data/features/{SYMBOL}/signals_audit.parquet
        |
        v
 pipeline_03_replay_engine.py
@@ -92,7 +91,6 @@ Gate verdict printed to stdout
 |---|---|---|
 | Asian range features | `data/features/{SYMBOL}/asian_range.parquet` | Daily Asian session H/L/mid (00-07 UTC) |
 | Session range features | `data/features/{SYMBOL}/session_range.parquet` | London + NY session H/L/mid/type per day |
-| Raw signal audit | `data/features/{SYMBOL}/signals_audit.parquet` | Signal detections with no trade outcome, for inspection |
 | Replay trades | `data/features/{SYMBOL}/replay_trades_{scenario}.parquet` | Per-trade records including net-of-fees P&L and SMC feature flags |
 | Replay summary | `data/features/{SYMBOL}/replay_summary_{scenario}.parquet` | Aggregate metrics (PF, WR, DD) per symbol per scenario |
 | PostgreSQL tables | `research.*`, `analytics.*` schemas | Strategies, runs, trades, features, equity curve, metrics, gate verdict |

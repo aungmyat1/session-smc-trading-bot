@@ -6,6 +6,7 @@ strategies:
     current: false
     version: '2.1'
     owner: quant
+    backtest_script: scripts/backtest_session_liquidity.py
     strategy_spec_path: docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/strategy_spec.md
     symbols:
     - EURUSD
@@ -105,6 +106,28 @@ strategies:
     - H4
     deployment_target: research
     description: Adaptive SMC session strategy
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
+    current: false
+  SMCOrderBlockFVGSession:
+    status: draft
+    svos_stage: INTAKE
+    approved: false
+    version: '0.1'
+    owner: quant
+    strategy_spec_path: docs/strategy_audit/strategies/SMC Order Block + FVG Session (SVOSReady)/strategy_spec.md
+    symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+    timeframes:
+    - M5
+    - M15
+    - M30
+    deployment_target: research
+    description: SMC order block plus fair value gap session strategy for London and New York kill zones
     requirements:
       replay: pending
       backtest: pending

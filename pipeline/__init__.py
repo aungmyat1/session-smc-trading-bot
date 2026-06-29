@@ -1,1 +1,1 @@
-# pipeline — Phase-0 backtest pipeline for ST-A2
+# pipeline — Phase-0 backtest pipeline (strategy-agnostic)

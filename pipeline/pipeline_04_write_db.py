@@ -141,21 +141,28 @@ def _monthly_breakdown(trades: list[dict]) -> list[dict]:
 
 # ── Main writer ───────────────────────────────────────────────────────────────
 
-def write_all(engine, replay_df: pl.DataFrame) -> None:
+def write_all(
+    engine,
+    replay_df: pl.DataFrame,
+    strategy_name: str = "ST-A2",
+    strategy_version: str = "1.0",
+) -> None:
     run_ids = replay_df.select("run_id").unique()["run_id"].to_list()
 
     with Session(engine) as session:
         # ── strategy row (upsert by name+version) ────────────────────────────
         session.execute(text("""
             INSERT INTO research.strategies (strategy_name, version, description, status)
-            VALUES ('ST-A2', '1.0',
-                    'Sweep Reversal: HTF bias + session sweep + 15M CHoCH + BOS + displacement FVG',
-                    'active')
+            VALUES (:sname, :sver, :sdesc, 'active')
             ON CONFLICT DO NOTHING
-        """))
+        """), {
+            "sname": strategy_name,
+            "sver": strategy_version,
+            "sdesc": f"Strategy: {strategy_name} v{strategy_version}",
+        })
         strategy_id_row = session.execute(text(
-            "SELECT id FROM research.strategies WHERE strategy_name='ST-A2' AND version='1.0'"
-        )).fetchone()
+            "SELECT id FROM research.strategies WHERE strategy_name=:sname AND version=:sver"
+        ), {"sname": strategy_name, "sver": strategy_version}).fetchone()
         strategy_id = strategy_id_row[0] if strategy_id_row else 1
 
         for run_id in run_ids:
@@ -207,9 +214,16 @@ def write_all(engine, replay_df: pl.DataFrame) -> None:
                     INSERT INTO research.trade_features
                         (trade_id, bos_present, choch_present, fvg_present,
                          liquidity_sweep_present, spread_scenario)
-                    VALUES (:trade_id, TRUE, TRUE, TRUE, TRUE, :scenario)
+                    VALUES (:trade_id, :bos, :choch, :fvg, :sweep, :scenario)
                     ON CONFLICT (trade_id) DO NOTHING
-                """), {"trade_id": t["trade_id"], "scenario": scenario})
+                """), {
+                    "trade_id": t["trade_id"],
+                    "bos":      t.get("bos_present", False),
+                    "choch":    t.get("choch_present", False),
+                    "fvg":      t.get("fvg_present", False),
+                    "sweep":    t.get("liquidity_sweep_present", False),
+                    "scenario": scenario,
+                })
 
             # ── daily equity ──────────────────────────────────────────────────
             for eq_row in _equity_curve(trades):
@@ -229,11 +243,11 @@ def write_all(engine, replay_df: pl.DataFrame) -> None:
                         win_rate, profit_factor, expectancy, average_win, average_loss,
                         max_drawdown, net_r
                     ) VALUES (
-                        :run_id, 'ST-A2', :total_trades, :winning_trades, :losing_trades,
+                        :run_id, :strategy_name, :total_trades, :winning_trades, :losing_trades,
                         :win_rate, :profit_factor, :expectancy, :average_win, :average_loss,
                         :max_drawdown, :net_r
                     )
-                """), {"run_id": run_id, **m})
+                """), {"run_id": run_id, "strategy_name": strategy_name, **m})
 
             # ── monthly_metrics ───────────────────────────────────────────────
             for mr in _monthly_breakdown(trades):

@@ -89,6 +89,21 @@ def list_catalog_strategies(path: Path | str | None = None) -> List[str]:
     return sorted(load_strategy_catalog(path).keys())
 
 
+def get_backtest_script(name: str, path: Path | str | None = None) -> Optional[Path]:
+    """Return the resolved backtest script path for a strategy, or None if not configured."""
+    manifest = get_strategy_manifest(name, path)
+    if not manifest:
+        return None
+    raw = manifest.get("backtest_script")
+    if not raw:
+        return None
+    script_path = Path(str(raw))
+    if script_path.is_absolute():
+        return script_path
+    catalog_path = Path(path) if path is not None else _CATALOG_PATH
+    return catalog_path.parent.parent / script_path
+
+
 def get_strategy_spec_path(name: str, path: Path | str | None = None) -> Optional[Path]:
     """Return the audited strategy spec path, if one is configured."""
     manifest = get_strategy_manifest(name, path)

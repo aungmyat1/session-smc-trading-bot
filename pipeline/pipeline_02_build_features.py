@@ -5,7 +5,6 @@ Feature Parquet Builder — pre-computes derived datasets from OHLCV Parquets.
 Outputs (per symbol, under data/features/{SYMBOL}/):
   asian_range.parquet   — daily Asian session H/L/mid (00-07 UTC)
   session_range.parquet — London + NY session H/L/mid/type per day
-  signals_audit.parquet — raw signal detections (no trade outcome, for audit)
 
 Session hours fixed to CLAUDE.md spec: London 07-10 UTC | NY 13-16 UTC.
 (Archive prototype used 08-16 / 13-21 — now corrected.)
