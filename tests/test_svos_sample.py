@@ -20,20 +20,20 @@ def test_isolated_sample_runs_and_verifies_all_six_reports(tmp_path):
 
     result = run_sample(tmp_path / "reports" / "svos")
 
-    assert result["overall_status"] == "PASS"
+    assert result["overall_status"] == "IN_PROGRESS"
     assert result["reports_verified"] == 6
     assert result["strategy_id"] == "SVOS-SAMPLE"
     assert result["strategy_version"] == "1.0.0"
-    assert result["isolated_catalog_final_status"] == "demo"
+    assert result["isolated_catalog_final_status"] == "walk_forward"
     assert result["live_promotion_requested"] is False
     assert [stage["stage"] for stage in result["stages"]] == [stage for stage, _ in REPORTS]
-    assert [stage["status"] for stage in result["stages"]] == ["PASS"] * 6
+    assert [stage["status"] for stage in result["stages"]] == ["PASS"] * 5 + ["NOT_RUN"]
     assert result["stages"][-1]["promotion_allowed"] is False
     assert _sha256(catalog) == catalog_before
 
     report_dir = Path(result["report_dir"])
     summary = json.loads((report_dir / "run_summary.json").read_text(encoding="utf-8"))
-    assert summary["latest_passed_stage"] == "production_approval"
+    assert summary["latest_passed_stage"] == "virtual_demo"
     assert summary["active_blocker"] == ""
     # Six stage reports, the run summary, and five cross-stage evidence reports.
     assert len(list(report_dir.glob("*.json"))) == 12

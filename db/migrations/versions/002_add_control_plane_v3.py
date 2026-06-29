@@ -47,52 +47,8 @@ def upgrade() -> None:
     op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
     _create_schemas()
 
-    # ── D-03 fix: tables in schema_v2.sql that were missing from the ORM ─
-    # market.candles
-    op.create_table(
-        "candles",
-        sa.Column("id",         sa.BigInteger(), primary_key=True, autoincrement=True),
-        sa.Column("symbol",     sa.String(20),  nullable=False),
-        sa.Column("timeframe",  sa.String(10),  nullable=False),
-        sa.Column("timestamp",  sa.DateTime(),  nullable=False),
-        sa.Column("open",       sa.Numeric(12, 5)),
-        sa.Column("high",       sa.Numeric(12, 5)),
-        sa.Column("low",        sa.Numeric(12, 5)),
-        sa.Column("close",      sa.Numeric(12, 5)),
-        sa.Column("volume",     sa.BigInteger()),
-        sa.Column("bid",        sa.Numeric(12, 5)),
-        sa.Column("ask",        sa.Numeric(12, 5)),
-        sa.Column("spread",     sa.Numeric(8, 5)),
-        sa.Column("source",     sa.String(30)),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.UniqueConstraint("symbol", "timeframe", "timestamp"),
-        schema="market",
-    )
-
-    # analytics.optimization_results
-    op.create_table(
-        "optimization_results",
-        sa.Column("id",              sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("strategy_id",     sa.Integer(), sa.ForeignKey("research.strategies.id")),
-        sa.Column("parameter_name",  sa.String(50)),
-        sa.Column("parameter_value", sa.Text()),
-        sa.Column("trade_count",     sa.Integer()),
-        sa.Column("profit_factor",   sa.Numeric(8, 4)),
-        sa.Column("expectancy",      sa.Numeric(8, 4)),
-        sa.Column("max_drawdown",    sa.Numeric(8, 4)),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP")),
-        schema="analytics",
-    )
-
-    # config.system_config (may already exist from schema_v2.sql seed block)
-    op.execute("""
-        CREATE TABLE IF NOT EXISTS config.system_config (
-            key         VARCHAR(100) PRIMARY KEY,
-            value       TEXT,
-            description TEXT,
-            updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    # The three D-03 tables (candles, optimization_results, system_config)
+    # are part of revision 001. Revision 002 only adds control-plane objects.
 
     # ── strategy schema ──────────────────────────────────────────────────
     op.create_table(
@@ -602,7 +558,4 @@ def downgrade() -> None:
     # Drop v3 schemas in reverse dependency order
     _drop_schemas()
 
-    # Drop the three D-03 tables added to existing schemas
-    op.drop_table("optimization_results", schema="analytics")
-    op.drop_table("candles", schema="market")
-    # config.system_config: may have been created by schema_v2.sql seed — leave it
+    # Revision 001 owns the legacy schemas and tables.

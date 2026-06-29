@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 ISOP Control Panel — Dashboard API server.
 
@@ -29,8 +30,10 @@ from __future__ import annotations
 
 import json
 import os
+import hmac
 import subprocess
 import sys
+from functools import wraps
 import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,7 +56,7 @@ from dashboard.audit_log import tail_audit_log, write_audit_log
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state, mark_incident_reviewed
 from dashboard.report_service import generate as generate_reports_payload
 from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
-from dashboard.status_mapper import health_to_status, recommendation_badge
+from dashboard.status_mapper import health_to_status
 import scripts.health_check as health_check
 from svos.api.service import SVOSOperationalAPI
 
@@ -63,7 +66,40 @@ except ImportError:
     yaml = None  # type: ignore[assignment]
 
 app = Flask(__name__, static_folder=str(Path(__file__).parent / "static"))
-CORS(app)
+_allowed_origins = [
+    item.strip()
+    for item in os.getenv(
+        "DASHBOARD_ALLOWED_ORIGINS",
+        "http://127.0.0.1:8080,http://localhost:8080",
+    ).split(",")
+    if item.strip()
+]
+CORS(app, resources={r"/api/*": {"origins": _allowed_origins}})
+
+
+def _require_operator(*allowed_roles: str):
+    """Require bearer authentication, a stable actor, and an allowed role."""
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            configured = str(app.config.get("SVOS_OPERATOR_TOKEN") or os.getenv("SVOS_OPERATOR_TOKEN", ""))
+            supplied = request.headers.get("Authorization", "")
+            actor = request.headers.get("X-SVOS-Actor", "").strip()
+            role = request.headers.get("X-SVOS-Role", "").strip()
+            expected = f"Bearer {configured}" if configured else ""
+            if not configured:
+                return jsonify({"error": "Operator authentication is not configured"}), 503
+            if not hmac.compare_digest(supplied, expected):
+                return jsonify({"error": "Unauthorized"}), 401
+            if not actor:
+                return jsonify({"error": "Missing immutable operator identity"}), 401
+            if role not in allowed_roles:
+                return jsonify({"error": "Forbidden", "required_roles": list(allowed_roles)}), 403
+            request.environ["svos.actor"] = actor
+            request.environ["svos.role"] = role
+            return view(*args, **kwargs)
+        return wrapped
+    return decorator
 
 _CATALOG_PATH = _ROOT / "config" / "strategy_catalog.yaml"
 _EVF_REPORTS_DIR = _ROOT / "execution_validation" / "reports"
@@ -566,6 +602,7 @@ def api_svos():
 
 
 @app.route("/api/svos/run", methods=["POST"])
+@_require_operator("research_operator", "admin")
 def api_svos_run():
     body = request.get_json(silent=True) or {}
     confirm = body.get("confirm_token", "")
@@ -623,6 +660,7 @@ def api_evf():
 
 
 @app.route("/api/evf/run", methods=["POST"])
+@_require_operator("research_operator", "admin")
 def api_evf_run():
     body = request.get_json(silent=True) or {}
     confirm = body.get("confirm_token", "")
@@ -756,9 +794,7 @@ def api_reports_latest():
 @app.route("/api/reports/<path:report_id>")
 def api_reports_by_id(report_id: str):
     if request.args.get("reviewed") == "1":
-        review = mark_reviewed(report_id)
-        write_audit_log("report_reviewed", status="completed", detail=review)
-        return jsonify({**review, "fetched_at": _now_iso()})
+        return jsonify({"error": "Review mutation requires POST authentication"}), 405
     try:
         payload = read_report(report_id)
     except FileNotFoundError:
@@ -766,7 +802,20 @@ def api_reports_by_id(report_id: str):
     return jsonify({**payload, "reviewed_at": load_control_state().get("reports_reviewed", {}).get(report_id, ""), "fetched_at": _now_iso()})
 
 
+@app.route("/api/reports/<path:report_id>/review", methods=["POST"])
+@_require_operator("research_operator", "admin")
+def api_reports_review(report_id: str):
+    review = mark_reviewed(report_id)
+    write_audit_log(
+        "report_reviewed",
+        status="completed",
+        detail={**review, "actor": request.environ["svos.actor"]},
+    )
+    return jsonify({**review, "fetched_at": _now_iso()})
+
+
 @app.route("/api/reports/generate", methods=["POST"])
+@_require_operator("research_operator", "admin")
 def api_reports_generate():
     body = request.get_json(silent=True) or {}
     report_type = str(body.get("type", "")).strip()
@@ -782,18 +831,21 @@ def api_reports_generate():
 
 
 @app.route("/api/incidents/ack", methods=["POST"])
+@_require_operator("incident_operator", "admin")
 def api_incidents_ack():
     body = request.get_json(silent=True) or {}
     incident_id = str(body.get("incident_id", "")).strip()
     if not incident_id:
         return jsonify({"error": "Missing incident_id"}), 400
+    actor = request.environ["svos.actor"]
     review = mark_incident_reviewed(incident_id)
     reviewed_at = review.get("incidents_reviewed", {}).get(incident_id, "")
-    write_audit_log("incident_acknowledged", status="completed", detail={"incident_id": incident_id, "reviewed_at": reviewed_at})
+    write_audit_log("incident_acknowledged", status="completed", detail={"incident_id": incident_id, "reviewed_at": reviewed_at, "actor": actor})
     return jsonify({"incident_id": incident_id, "reviewed_at": reviewed_at, "fetched_at": _now_iso()})
 
 
 @app.route("/api/reports/generate/all", methods=["POST"])
+@_require_operator("research_operator", "admin")
 def api_reports_generate_all():
     payload = generate_reports_payload("all")
     write_audit_log("report_generate_all", status="completed", detail={"artifact_count": len(payload.get("artifacts", []))})
@@ -801,6 +853,7 @@ def api_reports_generate_all():
 
 
 @app.route("/api/emergency-stop", methods=["POST"])
+@_require_operator("risk_operator", "admin")
 def api_emergency_stop():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()
@@ -808,12 +861,13 @@ def api_emergency_stop():
         write_audit_log("emergency_stop_denied", status="denied", detail={"reason": "invalid_confirm_token"})
         return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-EMERGENCY-STOP"}), 403
     reason = str(body.get("reason", "Manual operator stop")).strip() or "Manual operator stop"
-    state = activate_emergency_stop(reason=reason, activated_by="dashboard")
+    state = activate_emergency_stop(reason=reason, activated_by=request.environ["svos.actor"])
     write_audit_log("emergency_stop", status="completed", detail=state["emergency_stop"])
     return jsonify({"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
 
 
 @app.route("/api/emergency-stop/clear", methods=["POST"])
+@_require_operator("admin")
 def api_emergency_stop_clear():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()
@@ -821,7 +875,7 @@ def api_emergency_stop_clear():
         write_audit_log("emergency_stop_clear_denied", status="denied", detail={"reason": "invalid_confirm_token"})
         return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-CLEAR-EMERGENCY-STOP"}), 403
     reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
-    state = clear_emergency_stop(reason=reason, cleared_by="dashboard")
+    state = clear_emergency_stop(reason=reason, cleared_by=request.environ["svos.actor"])
     write_audit_log("emergency_stop_clear", status="completed", detail=state["emergency_stop"])
     return jsonify({"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
 

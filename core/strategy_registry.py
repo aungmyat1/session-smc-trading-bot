@@ -34,6 +34,10 @@ _CATALOG_PATH = Path(__file__).resolve().parents[1] / "config" / "strategy_catal
 _CURRENT_STRATEGY_KEY = "current_strategy"
 
 
+class DirectCatalogMutationError(PermissionError):
+    """Raised when legacy code attempts to mutate the catalog directly."""
+
+
 def _normalize_name(name: str) -> str:
     return name.strip()
 
@@ -179,12 +183,12 @@ def can_deploy_strategy(
     return strategy_lifecycle_rank(status) >= strategy_lifecycle_rank(target_stage)
 
 
-def update_strategy_manifest(
+def _update_strategy_projection(
     name: str,
     updates: dict[str, Any],
     path: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Update a strategy manifest on disk and return the updated entry."""
+    """Internal compatibility projection writer used only by the registry."""
     catalog_path = Path(path) if path is not None else _CATALOG_PATH
     payload = _catalog_payload(catalog_path)
     strategies = payload.setdefault("strategies", {})
@@ -197,27 +201,30 @@ def update_strategy_manifest(
     return manifest
 
 
+def update_strategy_manifest(
+    name: str,
+    updates: dict[str, Any],
+    path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Reject legacy direct catalog mutation.
+
+    Callers must submit lifecycle changes through ``GovernanceService``. This
+    public shim remains temporarily so old integrations fail closed instead of
+    importing a missing symbol and inventing another write path.
+    """
+    raise DirectCatalogMutationError(
+        "Direct strategy-catalog mutation is disabled; use GovernanceService."
+    )
+
+
 def set_current_strategy(
     name: str,
     path: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Mark a strategy as the catalog's active current strategy."""
-    catalog_path = Path(path) if path is not None else _CATALOG_PATH
-    payload = _catalog_payload(catalog_path)
-    strategies = payload.setdefault("strategies", {})
-    normalized = _normalize_name(name)
-    if normalized not in strategies:
-        raise KeyError(f"strategy not found in catalog: {normalized}")
-
-    for strategy_name, manifest in strategies.items():
-        if not isinstance(manifest, dict):
-            manifest = {}
-        manifest["current"] = _normalize_name(strategy_name) == normalized
-        strategies[strategy_name] = manifest
-
-    payload[_CURRENT_STRATEGY_KEY] = normalized
-    _write_catalog(payload, catalog_path)
-    return strategies[normalized]
+    """Reject legacy current-strategy mutation."""
+    raise DirectCatalogMutationError(
+        "Direct current-strategy mutation is disabled; use GovernanceService."
+    )
 
 
 def promote_strategy_stage(
@@ -226,11 +233,10 @@ def promote_strategy_stage(
     approved: Optional[bool] = None,
     path: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Advance a strategy to the requested lifecycle stage."""
-    updates: dict[str, Any] = {"status": next_stage}
-    if approved is not None:
-        updates["approved"] = bool(approved)
-    return update_strategy_manifest(name, updates, path)
+    """Reject legacy lifecycle promotion."""
+    raise DirectCatalogMutationError(
+        "Direct lifecycle promotion is disabled; use GovernanceService."
+    )
 
 
 def register_strategy(strategy: BaseStrategy) -> None:

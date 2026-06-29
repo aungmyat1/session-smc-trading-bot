@@ -298,8 +298,25 @@ analytics:
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     _setup_dashboard_repo(tmp_path, monkeypatch)
-    dashboard_app.app.config.update(TESTING=True)
-    return dashboard_app.app.test_client()
+    dashboard_app.app.config.update(TESTING=True, SVOS_OPERATOR_TOKEN="unit-test-operator-token")
+    test_client = dashboard_app.app.test_client()
+    test_client.environ_base.update(
+        {
+            "HTTP_AUTHORIZATION": "Bearer unit-test-operator-token",
+            "HTTP_X_SVOS_ACTOR": "unit-test-operator",
+            "HTTP_X_SVOS_ROLE": "admin",
+        }
+    )
+    return test_client
+
+
+def test_mutating_endpoint_rejects_unauthenticated_request(client):
+    response = client.post(
+        "/api/reports/generate",
+        json={"type": "daily"},
+        headers={"Authorization": "", "X-SVOS-Actor": "", "X-SVOS-Role": ""},
+    )
+    assert response.status_code == 401
 
 
 def test_dashboard_loads(client):

@@ -28,7 +28,8 @@ Related workflow governance documents:
 
 - Architecture target: `ISOP v2`
 - Current implementation: `SVOS transitional v1.7`
-- Authoritative strategy state: `config/strategy_catalog.yaml`
+- Transitional strategy projection: `config/strategy_catalog.yaml`
+- Target authoritative strategy state: PostgreSQL control-plane repositories
 
 The repository is currently transitioning from a unified SVOS-driven validation
 pipeline into the full target separation of:
@@ -265,7 +266,13 @@ Responsible:
 
 ## Registry
 
-`config/strategy_catalog.yaml` is the authoritative source for:
+During stabilization, `config/strategy_catalog.yaml` is a compatibility input
+and read-only projection for legacy readers. PostgreSQL becomes authoritative
+only after migration, restore, concurrency, and fail-closed acceptance tests
+pass. Until that cutover, no component may treat a YAML write as a fallback
+for a failed database mutation.
+
+The compatibility projection exposes:
 
 - current strategy
 - strategy status

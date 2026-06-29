@@ -84,10 +84,10 @@ def verify_report_package(report_dir: Path) -> dict[str, Any]:
         raise AssertionError("SVOS sample did not generate both run summary formats")
 
     summary = json.loads(summary_json.read_text(encoding="utf-8"))
-    if summary.get("overall_status") != "PASS":
-        raise AssertionError(f"SVOS sample summary did not pass: {summary.get('overall_status')}")
-    if summary.get("latest_passed_stage") != "production_approval":
-        raise AssertionError("SVOS sample did not reach Production Approval")
+    if summary.get("overall_status") != "IN_PROGRESS":
+        raise AssertionError(f"SVOS sample summary has unexpected status: {summary.get('overall_status')}")
+    if summary.get("latest_passed_stage") != "virtual_demo":
+        raise AssertionError("SVOS sample did not reach Virtual Demo")
     if summary.get("active_blocker"):
         raise AssertionError(f"SVOS sample unexpectedly has a blocker: {summary['active_blocker']}")
 
@@ -103,14 +103,15 @@ def verify_report_package(report_dir: Path) -> dict[str, Any]:
             raise AssertionError(f"{expected_stage} report is missing fields: {', '.join(missing)}")
         if report.get("stage") != expected_stage:
             raise AssertionError(f"Unexpected stage in {json_path}: {report.get('stage')}")
-        if report.get("status") != "PASS":
-            raise AssertionError(f"{expected_stage} did not pass: {report.get('status')}")
-        if report.get("score") is None:
+        expected_status = "NOT_RUN" if expected_stage == "production_approval" else "PASS"
+        if report.get("status") != expected_status:
+            raise AssertionError(f"{expected_stage} has unexpected status: {report.get('status')}")
+        if expected_status == "PASS" and report.get("score") is None:
             raise AssertionError(f"{expected_stage} did not produce a diagnostic score")
         if not report.get("evidence_hashes", {}).get("strategy_spec"):
             raise AssertionError(f"{expected_stage} did not preserve the strategy specification hash")
         markdown = markdown_path.read_text(encoding="utf-8")
-        if "Status: **PASS**" not in markdown:
+        if f"Status: **{expected_status}**" not in markdown:
             raise AssertionError(f"Markdown decision does not match JSON for {expected_stage}")
         verified.append(
             {
@@ -153,15 +154,13 @@ def run_sample(output_root: Path | str) -> dict[str, Any]:
             backtest=_load_json("backtest.json"),
             robustness=_load_json("robustness.json"),
             virtual_demo=_load_json("virtual_demo.json"),
-            promote=True,
+            promote=False,
             allow_live_promotion=False,
         )
         if result.overall_status != "PASS":
             failed = [(stage.stage, stage.status) for stage in result.stages if stage.status != "PASS"]
             raise AssertionError(f"SVOS sample pipeline failed: {failed}")
         manifest = get_strategy_manifest(STRATEGY, catalog_path) or {}
-        if manifest.get("status") != "demo":
-            raise AssertionError(f"Isolated sample stopped at unexpected status: {manifest.get('status')}")
         if manifest.get("status") == "live":
             raise AssertionError("Isolated sample must never promote to live")
         report_dir = Path(result.canonical_report["report_dir"])

@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
-from core.strategy_registry import can_deploy_strategy, get_strategy_manifest, promote_strategy_stage
+from core.strategy_registry import DirectCatalogMutationError, can_deploy_strategy, get_strategy_manifest
 from execution_validation.engine import ExecutionValidationReport
 from research.regression.engine import RegressionEngine
 from research.validation.engine import (
@@ -809,7 +809,7 @@ class SVOSRunner:
         self._notify_stage_observer(stage_observer, stages, promoted_stage)
         if demo_result.status != "PASS":
             return self._finish(stages, promoted_stage)
-        if stop_after == "virtual_demo":
+        if stop_after == "virtual_demo" or not promote:
             return self._finish(stages, promoted_stage)
         if promote:
             self._promote("demo")
@@ -1475,7 +1475,9 @@ class SVOSRunner:
         )
 
     def _promote(self, stage: str) -> None:
-        promote_strategy_stage(self.strategy_name, stage, path=self.registry_path)
+        raise DirectCatalogMutationError(
+            f"SVOSRunner cannot promote directly to {stage!r}; record the run as evidence and request a governed transition."
+        )
 
     def _suggest_enhancements(self, spec: StrategySpec) -> list[str]:
         suggestions = []

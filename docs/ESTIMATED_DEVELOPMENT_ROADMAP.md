@@ -2,6 +2,11 @@
 # Quant Research Platform
 # Date: 2026-06-27
 
+> **Superseded 2026-06-29.** This is the original conceptual roadmap, not an
+> execution plan. Use `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`
+> for product scope and `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`
+> for implementation order.
+
 ---
 
 ## Purpose

@@ -11,14 +11,8 @@ class StrategyStage(str, Enum):
     HISTORICAL_REPLAY = "HISTORICAL_REPLAY"
     STATISTICAL_VALIDATION = "STATISTICAL_VALIDATION"
     ROBUSTNESS_VALIDATION = "ROBUSTNESS_VALIDATION"
-    VERIFICATION_READY = "VERIFICATION_READY"
     VIRTUAL_DEMO = "VIRTUAL_DEMO"
-    EXECUTION_VALIDATION = "EXECUTION_VALIDATION"
-    PAPER_TRADING = "PAPER_TRADING"
-    LIVE_DEMO = "LIVE_DEMO"
-    PRODUCTION_CANDIDATE = "PRODUCTION_CANDIDATE"
-    PRODUCTION = "PRODUCTION"
-    MONITORING = "MONITORING"
+    PRODUCTION_APPROVAL = "PRODUCTION_APPROVAL"
     REVALIDATION = "REVALIDATION"
     RETIRED = "RETIRED"
 
@@ -35,14 +29,8 @@ _ORDER = [
     StrategyStage.HISTORICAL_REPLAY,
     StrategyStage.STATISTICAL_VALIDATION,
     StrategyStage.ROBUSTNESS_VALIDATION,
-    StrategyStage.VERIFICATION_READY,
     StrategyStage.VIRTUAL_DEMO,
-    StrategyStage.EXECUTION_VALIDATION,
-    StrategyStage.PAPER_TRADING,
-    StrategyStage.LIVE_DEMO,
-    StrategyStage.PRODUCTION_CANDIDATE,
-    StrategyStage.PRODUCTION,
-    StrategyStage.MONITORING,
+    StrategyStage.PRODUCTION_APPROVAL,
     StrategyStage.REVALIDATION,
     StrategyStage.RETIRED,
 ]
@@ -51,7 +39,6 @@ _ALLOWED: dict[StrategyStage, set[StrategyStage]] = {
     current: ({_ORDER[index + 1]} if index < len(_ORDER) - 1 else set())
     for index, current in enumerate(_ORDER)
 }
-_ALLOWED[StrategyStage.MONITORING].update({StrategyStage.REVALIDATION, StrategyStage.RETIRED})
 _ALLOWED[StrategyStage.REVALIDATION].update({StrategyStage.HISTORICAL_REPLAY, StrategyStage.RETIRED})
 # Explicit research failure loops. These are corrective transitions, not
 # promotions, and keep failed strategies away from execution stages.
@@ -60,6 +47,9 @@ _ALLOWED[StrategyStage.HISTORICAL_REPLAY].add(StrategyStage.REFINEMENT)
 _ALLOWED[StrategyStage.STATISTICAL_VALIDATION].add(StrategyStage.REFINEMENT)
 _ALLOWED[StrategyStage.ROBUSTNESS_VALIDATION].add(StrategyStage.REFINEMENT)
 _ALLOWED[StrategyStage.VIRTUAL_DEMO].update({StrategyStage.REFINEMENT, StrategyStage.HISTORICAL_REPLAY})
+# Production Approval is record-only during platform construction. It exists in
+# the vocabulary but cannot be entered by the lifecycle authority.
+_ALLOWED[StrategyStage.VIRTUAL_DEMO].discard(StrategyStage.PRODUCTION_APPROVAL)
 
 _LEGACY_STAGE_MAP = {
     "draft": StrategyStage.DRAFT,
@@ -68,8 +58,8 @@ _LEGACY_STAGE_MAP = {
     "backtest": StrategyStage.STATISTICAL_VALIDATION,
     "walk_forward": StrategyStage.ROBUSTNESS_VALIDATION,
     "shadow": StrategyStage.VIRTUAL_DEMO,
-    "demo": StrategyStage.LIVE_DEMO,
-    "live": StrategyStage.PRODUCTION,
+    "demo": StrategyStage.VIRTUAL_DEMO,
+    "live": StrategyStage.RETIRED,
     "retired": StrategyStage.RETIRED,
 }
 

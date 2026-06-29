@@ -2,6 +2,11 @@
 
 Date: 2026-06-28
 
+> **Superseded 2026-06-29.** Retained as historical implementation context.
+> Current work is governed by
+> `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` and is
+> sequenced by `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`.
+
 ## Purpose
 
 This document defines what should be implemented now for `SVOS`.

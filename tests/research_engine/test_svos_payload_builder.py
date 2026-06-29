@@ -173,8 +173,6 @@ def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path, ca
     monkeypatch.setattr(run_current_strategy_svos, "get_current_strategy_name", lambda *_args, **_kwargs: "ST-A2")
     monkeypatch.setattr(run_current_strategy_svos, "get_strategy_manifest", lambda *_args, **_kwargs: manifest)
     monkeypatch.setattr(run_current_strategy_svos, "get_strategy_spec_text", lambda *_args, **_kwargs: "Market: FX")
-    monkeypatch.setattr(run_current_strategy_svos, "set_current_strategy", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(run_current_strategy_svos, "update_strategy_manifest", lambda strategy, updates_map, catalog_path: updates.append((strategy, updates_map, catalog_path)))
     monkeypatch.setattr(run_current_strategy_svos, "load_validation_config", lambda *_args, **_kwargs: {"ok": True})
     monkeypatch.setattr(run_current_strategy_svos, "build_svos_payload_bundle", lambda **_kwargs: DummyBundle())
     monkeypatch.setattr(run_current_strategy_svos, "SVOSRunner", DummyRunner)
@@ -197,4 +195,4 @@ def test_run_current_strategy_svos_auto_builds_payload(monkeypatch, tmp_path, ca
     assert callable(recorded["run_kwargs"]["stage_observer"])
     assert "Virtual Demo Trading" in stderr or "virtual_demo" not in stderr
     assert "next action: proceed to enhancement" in stderr
-    assert updates and updates[0][1]["last_svos_payload_auto"] is True
+    assert updates == []

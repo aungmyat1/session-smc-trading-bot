@@ -223,15 +223,14 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
             },
             execution_validation_report=_valid_execution_report(),
         ),
-        promote=True,
-        allow_live_promotion=True,
+        promote=False,
+        allow_live_promotion=False,
     )
     assert result.overall_status == "PASS"
     assert any(stage.stage == "verification_ready" and stage.status == "PASS" for stage in result.stages)
-    assert result.stages[-2].stage == "virtual_demo"
-    assert result.stages[-1].stage == "production_approval"
+    assert result.stages[-1].stage == "virtual_demo"
     assert result.stages[-1].status == "PASS"
-    assert result.promoted_stage == "live"
+    assert result.promoted_stage is None
     assert Path(tmp_path / "ST-A2" / "svos_result.json").exists()
     stage_dir = tmp_path / "ST-A2" / "stages"
     expected_stage_files = [
@@ -243,18 +242,14 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
         "05_robustness",
         "06_verification_ready",
         "07_virtual_demo",
-        "08_production_approval",
     ]
     for stem in expected_stage_files:
         assert (stage_dir / f"{stem}.json").exists()
         assert (stage_dir / f"{stem}.md").exists()
     index = json.loads((stage_dir / "index.json").read_text(encoding="utf-8"))
     assert index["overall_status"] == "PASS"
-    assert index["promoted_stage"] == "live"
-    production_report = json.loads((stage_dir / "08_production_approval.json").read_text(encoding="utf-8"))
-    assert production_report["current_stage"]["stage"] == "production_approval"
-    assert production_report["promoted_stage"] == "live"
-    assert get_strategy_status(catalog_copy, "ST-A2") == "live"
+    assert index["promoted_stage"] is None
+    assert get_strategy_status(catalog_copy, "ST-A2") == "walk_forward"
 
 
 def test_runner_audit_stage_uses_canonical_strategy_validation_report(tmp_path):
@@ -443,16 +438,16 @@ def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
             },
             execution_validation_report=_valid_execution_report(),
         ),
-        promote=True,
+        promote=False,
         allow_live_promotion=False,
     )
     assert result.overall_status == "PASS"
-    assert result.promoted_stage == "demo"
-    assert get_strategy_status(catalog_copy, "ST-A2") == "demo"
+    assert result.promoted_stage is None
+    assert get_strategy_status(catalog_copy, "ST-A2") == "walk_forward"
     approval_report = json.loads(
         (Path(result.canonical_report["report_dir"]) / "06_production_approval.json").read_text(encoding="utf-8")
     )
-    assert approval_report["status"] == "PASS"
+    assert approval_report["status"] == "NOT_RUN"
     assert approval_report["promotion_allowed"] is False
 
 
@@ -490,8 +485,8 @@ def test_runner_writes_immutable_six_stage_report_package(tmp_path):
             order_outcomes={"rejected": 0, "missed": 0, "duplicated": 0, "delayed": 0},
             risk_controls={"position_sizing": True, "daily_loss_limit": True},
         ),
-        promote=True,
-        allow_live_promotion=True,
+        promote=False,
+        allow_live_promotion=False,
     )
 
     report_dir = Path(result.canonical_report["report_dir"])
@@ -511,8 +506,8 @@ def test_runner_writes_immutable_six_stage_report_package(tmp_path):
         assert (report_dir / f"{stem}.md").exists()
 
     summary = json.loads((report_dir / "run_summary.json").read_text(encoding="utf-8"))
-    assert summary["overall_status"] == "PASS"
-    assert [stage["status"] for stage in summary["stages"]] == ["PASS"] * 6
+    assert summary["overall_status"] == "IN_PROGRESS"
+    assert [stage["status"] for stage in summary["stages"]] == ["PASS"] * 5 + ["NOT_RUN"]
     demo_report = json.loads((report_dir / "05_virtual_demo.json").read_text(encoding="utf-8"))
     assert demo_report["metrics"]["execution"]["expected_signals"] == 12
     assert demo_report["promotion_allowed"] is True
