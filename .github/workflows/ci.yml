@@ -23,8 +23,8 @@ jobs:
       - name: Lint stabilization boundary
         run: >-
           python -m ruff check
-          db/control_plane.py db/evidence_repository.py db/legacy_import.py
-          db/projection.py db/migrations svos/adapters svos/lifecycle
+          db/connection.py db/control_plane.py db/evidence_repository.py db/legacy_import.py
+          db/projection.py db/migrations data/*.py src/data adaptive/data svos/adapters svos/lifecycle
           svos/registry svos/reports dashboard/app.py tests/architecture tests/database
       - name: Compile migration SQL without credentials
         env:
