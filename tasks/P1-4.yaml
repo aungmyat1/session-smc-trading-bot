@@ -1,0 +1,59 @@
+task: P1-4
+title: Replace payload_builder backtest hardcode with registry dispatch
+priority: P1
+effort: Medium (1-2d)
+status: PENDING
+depends: [P1-2]
+
+goal: >
+  Replace the hardcoded backtest script path in research/svos/payload_builder.py
+  with a registry lookup. Create a BACKTEST_SCRIPTS mapping (in config or a registry
+  module) that maps strategy_id to its backtest script. This is the last ST-A2-specific
+  hardcoding in the research engine.
+
+files_to_read:
+  - research/svos/payload_builder.py         # _run_backtest_session_liquidity() — full file
+  - scripts/backtest_session_liquidity.py    # first 40 lines — what it accepts as args
+  - config/research_engine.yaml              # if exists — add BACKTEST_SCRIPTS here
+  - config/strategy_catalog.yaml            # check if backtest_script field exists
+
+change:
+  file_1: "config/research_engine.yaml (or research_engine section of strategy_catalog.yaml)"
+  add: |
+    backtest_scripts:
+      ST-A2: scripts/backtest_session_liquidity.py
+      LONDON-BREAKOUT: scripts/backtest_london_breakout.py   # placeholder if not yet written
+      # add entries as new strategies are registered
+
+  file_2: "research/svos/payload_builder.py"
+  replace: |
+    # Before:
+    def _run_backtest_session_liquidity(self, ...):
+        script = "scripts/backtest_session_liquidity.py"
+        subprocess.run([sys.executable, script, ...])
+    #
+    # After:
+    def _run_backtest_for_strategy(self, strategy_id: str, ...):
+        registry = load_backtest_registry()  # reads config/research_engine.yaml
+        script = registry.get(strategy_id)
+        if not script:
+            raise ValueError(f"No backtest script registered for strategy: {strategy_id}")
+        subprocess.run([sys.executable, script, ...])
+
+done_when:
+  - "payload_builder.py has no reference to 'backtest_session_liquidity'"
+  - "config/research_engine.yaml has a backtest_scripts section"
+  - "Calling _run_backtest_for_strategy('UNKNOWN') raises ValueError, not silently uses ST-A2"
+  - "ST-A2 backtest still works: _run_backtest_for_strategy('ST-A2') calls the correct script"
+
+do_not:
+  - Do not delete scripts/backtest_session_liquidity.py — it is still the ST-A2 executor
+  - Do not require a new strategy to have a real backtest script immediately — allow placeholder
+
+output_format: |
+  ## P1-4 Result
+  Registry location: config/research_engine.yaml | other
+  ST-A2 still works: YES
+  Unknown strategy raises error: YES
+  Files changed: [list]
+  Next task: P1-5

@@ -1,0 +1,47 @@
+task: P0-1
+title: Run PostgreSQL integration exercise
+priority: P0
+effort: Small (2-4h)
+status: PENDING
+blocks: feature_freeze_lift
+
+goal: >
+  Run the existing PostgreSQL integration test suite against a real database instance.
+  Confirm all tests pass. Update STABILIZATION_STATUS.md to mark this exercise COMPLETE.
+  This single action lifts the feature freeze that blocks all other development.
+
+prerequisite: >
+  A PostgreSQL 16 instance reachable at SVOS_TEST_DATABASE_URL.
+  Docker compose option: docker-compose up -d postgres
+  Then: export SVOS_TEST_DATABASE_URL=postgresql://trading:trading@localhost:5432/svos_test
+
+files_to_read:
+  - tests/database/test_postgres_integration.py   # the test that must pass
+  - db/control_plane.py                           # what is being tested
+  - db/connection.py                              # how connection is established
+  - docker-compose.yml                            # check postgres service definition
+
+steps:
+  1: "Confirm PostgreSQL is reachable: psql $SVOS_TEST_DATABASE_URL -c 'SELECT 1'"
+  2: "Run Alembic migrations: alembic upgrade head"
+  3: "Run the integration test: pytest tests/database/test_postgres_integration.py -v"
+  4: "If any test fails, read the failure and fix the specific issue — do not change test logic"
+  5: "Update docs/svos/STABILIZATION_STATUS.md: mark PostgreSQL integration exercise as IMPLEMENTED"
+
+done_when:
+  - "pytest tests/database/test_postgres_integration.py passes with zero skips"
+  - "STABILIZATION_STATUS.md shows: PostgreSQL integration exercise: Implemented"
+
+do_not:
+  - Do not skip tests with @pytest.mark.skip
+  - Do not change test assertions to make them pass
+  - Do not start P1-1 before this task is complete
+
+output_format: |
+  ## P0-1 Result
+  Status: PASS | FAIL
+  Tests run: N
+  Tests failed: N (list if any)
+  Fix applied: description if any
+  STABILIZATION_STATUS.md updated: YES | NO
+  Next task: P0-2

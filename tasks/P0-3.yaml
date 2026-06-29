@@ -1,0 +1,41 @@
+task: P0-3
+title: Initialise data/svos/ JSONL store
+priority: P0
+effort: Small (1-2h)
+status: PENDING
+depends: [P0-1]
+
+goal: >
+  Create the data/svos/ directory tree and run SVOSPlatform.bootstrap() to write
+  the first JSONL control records for the 6 strategies in config/strategy_catalog.yaml.
+  Verify that state.json and versions.jsonl are written for each strategy.
+  The live governance stack has never written any data — this validates the JSONL path works.
+
+files_to_read:
+  - svos/orchestration/service.py          # SVOSPlatform — find bootstrap() or equivalent
+  - svos/registry/service.py               # StrategyRegistryService — how it writes JSONL
+  - config/strategy_catalog.yaml           # 6 strategies to bootstrap
+
+steps:
+  1: "Check if SVOSPlatform has a bootstrap() method. If not, look for equivalent init method."
+  2: "If no bootstrap command exists: add a scripts/bootstrap_svos.py that calls SVOSPlatform().bootstrap()"
+  3: "Run the bootstrap: python scripts/bootstrap_svos.py"
+  4: "Verify: ls data/svos/registry/ shows directories for each strategy slug"
+  5: "Verify: cat data/svos/registry/<slug>/state.json shows stage: DRAFT"
+
+done_when:
+  - "data/svos/ directory exists with subdirectory structure"
+  - "Each of the 6 catalog strategies has a state.json showing their current stage"
+  - "No exceptions during bootstrap"
+
+do_not:
+  - Do not manually create JSONL files — use the SVOSPlatform API
+  - Do not set any strategy to a stage other than DRAFT or INTAKE
+  - Do not import or promote ST-A2 with QUALIFYING_REAL trust
+
+output_format: |
+  ## P0-3 Result
+  Bootstrap method: found at [location] | created scripts/bootstrap_svos.py
+  Strategies initialised: N of 6
+  Sample state: [strategy_slug]: stage=[STAGE]
+  Next task: P0-4

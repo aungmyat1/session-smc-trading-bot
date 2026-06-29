@@ -1,0 +1,45 @@
+task: P0-2
+title: Backup/restore drill and RPO/RTO declaration
+priority: P0
+effort: Small (2-4h)
+status: PENDING
+depends: [P0-1]
+
+goal: >
+  Run the backup script on a seeded test database. Perform a restore. Verify the
+  restored state matches the original. Declare RPO (maximum acceptable data loss)
+  and RTO (maximum acceptable recovery time) in writing.
+
+files_to_read:
+  - scripts/control_plane_backup.py
+  - docs/svos/STABILIZATION_STATUS.md
+
+steps:
+  1: "Seed test database with at least one strategy at INTAKE stage (use P0-3 bootstrap)"
+  2: "Run backup: python scripts/control_plane_backup.py --output /tmp/svos_backup_test.gz"
+  3: "Drop and recreate the test schema: psql ... -c 'DROP SCHEMA svos CASCADE; CREATE SCHEMA svos;'"
+  4: "Re-run migrations: alembic upgrade head"
+  5: "Restore from backup"
+  6: "Verify strategy state matches pre-backup state"
+  7: "Add RPO/RTO declaration to STABILIZATION_STATUS.md"
+
+done_when:
+  - Restore produces identical strategy state to backup
+  - RPO and RTO declared in STABILIZATION_STATUS.md
+  - STABILIZATION_STATUS.md: Backup/restore tooling → Implemented (not baseline)
+
+rpo_rto_template: |
+  ## RPO/RTO Declaration (add to STABILIZATION_STATUS.md)
+  RPO (max data loss): <N minutes> — based on backup frequency
+  RTO (max recovery time): <N minutes> — based on drill timing
+  Drill date: 2026-06-29
+  Drill result: PASS
+
+output_format: |
+  ## P0-2 Result
+  Backup size: N bytes
+  Restore time: N seconds
+  State verification: PASS | FAIL
+  RPO declared: N minutes
+  RTO declared: N minutes
+  Next task: P0-3

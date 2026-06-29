@@ -1,0 +1,48 @@
+task: P1-6
+title: Enforce coverage threshold in CI
+priority: P1
+effort: Small (hours + test authoring to reach threshold)
+status: PENDING
+depends: [P1-2]
+
+goal: >
+  Add a coverage threshold gate to .github/workflows/ci.yml.
+  Target: 70% coverage across svos/, pipeline/, and research/ packages.
+  Write the minimum missing tests needed to reach the threshold — starting
+  with pipeline/test_run_phase0.py since the orchestrator is currently untested.
+
+files_to_read:
+  - .github/workflows/ci.yml         # find the pytest step to modify
+  - tests/                           # what exists
+  - pipeline/run_phase0.py           # first test target
+
+ci_change:
+  file: .github/workflows/ci.yml
+  find: "pytest -q"
+  replace: "pytest -q --cov=svos --cov=pipeline --cov=research --cov-fail-under=70 --cov-report=term-missing"
+
+first_test_to_write:
+  file: tests/pipeline/test_run_phase0.py
+  covers:
+    - "--strategy flag is required (exits non-zero without it)"
+    - "--strategy UNKNOWN-STRATEGY raises ValueError or exits non-zero"
+    - "--help works"
+    - "--dry-run runs without writing to DB (if dry-run flag exists)"
+
+done_when:
+  - "CI pytest step includes --cov-fail-under=70"
+  - "CI passes locally: pytest --cov=svos --cov=pipeline --cov=research --cov-fail-under=70"
+  - "tests/pipeline/test_run_phase0.py exists with at least 4 test functions"
+
+do_not:
+  - Do not fake coverage by adding `# pragma: no cover` to avoid gaps
+  - Do not lower the threshold — 70% is already modest for production code
+  - Do not add tests that only test happy paths
+
+output_format: |
+  ## P1-6 Result
+  Coverage threshold: 70%
+  Current measured coverage: N%
+  New tests written: [list files]
+  CI check: PASS | FAIL
+  Next task: P2-1 or P2-2

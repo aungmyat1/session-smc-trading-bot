@@ -1,0 +1,139 @@
+# SVOS Task Dependency Graph
+# Machine-readable. Load this to plan sequencing without re-reading the full report.
+# Source: docs/svos/PROJECT_STATUS_REPORT_2026-06-29.md §11
+
+# ── P0 — Feature freeze gates (must complete before everything else) ──────────
+P0-1:
+  name: PostgreSQL integration exercise
+  effort: Small (2-4h)
+  depends: []
+  unblocks: [P0-2, P0-3, P1-1]
+  files: [tests/database/test_postgres_integration.py, db/control_plane.py]
+  env_required: SVOS_TEST_DATABASE_URL
+
+P0-2:
+  name: Backup/restore drill + RPO/RTO declaration
+  effort: Small (2-4h)
+  depends: [P0-1]
+  unblocks: []
+  files: [scripts/control_plane_backup.py, docs/svos/STABILIZATION_STATUS.md]
+
+P0-3:
+  name: Initialise data/svos/ JSONL store
+  effort: Small (1-2h)
+  depends: [P0-1]
+  unblocks: [P1-1]
+  files: [svos/orchestration/service.py]
+  note: "data/svos/ directory has never been written; no bootstrap command exists"
+
+P0-4:
+  name: Fix GateDecision/ApprovalRecord export
+  effort: Trivial (5 min)
+  depends: []
+  unblocks: [P1-1]
+  files: [svos/shared/__init__.py, svos/shared/models.py]
+  change: "Add GateDecision, ApprovalRecord to __init__.py re-exports"
+
+# ── P1 — MVP: one new strategy end-to-end ────────────────────────────────────
+P1-1:
+  name: Wire SVOSPlatform to PostgresControlPlane
+  effort: Medium (1-2d)
+  depends: [P0-1, P0-3, P0-4]
+  unblocks: [P1-5]
+  files: [svos/orchestration/service.py, db/control_plane.py, db/evidence_repository.py]
+  change: "Replace JSONL StrategyRegistryService with PostgresControlPlane when DATABASE_URL set"
+
+P1-2:
+  name: Remove ST-A2 hardcoding from pipeline/
+  effort: Large (3-5d)
+  depends: [P0-1]
+  unblocks: [P1-4, P1-5]
+  files:
+    - pipeline/run_phase0.py           # add --strategy flag, remove ST-A2 banner
+    - pipeline/pipeline_03_replay_engine.py  # signal dispatch abstraction
+    - pipeline/pipeline_04_write_db.py      # remove hardcoded 'ST-A2' SQL strings
+    - pipeline/__init__.py             # update comment
+  hardcoded_locations:
+    - "pipeline_03: run_id prefix 'ST-A-', import generate_signal_A"
+    - "pipeline_04: SQL strategy strings 'ST-A2', all trade_features=TRUE"
+    - "run_phase0.py: no --strategy flag, banner hardcodes ST-A2"
+
+P1-3:
+  name: Fix signals_audit.parquet gap
+  effort: Small (hours)
+  depends: []
+  unblocks: []
+  files: [pipeline/pipeline_02_build_features.py, pipeline/README.md]
+  change: "Either write signals_audit.parquet in process_symbol() or remove from docs"
+
+P1-4:
+  name: Replace payload_builder backtest hardcode with registry dispatch
+  effort: Medium (1-2d)
+  depends: [P1-2]
+  unblocks: [P1-5]
+  files: [research/svos/payload_builder.py, config/research_engine.yaml]
+  change: "BACKTEST_SCRIPTS registry keyed by strategy_id replacing hardcoded path"
+
+P1-5:
+  name: Register second strategy and run end-to-end
+  effort: Large (1 week)
+  depends: [P1-1, P1-2, P1-3, P1-4]
+  unblocks: [P1-6]
+  files:
+    - config/strategy_catalog.yaml    # add second strategy entry
+    - scripts/run_svos_pipeline.py    # entry point
+  verification: "Full SVOS run produces reports/svos/<strategy>/ with JSON+MD and no BLOCKED manifest"
+
+P1-6:
+  name: Enforce coverage threshold in CI
+  effort: Small (hours, plus test authoring)
+  depends: [P1-2]
+  unblocks: []
+  files: [.github/workflows/ci.yml]
+  change: "Add --cov=svos,pipeline,research --cov-fail-under=70 to pytest step"
+  first_test_to_write: pipeline/test_run_phase0.py
+
+# ── P2 — Required before production ──────────────────────────────────────────
+P2-1:
+  name: OIDC/four-eyes approval workflow
+  effort: Large (week+)
+  depends: [P1-1]
+  unblocks: [P2-3]
+  note: "Required before any broker-facing approval capability"
+
+P2-2:
+  name: Strategy registration CLI/API
+  effort: Medium (2-3d)
+  depends: [P1-1]
+  unblocks: [P1-5]
+  change: "python -m svos register --name X --spec-file strategy.md"
+
+P2-3:
+  name: Simple Vantage execution bot
+  effort: Large (week+)
+  depends: [P2-1, P1-5]
+  unblocks: []
+  note: "Reads only Approved Strategy Package; executes via MetaAPI"
+
+P2-4:
+  name: Tick-resolution Virtual Demo executor in research/
+  effort: Large (week+)
+  depends: [P1-1]
+  unblocks: []
+  note: "Current virtual demo silently empty if candles unavailable"
+
+P2-5:
+  name: Centralise _PIP table; fix remaining quality debt
+  effort: Small
+  depends: []
+  files: [strategies/adapters/]
+
+# ── Critical path (minimum to MVP) ───────────────────────────────────────────
+critical_path:
+  - P0-1  # unblocks feature freeze
+  - P0-4  # trivial fix, no deps
+  - P0-3  # initialise live store
+  - P1-1  # wire PostgreSQL
+  - P1-2  # de-ST-A2 pipeline
+  - P1-4  # generic backtest dispatch
+  - P1-5  # second strategy end-to-end = RESEARCH CAPABLE milestone

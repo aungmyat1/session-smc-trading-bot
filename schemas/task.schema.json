@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "svos/task.schema.json",
+  "title": "SVOS Task Manifest",
+  "description": "Schema for tasks/ manifests. Every task file must validate against this.",
+  "type": "object",
+  "required": ["task", "title", "priority", "effort", "status", "goal", "files_to_read", "done_when"],
+  "properties": {
+    "task": {
+      "type": "string",
+      "pattern": "^P[0-3]-[0-9]+[a-z]?$",
+      "description": "Task ID, e.g. P0-1, P1-2a"
+    },
+    "title": { "type": "string" },
+    "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+    "effort": { "type": "string", "description": "Human-readable effort estimate" },
+    "status": { "enum": ["PENDING", "IN_PROGRESS", "COMPLETE", "BLOCKED", "DEFERRED"] },
+    "depends": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "goal": { "type": "string" },
+    "files_to_read": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Exact file paths to load. Load only these unless blocked."
+    },
+    "steps": {
+      "type": "object",
+      "description": "Numbered implementation steps."
+    },
+    "done_when": {
+      "oneOf": [
+        { "type": "array", "items": { "type": "string" } },
+        { "type": "object" }
+      ],
+      "description": "Verifiable completion criteria."
+    },
+    "do_not": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Explicit prohibitions for this task."
+    },
+    "output_format": {
+      "type": "string",
+      "description": "Required output template for task completion report."
+    },
+    "note": { "type": "string" }
+  },
+  "additionalProperties": true
+}

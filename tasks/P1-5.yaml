@@ -1,0 +1,55 @@
+task: P1-5
+title: Register second strategy and run end-to-end
+priority: P1
+effort: Large (1 week)
+status: PENDING
+depends: [P1-1, P1-2, P1-3, P1-4]
+
+goal: >
+  This is the RESEARCH CAPABLE milestone. Register a non-ST-A2 strategy in the catalog,
+  run it through the full SVOS pipeline, and confirm it produces a PASS or FAIL verdict
+  with a complete manifest. If this works, the platform's core value proposition is delivered.
+
+context: >
+  London Breakout adapter already exists at strategies/adapters/london_breakout_adapter.py.
+  This is the most natural second strategy to use. However, market data must be available.
+
+steps:
+  1: "Verify london_breakout_adapter.py is complete and has a signal function"
+  2: "Download EURUSD/GBPUSD M1 data for the test period (use scripts/download_dukascopy.py)"
+  3: "Add LONDON-BREAKOUT to config/strategy_catalog.yaml with status: INTAKE"
+  4: "Register a backtest script entry in config/research_engine.yaml (or create a minimal one)"
+  5: "Run: python pipeline/run_phase0.py --strategy LONDON-BREAKOUT"
+  6: "Run: python scripts/run_svos_pipeline.py --strategy LONDON-BREAKOUT"
+  7: "Verify output: reports/svos/london-breakout/ contains JSON + Markdown reports"
+  8: "Verify: no BLOCKED manifest warnings"
+  9: "Verify: verdict is PASS or FAIL (not ERROR or BLOCKED)"
+  10: "Record the trial in docs/VERDICT_LOG.md before running backtest"
+
+pre_registration_rule: >
+  You MUST add a row to docs/VERDICT_LOG.md with the trial ID BEFORE running the
+  backtest. This is a hard rule from CLAUDE.md §2. Never run without a pre-registered trial ID.
+
+done_when:
+  - "LONDON-BREAKOUT is in config/strategy_catalog.yaml"
+  - "Trial ID is pre-registered in docs/VERDICT_LOG.md"
+  - "Full pipeline produces reports with a PASS or FAIL verdict"
+  - "No BLOCKED manifest in the output"
+  - "Strategy lifecycle advanced to STATISTICAL_VALIDATION stage"
+
+do_not:
+  - Do not re-run a backtest after changing parameters without a new trial ID
+  - Do not use ST-A2 data as London Breakout data
+  - Do not mark the strategy as approved or current
+  - Do not enable live trading
+
+output_format: |
+  ## P1-5 Result
+  Strategy: LONDON-BREAKOUT (or actual name used)
+  Trial ID: [ID from VERDICT_LOG.md]
+  Pipeline ran: YES
+  Verdict: PASS | FAIL
+  Manifest: COMPLETE | BLOCKED
+  Reports location: reports/svos/[strategy]/
+  Stage reached: [CANONICAL_STAGE_NAME]
+  Next task: P1-6

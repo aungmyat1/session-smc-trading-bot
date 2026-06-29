@@ -1,0 +1,44 @@
+task: P1-3
+title: Fix signals_audit.parquet gap
+priority: P1
+effort: Small (hours)
+status: PENDING
+depends: []
+
+goal: >
+  Resolve the gap between documentation and code in pipeline_02.
+  Option A: Implement the signals_audit.parquet output in process_symbol().
+  Option B: Remove signals_audit.parquet from docs and code comments.
+  Choose based on whether signals_audit is actually needed downstream.
+
+files_to_read:
+  - pipeline/pipeline_02_build_features.py  # find where signals_audit should be written
+  - pipeline/README.md                      # remove or update reference
+  - pipeline/pipeline_03_replay_engine.py   # does it read signals_audit.parquet?
+
+decision:
+  if_needed_downstream: "Implement Option A — write signals_audit.parquet"
+  if_not_needed: "Remove reference from docs and module docstring (Option B)"
+
+option_a_change: |
+  In process_symbol(), after writing asian_range.parquet and session_range.parquet:
+  # Write signal audit annotations
+  signals_df = build_signal_audit_frame(candles, session_ranges)
+  signals_df.to_parquet(output_dir / f"{symbol}_signals_audit.parquet", index=False)
+
+option_b_change: |
+  In pipeline/pipeline_02_build_features.py:
+  Remove "signals_audit.parquet" from module docstring.
+  In pipeline/README.md:
+  Remove signals_audit.parquet from Outputs section.
+
+done_when:
+  - "Documentation matches code — signals_audit.parquet is either written or not mentioned"
+  - "pipeline_README.md and module docstring agree"
+
+output_format: |
+  ## P1-3 Result
+  Decision: Option A (implemented) | Option B (removed from docs)
+  Reason: [why this was chosen]
+  Files changed: [list]
+  Next task: P1-4 (can be done in parallel)

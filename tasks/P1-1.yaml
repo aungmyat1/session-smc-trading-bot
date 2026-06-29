@@ -1,0 +1,58 @@
+task: P1-1
+title: Wire SVOSPlatform to PostgresControlPlane
+priority: P1
+effort: Medium (1-2d)
+status: PENDING
+depends: [P0-1, P0-3, P0-4]
+
+goal: >
+  Modify svos/orchestration/service.py so that SVOSPlatform uses PostgresControlPlane
+  and PostgresEvidenceRepository (from db/) as its backends when DATABASE_URL is set,
+  replacing the current JSONL StrategyRegistryService.
+  The receiving end is fully built and tested. This is a wiring step.
+
+files_to_read:
+  - svos/orchestration/service.py          # SVOSPlatform — current JSONL wiring
+  - svos/registry/service.py               # StrategyRegistryService interface
+  - svos/governance/service.py             # GovernanceService interface
+  - db/control_plane.py                    # PostgresControlPlane — drop-in replacement
+  - db/evidence_repository.py             # PostgresEvidenceRepository
+  - db/connection.py                       # how to get a DB session
+  - tests/database/test_postgres_integration.py  # existing tests to verify against
+
+change_pattern: |
+  # In SVOSPlatform.__init__():
+  # Before (JSONL):
+  #   self.registry = StrategyRegistryService(data_dir="data/svos/registry")
+  #   self.governance = GovernanceService(registry=self.registry)
+  #
+  # After (injectable with PG default when DATABASE_URL set):
+  #   if os.getenv("DATABASE_URL") and not use_jsonl:
+  #       self.control_plane = PostgresControlPlane(db_session)
+  #       self.evidence_repo = PostgresEvidenceRepository(db_session)
+  #   else:
+  #       # JSONL fallback
+  #       self.registry = StrategyRegistryService(data_dir="data/svos/registry")
+  #       self.governance = GovernanceService(registry=self.registry)
+
+done_when:
+  - "SVOSRunner records evidence to PostgreSQL when DATABASE_URL is set"
+  - "JSONL fallback still works when DATABASE_URL is not set"
+  - "pytest tests/database/test_postgres_integration.py passes"
+  - "pytest tests/governance/ passes"
+  - "No JSONL files written when PostgreSQL backend is active"
+
+do_not:
+  - Do not delete the JSONL backend — keep as fallback
+  - Do not change the GovernanceService or StrategyRegistryService interfaces
+  - Do not change db/control_plane.py (it is already correct)
+  - Do not enable live trading
+
+output_format: |
+  ## P1-1 Result
+  Files changed: [list]
+  PG backend active when: DATABASE_URL set
+  JSONL fallback: still works
+  Tests: pytest tests/database/ — N passed
+  Tests: pytest tests/governance/ — N passed
+  Next task: P1-2

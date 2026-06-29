@@ -1,0 +1,113 @@
+# SVOS Project Manifest
+# Load this file in every agent session. ~600 tokens.
+# Source of truth: docs/svos/PROJECT_STATUS_REPORT_2026-06-29.md
+
+project: SVOS — Strategy Engineering Platform
+repository: session-smc-trading-bot
+date: 2026-06-29
+completion: 47%
+score: 59/100
+maturity: TRANSITIONAL
+feature_freeze: true
+freeze_reason: PostgreSQL integration exercise not passed (P0-1)
+
+# ── Current priority ──────────────────────────────────────────────────────────
+current_priority:
+  - P0-1  # Run PostgreSQL integration exercise — UNBLOCKS EVERYTHING
+  - P0-2  # Backup/restore drill + RPO/RTO declaration
+  - P0-3  # Initialise data/svos/ JSONL store (never been written)
+  - P0-4  # Fix GateDecision/ApprovalRecord missing from svos/shared/__init__.py
+
+# ── Module status ─────────────────────────────────────────────────────────────
+status:
+  svos_lifecycle:    COMPLETE      # 11 stages, full transition table
+  svos_governance:   COMPLETE      # GovernanceService, bypass-closed
+  svos_registry:     COMPLETE      # JSONL backend; data/svos/ never written
+  svos_orchestration: COMPLETE     # coordination layer; delegates to governance
+  svos_reports:      COMPLETE      # stage_package.py 766 lines; schema not enforced
+  svos_api:          PARTIAL       # 3 read-only endpoints; zero tests
+  postgres_schema:   COMPLETE      # 39 ORM tables, 3 Alembic migrations
+  control_plane:     COMPLETE      # db/control_plane.py — NOT YET WIRED to production
+  evidence_repo:     COMPLETE      # db/evidence_repository.py — NOT YET WIRED
+  pipeline:          PARTIAL       # stages 2-4 exist; ALL hardcoded to ST-A2
+  research_engine:   PARTIAL       # 6 stage validators; payload_builder ST-A2-specific
+  robustness:        COMPLETE      # 4 functions, strategy-agnostic, tested
+  adapters:          COMPLETE      # 5 strategy adapters; architecture agnostic
+  adaptive_engine:   COMPLETE      # 14 modules; NewsFilter is explicit stub
+  dashboard:         PARTIAL       # ST-A2-specific paths; Flask not in requirements.lock
+  tests:             PARTIAL       # 1185 functions; ~50% coverage; pipeline untested
+  ci:                PARTIAL       # pytest+mypy+ruff+alembic; no coverage gate
+
+# ── Deployment state ──────────────────────────────────────────────────────────
+live_trading: false
+demo_only: true
+current_strategy: null
+st_a2_status: DEFERRED_REVALIDATION  # not active, not deleted
+
+# ── Architecture constants ─────────────────────────────────────────────────────
+architecture:
+  pattern: modular_monolith
+  language: python3.12
+  lifecycle_authority: svos/lifecycle/manager.py       # only authority for stage changes
+  persistence_live: JSONL                              # data/svos/ — NEVER WRITTEN
+  persistence_target: PostgreSQL                       # vmassit db, localhost:5432
+  persistence_readonly: YAML                           # config/strategy_catalog.yaml
+  artifact_store: SHA-256 content-addressed filesystem # svos/adapters/artifacts.py
+  postgres_wired: false                                # built in db/; not called in production
+
+# ── Hard rules (never violate) ────────────────────────────────────────────────
+rules:
+  - Never hardcode strategy name — always use registry lookup keyed by strategy_id
+  - Never bypass governance — svos/lifecycle/manager.py is the only mutation authority
+  - Never write YAML for lifecycle state — catalog is read-only projection
+  - Never enable live trading — LIVE_TRADING=false and DEMO_ONLY=true are platform invariants
+  - Never run backtest without pre-registering a trial ID in docs/VERDICT_LOG.md
+  - Backtest must apply spread + commission; net-of-fees only; must pass 2x spread stress
+  - Virtual Demo is offline only — no broker, no network
+  - Do not start new feature work while feature_freeze is true
+  - Minimize total token usage — stay concise, read only needed files, and avoid duplicate work
+
+# ── Phase gates ───────────────────────────────────────────────────────────────
+phase_gates:
+  statistical_validation: "n >= 50 AND net_pf > 1.0 at standard AND 2x spread stress"
+
+# ── File index (load only what you need) ─────────────────────────────────────
+key_files:
+  lifecycle:        svos/lifecycle/manager.py
+  governance:       svos/governance/service.py
+  registry:         svos/registry/service.py
+  orchestration:    svos/orchestration/service.py
+  research_engine:  research/svos/engine.py
+  payload_builder:  research/svos/payload_builder.py
+  control_plane:    db/control_plane.py
+  evidence_repo:    db/evidence_repository.py
+  db_models:        db/models.py
+  pipeline_entry:   pipeline/run_phase0.py
+  pipeline_features: pipeline/pipeline_02_build_features.py
+  pipeline_replay:  pipeline/pipeline_03_replay_engine.py
+  pipeline_writedb: pipeline/pipeline_04_write_db.py
+  catalog:          config/strategy_catalog.yaml
+  shared_models:    svos/shared/models.py
+  shared_init:      svos/shared/__init__.py
+  ci:               .github/workflows/ci.yml
+
+# ── Task manifest files ──────────────────────────────────────────────────────
+tasks:
+  P0-1: tasks/P0-1.yaml
+  P0-2: tasks/P0-2.yaml
+  P0-3: tasks/P0-3.yaml
+  P0-4: tasks/P0-4.yaml
+  P1-1: tasks/P1-1.yaml
+  P1-2: tasks/P1-2.yaml
+  P1-3: tasks/P1-3.yaml
+  P1-4: tasks/P1-4.yaml
+  P1-5: tasks/P1-5.yaml
+  P1-6: tasks/P1-6.yaml
+
+# ── Agent operating files ─────────────────────────────────────────────────────
+agent_docs:
+  rules:       agent/implementation_rules.md
+  coding:      agent/coding_rules.md
+  templates:   agent/prompt_templates.md
+  dep_graph:   docs/dependency_graph.yaml
+  arch:        docs/architecture_summary.md

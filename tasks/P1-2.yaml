@@ -1,0 +1,70 @@
+task: P1-2
+title: Remove ST-A2 hardcoding from pipeline/
+priority: P1
+effort: Large (3-5d)
+status: PENDING
+depends: [P0-1]
+note: "Largest single code change; 4 files, each a separate sub-task"
+
+goal: >
+  Make the pipeline/ package strategy-agnostic. Add a --strategy flag to run_phase0.py.
+  Remove all hardcoded 'ST-A2' strings. Replace hardcoded signal function with a dispatch
+  registry. Fix trade_features flags to be derived from the Signal object.
+
+files_to_read:
+  - pipeline/run_phase0.py                  # add --strategy, fix banner
+  - pipeline/pipeline_03_replay_engine.py   # generate_signal_A, run_id prefix
+  - pipeline/pipeline_04_write_db.py        # 'ST-A2' SQL, all trade_features=TRUE
+  - pipeline/config.py                      # SpreadConfig, SessionWindow — already agnostic
+  - strategies/adapters/__init__.py         # signal dispatch registry — use this
+  - config/strategy_catalog.yaml            # strategy registry for name lookup
+
+sub_tasks:
+  P1-2a:
+    file: pipeline/run_phase0.py
+    change: |
+      Add argparse --strategy argument (required).
+      Load strategy from catalog by strategy_id.
+      Replace hardcoded "ST-A2 Sweep Reversal" banner with catalog strategy name.
+      Pass strategy_id down to pipeline_02, pipeline_03, pipeline_04.
+
+  P1-2b:
+    file: pipeline/pipeline_03_replay_engine.py
+    change: |
+      Replace: from session_smc.confirmation_entry import generate_signal_A
+      With: from strategies.adapters import get_signal_fn_for_strategy(strategy_id)
+      Replace: f"ST-A-{timestamp}" run_id prefix
+      With: f"{strategy_id}-{timestamp}"
+      If no signal dispatch registry exists, create one in strategies/adapters/__init__.py.
+
+  P1-2c:
+    file: pipeline/pipeline_04_write_db.py
+    change: |
+      Replace: INSERT INTO research.strategies VALUES ('ST-A2', '1.0', ...)
+      With: values derived from strategy_id and version from catalog.
+      Replace: bos_present=TRUE, choch_present=TRUE, fvg_present=TRUE, liquidity_sweep_present=TRUE
+      With: values from signal attributes (signal.bos_present, etc.) or leave NULL if not in signal.
+
+  P1-2d:
+    file: pipeline/__init__.py
+    change: "Update module docstring comment to remove ST-A2 reference"
+
+done_when:
+  - "python -m pipeline.run_phase0 --help shows --strategy argument"
+  - "python -m pipeline.run_phase0 --strategy LONDON-BREAKOUT --dry-run completes without ImportError"
+  - "grep -r 'ST-A2\\|ST_A2\\|sta2' pipeline/ returns only pipeline/__init__.py comment (or zero)"
+  - "trade_features flags are not all unconditionally TRUE"
+
+do_not:
+  - Do not change pipeline/config.py (it is already strategy-agnostic)
+  - Do not remove the existing replay logic — only replace the signal dispatch and SQL strings
+  - Do not add ST-A2-specific logic anywhere
+  - Do not break existing pipeline tests (if any)
+
+output_format: |
+  ## P1-2 Result
+  Sub-tasks completed: [list P1-2a through P1-2d]
+  Files changed: [list]
+  ST-A2 hardcoding grep result: [output]
+  --strategy flag: works | error
+  Next task: P1-4

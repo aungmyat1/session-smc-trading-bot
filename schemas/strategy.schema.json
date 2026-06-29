@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "svos/strategy.schema.json",
+  "title": "SVOS Strategy Specification",
+  "description": "Canonical strategy specification consumed by intake, audit, and pipeline stages.",
+  "type": "object",
+  "required": [
+    "strategy_id",
+    "version",
+    "instruments",
+    "timeframes",
+    "sessions",
+    "entry_rules",
+    "exit_rules",
+    "risk_rules"
+  ],
+  "properties": {
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "description": "Kebab-case strategy slug. Immutable after registration. Never 'ST-A2' for new strategies."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version. Increment on any spec change — creates a new trial."
+    },
+    "parent_version": {
+      "type": ["string", "null"],
+      "description": "Version this spec was derived from (for audit trail)."
+    },
+    "owner": {
+      "type": "string",
+      "description": "Human owner identifier."
+    },
+    "spec_hash": {
+      "type": "string",
+      "description": "SHA-256 of the canonical spec JSON. Computed by svos/shared/support.py."
+    },
+    "instruments": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Required trading pairs, e.g. ['EURUSD', 'GBPUSD']."
+    },
+    "timeframes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Required OHLCV timeframes, e.g. ['M1', 'H1', 'D1']."
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "start_utc", "end_utc"],
+        "properties": {
+          "name": { "type": "string" },
+          "start_utc": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+          "end_utc": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" }
+        }
+      },
+      "description": "Trading session windows in UTC."
+    },
+    "entry_rules": {
+      "type": "object",
+      "required": ["conditions"],
+      "properties": {
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Ordered list of objective entry conditions."
+        },
+        "confirmation": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Optional confirmation filters applied after conditions."
+        },
+        "direction": {
+          "enum": ["long", "short", "both"],
+          "description": "Trade direction bias."
+        }
+      }
+    },
+    "exit_rules": {
+      "type": "object",
+      "required": ["stop_loss", "take_profit"],
+      "properties": {
+        "stop_loss": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["fixed_pips", "atr_multiple", "structure", "candle_low"] },
+            "value": { "type": ["number", "null"] },
+            "description": { "type": "string" }
+          }
+        },
+        "take_profit": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["fixed_rr", "fixed_pips", "structure", "partial"] },
+            "value": { "type": ["number", "null"] },
+            "description": { "type": "string" }
+          }
+        },
+        "invalidation": {
+          "type": "string",
+          "description": "Condition that cancels a pending entry before fill."
+        }
+      }
+    },
+    "risk_rules": {
+      "type": "object",
+      "required": ["risk_per_trade_pct", "max_concurrent_positions"],
+      "properties": {
+        "risk_per_trade_pct": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 5.0,
+          "description": "Account risk per trade as percentage."
+        },
+        "max_concurrent_positions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1,
+          "description": "Maximum open positions per symbol. Must be 1 (§7 one position per symbol)."
+        },
+        "daily_loss_limit_pct": {
+          "type": ["number", "null"],
+          "description": "Optional: halt trading if daily drawdown exceeds this %."
+        }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Typed strategy parameters with defaults. Must not be tuned mid-trial.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type", "default"],
+        "properties": {
+          "type": { "enum": ["float", "int", "bool", "str"] },
+          "default": {},
+          "min": { "type": ["number", "null"] },
+          "max": { "type": ["number", "null"] },
+          "unit": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "adapter_id": {
+      "type": "string",
+      "description": "Identifier of the StrategyAdapter implementation in strategies/adapters/."
+    },
+    "qualification_policy_version": {
+      "type": "string",
+      "description": "Version of the qualification policy this spec targets."
+    },
+    "required_data": {
+      "type": "object",
+      "properties": {
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "sources": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": false
+}

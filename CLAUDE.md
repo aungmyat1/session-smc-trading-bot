@@ -30,6 +30,10 @@
 
 7. **One position per symbol.** No concurrency within a pair.
 
+8. **Minimize total token usage.** Keep responses concise, read only the files needed,
+   avoid duplicate analysis/tool calls, and prefer the smallest action that completes
+   the task safely.
+
 ---
 
 ## §1 — PROJECT OBJECTIVE

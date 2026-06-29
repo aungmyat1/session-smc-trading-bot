@@ -1,0 +1,36 @@
+task: P0-4
+title: Fix GateDecision and ApprovalRecord missing from svos/shared/__init__.py
+priority: P0
+effort: Trivial (5 min)
+status: PENDING
+depends: []
+
+goal: >
+  Add GateDecision and ApprovalRecord to the public exports of svos/shared/__init__.py.
+  These two classes exist in svos/shared/models.py but are not re-exported.
+  Any code doing "from svos.shared import GateDecision" currently fails with ImportError.
+
+files_to_read:
+  - svos/shared/__init__.py     # current exports — READ FIRST
+  - svos/shared/models.py       # GateDecision and ApprovalRecord definitions
+
+change:
+  file: svos/shared/__init__.py
+  add_to_imports: "GateDecision, ApprovalRecord"
+  note: "Follow the existing pattern for how other models are exported"
+
+done_when:
+  - "python -c 'from svos.shared import GateDecision, ApprovalRecord; print(GateDecision)'" exits 0
+  - "Existing tests still pass: pytest tests/governance/ -q"
+
+do_not:
+  - Do not change svos/shared/models.py
+  - Do not rename or move GateDecision or ApprovalRecord
+  - Do not add any other changes to this commit
+
+output_format: |
+  ## P0-4 Result
+  File changed: svos/shared/__init__.py
+  Import test: PASS
+  Existing tests: N passed, 0 failed
+  Next task: P1-1
