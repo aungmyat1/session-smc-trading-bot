@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
@@ -19,7 +20,13 @@ pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="SVOS_TEST_DATABAS
 
 def test_migrations_and_concurrent_transition_are_atomic() -> None:
     env = {**os.environ, "DATABASE_URL": TEST_DATABASE_URL}
-    subprocess.run([".venv/bin/alembic", "upgrade", "head"], env=env, check=True, capture_output=True, text=True)
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     engine = create_engine(TEST_DATABASE_URL)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     slug = f"concurrency-{uuid4()}"

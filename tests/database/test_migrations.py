@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def _offline_sql(database_url: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "DATABASE_URL": database_url}
     return subprocess.run(
-        [str(ROOT / ".venv" / "bin" / "alembic"), "upgrade", "head", "--sql"],
+        [sys.executable, "-m", "alembic", "upgrade", "head", "--sql"],
         cwd=ROOT,
         env=env,
         text=True,
