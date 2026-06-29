@@ -20,7 +20,7 @@
 
 | File | Purpose | Dependents |
 |------|---------|-----------|
-| `session_strategy.py` | Top-level orchestrator; `run_strategy()` entry point | replay_db.py, replay_2025.py, backtest_session_liquidity.py, run_st_a2_demo.py |
+| `session_strategy.py` | Top-level orchestrator; `run_strategy()` entry point | replay_db.py, replay_2025.py, backtest_session_liquidity.py, run_strategy_demo.py |
 | `session_builder.py` | Asian range, session classify, build_asian_range() | All replay scripts, build_research_db.py |
 | `bias_filter.py` | 4H+1H HTF bias (HH+HL) | replay_6m.py, dry_run.py, replay_st_a2_d1.py |
 | `sweep_detector.py` | Asian range sweep detection | replay_6m.py, dry_run.py |
@@ -83,7 +83,7 @@
 | `backtest.py` | **A** | Full 11-phase backtest using session_smc/ |
 | `extract_features.py` | **A** | SMC event extraction to data/features/ |
 | `validate_dataset.py` | **A** | Data quality validation |
-| `run_st_a2_demo.py` | **A** | ST-A2 demo/shadow execution on Vantage MT5 |
+| `run_strategy_demo.py` | **A** | Strategy demo/shadow execution on Vantage MT5 |
 | `run_portfolio.py` | **A** | Multi-strategy portfolio demo runner |
 | `health_check.py` | **A** | Demo account health checks |
 | `demo_health_check.py` | **A** | Vantage demo-specific health checks |

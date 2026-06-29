@@ -1,7 +1,7 @@
 """
-ST-A2 Demo Trade Journal.
+Strategy Demo Trade Journal.
 
-Appends records to logs/st_a2_demo_trades.jsonl.
+Appends records to logs/strategy_demo_trades.jsonl by default.
 Isolated from execution/trade_logger.py (live bot logger).
 
 Public API:
@@ -19,8 +19,8 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-_DEFAULT = Path("logs/st_a2_demo_trades.jsonl")
-_log = logging.getLogger("st_a2.journal")
+_DEFAULT = Path("logs/strategy_demo_trades.jsonl")
+_log = logging.getLogger("strategy_demo.journal")
 
 
 class DemoTradeJournal:
@@ -62,7 +62,7 @@ class DemoTradeJournal:
             "lot_size":    lots,
             "spread":      spread,
             "session":     sess,
-            "strategy":    "ST-A2",
+            "strategy":    getattr(signal, "strategy_name", None) or "",
             "order_id":    order_result.get("order_id", ""),
             "simulated":   order_result.get("simulated", True),
             "exit":        None,

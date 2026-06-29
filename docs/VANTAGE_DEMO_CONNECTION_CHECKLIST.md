@@ -1,7 +1,7 @@
 # Vantage Demo — Broker Integration Checklist
-# Last updated: 2026-06-24
+# Last updated: 2026-06-29
 
-Scope: ST-A2 demo stack connecting to Vantage MT5 demo account via MetaAPI Cloud SDK v29.
+Scope: Strategy demo stack connecting to Vantage MT5 demo account via MetaAPI Cloud SDK v29.
 Account: d6f6eec3-96d5-4001-a802-62b3f4b49817 (cloud-g2, high reliability, full redundancy)
 
 Status key:
@@ -29,7 +29,7 @@ Status key:
 | # | Check | File | Status | Notes |
 |---|-------|------|--------|-------|
 | 7  | Manual reconnect method | mt5_connector.py:100–105 | PASS(code) | `reconnect()` = disconnect + sleep(5) + connect |
-| 8  | Auto-reconnect on data fetch failure | run_st_a2_demo.py:87–98 | PASS(code) | Triggers after 3 consecutive fetch fails |
+| 8  | Auto-reconnect on data fetch failure | run_strategy_demo.py | PASS(code) | Triggers after 3 consecutive fetch fails |
 | 9  | Heartbeat with reconnect fallback | mt5_connector.py:109–132 | PASS(code) | `heartbeat()` tries reconnect on failure |
 | 10 | WebSocket timeout recovery | — | UNVERIFIED | Timeout occurred 2026-06-24 18:48; auto-reconnect not confirmed to recover |
 
@@ -42,8 +42,8 @@ Status key:
 | 11 | M15 candles fetch | vantage_demo_executor.py:53–69 | PASS(live) | `_account.get_historical_candles()` confirmed working |
 | 12 | H4 candles fetch | vantage_demo_executor.py:53–69 | PASS(live) | Same method, different TF |
 | 13 | Timeframe mapping | vantage_demo_executor.py:37–40 | PASS(code) | M5/M15/H1/H4 → SDK strings |
-| 14 | EURUSD candle count ≥ 50 | run_st_a2_demo.py:108 | PASS(live) | 200-bar requests confirmed |
-| 15 | GBPUSD candle count ≥ 50 | run_st_a2_demo.py:108 | PASS(live) | Same |
+| 14 | EURUSD candle count ≥ 50 | run_strategy_demo.py | PASS(live) | 200-bar requests confirmed |
+| 15 | GBPUSD candle count ≥ 50 | run_strategy_demo.py | PASS(live) | Same |
 | 16 | XAUUSD candle support | vantage_demo_executor.py | UNVERIFIED | Symbol not yet tested; pip table now updated |
 | 17 | Candle field mapping | vantage_demo_executor.py:60–67 | PASS(code) | open/high/low/close/tickVolume mapped |
 
@@ -53,8 +53,8 @@ Status key:
 |---|-------|------|--------|-------|
 | 18 | Bid/ask price fetch | vantage_demo_executor.py:71–81 | PASS(live) | `get_symbol_price()` confirmed |
 | 19 | Spread-in-pips calculation | vantage_demo_executor.py:76 | PASS(code) | `(ask-bid)/pip_size` |
-| 20 | EURUSD max spread gate (1.5 pip) | run_st_a2_demo.py | PASS(code) | Skips tick if exceeded |
-| 21 | GBPUSD max spread gate (2.0 pip) | run_st_a2_demo.py | PASS(code) | Skips tick if exceeded |
+| 20 | EURUSD max spread gate (1.5 pip) | run_strategy_demo.py | PASS(code) | Skips tick if exceeded |
+| 21 | GBPUSD max spread gate (2.0 pip) | run_strategy_demo.py | PASS(code) | Skips tick if exceeded |
 | 22 | XAUUSD pip size configured | vantage_demo_executor.py | PASS(code) | 0.1 pip size, $10/pip/lot |
 
 ## Order Placement
@@ -64,8 +64,8 @@ Status key:
 | 23 | DEMO_ONLY guard on all writes | vantage_demo_executor.py:112–116 | PASS(code) | Returns simulated result if DEMO_ONLY=true |
 | 24 | Market buy order | vantage_demo_executor.py:134–135 | UNVERIFIED | `create_market_buy_order()` — code ready, not live-tested |
 | 25 | Market sell order | vantage_demo_executor.py:136–137 | UNVERIFIED | `create_market_sell_order()` — code ready, not live-tested |
-| 26 | Magic number stamped (21099) | trade_manager.py:56 | PASS(code) | All ST-A2 orders get magic=21099 |
-| 27 | Comment field set | vantage_demo_executor.py:127 | PASS(code) | `comment="ST-A2-demo"` |
+| 26 | Magic number stamped (21099) | trade_manager.py | PASS(code) | All strategy demo orders get magic=21099 |
+| 27 | Comment field set | vantage_demo_executor.py | PASS(code) | Uses strategy-specific comment text |
 | 28 | Simulated order ID on DEMO_ONLY | vantage_demo_executor.py:131 | PASS(code) | `SIM-XXX-XXXXXX` format |
 
 ## Order Modification
@@ -74,7 +74,7 @@ Status key:
 |---|-------|------|--------|-------|
 | 29 | Modify SL/TP | vantage_demo_executor.py:150–158 | UNVERIFIED | `modify_position()` — code ready, not live-tested |
 | 30 | Emergency close single position | trade_manager.py:65–67 | UNVERIFIED | `close_position()` via RPC |
-| 31 | Emergency close all ST-A2 positions | trade_manager.py:77–88 | UNVERIFIED | Filters by magic=21099, closes all |
+| 31 | Emergency close all strategy demo positions | trade_manager.py | UNVERIFIED | Filters by magic=21099, closes all |
 
 ## Stop Loss & Take Profit
 
@@ -124,7 +124,7 @@ Status key:
 
 ## Pre-First-Trade Blockers
 
-None. All code paths are implemented. UNVERIFIED items are cleared by running the first live demo order with TRADING_MODE=demo and DEMO_ONLY=false.
+None. All code paths are implemented. UNVERIFIED items are cleared by running the first live demo order with `TRADING_MODE=demo` and `DEMO_ONLY=false`.
 
 ## Recommended Verification Sequence
 

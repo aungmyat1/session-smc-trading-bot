@@ -106,6 +106,7 @@ _EVF_REPORTS_DIR = _ROOT / "execution_validation" / "reports"
 _JOURNAL_PATHS = [
     _ROOT / "logs" / "trades.jsonl",
     _ROOT / "logs" / "adaptive_trades.jsonl",
+    _ROOT / "logs" / "strategy_demo_trades.jsonl",
     _ROOT / "logs" / "st_a2_demo_trades.jsonl",
     _ROOT / "logs" / "portfolio_demo_trades.jsonl",
 ]
@@ -113,7 +114,13 @@ _SVOS_REPORTS_DIR = _ROOT / "reports" / "current_strategy_svos"
 _SVOS_CANONICAL_REPORTS_DIR = _ROOT / "reports" / "svos"
 _ARCHITECTURE_PATH = _ROOT / "docs" / "SYSTEM_ARCHITECTURE.md"
 _BOT_LOG = _ROOT / "logs" / "bot.log"
-_RUNNER_LOG = _ROOT / "logs" / "st_a2_runner.log"
+_RUNNER_LOGS = [
+    _ROOT / "logs" / "strategy_demo.log",
+    _ROOT / "logs" / "st_a2_demo.log",
+    _ROOT / "logs" / "st_a2_runner.log",
+]
+_RUNNER_LOG = _RUNNER_LOGS[-1]
+_DEMO_STATE_PATH = _ROOT / "logs" / "strategy_demo_state.json"
 
 _SVOS_STAGE_FILE_MAP = {
     "intake": ("00_intake.md", "00_intake.json"),
@@ -189,6 +196,11 @@ def _read_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def _demo_runner_state() -> dict[str, Any]:
+    payload = _read_json(_DEMO_STATE_PATH)
+    return payload if isinstance(payload, dict) else {}
 
 
 def _svos_stage_report_payload(strategy: str) -> dict[str, Any]:
@@ -399,7 +411,7 @@ def _latest_architecture_status() -> dict[str, Any]:
 
 def _latest_log_lines(limit: int = 200) -> list[str]:
     lines: list[str] = []
-    for path in (_BOT_LOG, _RUNNER_LOG):
+    for path in (_BOT_LOG, *_RUNNER_LOGS):
         if not path.exists():
             continue
         lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:])
@@ -700,6 +712,14 @@ def api_trades():
     })
 
 
+@app.route("/api/demo-runner")
+def api_demo_runner():
+    return jsonify({
+        "runner": _demo_runner_state(),
+        "fetched_at": _now_iso(),
+    })
+
+
 @app.route("/api/status")
 def api_status():
     current, current_meta, _ = _current_catalog_state()
@@ -715,6 +735,7 @@ def api_status():
     smo = _smo_payload()
     control = load_control_state()
     canonical_run = _latest_canonical_svos_payload(current) if current else {}
+    demo_runner = _demo_runner_state()
 
     return jsonify({
         "system": "ONLINE",
@@ -729,6 +750,11 @@ def api_status():
         "trade_count": stats["total"],
         "win_rate": stats["win_rate"],
         "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
+        "demo_runner_mode": demo_runner.get("mode", ""),
+        "demo_runner_status": demo_runner.get("status", ""),
+        "demo_runner_strategy": demo_runner.get("strategy", ""),
+        "demo_runner_updated_at": demo_runner.get("updated_at", ""),
+        "demo_only": demo_runner.get("demo_only"),
         "rgm_risk_status": rgm["qualification_status"],
         "governance_approval": governance["approval_status"],
         "smo_monitoring_status": smo["monitoring_status"],

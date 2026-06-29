@@ -1,5 +1,5 @@
 """
-ST-A2 System Health Check — deployment readiness status.
+Strategy Demo System Health Check — deployment readiness status.
 
 Checks:
   Runner      — log file exists and has recent activity
@@ -53,25 +53,32 @@ try:
 except ImportError:  # pragma: no cover - optional in minimal runtimes
     yaml = None
 
-_RUNNER_LOG  = _ROOT / "logs" / "st_a2_runner.log"
+_RUNNER_LOGS = [
+    _ROOT / "logs" / "strategy_demo.log",
+    _ROOT / "logs" / "st_a2_demo.log",
+    _ROOT / "logs" / "st_a2_runner.log",
+]
 _PAIRS       = ["EURUSD", "XAUUSD"]
 _STALE_S     = 300   # runner log is stale if no entry within 5 min
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
 _DB_CONNECT_TIMEOUT_S = 3
+_DB_FAIL_THRESHOLD = int(os.environ.get("DB_HEALTHCHECK_FAIL_THRESHOLD", "3"))
 _DB_BACKEND_CHOICES = {"auto", "postgres", "duckdb", "sqlite", "disabled"}
 _CONTROL_STATE_PATH = _ROOT / "reports" / "control_state.json"
+_DB_HEALTH_STATE_PATH = _ROOT / "logs" / "db_health_state.json"
 
 # ── Individual checks ──────────────────────────────────────────────────────────
 
 
 def check_runner() -> dict:
-    if not _RUNNER_LOG.exists():
-        return {"status": "FAIL", "detail": "logs/st_a2_runner.log not found"}
+    active_log = next((path for path in _RUNNER_LOGS if path.exists()), None)
+    if active_log is None:
+        return {"status": "FAIL", "detail": "strategy demo runner log not found"}
 
-    age_s = datetime.now().timestamp() - _RUNNER_LOG.stat().st_mtime
+    age_s = datetime.now().timestamp() - active_log.stat().st_mtime
     try:
-        lines    = _RUNNER_LOG.read_text(errors="replace").splitlines()
+        lines    = active_log.read_text(errors="replace").splitlines()
         last_line = next((l for l in reversed(lines) if l.strip()), "")
     except OSError:
         last_line = ""
@@ -142,6 +149,36 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _load_db_health_state() -> dict:
+    if not _DB_HEALTH_STATE_PATH.exists():
+        return {}
+    try:
+        payload = json.loads(_DB_HEALTH_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _write_db_health_state(state: dict) -> None:
+    _DB_HEALTH_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _DB_HEALTH_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _record_db_probe_result(endpoint_key: str, ok: bool) -> int:
+    state = _load_db_health_state()
+    entry = state.get(endpoint_key, {})
+    if not isinstance(entry, dict):
+        entry = {}
+    count = 0 if ok else int(entry.get("consecutive_failures", 0)) + 1
+    state[endpoint_key] = {
+        "consecutive_failures": count,
+        "last_result": "PASS" if ok else "FAIL",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _write_db_health_state(state)
+    return count
+
+
 def _load_yaml(path: Path) -> dict:
     if yaml is None or not path.exists():
         return {}
@@ -165,6 +202,30 @@ def _load_control_state() -> dict:
 def _emergency_stop_state() -> dict:
     state = _load_control_state().get("emergency_stop", {})
     return state if isinstance(state, dict) else {}
+
+
+def _in_container_runtime() -> bool:
+    return Path("/.dockerenv").exists() or _env_bool("RUNNING_IN_CONTAINER", False)
+
+
+def _db_probe_candidates(host: str, port: int) -> list[tuple[str, int, str]]:
+    candidates: list[tuple[str, int, str]] = [(host, port, "configured")]
+    if host in {"127.0.0.1", "localhost"} and _in_container_runtime():
+        override = os.environ.get("DB_HEALTHCHECK_HOST", "").strip()
+        extras = [override] if override else ["host.docker.internal", "postgres"]
+        for extra in extras:
+            if extra and all(existing[0] != extra for existing in candidates):
+                candidates.append((extra, port, "container_fallback"))
+    return candidates
+
+
+def _probe_socket(host: str, port: int) -> tuple[bool, str]:
+    try:
+        with socket.create_connection((host, port), timeout=_DB_CONNECT_TIMEOUT_S):
+            pass
+        return True, "reachable"
+    except Exception as exc:
+        return False, f"{exc.__class__.__name__}: {exc}"
 
 
 def _infer_db_backend(explicit_backend: str | None = None) -> tuple[str, dict]:
@@ -256,26 +317,55 @@ def check_research_db(db_backend: str | None = None) -> dict:
     db_user = parsed.username if parsed and parsed.username else os.environ.get("DB_USER", "")
     required = backend == "postgres"
     service_status = _postgres_service_status()
+    endpoint_key = f"{db_user or '?'}@{host}:{port}/{db_name or '?'}"
+    attempts = _db_probe_candidates(host, port)
+    errors: list[str] = []
+    fallback_success: tuple[str, int, str] | None = None
 
-    try:
-        with socket.create_connection((host, port), timeout=_DB_CONNECT_TIMEOUT_S):
-            pass
-    except Exception as exc:
+    for candidate_host, candidate_port, source in attempts:
+        ok, detail = _probe_socket(candidate_host, candidate_port)
+        if ok:
+            if source == "configured":
+                _record_db_probe_result(endpoint_key, True)
+                return {
+                    "status": "PASS",
+                    "detail": (
+                        f"postgres required={required} host={candidate_host}:{candidate_port} db={db_name or '?'} "
+                        f"user={db_user or '?'} service={service_status} reachable"
+                    ),
+                    "consecutive_failures": 0,
+                }
+            fallback_success = (candidate_host, candidate_port, source)
+            break
+        errors.append(f"{candidate_host}:{candidate_port} -> {detail}")
+
+    if fallback_success is not None:
+        _record_db_probe_result(endpoint_key, True)
+        candidate_host, candidate_port, _source = fallback_success
         return {
-            "status": "FAIL" if required else "WARN",
+            "status": "WARN",
             "detail": (
-                f"postgres required={required} host={host}:{port} db={db_name or '?'} "
-                f"user={db_user or '?'} service={service_status} "
-                f"-> unreachable ({exc.__class__.__name__})"
+                f"postgres configured host={host}:{port} unreachable but fallback {candidate_host}:{candidate_port} reachable; "
+                f"db={db_name or '?'} user={db_user or '?'} service={service_status}"
             ),
+            "consecutive_failures": 0,
+            "configured_host": host,
+            "effective_host": candidate_host,
         }
 
+    consecutive_failures = _record_db_probe_result(endpoint_key, False)
+    escalated = consecutive_failures >= max(1, _DB_FAIL_THRESHOLD)
+    status = "FAIL" if required and escalated else "WARN"
     return {
-        "status": "PASS",
+        "status": status,
         "detail": (
             f"postgres required={required} host={host}:{port} db={db_name or '?'} "
-            f"user={db_user or '?'} service={service_status} reachable"
+            f"user={db_user or '?'} service={service_status} "
+            f"-> unreachable after {consecutive_failures} consecutive failure(s); "
+            f"threshold={_DB_FAIL_THRESHOLD}; attempts=[{'; '.join(errors)}]"
         ),
+        "consecutive_failures": consecutive_failures,
+        "alert_eligible": escalated,
     }
 
 

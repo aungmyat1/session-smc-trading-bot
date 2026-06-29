@@ -1,5 +1,5 @@
 """
-ST-A2 Demo Health Check — single-shot status report.
+Strategy Demo Health Check — single-shot status report.
 
 Usage:
     python3 scripts/demo_health_check.py
@@ -27,8 +27,14 @@ from execution.vantage_demo_executor import VantageDemoExecutor
 from execution.trade_manager import TradeManager
 from execution.trade_journal import DemoTradeJournal
 
-_JOURNAL_PATH  = _ROOT / "logs" / "st_a2_demo_trades.jsonl"
-_SIGNAL_LOG    = _ROOT / "logs" / "st_a2_demo.log"
+_JOURNAL_CANDIDATES = [
+    _ROOT / "logs" / "strategy_demo_trades.jsonl",
+    _ROOT / "logs" / "st_a2_demo_trades.jsonl",
+]
+_SIGNAL_LOG_CANDIDATES = [
+    _ROOT / "logs" / "strategy_demo.log",
+    _ROOT / "logs" / "st_a2_demo.log",
+]
 _DAILY_LOSS_LIMIT = 0.015
 _MAX_TRADES    = 4
 _CONNECT_TIMEOUT_S = 45
@@ -36,12 +42,13 @@ _RPC_TIMEOUT_S = 20
 
 
 def _last_signal() -> str:
-    if not _SIGNAL_LOG.exists():
-        return "no log"
-    lines = _SIGNAL_LOG.read_text().splitlines()
-    for line in reversed(lines):
-        if "SIGNAL" in line:
-            return line.strip()[-120:]
+    for path in _SIGNAL_LOG_CANDIDATES:
+        if not path.exists():
+            continue
+        lines = path.read_text().splitlines()
+        for line in reversed(lines):
+            if "SIGNAL" in line:
+                return line.strip()[-120:]
     return "no signal yet"
 
 
@@ -66,7 +73,8 @@ async def _check() -> None:
 
     executor = VantageDemoExecutor(connector)
     manager  = TradeManager(executor)
-    journal  = DemoTradeJournal()
+    journal_path = next((path for path in _JOURNAL_CANDIDATES if path.exists()), _JOURNAL_CANDIDATES[0])
+    journal  = DemoTradeJournal(journal_path)
 
     try:
         hb   = await asyncio.wait_for(connector.heartbeat(), timeout=_RPC_TIMEOUT_S)
@@ -90,7 +98,7 @@ async def _check() -> None:
 
     print()
     print("=" * 54)
-    print(f"  ST-A2 DEMO HEALTH CHECK   {now}")
+    print(f"  STRATEGY DEMO HEALTH CHECK   {now}")
     print("=" * 54)
 
     # MetaAPI

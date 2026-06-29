@@ -98,7 +98,7 @@ Relevant current modules:
 - `execution/`
 - `bot.py`
 - `scripts/run_d2_e3_demo.py`
-- `scripts/run_st_a2_demo.py`
+- `scripts/run_strategy_demo.py`
 - `scripts/run_portfolio.py`
 
 ---

@@ -75,6 +75,7 @@
     border-radius: 4px; letter-spacing: 0.5px;
   }
   .live-badge.paper { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+  .live-badge.demo  { background: var(--blue-dim);   color: var(--blue);   border: 1px solid var(--blue); }
   .live-badge.live  { background: var(--red-dim);    color: var(--red);    border: 1px solid var(--red); animation: pulse 1s infinite; }
 
   .refresh-btn {
@@ -551,6 +552,83 @@
     font-size: 11px;
     color: var(--muted);
   }
+  .runtime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .runtime-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+  }
+  .runtime-card .label {
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .45px;
+  }
+  .runtime-card .value {
+    margin-top: 5px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .runtime-card .sub {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .runtime-columns {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 12px;
+  }
+  .runtime-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .runtime-block h4 {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .pair-list, .position-list {
+    display: grid;
+    gap: 8px;
+  }
+  .pair-item, .position-item {
+    display: grid;
+    grid-template-columns: 90px 90px 1fr 90px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .position-item {
+    grid-template-columns: 90px 80px 1fr 110px;
+  }
+  .pair-item .meta, .position-item .meta {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .signal-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    background: rgba(88,166,255,0.06);
+  }
+  .signal-box .headline {
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  @media (max-width: 900px) {
+    .runtime-columns { grid-template-columns: 1fr; }
+    .pair-item, .position-item { grid-template-columns: 1fr; }
+  }
 
   /* --- Score ring --- */
   .score-container { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
@@ -911,6 +989,42 @@
     </div>
   </div>
 
+  <!-- Vantage Demo Runtime -->
+  <div class="panel full-width">
+    <div class="panel-header">
+      <div class="panel-header-left">
+        <span>🧭</span>
+        <div>
+          <div class="panel-title">Vantage Demo Runtime</div>
+          <div class="panel-subtitle">Live runner heartbeat, account state, pair scans, and last execution decision</div>
+        </div>
+      </div>
+      <span id="demo-runner-badge" class="badge badge-unknown">—</span>
+    </div>
+    <div class="panel-body">
+      <div id="demo-runner-grid" class="runtime-grid">
+        <div class="loading">Loading runner state…</div>
+      </div>
+      <div class="runtime-columns">
+        <div class="runtime-block">
+          <h4>Pair Scan Snapshot</h4>
+          <div id="demo-pairs" class="pair-list">
+            <div class="loading">Loading pair state…</div>
+          </div>
+        </div>
+        <div class="runtime-block">
+          <h4>Last Signal / Open Positions</h4>
+          <div id="demo-signal" class="signal-box">
+            <div class="loading">Waiting for runner data…</div>
+          </div>
+          <div id="demo-positions" class="position-list" style="margin-top:10px;">
+            <div class="loading">Loading positions…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Trade Journal Panel -->
   <div class="panel full-width">
     <div class="panel-header">
@@ -1211,8 +1325,8 @@ async function loadStatus() {
   const d = await apiFetch('/api/status');
   if (!d) return;
 
-  document.getElementById('hdr-strategy').textContent = d.current_strategy || '—';
-  document.getElementById('hdr-strategy-status').textContent = 'status: ' + (d.strategy_status || '—');
+  document.getElementById('hdr-strategy').textContent = d.current_strategy || d.demo_runner_strategy || '—';
+  document.getElementById('hdr-strategy-status').textContent = 'status: ' + (d.strategy_status || d.demo_runner_status || '—');
 
   const svosEl = document.getElementById('hdr-svos');
   svosEl.textContent = d.last_svos_status || '—';
@@ -1248,6 +1362,12 @@ async function loadStatus() {
   if (d.live_trading) {
     liveEl.textContent = 'ON'; liveEl.className = 'value red';
     liveBadge.textContent = 'LIVE'; liveBadge.className = 'live-badge live';
+  } else if (d.demo_runner_mode === 'demo' && d.demo_only === false) {
+    liveEl.textContent = 'DEMO'; liveEl.className = 'value blue';
+    liveBadge.textContent = 'DEMO'; liveBadge.className = 'live-badge demo';
+  } else if (d.demo_runner_mode === 'shadow') {
+    liveEl.textContent = 'SHADOW'; liveEl.className = 'value yellow';
+    liveBadge.textContent = 'PAPER'; liveBadge.className = 'live-badge paper';
   } else {
     liveEl.textContent = 'OFF'; liveEl.className = 'value muted';
     liveBadge.textContent = 'PAPER'; liveBadge.className = 'live-badge paper';
@@ -1477,6 +1597,73 @@ async function openSVOSStageReport(stageName) {
     return;
   }
   renderMarkdownOutput(out, d.content || '# Empty Report');
+}
+
+// ---- Demo Runner ----
+function demoBadgeClass(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'signal' || normalized === 'running' || normalized === 'connected') return 'badge-pass';
+  if (normalized === 'blocked' || normalized === 'idle') return 'badge-pending';
+  if (normalized === 'error' || normalized === 'stopped') return 'badge-fail';
+  return 'badge-unknown';
+}
+
+function fmtNum(value, digits = 2) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num.toFixed(digits) : '—';
+}
+
+async function loadDemoRunner() {
+  const d = await apiFetch('/api/demo-runner');
+  if (!d) return;
+  const runner = d.runner || {};
+
+  const badge = document.getElementById('demo-runner-badge');
+  badge.textContent = (runner.status || 'unknown').toUpperCase();
+  badge.className = 'badge ' + demoBadgeClass(runner.status);
+
+  const account = runner.account || {};
+  const positions = Array.isArray(runner.open_positions) ? runner.open_positions : [];
+  const grid = document.getElementById('demo-runner-grid');
+  grid.innerHTML = `
+    <div class="runtime-card"><div class="label">Strategy</div><div class="value blue mono">${escapeHtml(runner.strategy || '—')}</div><div class="sub">mode: ${(runner.mode || '—').toUpperCase()}</div></div>
+    <div class="runtime-card"><div class="label">Runner Status</div><div class="value ${toneClass(runner.status)}">${escapeHtml((runner.status || '—').toUpperCase())}</div><div class="sub">${escapeHtml(runner.last_decision || '—')}</div></div>
+    <div class="runtime-card"><div class="label">Session Gate</div><div class="value ${runner.session_gate === 'london' || runner.session_gate === 'new_york' ? 'green' : runner.session_gate === 'asian' ? 'yellow' : 'muted'}">${escapeHtml((runner.session_gate || '—').toUpperCase())}</div><div class="sub">kill-zone visibility</div></div>
+    <div class="runtime-card"><div class="label">Last Update</div><div class="value">${escapeHtml(fmtShort(runner.updated_at || d.fetched_at))}</div><div class="sub">last tick: ${escapeHtml(fmtShort(runner.last_tick_at || ''))}</div></div>
+    <div class="runtime-card"><div class="label">Account</div><div class="value">$${escapeHtml(fmtNum(account.equity ?? account.balance, 2))}</div><div class="sub">bal $${escapeHtml(fmtNum(account.balance, 2))} · ${escapeHtml(account.currency || 'USD')}</div></div>
+    <div class="runtime-card"><div class="label">Execution</div><div class="value ${runner.demo_only === false ? 'blue' : 'yellow'}">${runner.demo_only === false ? 'REAL DEMO ORDERS' : 'SIMULATED DEMO'}</div><div class="sub">LIVE_TRADING=${runner.live_trading ? 'true' : 'false'}</div></div>
+    <div class="runtime-card"><div class="label">Open Positions</div><div class="value ${positions.length ? 'green' : 'muted'}">${positions.length}</div><div class="sub">${escapeHtml((runner.pairs || []).join(', ') || '—')}</div></div>
+  `;
+
+  const pairRows = Array.isArray(runner.pair_results) ? runner.pair_results : [];
+  const pairsEl = document.getElementById('demo-pairs');
+  pairsEl.innerHTML = pairRows.length ? pairRows.map(item => `
+    <div class="pair-item">
+      <div><div class="mono">${escapeHtml(item.symbol || '—')}</div><div class="meta">${escapeHtml((item.status || '—').toUpperCase())}</div></div>
+      <div><div class="${item.status === 'ready' ? 'green' : item.status === 'skipped' ? 'yellow' : item.status === 'error' ? 'red' : 'muted'}">${escapeHtml(item.reason || item.status || '—')}</div><div class="meta">bars ${escapeHtml(String(item.bars ?? '—'))}</div></div>
+      <div class="meta">${item.error ? escapeHtml(item.error) : `price ${fmtNum(item.price, (item.symbol || '').includes('XAU') ? 2 : 5)} · spread ${fmtNum(item.spread_pips, 1)} pip`}</div>
+      <div class="mono">${item.max_spread_pips != null ? 'max ' + fmtNum(item.max_spread_pips, 1) : ''}</div>
+    </div>
+  `).join('') : '<div class="loading">No pair scan snapshot yet.</div>';
+
+  const lastSignal = runner.last_signal || null;
+  const signalEl = document.getElementById('demo-signal');
+  signalEl.innerHTML = lastSignal ? `
+    <div class="headline ${lastSignal.action === 'BUY' ? 'green' : 'red'}">${escapeHtml(lastSignal.action)} ${escapeHtml(lastSignal.symbol || '—')} · ${escapeHtml((lastSignal.session || '—').toUpperCase())}</div>
+    <div class="meta">entry ${fmtNum(lastSignal.entry_price, (lastSignal.symbol || '').includes('XAU') ? 2 : 5)} · sl ${fmtNum(lastSignal.stop_loss, (lastSignal.symbol || '').includes('XAU') ? 2 : 5)} · tp ${fmtNum(lastSignal.take_profit, (lastSignal.symbol || '').includes('XAU') ? 2 : 5)}</div>
+    <div class="meta">rr ${fmtNum(lastSignal.rr, 2)} · risk ${fmtNum(lastSignal.risk_pips, 1)} pip · lots ${fmtNum(lastSignal.lots, 2)} · spread ${fmtNum(lastSignal.spread_pips, 1)} pip</div>
+    <div class="meta">confidence ${fmtNum((lastSignal.confidence || 0) * 100, 0)}% · ${lastSignal.order_id ? 'order ' + escapeHtml(lastSignal.order_id) : 'no order id yet'}</div>
+  ` : `<div class="headline muted">No signal yet</div><div class="meta">The runner is connected, but no order-block + FVG setup has triggered yet.</div>`;
+
+  const posEl = document.getElementById('demo-positions');
+  posEl.innerHTML = positions.length ? positions.map(pos => `
+    <div class="position-item">
+      <div><div class="mono">${escapeHtml(pos.symbol || '—')}</div><div class="meta">${escapeHtml((pos.direction || '—').toUpperCase())}</div></div>
+      <div><div>${fmtNum(pos.lots, 2)} lot</div><div class="meta">magic ${escapeHtml(String(pos.magic ?? '—'))}</div></div>
+      <div class="meta">entry ${fmtNum(pos.entry, (pos.symbol || '').includes('XAU') ? 2 : 5)} · sl ${fmtNum(pos.sl, (pos.symbol || '').includes('XAU') ? 2 : 5)} · tp ${fmtNum(pos.tp, (pos.symbol || '').includes('XAU') ? 2 : 5)}</div>
+      <div class="${Number(pos.profit || 0) >= 0 ? 'green' : 'red'}">${Number(pos.profit || 0) >= 0 ? '+' : ''}${fmtNum(pos.profit, 2)}</div>
+    </div>
+  `).join('') : '<div class="loading">No open demo positions.</div>';
 }
 
 // ---- EVF Panel ----
@@ -1982,6 +2169,7 @@ async function clearEmergencyStop() {
 async function refreshAll() {
   await Promise.all([
     loadStatus(),
+    loadDemoRunner(),
     loadSVOS(),
     loadEVF(),
     loadRGM(),

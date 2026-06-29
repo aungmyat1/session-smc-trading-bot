@@ -26,7 +26,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
-_log = logging.getLogger("st_a2.mt5_connector")
+_log = logging.getLogger("strategy_demo.mt5_connector")
 
 _SYNC_TIMEOUT_S = 60
 _RECONNECT_DELAY_S = 5

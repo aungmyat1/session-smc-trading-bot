@@ -2,9 +2,9 @@
 Strategy Stats — per-strategy signal and trade contribution report.
 
 Reads from:
-  logs/st_a2_demo_trades.jsonl    (ST-A2 demo trades)
+  logs/strategy_demo_trades.jsonl (strategy demo trades)
   logs/adaptive_trades.jsonl      (Adaptive engine trades)
-  logs/st_a2_runner.log           (runner tick/signal log)
+  logs/strategy_demo.log          (runner tick/signal log)
 
 Usage:
     python3 scripts/strategy_stats.py
@@ -25,10 +25,15 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 _JOURNAL_PATHS = [
+    _ROOT / "logs" / "strategy_demo_trades.jsonl",
     _ROOT / "logs" / "st_a2_demo_trades.jsonl",
     _ROOT / "logs" / "adaptive_trades.jsonl",
 ]
-_RUNNER_LOG = _ROOT / "logs" / "st_a2_runner.log"
+_RUNNER_LOGS = [
+    _ROOT / "logs" / "strategy_demo.log",
+    _ROOT / "logs" / "st_a2_demo.log",
+    _ROOT / "logs" / "st_a2_runner.log",
+]
 
 
 def _load_journal_trades(days: int) -> list[dict]:
@@ -60,21 +65,22 @@ def _load_journal_trades(days: int) -> list[dict]:
 
 def _count_signals_from_log(days: int) -> dict[str, int]:
     counts: dict[str, int] = defaultdict(int)
-    if not _RUNNER_LOG.exists():
-        return counts
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     sig_re = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*SIGNAL\s+(\w+)")
-    with _RUNNER_LOG.open() as fh:
-        for line in fh:
-            m = sig_re.search(line)
-            if not m:
-                continue
-            try:
-                ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
-                if ts >= cutoff:
-                    counts["ST-A2"] += 1
-            except ValueError:
-                pass
+    for path in _RUNNER_LOGS:
+        if not path.exists():
+            continue
+        with path.open() as fh:
+            for line in fh:
+                m = sig_re.search(line)
+                if not m:
+                    continue
+                try:
+                    ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                    if ts >= cutoff:
+                        counts["strategy-demo"] += 1
+                except ValueError:
+                    pass
     return counts
 
 

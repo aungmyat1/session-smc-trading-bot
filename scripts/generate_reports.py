@@ -56,8 +56,14 @@ REPORT_DIRS = {
 
 TRADE_EVENT_LOG = ROOT / "logs" / "trades.jsonl"
 BOT_LOG = ROOT / "logs" / "bot.log"
-RUNNER_LOG = ROOT / "logs" / "st_a2_runner.log"
+RUNNER_LOGS = [
+    ROOT / "logs" / "strategy_demo.log",
+    ROOT / "logs" / "st_a2_demo.log",
+    ROOT / "logs" / "st_a2_runner.log",
+]
+RUNNER_LOG = RUNNER_LOGS[-1]
 DEMO_JOURNALS = [
+    ROOT / "logs" / "strategy_demo_trades.jsonl",
     ROOT / "logs" / "st_a2_demo_trades.jsonl",
     ROOT / "logs" / "adaptive_trades.jsonl",
     ROOT / "logs" / "portfolio_demo_trades.jsonl",
@@ -146,6 +152,13 @@ def _jsonl_records(paths: list[Path]) -> list[dict[str, Any]]:
             if isinstance(item, dict):
                 records.append(item)
     return records
+
+
+def _read_log_tails(paths: list[Path], limit: int) -> list[str]:
+    lines: list[str] = []
+    for path in paths:
+        lines.extend(_read_log_tail(path, limit))
+    return lines
 
 
 def _parse_dt(value: Any) -> datetime | None:
@@ -245,7 +258,7 @@ def _read_log_tail(path: Path, lines: int = 400) -> list[str]:
 
 
 def _recent_log_scan() -> dict[str, Any]:
-    lines = _read_log_tail(BOT_LOG, 600) + _read_log_tail(RUNNER_LOG, 400)
+    lines = _read_log_tail(BOT_LOG, 600) + _read_log_tails(RUNNER_LOGS, 400)
     errors = [line for line in lines if "ERROR" in line]
     critical = [line for line in lines if "CRITICAL" in line or "FATAL" in line]
     disconnect = any("DISCONNECTED" in line or "RPC timeout" in line for line in lines)
@@ -502,7 +515,7 @@ def _live_readiness_metrics() -> dict[str, Any]:
 
 def _incident_metrics(days: int = 7) -> dict[str, Any]:
     since = _now() - timedelta(days=days)
-    lines = _read_log_tail(BOT_LOG, 1000) + _read_log_tail(RUNNER_LOG, 1000)
+    lines = _read_log_tail(BOT_LOG, 1000) + _read_log_tails(RUNNER_LOGS, 1000)
     filtered = []
     for line in lines:
         if not any(token in line for token in ("ERROR", "CRITICAL", "WARN", "disconnect", "Disconnect")):

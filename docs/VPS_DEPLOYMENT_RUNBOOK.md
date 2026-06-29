@@ -3,7 +3,7 @@
 This runbook matches the current repository entry points and keeps the execution
 path safe:
 
-- VPS 1 is for ST-A2 demo/shadow trading.
+- VPS 1 is for strategy demo/shadow trading on the approved demo runner.
 - VPS 2 is for research, validation, replay, and backtesting.
 - `LIVE_TRADING` remains owner-only and must stay `false` in automation.
 
@@ -37,7 +37,7 @@ LIVE_TRADING=false
 Shadow mode logs signals and execution decisions without sending broker orders.
 
 ```bash
-TRADING_MODE=shadow python3 scripts/run_st_a2_demo.py
+TRADING_MODE=shadow python3 scripts/run_strategy_demo.py
 ```
 
 ### Demo Mode
@@ -46,8 +46,8 @@ Demo mode connects to the demo account and can place demo orders once the repo
 checks pass and `DEMO_ONLY=false` is set manually.
 
 ```bash
-TRADING_MODE=demo python3 scripts/run_st_a2_demo.py
-TRADING_MODE=demo python3 scripts/run_st_a2_demo.py --mode demo --interval 60
+TRADING_MODE=demo python3 scripts/run_strategy_demo.py
+TRADING_MODE=demo python3 scripts/run_strategy_demo.py --mode demo --interval 60
 ```
 
 ### Health And Status
@@ -77,14 +77,14 @@ The dashboard will print the public URL and expose it through
 `nohup` and `screen` both work. Use one of these:
 
 ```bash
-TRADING_MODE=demo nohup python3 scripts/run_st_a2_demo.py --mode demo --interval 60 \
+TRADING_MODE=demo nohup python3 scripts/run_strategy_demo.py --mode demo --interval 60 \
   > logs/demo_run.log 2>&1 &
 echo $! > logs/bot.pid
 ```
 
 ```bash
 screen -S trading-bot
-TRADING_MODE=demo python3 scripts/run_st_a2_demo.py --mode demo --interval 60
+TRADING_MODE=demo python3 scripts/run_strategy_demo.py --mode demo --interval 60
 # Ctrl+A then D to detach
 # screen -r trading-bot to reattach
 ```

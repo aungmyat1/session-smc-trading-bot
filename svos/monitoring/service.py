@@ -35,6 +35,8 @@ class MonitoringStatusService:
     def _recent_log_lines(self, limit: int = 200) -> list[str]:
         paths = [
             self.root / "logs" / "bot.log",
+            self.root / "logs" / "strategy_demo.log",
+            self.root / "logs" / "st_a2_demo.log",
             self.root / "logs" / "st_a2_runner.log",
         ]
         lines: list[str] = []

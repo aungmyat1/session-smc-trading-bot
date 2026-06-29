@@ -1,5 +1,5 @@
 """
-Trade Manager — open/close/modify/emergency for ST-A2 demo.
+Trade Manager — open/close/modify/emergency for strategy demo execution.
 
 Isolated from existing execution/order_manager.py.
 All write operations require DEMO_ONLY=false AND explicit call.
@@ -21,9 +21,9 @@ from datetime import datetime, timezone
 
 from execution.vantage_demo_executor import VantageDemoExecutor
 
-_log = logging.getLogger("st_a2.trade_manager")
+_log = logging.getLogger("strategy_demo.trade_manager")
 
-_MAGIC = 21099   # ST-A2 demo magic number
+_MAGIC = 21099   # shared demo magic number
 
 
 class TradeManager:
@@ -32,7 +32,7 @@ class TradeManager:
 
     async def open_position(self, signal, lots: float) -> dict:
         """
-        Open a position from an ST-A2 signal dict or Signal dataclass.
+        Open a position from a strategy Signal dataclass or signal-like object.
 
         signal must have: symbol/pair, side/direction, entry, stop_loss/sl, take_profit/tp
         Returns order result dict.
@@ -50,6 +50,7 @@ class TradeManager:
             direction = "sell"
 
         _log.info("Opening %s %s %.4f lots SL=%.5f TP=%.5f", direction, symbol, lots, sl, tp)
+        strategy_name = getattr(signal, "strategy_name", "") or "strategy-demo"
         result = await self._ex.place_order(
             symbol    = symbol,
             direction = direction,
@@ -57,7 +58,7 @@ class TradeManager:
             sl        = sl,
             tp        = tp,
             magic     = _MAGIC,
-            comment   = "ST-A2-demo",
+            comment   = strategy_name[:31],
         )
         result["opened_at"] = datetime.now(timezone.utc).isoformat()
         return result

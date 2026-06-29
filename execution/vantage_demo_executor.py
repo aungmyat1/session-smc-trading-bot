@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 
 from execution.mt5_connector import MT5Connector
 
-_log = logging.getLogger("st_a2.vantage_executor")
+_log = logging.getLogger("strategy_demo.vantage_executor")
 
 _DEMO_ONLY = os.environ.get("DEMO_ONLY", "true").lower() not in ("false", "0", "no")
 
@@ -124,7 +124,7 @@ class VantageDemoExecutor:
         sl: float,
         tp: float,
         magic: int = 21001,
-        comment: str = "ST-A2-demo",
+        comment: str = "strategy-demo",
     ) -> dict:
         order_id = f"SIM-{symbol[:3]}-{uuid.uuid4().hex[:6].upper()}"
         if not self._guard(f"place_order {direction} {symbol} {lots}lot"):

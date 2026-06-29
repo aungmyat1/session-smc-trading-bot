@@ -269,7 +269,7 @@ The following modules contain ST-A2-specific hardcoding that prevents the platfo
 | `pipeline/run_phase0.py` | Banner `"ST-A2 Sweep Reversal"`; no `--strategy` flag | `--strategy` CLI arg; banner from catalog |
 | `pipeline/__init__.py` | Comment `"# pipeline — Phase-0 backtest pipeline for ST-A2"` | Update comment |
 | `research/svos/payload_builder.py` | `_run_backtest_session_liquidity()` hardcodes `scripts/backtest_session_liquidity.py` | Generic backtest script registry keyed by strategy ID |
-| `scripts/run_st_a2_demo.py`, `scripts/run_d2_e3_demo.py` | Strategy-specific demo runners | Superseded by `run_current_strategy_svos.py` when catalog-aware |
+| `scripts/run_strategy_demo.py`, `scripts/run_d2_e3_demo.py` | Strategy-specific demo runners | Superseded by `run_current_strategy_svos.py` when catalog-aware |
 
 The SVOS core (`svos/lifecycle/`, `svos/governance/`, `svos/registry/`, `svos/orchestration/`) is fully strategy-agnostic. The `strategies/adapters/` layer is strategy-agnostic by design. The `research/robustness.py` module is strategy-agnostic. The remaining hardcoding is isolated to the pipeline and payload builder modules.
 

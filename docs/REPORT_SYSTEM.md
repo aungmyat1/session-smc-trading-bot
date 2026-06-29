@@ -55,7 +55,7 @@ Purpose:
 Summarize the latest operating and trading session.
 
 Input data:
-`logs/*.jsonl`, `logs/bot_state.json`, `logs/bot.log`, `logs/st_a2_runner.log`, config files.
+`logs/*.jsonl`, `logs/bot_state.json`, `logs/bot.log`, `logs/strategy_demo.log`, config files.
 
 Metrics:
 Date, mode, opened/closed trades, win rate, Net R, PF, drawdown, rejected

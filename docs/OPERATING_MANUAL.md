@@ -320,7 +320,7 @@ python scripts/generate_reports.py --type live-readiness
 Primary log locations:
 
 - `logs/bot.log`
-- `logs/st_a2_runner.log`
+- `logs/strategy_demo.log`
 - `logs/portfolio_demo.log`
 - `logs/trades.jsonl`
 - strategy-specific demo journals in `logs/*.jsonl`

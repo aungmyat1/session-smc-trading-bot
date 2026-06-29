@@ -58,7 +58,7 @@ async def _status() -> None:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     print()
     print("=" * 50)
-    print(f"  ST-A2 DEMO STATUS   {now}")
+    print(f"  STRATEGY DEMO STATUS   {now}")
     print("=" * 50)
 
     # Connection
