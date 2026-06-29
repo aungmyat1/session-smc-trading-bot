@@ -32,7 +32,10 @@ Current scope note:
 - but the current development scope is intentionally narrower
 - current priority is an SVOS research-and-verification engine plus a simple
   Vantage demo/live trading bot
-- see `docs/CURRENT_SCOPE.md`
+- governing scope: `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`
+- active stabilization roadmap:
+  `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`
+- current stabilization status: `docs/svos/STABILIZATION_STATUS.md`
 
 ## Repository Status
 
@@ -46,7 +49,8 @@ This repository is currently transitioning from a unified SVOS validation
 pipeline to the full ISOP target architecture.
 
 - Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
-- Current implementation plan: `docs/IMPLEMENTATION_STATUS.md`
+- Current implementation plan:
+  `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`
 - Strategy state source of truth: `config/strategy_catalog.yaml`
 - AI workflow and prompt layering: `docs/AI_WORKFLOW_ARCHITECTURE.md`
 - Repository implementation constitution: `docs/DEVELOPER_HANDBOOK.md`

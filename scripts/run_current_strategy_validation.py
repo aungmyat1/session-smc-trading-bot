@@ -14,7 +14,6 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +26,6 @@ from db.runtime import normalize_database_url
 from core.strategy_registry import (
     get_current_strategy_name,
     get_strategy_manifest,
-    set_current_strategy,
-    update_strategy_manifest,
 )
 from research.validation.engine import ValidationRunner, load_validation_config
 
@@ -170,7 +167,6 @@ def main() -> int:
 
     if get_strategy_manifest(strategy, catalog_path) is None:
         raise SystemExit(f"Strategy not found in catalog: {strategy}")
-    set_current_strategy(strategy, catalog_path)
 
     if not _has_validation_input(args):
         raise SystemExit(
@@ -195,19 +191,6 @@ def main() -> int:
     )
 
     report_dir = _latest_validation_report(_ROOT / args.outdir, strategy)
-    now = datetime.now(timezone.utc).isoformat()
-    update_strategy_manifest(
-        strategy,
-        {
-            "last_revalidated_at": now,
-            "last_revalidation_status": bundle.overall_status,
-            "last_revalidation_report": str(report_dir) if report_dir else "",
-            "validation_mode": "virtual_broker",
-            "validation_stage": args.stage,
-        },
-        catalog_path,
-    )
-
     sync_summary: dict[str, Any] = {"synced": False, "reason": "not requested"}
     if args.sync_db and args.database_url:
         sync_summary = _sync_catalog_to_postgres(catalog_path, args.database_url)

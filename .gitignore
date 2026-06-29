@@ -10,8 +10,12 @@ venv/
 dist/
 build/
 
-# Data files (too large for git)
-data/
+# Data files (too large for git). Keep Python package modules tracked.
+/data/*
+!/data/__init__.py
+!/data/forex_data.py
+!/data/session_filter.py
+/scripts/data/
 *.parquet
 *.csv
 .dukascopy-cache/

@@ -14,7 +14,6 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +24,6 @@ from core.strategy_registry import (
     get_current_strategy_name,
     get_strategy_manifest,
     get_strategy_spec_text,
-    set_current_strategy,
-    update_strategy_manifest,
 )
 from research.svos.payload_builder import build_svos_payload_bundle
 from research.svos.engine import SVOSRunner
@@ -157,7 +154,7 @@ def main() -> int:
             "virtual_demo",
             "production_approval",
         ],
-        default="production_approval",
+        default="virtual_demo",
         help="Optional stage boundary for partial SVOS runs",
     )
     parser.add_argument("--outdir", default="reports/current_strategy_svos", help="Output directory")
@@ -171,7 +168,6 @@ def main() -> int:
     if get_strategy_manifest(strategy, catalog_path) is None:
         raise SystemExit(f"Strategy not found in catalog: {strategy}")
 
-    set_current_strategy(strategy, catalog_path)
     strategy_text = _resolve_strategy_text(strategy, catalog_path, args.strategy_text, args.strategy_file)
     if not strategy_text.strip():
         raise SystemExit(
@@ -227,25 +223,6 @@ def main() -> int:
         return 1
 
     report_root = _ROOT / args.outdir / strategy
-    result_stages = list(getattr(result, "stages", []) or [])
-    update_strategy_manifest(
-        strategy,
-        {
-            "last_svos_at": datetime.now(timezone.utc).isoformat(),
-            "last_svos_status": result.overall_status,
-            "last_svos_promoted_stage": result.promoted_stage or "",
-            "last_svos_report": str(report_root),
-            "validation_mode": "svos",
-            "last_svos_payload_auto": bool(payload),
-            "last_svos_stop_after": args.stop_after,
-            "last_svos_verification_ready": any(
-                stage.stage == "verification_ready" and stage.status == "PASS"
-                for stage in result_stages
-            ),
-        },
-        catalog_path,
-    )
-
     output = {
         "strategy": strategy,
         "current_strategy": get_current_strategy_name(catalog_path),

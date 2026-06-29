@@ -18,10 +18,7 @@ _NO_EVIDENCE_REQUIRED = {
     StrategyStage.REFINEMENT,
     StrategyStage.REVALIDATION,
 }
-_APPROVAL_REQUIRED_TARGETS = {
-    StrategyStage.LIVE_DEMO,
-    StrategyStage.PRODUCTION,
-}
+_APPROVAL_REQUIRED_TARGETS = {StrategyStage.PRODUCTION_APPROVAL}
 _REMEDIATION_TARGETS = {
     StrategyStage.REFINEMENT,
     StrategyStage.REVALIDATION,
@@ -203,6 +200,6 @@ class GovernanceService:
                 "HISTORICAL_REPLAY": StrategyStage.HISTORICAL_REPLAY,
                 "BACKTEST": StrategyStage.STATISTICAL_VALIDATION,
                 "ROBUSTNESS": StrategyStage.ROBUSTNESS_VALIDATION,
-                "PRODUCTION_APPROVAL": StrategyStage.PRODUCTION_CANDIDATE,
+                "PRODUCTION_APPROVAL": StrategyStage.PRODUCTION_APPROVAL,
             }
             return aliases.get(str(value).strip().upper()) is expected

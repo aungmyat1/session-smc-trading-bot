@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from core.strategy_registry import get_strategy_manifest, list_catalog_strategies, update_strategy_manifest
+from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
 from svos.lifecycle.manager import LifecycleTransitionError, StrategyLifecycleManager
 from svos.shared.models import EvidenceRecord, GateDecision, StrategyRecord, TransitionRecord, VersionRecord
 from svos.shared.support import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
@@ -73,15 +73,6 @@ class StrategyRegistryService:
                 "updated_at": version.created_at,
             }
             write_json(self._state_path(strategy), state)
-            update_strategy_manifest(
-                strategy,
-                {
-                    "svos_stage": stage,
-                    "svos_stage_updated_at": version.created_at,
-                    "svos_registry_bootstrapped_at": version.created_at,
-                },
-                self.catalog_path,
-            )
         return self.get_strategy_record(strategy)
 
     def record_version(
@@ -132,7 +123,12 @@ class StrategyRegistryService:
     ) -> VersionRecord:
         """Register a stable strategy identity and version a changed specification."""
         current = self.ensure_strategy(strategy, actor=actor, reason="strategy registry initialized")
-        manifest = dict(get_strategy_manifest(strategy, self.catalog_path) or {})
+        versions = self.versions(strategy)
+        manifest = dict(
+            (versions[-1].get("manifest") if versions else None)
+            or get_strategy_manifest(strategy, self.catalog_path)
+            or {}
+        )
         spec_hash = hashlib.sha256(specification.encode("utf-8")).hexdigest()
         previous_hash = str(manifest.get("strategy_spec_hash", ""))
         strategy_id = str(manifest.get("strategy_id", "")).strip() or _stable_strategy_id(strategy)
@@ -142,7 +138,6 @@ class StrategyRegistryService:
             version = _next_patch_version(version)
 
         if previous_hash == spec_hash and manifest.get("strategy_id"):
-            versions = self.versions(strategy)
             if versions:
                 latest = versions[-1]
                 return VersionRecord(
@@ -155,15 +150,12 @@ class StrategyRegistryService:
                     manifest=dict(latest.get("manifest", manifest)),
                 )
 
-        updated = update_strategy_manifest(
-            strategy,
-            {
-                "strategy_id": strategy_id,
-                "strategy_spec_hash": spec_hash,
-                "version": version,
-            },
-            self.catalog_path,
-        )
+        updated = {
+            **manifest,
+            "strategy_id": strategy_id,
+            "strategy_spec_hash": spec_hash,
+            "version": version,
+        }
         change_reason = f"{reason}; specification changed" if changed else reason
         return self.record_version(strategy, manifest=updated, actor=actor, reason=change_reason)
 
@@ -263,15 +255,6 @@ class StrategyRegistryService:
         state["updated_at"] = recorded_at
         state["last_transition_at"] = recorded_at
         write_json(self._state_path(strategy), state)
-        update_strategy_manifest(
-            strategy,
-            {
-                "svos_stage": to_stage,
-                "svos_stage_updated_at": recorded_at,
-                "svos_last_transition_reason": reason,
-            },
-            self.catalog_path,
-        )
         return record
 
     def versions(self, strategy: str) -> list[dict[str, Any]]:

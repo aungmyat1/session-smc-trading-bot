@@ -12,7 +12,7 @@ from typing import Any, Iterable, Optional
 
 import yaml
 
-from core.strategy_registry import promote_strategy_stage
+from core.strategy_registry import DirectCatalogMutationError
 from research.regression.engine import RegressionEngine, RegressionResult
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -575,7 +575,7 @@ class ValidationRunner:
         latest_metrics: dict[str, float] | None = None,
         previous_metrics: dict[str, float] | None = None,
         current_stage: str = "backtest",
-        promote: bool = True,
+        promote: bool = False,
     ) -> ValidationReportBundle:
         if replay is None:
             replay_result = ValidationResult(
@@ -614,8 +614,9 @@ class ValidationRunner:
         next_stage = self.config.next_stage(current_stage)
         promoted = False
         if promote and overall_status == "PASS" and next_stage:
-            promote_strategy_stage(self.strategy, next_stage, path=self.registry_path)
-            promoted = True
+            raise DirectCatalogMutationError(
+                "ValidationRunner cannot promote lifecycle state. Record its report as evidence and request a governed transition."
+            )
 
         recommendation = {
             "PASS": "Eligible for next lifecycle stage",

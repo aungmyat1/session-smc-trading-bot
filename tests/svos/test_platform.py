@@ -95,7 +95,7 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
     )
     transition = platform.audited_transition(
         "ST-A2",
-        to_stage="VERIFICATION_READY",
+        to_stage="VIRTUAL_DEMO",
         actor="governance",
         reason="Research evidence accepted",
     )
@@ -103,7 +103,7 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
     assert recorded["report"]["artifact_hash"]
     assert recorded["evidence"]["metadata"]["report_id"] == recorded["report"]["report_id"]
     assert transition["from_stage"] == "ROBUSTNESS_VALIDATION"
-    assert transition["to_stage"] == "VERIFICATION_READY"
+    assert transition["to_stage"] == "VIRTUAL_DEMO"
     assert transition["metadata"]["governance_decision_id"]
     assert platform.strategy_summary("ST-A2")["record"]["transition_count"] == 1
 
@@ -114,7 +114,7 @@ def test_governance_blocks_transition_without_current_version_pass_evidence(tmp_
     platform.bootstrap()
 
     with pytest.raises(GovernanceGateError, match="No PASS evidence"):
-        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY", reason="Qualification review")
+        platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review")
 
     summary = platform.strategy_summary("ST-A2")
     assert summary["record"]["current_stage"] == "ROBUSTNESS_VALIDATION"
@@ -127,7 +127,7 @@ def test_direct_registry_transition_cannot_bypass_governance(tmp_path):
     registry.ensure_strategy("ST-A2")
 
     with pytest.raises(LifecycleTransitionError, match="governance gate decision"):
-        registry.transition("ST-A2", to_stage="VERIFICATION_READY")
+        registry.transition("ST-A2", to_stage="VIRTUAL_DEMO")
 
 
 def test_evidence_from_previous_strategy_version_does_not_qualify(tmp_path):
@@ -147,40 +147,24 @@ def test_evidence_from_previous_strategy_version_does_not_qualify(tmp_path):
     platform.registry.record_version("ST-A2", actor="tester", reason="new version")
 
     with pytest.raises(GovernanceGateError, match="strategy version"):
-        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY", reason="Qualification review")
+        platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review")
 
 
-def test_live_and_production_transitions_require_explicit_approval(tmp_path):
+def test_production_approval_transition_is_disabled_during_construction(tmp_path):
     catalog = _setup_repo(tmp_path)
     platform = SVOSPlatform(root=tmp_path, catalog_path=catalog)
     platform.bootstrap()
     state_path = tmp_path / "data" / "svos" / "registry" / "ST-A2" / "state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
-    state["current_stage"] = "PAPER_TRADING"
+    state["current_stage"] = "VIRTUAL_DEMO"
     state_path.write_text(json.dumps(state), encoding="utf-8")
-    artifact = tmp_path / "reports" / "paper.json"
-    artifact.write_text('{"status":"PASS"}', encoding="utf-8")
-    platform.record_report_evidence(
-        strategy="ST-A2",
-        stage="PAPER_TRADING",
-        service="svos",
-        report_type="paper.json",
-        artifact_path=artifact,
-        status="PASS",
-    )
-
-    with pytest.raises(GovernanceGateError, match="explicit approval"):
-        platform.audited_transition("ST-A2", to_stage="LIVE_DEMO", reason="Request live demo")
-
-    approval = platform.approve_transition(
-        "ST-A2",
-        to_stage="LIVE_DEMO",
-        approver="risk-committee",
-        reason="Paper execution evidence reviewed",
-    )
-    transition = platform.audited_transition("ST-A2", to_stage="LIVE_DEMO", reason="Approved live demo entry")
-    assert approval["approval_id"]
-    assert transition["to_stage"] == "LIVE_DEMO"
+    with pytest.raises(LifecycleTransitionError, match="Illegal lifecycle transition"):
+        platform.approve_transition(
+            "ST-A2",
+            to_stage="PRODUCTION_APPROVAL",
+            approver="risk-committee",
+            reason="Request production approval",
+        )
 
 
 def test_governance_requires_an_audit_reason(tmp_path):
@@ -199,4 +183,4 @@ def test_governance_requires_an_audit_reason(tmp_path):
     )
 
     with pytest.raises(GovernanceGateError, match="audit reason"):
-        platform.audited_transition("ST-A2", to_stage="VERIFICATION_READY")
+        platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO")

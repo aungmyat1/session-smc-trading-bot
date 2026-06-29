@@ -3,6 +3,7 @@ db/migrations/env.py
 Alembic environment — reads DATABASE_URL from environment/.env,
 imports db.models to give autogenerate full schema awareness.
 """
+# ruff: noqa: E402
 from __future__ import annotations
 
 import sys
@@ -42,7 +43,10 @@ _db_url = os.environ.get("DATABASE_URL", "")
 if _db_url.startswith("postgresql+asyncpg://"):
     _db_url = _db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 if _db_url:
-    config.set_main_option("sqlalchemy.url", _db_url)
+    # Alembic stores this value in ConfigParser, where a literal percent is
+    # interpolation syntax. Escaping prevents credential disclosure through a
+    # ConfigParser exception while preserving the URL returned to SQLAlchemy.
+    config.set_main_option("sqlalchemy.url", _db_url.replace("%", "%%"))
 
 # Schemas that autogenerate should inspect.
 # Every schema declared in schema_v2.sql and schema_v3.sql must be listed.

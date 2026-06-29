@@ -118,7 +118,7 @@ def test_regression_detection_warning_and_fail():
     assert fail.status == "FAIL"
 
 
-def test_lifecycle_promotion_and_reports(tmp_path):
+def test_validation_reports_do_not_mutate_lifecycle(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(
         _fixture_catalog_text(),
@@ -133,7 +133,7 @@ def test_lifecycle_promotion_and_reports(tmp_path):
         current_stage="backtest",
     )
     assert bundle.overall_status == "PASS"
-    assert bundle.promoted is True
+    assert bundle.promoted is False
     assert bundle.next_stage == "walk_forward"
     assert get_strategy_manifest("ST-A2", catalog_copy)["status"] == "walk_forward"
     report_dir = next(tmp_path.rglob("validation.md"))

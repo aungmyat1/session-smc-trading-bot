@@ -157,7 +157,7 @@ def test_run_research_job_executes_validation_pipeline(tmp_path):
     assert [step.returncode for step in result.steps] == [0, 0, 0, 0]
     assert (tmp_path / job.job_id / "replay.json").exists()
     assert (tmp_path / job.job_id / "backtest_5y.json").exists()
-    assert get_strategy_status(catalog_copy, "ST-A2") == "walk_forward"
+    assert get_strategy_status(catalog_copy, "ST-A2") == "DEFERRED_REVALIDATION"
     assert list((tmp_path / job.job_id / "validation").rglob("validation.md"))
 
 

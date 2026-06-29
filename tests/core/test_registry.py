@@ -8,7 +8,7 @@ from core.strategy_registry import (
     load_strategy_catalog, get_strategy_manifest, list_catalog_strategies,
     strategy_lifecycle_status, strategy_lifecycle_rank, is_strategy_approved,
     can_deploy_strategy, get_current_strategy_name, get_current_strategy_manifest,
-    get_strategy_spec_path, get_strategy_spec_text, set_current_strategy,
+    DirectCatalogMutationError, get_strategy_spec_path, get_strategy_spec_text, set_current_strategy,
 )
 
 
@@ -171,7 +171,7 @@ strategies:
         assert get_strategy_spec_path("TestStrategy", custom) == spec
         assert get_strategy_spec_text("TestStrategy", custom) == "# Custom Strategy\n"
 
-    def test_set_current_strategy_updates_pointer(self, tmp_path):
+    def test_set_current_strategy_fails_closed(self, tmp_path):
         custom = tmp_path / "strategy_catalog.yaml"
         custom.write_text(
             """
@@ -187,7 +187,6 @@ strategies:
     version: "1.0"
 """.strip()
         )
-        manifest = set_current_strategy("NewStrategy", custom)
-        assert manifest["current"] is True
-        assert get_current_strategy_name(custom) == "NewStrategy"
-        assert get_strategy_manifest("OldStrategy", custom)["current"] is False
+        with pytest.raises(DirectCatalogMutationError):
+            set_current_strategy("NewStrategy", custom)
+        assert get_current_strategy_name(custom) == "OldStrategy"

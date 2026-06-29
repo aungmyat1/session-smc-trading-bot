@@ -2,6 +2,13 @@
 
 Date: 2026-06-28
 
+> **Superseded 2026-06-29.** This document records the former narrow
+> Vantage-first scope. The governing product plan is
+> `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`; the active
+> stabilization sequence is
+> `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`.
+> No broker or feature work resumes until stabilization Phases 0-2 pass.
+
 This document defines the current development scope for the repository.
 
 ## Current Goal

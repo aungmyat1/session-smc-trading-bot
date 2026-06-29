@@ -1,0 +1,38 @@
+name: stabilization-gates
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install locked development dependencies
+        run: python -m pip install -r requirements-dev.lock
+      - name: Unit and architecture tests
+        run: python -m pytest -q
+      - name: Type-check canonical lifecycle
+        run: python -m mypy
+      - name: Lint stabilization boundary
+        run: >-
+          python -m ruff check
+          db/connection.py db/control_plane.py db/evidence_repository.py db/legacy_import.py
+          db/projection.py db/migrations data/*.py src/data adaptive/data svos/adapters svos/lifecycle
+          svos/registry svos/reports dashboard/app.py tests/architecture tests/database
+      - name: Compile migration SQL without credentials
+        env:
+          DATABASE_URL: postgresql://ci:percent%21safe@localhost/svos
+        run: python -m alembic upgrade head --sql >/tmp/svos-migration.sql
+      - name: Reject committed secret files
+        run: |
+          test ! -f .env
+          ! git grep -nE "(VANTAGE|METAAPI|TELEGRAM)_(TOKEN|PASSWORD|SECRET)[[:space:]]*=[[:space:]]*['\"][^'\"]+['\"]" -- ':!*.md'
+      - name: Whitespace integrity
+        run: git diff --check

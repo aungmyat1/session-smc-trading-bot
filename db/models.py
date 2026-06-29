@@ -30,7 +30,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, date
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Date, DateTime, ForeignKey,
+    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey,
     Integer, JSON, Numeric, String, Text, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -444,6 +444,27 @@ class Outbox(Base):
     processed_at = Column(DateTime(timezone=True))
 
 
+class StageTransition(Base):
+    """governance.stage_transition — immutable committed lifecycle change."""
+    __tablename__ = "stage_transition"
+    __table_args__ = (
+        CheckConstraint("to_revision = from_revision + 1", name="ck_stage_transition_revision"),
+        {"schema": "governance"},
+    )
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id      = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id       = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"), nullable=False)
+    gate_decision_id = Column(UUID(as_uuid=True), ForeignKey("governance.gate_decision.id"), nullable=False, unique=True)
+    from_stage       = Column(String(50), nullable=False)
+    to_stage         = Column(String(50), nullable=False)
+    from_revision    = Column(Integer, nullable=False)
+    to_revision      = Column(Integer, nullable=False)
+    actor            = Column(String(100), nullable=False)
+    reason           = Column(Text, nullable=False)
+    transitioned_at  = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # evidence schema  ── v3
 # ═══════════════════════════════════════════════════════════════════════════
@@ -478,7 +499,49 @@ class ArtifactBinding(Base):
     stage       = Column(String(50), nullable=False)
     artifact_id = Column(UUID(as_uuid=True), ForeignKey("evidence.artifact.id"), nullable=False)
     status      = Column(String(20), nullable=False, default="active")
+    trust       = Column(String(30), nullable=False, default="LEGACY_IMPORTED")
     bound_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    invalidated_at = Column(DateTime(timezone=True))
+    invalidation_reason = Column(Text)
+
+
+class ReportRecord(Base):
+    """evidence.report_record — queryable immutable report identity and lineage."""
+    __tablename__ = "report_record"
+    __table_args__ = {"schema": "evidence"}
+
+    id                   = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    report_id            = Column(String(200), nullable=False, unique=True)
+    strategy_id          = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id           = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"), nullable=False)
+    run_id               = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    stage                = Column(String(50), nullable=False)
+    report_type          = Column(String(100), nullable=False)
+    status               = Column(String(20), nullable=False)
+    trust                = Column(String(30), nullable=False)
+    json_artifact_id     = Column(UUID(as_uuid=True), ForeignKey("evidence.artifact.id"), nullable=False)
+    markdown_artifact_id = Column(UUID(as_uuid=True), ForeignKey("evidence.artifact.id"))
+    schema_version       = Column(String(20), nullable=False)
+    generator_version    = Column(String(40), nullable=False)
+    created_at           = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class LegacyImport(Base):
+    """evidence.legacy_import — idempotent import ledger."""
+    __tablename__ = "legacy_import"
+    __table_args__ = (
+        UniqueConstraint("source_path", "source_sha256", "record_type", name="uq_legacy_import_source"),
+        {"schema": "evidence"},
+    )
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_path      = Column(Text, nullable=False)
+    source_sha256    = Column(String(64), nullable=False)
+    source_timestamp = Column(DateTime(timezone=True))
+    record_type      = Column(String(50), nullable=False)
+    record_count     = Column(Integer, nullable=False, default=0)
+    imported_by      = Column(String(100), nullable=False)
+    imported_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

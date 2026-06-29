@@ -1,21 +1,19 @@
-"""Baseline schema v2 — mark existing tables as already applied.
+"""Create or adopt the idempotent v2 baseline schema.
 
-This migration contains no DDL operations. It exists solely to anchor
-the Alembic revision history against the schema that was applied by
-running db/schema_v2.sql directly before Alembic was introduced.
-
-After stamping a fresh database with ``alembic stamp 001``, migration 002
-can be applied to add the v3 control-plane tables.
+The canonical v2 SQL uses ``IF NOT EXISTS`` and conflict-safe seeds, so the
+same revision supports both an empty database and a database that previously
+received ``db/schema_v2.sql`` manually. Existing installations should run
+``alembic upgrade head``; they must not stamp past this validation step.
 
 Revision ID: 001
 Revises: None
 Create Date: 2026-06-29
 """
 from __future__ import annotations
+from pathlib import Path
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 revision: str = "001"
 down_revision: Union[str, None] = None
@@ -24,12 +22,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """
-    No-op.  The v2 schema (market, research, analytics, config) was applied
-    by db/schema_v2.sql before Alembic was introduced.  Stamp the database
-    with ``alembic stamp 001`` to record this fact, then run ``alembic upgrade
-    head`` to apply migration 002.
-    """
+    schema_path = Path(__file__).resolve().parents[2] / "schema_v2.sql"
+    op.execute(schema_path.read_text(encoding="utf-8"))
 
 
 def downgrade() -> None:
