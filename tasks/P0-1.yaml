@@ -2,7 +2,7 @@ task: P0-1
 title: Run PostgreSQL integration exercise
 priority: P0
 effort: Small (2-4h)
-status: PENDING
+status: COMPLETE
 blocks: feature_freeze_lift
 
 goal: >

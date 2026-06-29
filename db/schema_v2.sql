@@ -102,7 +102,16 @@ CREATE TABLE IF NOT EXISTS market.smc_events (
     metadata_json  JSONB,
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_smc_symbol_time   ON market.smc_events(symbol, timestamp);
+-- idx_smc_symbol_time: pre-existing tables may use 'event_time' instead of 'timestamp'
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema='market' AND table_name='smc_events' AND column_name='timestamp') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes
+                       WHERE schemaname='market' AND indexname='idx_smc_symbol_time') THEN
+            CREATE INDEX idx_smc_symbol_time ON market.smc_events(symbol, timestamp);
+        END IF;
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_smc_event_type    ON market.smc_events(event_type);
 
 -- =====================================================================
@@ -175,22 +184,57 @@ CREATE INDEX IF NOT EXISTS idx_trades_run_id     ON research.trades(run_id);
 CREATE INDEX IF NOT EXISTS idx_trades_symbol     ON research.trades(symbol);
 CREATE INDEX IF NOT EXISTS idx_trades_session    ON research.trades(session);
 CREATE INDEX IF NOT EXISTS idx_trades_entry_time ON research.trades(entry_time);
-CREATE INDEX IF NOT EXISTS idx_trades_net_r      ON research.trades(net_result_r);
+-- idx_trades_net_r: pre-existing tables may use 'result_r' instead of 'net_result_r'
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema='research' AND table_name='trades' AND column_name='net_result_r') THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes
+                       WHERE schemaname='research' AND indexname='idx_trades_net_r') THEN
+            CREATE INDEX idx_trades_net_r ON research.trades(net_result_r);
+        END IF;
+    END IF;
+END $$;
 CREATE INDEX IF NOT EXISTS idx_trades_exit_reason ON research.trades(exit_reason);
 
--- Per-trade SMC features — for drill-down analysis of which gates fire most
-CREATE TABLE IF NOT EXISTS research.trade_features (
-    id                       BIGSERIAL PRIMARY KEY,
-    trade_id                 VARCHAR(150) REFERENCES research.trades(trade_id),
-    bos_present              BOOLEAN,
-    choch_present            BOOLEAN,
-    fvg_present              BOOLEAN,
-    liquidity_sweep_present  BOOLEAN,
-    spread_scenario          VARCHAR(20),  -- 'standard' | 'stress_2x'
-    feature_json             JSONB,
-    created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(trade_id)
-);
+-- Per-trade SMC features — FK omitted when pre-existing trades.trade_id is INTEGER
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+                   WHERE table_schema='research' AND table_name='trade_features') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_schema='research' AND table_name='trades'
+                   AND column_name='trade_id' AND data_type='integer') THEN
+            -- Legacy integer PK: create without FK constraint
+            EXECUTE '
+                CREATE TABLE research.trade_features (
+                    id                       BIGSERIAL PRIMARY KEY,
+                    trade_id                 BIGINT,
+                    bos_present              BOOLEAN,
+                    choch_present            BOOLEAN,
+                    fvg_present              BOOLEAN,
+                    liquidity_sweep_present  BOOLEAN,
+                    spread_scenario          VARCHAR(20),
+                    feature_json             JSONB,
+                    created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(trade_id)
+                )';
+        ELSE
+            -- v2 varchar PK: create with FK
+            EXECUTE '
+                CREATE TABLE research.trade_features (
+                    id                       BIGSERIAL PRIMARY KEY,
+                    trade_id                 VARCHAR(150) REFERENCES research.trades(trade_id),
+                    bos_present              BOOLEAN,
+                    choch_present            BOOLEAN,
+                    fvg_present              BOOLEAN,
+                    liquidity_sweep_present  BOOLEAN,
+                    spread_scenario          VARCHAR(20),
+                    feature_json             JSONB,
+                    created_at               TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(trade_id)
+                )';
+        END IF;
+    END IF;
+END $$;
 
 -- Day-by-day equity curve in R-multiples
 CREATE TABLE IF NOT EXISTS research.daily_equity (

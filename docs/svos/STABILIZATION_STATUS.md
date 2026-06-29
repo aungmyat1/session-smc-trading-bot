@@ -19,7 +19,7 @@ roadmap. It does not replace gate evidence.
 | Immutable artifacts | Implemented | SHA-256 content-addressed filesystem adapter |
 | Legacy import | Implemented baseline | Idempotent catalog import as DRAFT/non-qualifying evidence context |
 | YAML cutover | Implemented baseline | Active lifecycle code does not write YAML; projection generator is explicit and read-only |
-| PostgreSQL integration exercise | Pending environment gate | Run with disposable `SVOS_TEST_DATABASE_URL`; migration/concurrency test is present |
+| PostgreSQL integration exercise | Implemented | `tests/database/test_postgres_integration.py` PASSES (2026-06-29); all 3 migrations applied; concurrency/atomicity verified |
 | Backup/restore tooling | Implemented baseline | Encrypted backup, integrity manifest, and confirm-gated restore; operational restore drill and RPO/RTO declaration remain pending |
 | Full OIDC/four-eyes approval | Pending | Required before any broker-facing approval capability |
 
