@@ -52,6 +52,7 @@ loads cleanly even when an upstream strategy module is not installed.
 | `london_breakout_adapter.py` | `LondonBreakoutAdapter` | London Breakout | `adaptive.strategies.london_breakout_strategy` | Research / unvalidated |
 | `ny_momentum_adapter.py` | `NYMomentumAdapter` | NY Momentum | `adaptive.strategies.ny_momentum_strategy` | Research / unvalidated |
 | `adaptive_smc_adapter.py` | `AdaptiveSMCAdapter` | Adaptive SMC Session | `adaptive.strategies.smc_session_strategy.SMCSessionStrategy` | Research / unvalidated |
+| `smc_ob_fvg_session_adapter.py` | `SMCOrderBlockFVGSessionAdapter` | SMC Order Block + FVG Session | Self-contained using `src.features.fvg` + `src.features.order_blocks` | Intake / SVOS-ready |
 | `vwap_adapter.py` | `VWAPMeanReversionAdapter` | VWAP Mean Reversion | Self-contained (no upstream import) | Research / unvalidated |
 
 ### Adapter input schemas
@@ -83,6 +84,12 @@ loads cleanly even when an upstream strategy module is not installed.
 - Implements session-scoped VWAP fade for London (07:00–09:59 UTC) and New York
   (13:00–15:59 UTC) windows.
 - Legacy alias `VWAPBreakoutAdapter` is retained for backwards compatibility.
+
+**SMCOrderBlockFVGSessionAdapter** (`smc_ob_fvg_session_adapter.py`)
+- Self-contained; no upstream strategy import.
+- Implements London / New York kill-zone filtering, recent BOS detection, order
+  block retest logic, FVG confirmation, and ATR-based displacement / stop
+  placement for an SVOS intake-ready SMC strategy.
 
 ### Pip size table
 

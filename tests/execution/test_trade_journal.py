@@ -12,6 +12,7 @@ def _signal():
     return SimpleNamespace(
         pair="EURUSD", side="long", session="london",
         entry=1.1000, stop_loss=1.0950, take_profit=1.1150,
+        strategy_name="ST-A2",
     )
 
 

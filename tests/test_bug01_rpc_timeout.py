@@ -155,7 +155,7 @@ class TestHeartbeatSurvivesTimeout:
         client._connection.get_positions = _hang
 
         telegram = MagicMock()
-        telegram.send = AsyncMock()
+        telegram.send_heartbeat = AsyncMock()
 
         now = datetime.now(timezone.utc)
 
@@ -167,9 +167,10 @@ class TestHeartbeatSurvivesTimeout:
             )
 
         # Heartbeat message was still logged and sent
-        telegram.send.assert_called_once()
-        msg = telegram.send.call_args[0][0]
-        assert "[HEARTBEAT]" in msg
+        telegram.send_heartbeat.assert_called_once()
+        kwargs = telegram.send_heartbeat.await_args.kwargs
+        assert kwargs["timestamp_label"].endswith("UTC")
+        assert kwargs["open_positions"] >= -1
 
     @pytest.mark.asyncio
     async def test_heartbeat_logs_disconnected_on_timeout(self):
@@ -180,7 +181,7 @@ class TestHeartbeatSurvivesTimeout:
         client._connection.get_account_information = _hang
 
         telegram = MagicMock()
-        telegram.send = AsyncMock()
+        telegram.send_heartbeat = AsyncMock()
 
         now = datetime.now(timezone.utc)
 
@@ -190,8 +191,8 @@ class TestHeartbeatSurvivesTimeout:
                 timeout=5.0,
             )
 
-        msg = telegram.send.call_args[0][0]
-        assert "DISCONNECTED" in msg
+        kwargs = telegram.send_heartbeat.await_args.kwargs
+        assert kwargs["connection_status"] == "DISCONNECTED"
 
     @pytest.mark.asyncio
     async def test_heartbeat_updates_last_heartbeat_ts_on_timeout(self):
@@ -203,7 +204,7 @@ class TestHeartbeatSurvivesTimeout:
         client._connection.get_account_information = _hang
 
         telegram = MagicMock()
-        telegram.send = AsyncMock()
+        telegram.send_heartbeat = AsyncMock()
 
         now = datetime.now(timezone.utc)
         # Freeze module-level timestamp to a stale value
@@ -323,7 +324,7 @@ class TestWatchdog:
         from bot import WATCHDOG_TIMEOUT_S, _run_watchdog
 
         telegram = MagicMock()
-        telegram.send = AsyncMock()
+        telegram.send_watchdog_critical = AsyncMock()
 
         now = datetime.now(timezone.utc)
         bot_module._last_heartbeat_ts = now - timedelta(seconds=WATCHDOG_TIMEOUT_S + 60)
@@ -342,10 +343,10 @@ class TestWatchdog:
             except asyncio.CancelledError:
                 pass
 
-        telegram.send.assert_called()
-        alert_msg = telegram.send.call_args[0][0]
-        assert "[CRITICAL]" in alert_msg
-        assert "heartbeat" in alert_msg.lower()
+        telegram.send_watchdog_critical.assert_called()
+        kwargs = telegram.send_watchdog_critical.await_args.kwargs
+        assert kwargs["threshold_s"] == WATCHDOG_TIMEOUT_S
+        assert kwargs["age_s"] >= WATCHDOG_TIMEOUT_S
 
     @pytest.mark.asyncio
     async def test_watchdog_silent_when_heartbeat_fresh(self):
@@ -354,7 +355,7 @@ class TestWatchdog:
         from bot import _run_watchdog
 
         telegram = MagicMock()
-        telegram.send = AsyncMock()
+        telegram.send_watchdog_critical = AsyncMock()
 
         # Last heartbeat just fired
         bot_module._last_heartbeat_ts = datetime.now(timezone.utc)
@@ -372,7 +373,7 @@ class TestWatchdog:
 
         await _one_cycle()
 
-        telegram.send.assert_not_called()
+        telegram.send_watchdog_critical.assert_not_called()
 
     def test_watchdog_timeout_constant_is_600(self):
         """WATCHDOG_TIMEOUT_S must be exactly 600 seconds (10 minutes)."""

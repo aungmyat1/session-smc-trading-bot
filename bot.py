@@ -468,7 +468,16 @@ async def _send_heartbeat(
     )
     logger.info(msg)
     _last_heartbeat_ts = now   # watchdog reads this to confirm heartbeat fired
-    await telegram.send(msg)
+    await telegram.send_heartbeat(
+        timestamp_label=now.strftime('%Y-%m-%dT%H:%M UTC'),
+        uptime_s=uptime_s,
+        connection_status=connection_status,
+        live_trading=status["live_trading"],
+        balance=balance,
+        equity=equity,
+        open_positions=n_pos,
+        last_signal=last_sig,
+    )
 
 
 # ── Watchdog ──────────────────────────────────────────────────────────────────
@@ -487,9 +496,9 @@ async def _run_watchdog(telegram: TelegramAlerter) -> None:
                 "WATCHDOG: No heartbeat for %.0fs (threshold=%ds) — bot may be hung",
                 age, WATCHDOG_TIMEOUT_S,
             )
-            await telegram.send(
-                f"[CRITICAL] No heartbeat for {age:.0f}s "
-                f"(threshold={WATCHDOG_TIMEOUT_S}s) — bot may be hung"
+            await telegram.send_watchdog_critical(
+                age_s=age,
+                threshold_s=WATCHDOG_TIMEOUT_S,
             )
 
 

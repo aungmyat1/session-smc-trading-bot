@@ -7,11 +7,12 @@ import scripts.health_check as health_check
 
 def test_postgres_backend_is_critical_when_unavailable(monkeypatch):
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
+    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 3)
 
     def _refuse(*args, **kwargs):
         raise ConnectionRefusedError(111, "Connection refused")
 
-    monkeypatch.setattr(health_check.socket, "create_connection", _refuse)
+    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (False, "ConnectionRefusedError: [Errno 111] Connection refused"))
 
     result = health_check.check_research_db("postgres")
 
@@ -55,7 +56,7 @@ def test_database_url_postgres_takes_precedence_over_duckdb_config(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@db.example:5432/research")
     monkeypatch.setattr(health_check, "_load_yaml", lambda _path: {"analytics": {"duckdb_path": "research.db"}})
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
-    monkeypatch.setattr(health_check.socket, "create_connection", lambda *args, **kwargs: _FakeSocket())
+    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (True, "reachable"))
 
     backend, meta = health_check._infer_db_backend()
 
@@ -76,6 +77,40 @@ def test_missing_db_config_fails_closed(monkeypatch):
 
     assert result["status"] == "FAIL"
     assert "missing database runtime config" in result["detail"].lower()
+
+
+def test_postgres_backend_warns_before_failure_threshold(monkeypatch):
+    monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
+    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 1)
+    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (False, "ConnectionRefusedError: [Errno 111] Connection refused"))
+
+    result = health_check.check_research_db("postgres")
+
+    assert result["status"] == "WARN"
+    assert result["consecutive_failures"] == 1
+    assert result["alert_eligible"] is False
+
+
+def test_localhost_in_container_warns_if_fallback_host_is_reachable(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@127.0.0.1:5432/research")
+    monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "unknown")
+    monkeypatch.setattr(health_check, "_in_container_runtime", lambda: True)
+    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 0)
+
+    def _probe(host, port):
+        if host == "127.0.0.1":
+            return False, "ConnectionRefusedError: [Errno 111] Connection refused"
+        if host == "host.docker.internal":
+            return True, "reachable"
+        return False, "not reached"
+
+    monkeypatch.setattr(health_check, "_probe_socket", _probe)
+
+    result = health_check.check_research_db("postgres")
+
+    assert result["status"] == "WARN"
+    assert result["configured_host"] == "127.0.0.1"
+    assert result["effective_host"] == "host.docker.internal"
 
 
 def test_recovery_check_reports_loaded_state_and_journal(tmp_path, monkeypatch):
