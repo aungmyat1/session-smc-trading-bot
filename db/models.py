@@ -1,15 +1,45 @@
 """
 db/models.py
-SQLAlchemy ORM models — mirrors db/schema_v2.sql exactly.
+SQLAlchemy ORM — v3 synchronized, single authoritative schema definition.
+
+Covers all tables in both db/schema_v2.sql and db/schema_v3.sql.
+
+Schema layout
+─────────────
+v2 (existing, unchanged)
+  market      : Instrument, Candle(*), AsianRange, SessionRange, SmcEvent
+  research    : Strategy, ReplayRun, Trade, TradeFeature, DailyEquity
+  analytics   : StrategyMetric, MonthlyMetric, Phase0Gate, ExperimentLog,
+                OptimizationResult(*)
+  config      : SystemConfig(*)
+  (* = previously missing from ORM — D-03 fix)
+
+v3 (new control-plane additions)
+  strategy    : StrategyEntity, StrategyVersion
+  governance  : StageState, GateDecision, Approval, Outbox
+  evidence    : Artifact, ArtifactBinding
+  research    : Run, Metric          (new UUID-keyed tables; legacy v2 kept)
+  analytics   : StageGate            (generalises Phase0Gate)
+  experiments : Experiment, ParameterSet, ExperimentResultBinding
+  robustness  : WalkForwardResult, MonteCarloResult, SensitivityResult
+  execution   : VirtualOrder, VirtualFill, VirtualPosition, DriftObservation
+  operations  : Deployment, Incident
 """
 from __future__ import annotations
+
+import uuid
 from datetime import datetime, date
 from sqlalchemy import (
     BigInteger, Boolean, Column, Date, DateTime, ForeignKey,
     Integer, JSON, Numeric, String, Text, UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from .connection import Base
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# market schema  ── v2, unchanged
+# ═══════════════════════════════════════════════════════════════════════════
 
 class Instrument(Base):
     __tablename__ = "instruments"
@@ -25,6 +55,30 @@ class Instrument(Base):
     created_at     = Column(DateTime, default=datetime.utcnow)
 
 
+class Candle(Base):
+    """market.candles — live broker candles; was in SQL but missing from ORM (D-03)."""
+    __tablename__  = "candles"
+    __table_args__ = (
+        UniqueConstraint("symbol", "timeframe", "timestamp"),
+        {"schema": "market"},
+    )
+
+    id         = Column(BigInteger, primary_key=True)
+    symbol     = Column(String(20), nullable=False)
+    timeframe  = Column(String(10), nullable=False)
+    timestamp  = Column(DateTime, nullable=False)
+    open       = Column(Numeric(12, 5))
+    high       = Column(Numeric(12, 5))
+    low        = Column(Numeric(12, 5))
+    close      = Column(Numeric(12, 5))
+    volume     = Column(BigInteger)
+    bid        = Column(Numeric(12, 5))
+    ask        = Column(Numeric(12, 5))
+    spread     = Column(Numeric(8, 5))
+    source     = Column(String(30))
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class AsianRange(Base):
     __tablename__  = "asian_ranges"
     __table_args__ = (
@@ -38,7 +92,7 @@ class AsianRange(Base):
     asian_high       = Column(Numeric(12, 5), nullable=False)
     asian_low        = Column(Numeric(12, 5), nullable=False)
     asian_mid        = Column(Numeric(12, 5), nullable=False)
-    asian_range_pips = Column(Numeric(8, 2),  nullable=False)
+    asian_range_pips = Column(Numeric(8, 2), nullable=False)
     asian_volume     = Column(BigInteger)
     created_at       = Column(DateTime, default=datetime.utcnow)
 
@@ -57,7 +111,7 @@ class SessionRange(Base):
     session_high       = Column(Numeric(12, 5), nullable=False)
     session_low        = Column(Numeric(12, 5), nullable=False)
     session_mid        = Column(Numeric(12, 5), nullable=False)
-    session_range_pips = Column(Numeric(8, 2),  nullable=False)
+    session_range_pips = Column(Numeric(8, 2), nullable=False)
     session_type       = Column(String(10))
     created_at         = Column(DateTime, default=datetime.utcnow)
 
@@ -77,7 +131,12 @@ class SmcEvent(Base):
     created_at     = Column(DateTime, default=datetime.utcnow)
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# research schema  ── v2, unchanged
+# ═══════════════════════════════════════════════════════════════════════════
+
 class Strategy(Base):
+    """research.strategies — legacy table; superseded by strategy.StrategyEntity for new code."""
     __tablename__  = "strategies"
     __table_args__ = (
         UniqueConstraint("strategy_name", "version"),
@@ -94,6 +153,7 @@ class Strategy(Base):
 
 
 class ReplayRun(Base):
+    """research.replay_runs — legacy table; superseded by research.Run for new code."""
     __tablename__ = "replay_runs"
     __table_args__ = {"schema": "research"}
 
@@ -115,33 +175,28 @@ class Trade(Base):
     id                 = Column(BigInteger, primary_key=True)
     trade_id           = Column(String(150), unique=True, nullable=False)
     run_id             = Column(String(100), ForeignKey("research.replay_runs.run_id"))
-    strategy_id        = Column(Integer,     ForeignKey("research.strategies.id"))
-
+    strategy_id        = Column(Integer, ForeignKey("research.strategies.id"))
     symbol             = Column(String(20), nullable=False)
     session            = Column(String(20))
     direction          = Column(String(10))
     setup_type         = Column(String(5), default="A")
-
     entry_time         = Column(DateTime)
     exit_time          = Column(DateTime)
     entry_price        = Column(Numeric(12, 5))
     stop_price         = Column(Numeric(12, 5))
-    take_profit        = Column(Numeric(12, 5))   # TP1
+    take_profit        = Column(Numeric(12, 5))
     tp2_price          = Column(Numeric(12, 5))
     sl_pips            = Column(Numeric(8, 2))
     risk_reward        = Column(Numeric(5, 2))
-
     spread_cost_pips   = Column(Numeric(8, 2))
     cost_in_r          = Column(Numeric(8, 4))
     gross_result_r     = Column(Numeric(8, 4))
-    net_result_r       = Column(Numeric(8, 4))    # use this for all P&L analysis
+    net_result_r       = Column(Numeric(8, 4))
     exit_reason        = Column(String(30))
     tp1_hit            = Column(Boolean, default=False)
-
     session_high       = Column(Numeric(12, 5))
     session_low        = Column(Numeric(12, 5))
     session_range_pips = Column(Numeric(8, 2))
-
     created_at         = Column(DateTime, default=datetime.utcnow)
 
 
@@ -178,6 +233,10 @@ class DailyEquity(Base):
     drawdown   = Column(Numeric(8, 6))
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# analytics schema  ── v2, + 2 previously missing tables (D-03 fix)
+# ═══════════════════════════════════════════════════════════════════════════
 
 class StrategyMetric(Base):
     __tablename__ = "strategy_metrics"
@@ -235,6 +294,7 @@ class Phase0Gate(Base):
 
 
 class ExperimentLog(Base):
+    """analytics.experiment_log — legacy experiment notes; superseded by experiments.Experiment."""
     __tablename__ = "experiment_log"
     __table_args__ = {"schema": "analytics"}
 
@@ -245,3 +305,483 @@ class ExperimentLog(Base):
     result             = Column(Text)
     verdict_log_ref    = Column(String(20))
     created_at         = Column(DateTime, default=datetime.utcnow)
+
+
+class OptimizationResult(Base):
+    """analytics.optimization_results — was in SQL but missing from ORM (D-03 fix)."""
+    __tablename__ = "optimization_results"
+    __table_args__ = {"schema": "analytics"}
+
+    id              = Column(Integer, primary_key=True)
+    strategy_id     = Column(Integer, ForeignKey("research.strategies.id"))
+    parameter_name  = Column(String(50))
+    parameter_value = Column(Text)
+    trade_count     = Column(Integer)
+    profit_factor   = Column(Numeric(8, 4))
+    expectancy      = Column(Numeric(8, 4))
+    max_drawdown    = Column(Numeric(8, 4))
+    created_at      = Column(DateTime, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# config schema  ── v2, previously missing from ORM (D-03 fix)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class SystemConfig(Base):
+    """config.system_config — was in SQL but missing from ORM (D-03 fix)."""
+    __tablename__ = "system_config"
+    __table_args__ = {"schema": "config"}
+
+    key         = Column(String(100), primary_key=True)
+    value       = Column(Text)
+    description = Column(Text)
+    updated_at  = Column(DateTime, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# strategy schema  ── v3  (canonical identity + immutable versioning)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class StrategyEntity(Base):
+    """strategy.strategy — canonical UUID-keyed identity record."""
+    __tablename__  = "strategy"
+    __table_args__ = {"schema": "strategy"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name       = Column(String(100), nullable=False, unique=True)
+    slug       = Column(String(100), nullable=False, unique=True)
+    owner      = Column(String(100))
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class StrategyVersion(Base):
+    """strategy.version — immutable spec snapshot; new version row on every change."""
+    __tablename__  = "version"
+    __table_args__ = (
+        UniqueConstraint("strategy_id", "version"),
+        {"schema": "strategy"},
+    )
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id   = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version       = Column(String(30), nullable=False)
+    spec_hash     = Column(String(64), nullable=False)
+    parent_id     = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    source_commit = Column(String(40))
+    rules_json    = Column(JSONB, nullable=False)
+    notes         = Column(Text)
+    created_by    = Column(String(100))
+    created_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# governance schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class StageState(Base):
+    """governance.stage_state — one row per strategy; opt_lock prevents concurrent transitions."""
+    __tablename__  = "stage_state"
+    __table_args__ = {"schema": "governance"}
+
+    id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id        = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"),
+                                nullable=False, unique=True)
+    current_stage      = Column(String(50), nullable=False)
+    current_version_id = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    opt_lock           = Column(Integer, nullable=False, default=0)
+    updated_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_by         = Column(String(100))
+
+
+class GateDecision(Base):
+    """governance.gate_decision — append-only audit of every gate evaluation."""
+    __tablename__ = "gate_decision"
+    __table_args__ = {"schema": "governance"}
+
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id    = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id     = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    from_stage     = Column(String(50), nullable=False)
+    to_stage       = Column(String(50), nullable=False)
+    allowed        = Column(Boolean, nullable=False)
+    actor          = Column(String(100), nullable=False)
+    reason         = Column(Text)
+    blockers       = Column(JSONB, nullable=False, default=list)
+    evidence_ids   = Column(JSONB, nullable=False, default=list)
+    policy_version = Column(String(20))
+    decided_at     = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class Approval(Base):
+    """governance.approval — named human sign-off for LIVE_DEMO / PRODUCTION gates."""
+    __tablename__ = "approval"
+    __table_args__ = {"schema": "governance"}
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id      = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id       = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    gate_decision_id = Column(UUID(as_uuid=True), ForeignKey("governance.gate_decision.id"))
+    from_stage       = Column(String(50), nullable=False)
+    to_stage         = Column(String(50), nullable=False)
+    approver         = Column(String(100), nullable=False)
+    approver_role    = Column(String(50))
+    reason           = Column(Text, nullable=False)
+    approved_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    expires_at       = Column(DateTime(timezone=True))
+    revoked_at       = Column(DateTime(timezone=True))
+
+
+class Outbox(Base):
+    """governance.outbox — transactional outbox; events written in same txn as stage_state (D-06 fix)."""
+    __tablename__ = "outbox"
+    __table_args__ = {"schema": "governance"}
+
+    id           = Column(BigInteger, primary_key=True)
+    event_type   = Column(String(100), nullable=False)
+    strategy_id  = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"))
+    payload      = Column(JSONB, nullable=False)
+    created_at   = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    processed_at = Column(DateTime(timezone=True))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# evidence schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Artifact(Base):
+    """evidence.artifact — content-addressed report file (sha256 = integrity anchor)."""
+    __tablename__ = "artifact"
+    __table_args__ = {"schema": "evidence"}
+
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id    = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    stage          = Column(String(50), nullable=False)
+    report_type    = Column(String(100), nullable=False)
+    uri            = Column(Text, nullable=False)
+    sha256         = Column(String(64), nullable=False)
+    media_type     = Column(String(100))
+    size_bytes     = Column(BigInteger)
+    schema_version = Column(String(20))
+    recorded_by    = Column(String(100))
+    recorded_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class ArtifactBinding(Base):
+    """evidence.binding — links artifact to (strategy version, run, stage)."""
+    __tablename__ = "binding"
+    __table_args__ = {"schema": "evidence"}
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id  = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    run_id      = Column(UUID(as_uuid=True))
+    stage       = Column(String(50), nullable=False)
+    artifact_id = Column(UUID(as_uuid=True), ForeignKey("evidence.artifact.id"), nullable=False)
+    status      = Column(String(20), nullable=False, default="active")
+    bound_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# research schema  ── v3 additions (legacy v2 tables kept above)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Run(Base):
+    """research.run — UUID-keyed run with full provenance; supersedes ReplayRun for new code."""
+    __tablename__ = "run"
+    __table_args__ = {"schema": "research"}
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id           = Column(String(100), unique=True, nullable=False)
+    strategy_id      = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"))
+    version_id       = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    strategy_name    = Column(String(100))
+    symbol           = Column(String(20))
+    start_date       = Column(Date)
+    end_date         = Column(Date)
+    scenario         = Column(String(20), nullable=False, default="standard")
+    code_commit      = Column(String(40))
+    env_hash         = Column(String(64))
+    dataset_snapshot = Column(String(64))
+    seed             = Column(Integer)
+    parameters       = Column(JSONB)
+    status           = Column(String(20), nullable=False, default="pending")
+    started_at       = Column(DateTime(timezone=True))
+    completed_at     = Column(DateTime(timezone=True))
+    created_at       = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class Metric(Base):
+    """research.metric — typed metric store; all run output dimensions in one table."""
+    __tablename__  = "metric"
+    __table_args__ = (
+        UniqueConstraint("run_id", "metric_name", "window"),
+        {"schema": "research"},
+    )
+
+    id          = Column(BigInteger, primary_key=True)
+    run_id      = Column(UUID(as_uuid=True), ForeignKey("research.run.id"), nullable=False)
+    metric_name = Column(String(100), nullable=False)
+    value       = Column(Numeric(14, 6), nullable=False)
+    unit        = Column(String(30))
+    window      = Column(String(50))
+    created_at  = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# analytics schema  ── v3 addition
+# ═══════════════════════════════════════════════════════════════════════════
+
+class StageGate(Base):
+    """analytics.stage_gate — per-stage gate verdict; generalises the Phase0Gate specialisation."""
+    __tablename__ = "stage_gate"
+    __table_args__ = {"schema": "analytics"}
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id       = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    strategy_id  = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"))
+    stage        = Column(String(50), nullable=False)
+    scenario     = Column(String(20))
+    n_trades     = Column(Integer)
+    metrics      = Column(JSONB)
+    gate_pass    = Column(Boolean, nullable=False)
+    blockers     = Column(JSONB, nullable=False, default=list)
+    evaluated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    notes        = Column(Text)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# experiments schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Experiment(Base):
+    """experiments.experiment — pre-registration registry (CLAUDE.md §7 mandate)."""
+    __tablename__ = "experiment"
+    __table_args__ = {"schema": "experiments"}
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    exp_id          = Column(String(50), unique=True, nullable=False)
+    strategy_id     = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"))
+    version_id      = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    title           = Column(String(200), nullable=False)
+    hypothesis      = Column(Text)
+    instrument      = Column(String(20))
+    dataset_version = Column(String(64))
+    feature_set     = Column(JSONB)
+    parameters      = Column(JSONB)
+    status          = Column(String(20), nullable=False, default="pending")
+    verdict         = Column(String(20))
+    verdict_reason  = Column(Text)
+    created_by      = Column(String(100))
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    concluded_at    = Column(DateTime(timezone=True))
+
+
+class ParameterSet(Base):
+    """experiments.parameter_set — immutable parameter snapshot; one per scenario."""
+    __tablename__ = "parameter_set"
+    __table_args__ = {"schema": "experiments"}
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    experiment_id = Column(UUID(as_uuid=True), ForeignKey("experiments.experiment.id"), nullable=False)
+    label         = Column(String(100))
+    parameters    = Column(JSONB, nullable=False)
+    created_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class ExperimentResultBinding(Base):
+    """experiments.result_binding — links experiment to its run results and evidence."""
+    __tablename__ = "result_binding"
+    __table_args__ = {"schema": "experiments"}
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    experiment_id = Column(UUID(as_uuid=True), ForeignKey("experiments.experiment.id"), nullable=False)
+    run_id        = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    stage         = Column(String(50), nullable=False)
+    verdict       = Column(String(20))
+    artifact_id   = Column(UUID(as_uuid=True), ForeignKey("evidence.artifact.id"))
+    bound_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# robustness schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class WalkForwardResult(Base):
+    """robustness.walk_forward_result — one row per fold."""
+    __tablename__  = "walk_forward_result"
+    __table_args__ = (
+        UniqueConstraint("run_id", "fold_index"),
+        {"schema": "robustness"},
+    )
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id        = Column(UUID(as_uuid=True), ForeignKey("research.run.id"), nullable=False)
+    fold_index    = Column(Integer, nullable=False)
+    train_start   = Column(Date, nullable=False)
+    train_end     = Column(Date, nullable=False)
+    test_start    = Column(Date, nullable=False)
+    test_end      = Column(Date, nullable=False)
+    n_trades      = Column(Integer)
+    profit_factor = Column(Numeric(8, 4))
+    win_rate      = Column(Numeric(5, 2))
+    net_r         = Column(Numeric(10, 2))
+    max_drawdown  = Column(Numeric(8, 4))
+    gate_pass     = Column(Boolean)
+    created_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class MonteCarloResult(Base):
+    """robustness.monte_carlo_result — summary statistics from MC simulation."""
+    __tablename__ = "monte_carlo_result"
+    __table_args__ = {"schema": "robustness"}
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id           = Column(UUID(as_uuid=True), ForeignKey("research.run.id"), nullable=False)
+    n_simulations    = Column(Integer, nullable=False)
+    percentile_5_pf  = Column(Numeric(8, 4))
+    percentile_25_pf = Column(Numeric(8, 4))
+    median_pf        = Column(Numeric(8, 4))
+    percentile_75_pf = Column(Numeric(8, 4))
+    percentile_95_pf = Column(Numeric(8, 4))
+    ruin_probability = Column(Numeric(6, 4))
+    max_dd_p95       = Column(Numeric(8, 4))
+    gate_pass        = Column(Boolean)
+    created_at       = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class SensitivityResult(Base):
+    """robustness.sensitivity_result — one row per parameter/value sweep point."""
+    __tablename__ = "sensitivity_result"
+    __table_args__ = {"schema": "robustness"}
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id          = Column(UUID(as_uuid=True), ForeignKey("research.run.id"), nullable=False)
+    parameter_name  = Column(String(100), nullable=False)
+    parameter_value = Column(Text, nullable=False)
+    n_trades        = Column(Integer)
+    profit_factor   = Column(Numeric(8, 4))
+    net_r           = Column(Numeric(10, 2))
+    max_drawdown    = Column(Numeric(8, 4))
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# execution schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class VirtualOrder(Base):
+    """execution.virtual_order — order lifecycle record for virtual-demo runs."""
+    __tablename__ = "virtual_order"
+    __table_args__ = {"schema": "execution"}
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id          = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    symbol          = Column(String(20), nullable=False)
+    direction       = Column(String(10), nullable=False)
+    requested_price = Column(Numeric(12, 5))
+    filled_price    = Column(Numeric(12, 5))
+    slippage_pips   = Column(Numeric(8, 4))
+    latency_ms      = Column(Integer)
+    status          = Column(String(20), nullable=False)
+    reason          = Column(Text)
+    ordered_at      = Column(DateTime(timezone=True), nullable=False)
+    filled_at       = Column(DateTime(timezone=True))
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class VirtualFill(Base):
+    """execution.virtual_fill — individual fill event against a virtual order."""
+    __tablename__ = "virtual_fill"
+    __table_args__ = {"schema": "execution"}
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id        = Column(UUID(as_uuid=True), ForeignKey("execution.virtual_order.id"), nullable=False)
+    symbol          = Column(String(20), nullable=False)
+    direction       = Column(String(10), nullable=False)
+    requested_price = Column(Numeric(12, 5))
+    filled_price    = Column(Numeric(12, 5))
+    slippage_pips   = Column(Numeric(8, 4))
+    latency_ms      = Column(Integer)
+    execution_time  = Column(DateTime(timezone=True), nullable=False)
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class VirtualPosition(Base):
+    """execution.virtual_position — full open→close lifecycle of a virtual position."""
+    __tablename__ = "virtual_position"
+    __table_args__ = {"schema": "execution"}
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id         = Column(UUID(as_uuid=True), ForeignKey("execution.virtual_order.id"), nullable=False)
+    run_id           = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    symbol           = Column(String(20), nullable=False)
+    direction        = Column(String(10), nullable=False)
+    entry_price      = Column(Numeric(12, 5), nullable=False)
+    exit_price       = Column(Numeric(12, 5))
+    sl_price         = Column(Numeric(12, 5))
+    tp_price         = Column(Numeric(12, 5))
+    spread_cost_pips = Column(Numeric(8, 4))
+    gross_profit_r   = Column(Numeric(8, 4))
+    net_profit_r     = Column(Numeric(8, 4))
+    duration_seconds = Column(Numeric(12, 2))
+    exit_reason      = Column(String(50))
+    opened_at        = Column(DateTime(timezone=True), nullable=False)
+    closed_at        = Column(DateTime(timezone=True))
+    created_at       = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class DriftObservation(Base):
+    """execution.drift_observation — backtest expectation vs live execution comparison."""
+    __tablename__ = "drift_observation"
+    __table_args__ = {"schema": "execution"}
+
+    id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id             = Column(UUID(as_uuid=True), ForeignKey("research.run.id"))
+    observation_time   = Column(DateTime(timezone=True), nullable=False)
+    symbol             = Column(String(20), nullable=False)
+    expected_direction = Column(String(10))
+    actual_direction   = Column(String(10))
+    expected_entry     = Column(Numeric(12, 5))
+    actual_entry       = Column(Numeric(12, 5))
+    slippage_pips      = Column(Numeric(8, 4))
+    latency_ms         = Column(Integer)
+    verdict            = Column(String(20))
+    created_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# operations schema  ── v3
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Deployment(Base):
+    """operations.deployment — record of each demo or live deployment."""
+    __tablename__ = "deployment"
+    __table_args__ = {"schema": "operations"}
+
+    id                = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    strategy_id       = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"), nullable=False)
+    version_id        = Column(UUID(as_uuid=True), ForeignKey("strategy.version.id"))
+    environment       = Column(String(30), nullable=False)
+    broker            = Column(String(50))
+    account_id        = Column(String(100))
+    status            = Column(String(20), nullable=False, default="active")
+    deployed_by       = Column(String(100))
+    deployed_at       = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    decommissioned_at = Column(DateTime(timezone=True))
+
+
+class Incident(Base):
+    """operations.incident — production or demo incident log."""
+    __tablename__ = "incident"
+    __table_args__ = {"schema": "operations"}
+
+    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deployment_id = Column(UUID(as_uuid=True), ForeignKey("operations.deployment.id"))
+    strategy_id   = Column(UUID(as_uuid=True), ForeignKey("strategy.strategy.id"))
+    severity      = Column(String(10), nullable=False)
+    title         = Column(String(200), nullable=False)
+    description   = Column(Text)
+    status        = Column(String(20), nullable=False, default="open")
+    opened_at     = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    resolved_at   = Column(DateTime(timezone=True))
+    resolution    = Column(Text)
