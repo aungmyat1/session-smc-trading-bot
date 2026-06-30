@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Strategy } from "../types";
 import {
   CheckCircle, XCircle, Clock, AlertTriangle, Info,
-  ChevronDown, ChevronRight, Loader2
+  ChevronDown, ChevronRight, Loader2, Play, RefreshCw, FileCode
 } from "lucide-react";
 
 // ─── Types returned by /pipeline-report ──────────────────────────────────────
@@ -572,6 +572,200 @@ function FinalSummary({ report, strategy }: { report: PipelineReport; strategy: 
   );
 }
 
+// ─── Run Pipeline Panel ───────────────────────────────────────────────────────
+
+function buildDefaultSpec(strategy: Strategy): string {
+  const r = strategy.rules;
+  const risk = r.riskRules || {};
+  const entry = r.entryConditions?.join(" | ") || "Enter on confirmed momentum setup during active killzone";
+  const exit = r.exitConditions?.join(" | ") || "Close at take profit or stop loss";
+  return [
+    `# ${strategy.name}`,
+    "",
+    `Market: ${r.assetClass || "Forex"}`,
+    `Instruments: ${r.symbol || "EURUSD"}`,
+    `Timeframe: ${r.timeframe || "M15"}`,
+    "Session: London and New York killzones only",
+    "Bias: Long only when H1 market structure is bullish with BOS confirmation",
+    `Entry Trigger: ${entry}`,
+    "Confirmation: Require displacement and FVG or order block retest",
+    "Invalidation: Cancel if setup fails within 3 candles or price closes below swept low",
+    `Stop Loss: ${risk.stopLossPct ?? 1.0}% from entry`,
+    `Take Profit: ${risk.takeProfitPct ?? 2.0}R target`,
+    `Risk: ${risk.maxPositionSizePct ?? 0.5}% fixed fractional per trade`,
+    `Maximum Daily Loss: ${risk.dailyLossLimitPct ?? 2.0}%`,
+    "Maximum Open Positions: 1",
+    "Maximum Drawdown: 8%",
+    "News Rules: Do not open within 15 minutes of high-impact news",
+    "Filters: Require HTF bias, session filter, spread below 1.5 pips",
+    `Exit Rules: ${exit}`,
+    strategy.description ? `\n# ${strategy.description}` : "",
+  ].join("\n").trim();
+}
+
+interface RunResult {
+  strategy_id: string;
+  overall_status: string;
+  stages: Array<{ stage: string; status: string; score: number }>;
+  report_dir?: string;
+  error?: string;
+}
+
+function RunPipelinePanel({
+  strategy,
+  onComplete,
+}: {
+  strategy: Strategy;
+  onComplete: () => void;
+}) {
+  const [spec, setSpec] = useState(() => buildDefaultSpec(strategy));
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [showSpec, setShowSpec] = useState(false);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setRunResult(null);
+    setRunError(null);
+    try {
+      const res = await fetch(
+        `/api/new-dashboard/strategies/${strategy.id}/run-pipeline`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spec }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setRunError(data.error || "Pipeline run failed");
+      } else {
+        setRunResult(data);
+        if (data.overall_status === "PASS" || data.stages?.length > 0) {
+          setTimeout(onComplete, 800);
+        }
+      }
+    } catch (e: unknown) {
+      setRunError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+      {/* Header */}
+      <div className="bg-indigo-700 dark:bg-indigo-900 text-white px-5 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileCode className="h-4 w-4" />
+          <span className="font-mono font-bold text-sm tracking-widest uppercase">
+            Run SVOS Pipeline Validation
+          </span>
+        </div>
+        <span className="text-indigo-300 text-[10px] font-mono">
+          Synthetic data used for unconfirmed stages
+        </span>
+      </div>
+
+      <div className="p-5 space-y-4">
+        {/* Strategy spec */}
+        <div>
+          <button
+            onClick={() => setShowSpec(!showSpec)}
+            className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors mb-2"
+          >
+            {showSpec ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            Strategy Specification Text (auto-generated from rules — edit if needed)
+          </button>
+          {showSpec && (
+            <textarea
+              value={spec}
+              onChange={(e) => setSpec(e.target.value)}
+              rows={14}
+              className="w-full text-[11px] font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded p-3 text-slate-800 dark:text-slate-200 resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              placeholder="Paste or edit strategy specification here…"
+            />
+          )}
+        </div>
+
+        {/* Run result */}
+        {runResult && (
+          <div
+            className={`rounded border p-3 text-xs font-mono space-y-2 ${
+              runResult.overall_status === "PASS"
+                ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+            }`}
+          >
+            <div className="flex items-center gap-2 font-semibold">
+              {runResult.overall_status === "PASS" ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" />
+              )}
+              Pipeline {runResult.overall_status} — loading report…
+            </div>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {runResult.stages.map((s) => (
+                <span
+                  key={s.stage}
+                  className={`px-2 py-0.5 rounded border text-[10px] font-bold ${
+                    s.status === "PASS"
+                      ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                      : "bg-red-100 border-red-300 text-red-700"
+                  }`}
+                >
+                  {s.stage}: {s.status}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {runError && (
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded p-3 text-xs font-mono text-red-800 dark:text-red-300">
+            <div className="flex items-center gap-2 font-semibold mb-1">
+              <XCircle className="h-4 w-4" /> Pipeline Error
+            </div>
+            {runError}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            onClick={handleRun}
+            disabled={running || !spec.trim()}
+            className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-semibold font-mono transition-colors ${
+              running || !spec.trim()
+                ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+            }`}
+          >
+            {running ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running Pipeline…
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Run SVOS Pipeline
+              </>
+            )}
+          </button>
+          {running && (
+            <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 animate-pulse">
+              Running all 6 stages — audit → replay → backtest → robustness → virtual demo → approval…
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 interface FullPipelineReportProps {
@@ -582,8 +776,9 @@ export default function FullPipelineReport({ strategy }: FullPipelineReportProps
   const [report, setReport] = useState<PipelineReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRunPanel, setShowRunPanel] = useState(false);
 
-  useEffect(() => {
+  const fetchReport = useCallback(() => {
     setLoading(true);
     setError(null);
     fetch(`/api/new-dashboard/strategies/${strategy.id}/pipeline-report`)
@@ -594,12 +789,17 @@ export default function FullPipelineReport({ strategy }: FullPipelineReportProps
       .then((data) => {
         setReport(data);
         setLoading(false);
+        setShowRunPanel(false);
       })
       .catch((e) => {
         setError(e.message);
         setLoading(false);
       });
   }, [strategy.id]);
+
+  useEffect(() => {
+    fetchReport();
+  }, [fetchReport]);
 
   if (loading) {
     return (
@@ -614,18 +814,20 @@ export default function FullPipelineReport({ strategy }: FullPipelineReportProps
 
   if (error || !report) {
     return (
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-8 text-center space-y-2">
-        <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
-        <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">
-          No SVOS Pipeline Report Available
-        </p>
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          {error ||
-            "This strategy has not been run through the SVOS pipeline yet. Run a validation pass to generate stage reports."}
-        </p>
-        <p className="text-[10px] font-mono text-amber-600 dark:text-amber-500 mt-1">
-          Expected path: reports/svos/{strategy.id}/&lt;version&gt;/&lt;run_id&gt;/
-        </p>
+      <div className="space-y-4">
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-5 py-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-sm text-amber-800 dark:text-amber-300">
+              No SVOS Pipeline Report Available
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              {error ||
+                "This strategy has not been run through the SVOS pipeline yet. Use the panel below to generate stage reports."}
+            </p>
+          </div>
+        </div>
+        <RunPipelinePanel strategy={strategy} onComplete={fetchReport} />
       </div>
     );
   }
@@ -642,6 +844,24 @@ export default function FullPipelineReport({ strategy }: FullPipelineReportProps
 
       {/* Final lifecycle summary */}
       <FinalSummary report={report} strategy={strategy} />
+
+      {/* Re-run panel */}
+      {showRunPanel ? (
+        <RunPipelinePanel
+          strategy={strategy}
+          onComplete={() => { setShowRunPanel(false); fetchReport(); }}
+        />
+      ) : (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowRunPanel(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded text-sm font-semibold font-mono bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Re-run Pipeline
+          </button>
+        </div>
+      )}
     </div>
   );
 }
