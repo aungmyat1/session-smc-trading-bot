@@ -50,6 +50,34 @@ def test_lifecycle_code_does_not_write_catalog_projection() -> None:
     assert not callers, f"Compatibility projection writer used by active code: {callers}"
 
 
+def test_ports_have_no_framework_imports() -> None:
+    """svos/ports/ must not import Flask, SQLAlchemy, or concrete adapter modules.
+
+    Ports are pure interface contracts. Any framework import breaks the hexagonal
+    isolation that lets the domain be tested without infrastructure.
+    """
+    ports_dir = ROOT / "svos" / "ports"
+    if not ports_dir.exists():
+        return  # ports package not yet created — skip silently
+
+    _FORBIDDEN = {
+        "flask", "sqlalchemy", "alembic", "psycopg2", "asyncpg",
+        "db.control_plane", "db.evidence_repository", "db.models",
+        "svos.adapters", "svos.registry", "svos.governance",
+    }
+    violations: list[str] = []
+    for path in ports_dir.rglob("*.py"):
+        if "__pycache__" in str(path):
+            continue
+        text = path.read_text(encoding="utf-8")
+        relative = path.relative_to(ROOT)
+        for forbidden in _FORBIDDEN:
+            if f"import {forbidden}" in text or f"from {forbidden}" in text:
+                violations.append(f"{relative}: imports {forbidden!r}")
+
+    assert not violations, "Port modules must not import infrastructure:\n" + "\n".join(violations)
+
+
 def test_catalog_has_no_active_or_approved_strategy() -> None:
     import yaml
 

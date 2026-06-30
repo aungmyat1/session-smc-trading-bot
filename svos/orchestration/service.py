@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
+from svos.experiments.manager import ExperimentManager, ExperimentRecord
 from svos.governance.service import GovernanceService
 from svos.lifecycle.manager import StrategyLifecycleManager
 from svos.registry.service import StrategyRegistryService
@@ -66,6 +67,7 @@ class SVOSPlatform:
                     pass  # unreachable DB or missing driver — fall back to JSONL
         self.pg_control_plane: PostgresControlPlane | None = pg_control_plane
         self.pg_evidence_repo: PostgresEvidenceRepository | None = pg_evidence_repo
+        self._experiments = ExperimentManager(self.root)
 
     @property
     def _pg_active(self) -> bool:
@@ -361,6 +363,48 @@ class SVOSPlatform:
             approver=approver,
             reason=reason,
         ).to_dict()
+
+    # ── experiment tracking ────────────────────────────────────────────────
+
+    def register_experiment(
+        self,
+        strategy: str,
+        hypothesis: str,
+        parameters: dict[str, Any],
+        actor: str,
+    ) -> ExperimentRecord:
+        """Pre-register a research experiment before the pipeline run.
+
+        Returns the ExperimentRecord with a deterministic experiment_id.
+        Call complete_experiment() after the pipeline run with the outcome.
+        """
+        return self._experiments.register(strategy, hypothesis, parameters, actor=actor)
+
+    def complete_experiment(
+        self,
+        experiment_id: str,
+        *,
+        run_id: str,
+        status: str,
+        verdict: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ExperimentRecord:
+        """Mark a registered experiment as complete with its outcome.
+
+        Args:
+            experiment_id: ID returned by register_experiment().
+            run_id: The run_id from the RunManifest for this pipeline run.
+            status: Terminal status — PASS | FAIL | INCONCLUSIVE | RUNNING.
+            verdict: Human-readable summary of why the experiment passed or failed.
+            metadata: Optional key/value context (e.g. PF scores, trade counts).
+        """
+        return self._experiments.complete(
+            experiment_id,
+            run_id=run_id,
+            status=status,
+            verdict=verdict,
+            metadata=metadata,
+        )
 
     # ── summary ────────────────────────────────────────────────────────────
 
