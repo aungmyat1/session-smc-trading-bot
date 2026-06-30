@@ -11,6 +11,7 @@ from svos.application.backtest import BacktestIntegrationService, BacktestResult
 from svos.application.intake import IntakeResult, IntakeService
 from svos.application.replay import ReplayIntegrationService, ReplayResult
 from svos.application.robustness import RobustnessIntegrationService, RobustnessResult
+from svos.application.pipeline import PhaseOutcome, PipelineResult, StrategyPipeline
 from svos.application.run_manifest import RunManifest, RunManifestBuilder
 from svos.application.virtual_demo import VirtualDemoIntegrationService, VirtualDemoResult
 
@@ -33,4 +34,7 @@ __all__ = [
     "resolve_adapter",
     "VirtualDemoIntegrationService",
     "VirtualDemoResult",
+    "PhaseOutcome",
+    "PipelineResult",
+    "StrategyPipeline",
 ]

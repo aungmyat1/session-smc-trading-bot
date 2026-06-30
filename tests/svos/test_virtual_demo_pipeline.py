@@ -41,20 +41,23 @@ strategies:
     timeframes: [M15]
 """.strip() + "\n"
 
-_SPEC = """
-Market: FX
+_SPEC = """Strategy: London BOS Reversal
 Instrument: EURUSD
+Market: FX
 Timeframe: M15
-Session: London killzone (07:00–10:00 UTC)
-Direction: Long only when H1 bias is bullish
-Entry Trigger: After a sweep of the prior session low, enter on CHoCH within 3 candles.
-Confirmation: BOS close and three-candle FVG after displacement.
-Invalidation: No CHoCH within 3 candles.
-Stop Loss: 2 pips below the swept low.
-Take Profit: 2R.
-Risk: 0.3% fixed fractional risk per trade.
-Maximum Daily Loss: 2R. Maximum Drawdown: 8%.
-Maximum Open Positions: 1.
+Session: London killzone 07:00-10:00 UTC
+Direction: Long only when H1 bias is bullish; short only when bearish
+Entry Rules: When session filter confirms London killzone, enter long after liquidity sweep of prior session low at a discount zone below a key level. Wait for BOS then CHoCH with market structure confirmation. Cancel if no CHoCH within 3 candles.
+Exit Rules: Take profit at 2R from entry at premium level. Stop loss 2 pips below swept low. Break-even at 1R. Reject and skip if spread exceeds 2 pips.
+Stop Loss: 2 pips below the swept low
+Take Profit: 2R
+Risk Model: 0.3% fixed fractional risk per trade. Kill switch at 2R daily loss.
+Position Sizing: 0.3% of account equity per trade, 0.01 lots per 1000 USD.
+Maximum Daily Loss: 2R
+Maximum Drawdown: 8%
+Maximum Open Positions: 1
+News Rules: No trading within 30 minutes before or after high-impact news events (FOMC, NFP, CPI).
+Invalidation: No CHoCH within 3 candles; high-impact news within session window; timeout after 3 bars.
 """.strip()
 
 # 20 signals: 2/3 win, 1/3 lose

@@ -327,6 +327,7 @@ class VirtualDemoIntegrationService:
             min_lot=lot_size,
             max_lot=lot_size * 100,
             point_size_by_symbol={symbol: point_size},
+            min_stop_distance_points=0,   # replay mode — trust pre-computed SL/TP
         )
         broker = VirtualBroker(config=config)
         await broker.connect()

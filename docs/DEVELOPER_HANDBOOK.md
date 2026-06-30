@@ -141,6 +141,7 @@ Task is too large if it requires:
 Use these artifact types consistently:
 
 - architecture reference: `docs/SYSTEM_ARCHITECTURE.md`
+- repo/runtime change record: `docs/CHANGE_CONTROL_SYSTEM.md` + `reports/change_control/`
 - implementation status: `docs/IMPLEMENTATION_STATUS.md`
 - operator workflow: `docs/OPERATING_MANUAL.md`
 - task contract: `docs/templates/implementation_spec_template.md`

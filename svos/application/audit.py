@@ -165,12 +165,13 @@ class AuditIntegrationService:
 
     def _run_engine(self, specification: str, strategy: str):
         from strategy_validation.models import StrategyDocument
+        from strategy_validation.parser import parse_strategy_document
         from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
 
-        document = StrategyDocument(
-            strategy_name=strategy,
-            raw_text=specification,
-        )
+        document = parse_strategy_document(text=specification)
+        if not document.strategy_name:
+            from dataclasses import replace
+            document = replace(document, strategy_name=strategy)
         pipeline = StrategyValidationPipeline()
         return pipeline.run_document(document)
 
