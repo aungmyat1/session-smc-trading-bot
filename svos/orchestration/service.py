@@ -26,6 +26,7 @@ _PG_NO_EVIDENCE_SOURCES = frozenset({"DRAFT", "REFINEMENT", "REVALIDATION"})
 
 class PersistenceMode(str, Enum):
     AUTO = "auto"
+    PG_AUTO = "pg_auto"
     LOCAL_COMPAT = "local_compat"
     AUTHORITATIVE_PG = "authoritative_pg"
 
@@ -102,7 +103,7 @@ class SVOSPlatform:
         effective_mode = (
             PersistenceMode.AUTHORITATIVE_PG.value
             if self._pg_active and self.persistence_mode == PersistenceMode.AUTHORITATIVE_PG
-            else (PersistenceMode.LOCAL_COMPAT.value if not self._pg_active else "pg_auto")
+            else (PersistenceMode.LOCAL_COMPAT.value if not self._pg_active else PersistenceMode.PG_AUTO.value)
         )
         return {
             "configured_mode": self.persistence_mode.value,

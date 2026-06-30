@@ -17,8 +17,10 @@ from agents.testing.runner import run as run_testing
 
 
 def _refresh_upstream_reports(root: Path, output_dir: Path, log_level: str) -> None:
-    run_testing(["--root", str(root), "--output-dir", str(output_dir), "--log-level", log_level])
-    run_quality(["--root", str(root), "--output-dir", str(output_dir), "--log-level", log_level])
+    testing_rc = run_testing(["--root", str(root), "--output-dir", str(output_dir), "--log-level", log_level])
+    quality_rc = run_quality(["--root", str(root), "--output-dir", str(output_dir), "--log-level", log_level])
+    if testing_rc != 0 or quality_rc != 0:
+        raise RuntimeError(f"Upstream refresh failed (testing={testing_rc}, quality={quality_rc})")
 
 
 def run(argv: list[str] | None = None) -> int:

@@ -438,11 +438,12 @@ def _stabilization_status() -> dict[str, Any]:
     }
 
 
-def _readiness_payload() -> dict[str, Any]:
+def _readiness_payload(platform_api: SVOSOperationalAPI | None = None) -> dict[str, Any]:
     readiness = _read_json(_READINESS_REPORT_JSON)
     testing = _read_json(_TESTING_REPORT_JSON)
     quality = _read_json(_QUALITY_REPORT_JSON)
-    persistence = _platform_api().platform.persistence_status()
+    api = platform_api or _platform_api()
+    persistence = api.platform.persistence_status()
     return {
         "production_readiness": readiness,
         "testing": testing,
@@ -470,7 +471,7 @@ def _incident_summary(limit: int = 20) -> dict[str, Any]:
     lines = _latest_log_lines(600)
     incidents = [
         line for line in lines
-        if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
+        if any(token in line for token in ("ERROR", "CRITICAL", "FATAL", "WARN", "DISCONNECTED", "disconnect"))
         and not _is_benign_runtime_line(line)
     ]
     audit = tail_audit_log(limit=limit)
@@ -533,9 +534,10 @@ def _platform_api() -> SVOSOperationalAPI:
 
 
 def _new_dashboard_overview() -> dict[str, Any]:
-    overview = _platform_api().overview()
+    api = _platform_api()
+    overview = api.overview()
     reports = latest_reports()
-    status = _readiness_payload()
+    status = _readiness_payload(api)
     return {
         "current_strategy": overview.get("current_strategy", ""),
         "service_status": overview.get("service_status", {}),
@@ -1021,7 +1023,8 @@ def api_emergency_stop_clear():
 
 @app.route("/")
 def index():
-    return send_from_directory(str(Path(__file__).parent), "index.html")
+    from flask import redirect
+    return redirect("/new-dashboard/", code=302)
 
 
 @app.route("/legacy")
@@ -1057,8 +1060,9 @@ def new_dashboard_assets(asset_path: str):
             ),
             503,
         )
-    target = _NEW_DASHBOARD_DIST / asset_path
-    if target.is_file():
+    dist_root = _NEW_DASHBOARD_DIST.resolve()
+    target = (_NEW_DASHBOARD_DIST / asset_path).resolve()
+    if target.is_relative_to(dist_root) and target.is_file():
         return send_from_directory(str(_NEW_DASHBOARD_DIST), asset_path)
     return send_from_directory(str(_NEW_DASHBOARD_DIST), "index.html")
 

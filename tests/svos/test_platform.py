@@ -206,3 +206,20 @@ def test_local_compat_mode_disables_pg_autodetection(tmp_path, monkeypatch):
     )
     assert platform.persistence_status()["configured_mode"] == PersistenceMode.LOCAL_COMPAT.value
     assert platform.persistence_status()["pg_active"] is False
+
+
+def test_effective_mode_round_trips_when_pg_is_active_in_auto(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    platform = SVOSPlatform(
+        root=tmp_path,
+        catalog_path=catalog,
+        pg_control_plane=object(),  # type: ignore[arg-type]
+        pg_evidence_repo=object(),  # type: ignore[arg-type]
+        persistence_mode=PersistenceMode.AUTO,
+    )
+
+    status = platform.persistence_status()
+
+    assert status["configured_mode"] == PersistenceMode.AUTO.value
+    assert status["effective_mode"] == PersistenceMode.PG_AUTO.value
+    assert PersistenceMode(status["effective_mode"]) is PersistenceMode.PG_AUTO

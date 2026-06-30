@@ -57,7 +57,7 @@ class MonitoringStatusService:
     def _incident_items(self, lines: list[str]) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         for line in lines:
-            if not any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect")):
+            if not any(token in line for token in ("ERROR", "CRITICAL", "FATAL", "WARN", "DISCONNECTED", "disconnect")):
                 continue
             if self._is_benign_runtime_line(line):
                 continue

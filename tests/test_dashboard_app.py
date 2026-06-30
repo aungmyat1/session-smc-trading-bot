@@ -264,6 +264,15 @@ analytics:
     monkeypatch.setattr(dashboard_app, "_JOURNAL_PATHS", [tmp_path / "logs" / "trades.jsonl"])
     monkeypatch.setattr(dashboard_app, "_ARCHITECTURE_PATH", tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md")
     monkeypatch.setattr(dashboard_app, "_BOT_LOG", tmp_path / "logs" / "bot.log")
+    monkeypatch.setattr(
+        dashboard_app,
+        "_RUNNER_LOGS",
+        [
+            tmp_path / "logs" / "strategy_demo.log",
+            tmp_path / "logs" / "st_a2_demo.log",
+            tmp_path / "logs" / "st_a2_runner.log",
+        ],
+    )
     monkeypatch.setattr(dashboard_app, "_RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
     monkeypatch.setattr(dashboard_app, "_READINESS_REPORT_JSON", tmp_path / "reports" / "production_readiness_report.json")
     monkeypatch.setattr(dashboard_app, "_TESTING_REPORT_JSON", tmp_path / "reports" / "testing_report.json")
@@ -334,11 +343,9 @@ def test_mutating_endpoint_rejects_unauthenticated_request(client):
 
 
 def test_dashboard_loads(client):
-    response = client.get("/")
+    response = client.get("/", follow_redirects=True)
     assert response.status_code == 200
-    assert b"SVOS Control Panel" in response.data
-    assert b"el.style.borderColor = '';" in response.data
-    assert b"el.style.color = '';" in response.data
+    assert b"New Project Dashboard" in response.data
 
 
 def test_existing_endpoints_still_work(client):
@@ -456,7 +463,7 @@ def test_svos_endpoint_exposes_canonical_six_stage_run(client):
 
 
 def test_dashboard_uses_operational_nine_stage_svos_view(client):
-    response = client.get("/")
+    response = client.get("/legacy")
     page = response.get_data(as_text=True)
 
     assert response.status_code == 200
@@ -478,6 +485,12 @@ def test_new_dashboard_static_route_serves_built_frontend(client):
     asset = client.get("/new-dashboard/assets/app.js")
     assert asset.status_code == 200
     assert b"new dashboard" in asset.data
+
+
+def test_new_dashboard_static_route_blocks_path_traversal_probe(client):
+    response = client.get("/new-dashboard/../../etc/shadow")
+    assert response.status_code == 200
+    assert b"New Project Dashboard" in response.data
 
 
 def test_reports_include_strategy_audit_loop_report(client):
@@ -578,6 +591,50 @@ def test_smo_ignores_benign_engineio_shutdown_noise(client, tmp_path):
 
     payload = client.get("/api/smo").get_json()
     assert all("packet queue is empty, aborting" not in item["text"] for item in payload["recent_incidents"])
+
+
+def test_smo_includes_fatal_lines_in_recent_incidents(client, tmp_path):
+    _write(
+        tmp_path / "logs" / "strategy_demo.log",
+        "2026-06-30 00:00:00 FATAL strategy_demo.runner catastrophic failure\n",
+    )
+
+    payload = client.get("/api/smo").get_json()
+    assert any("FATAL strategy_demo.runner catastrophic failure" in item["text"] for item in payload["recent_incidents"])
+
+
+def test_new_dashboard_overview_reuses_single_platform_api_instance(client, monkeypatch):
+    class _FakePlatform:
+        def persistence_status(self):
+            return {"configured_mode": "local_compat", "effective_mode": "local_compat"}
+
+    class _FakeAPI:
+        def __init__(self):
+            self.platform = _FakePlatform()
+
+        def overview(self):
+            return {
+                "current_strategy": "ST-A2",
+                "service_status": {},
+                "registry": {},
+                "deployment": {},
+                "monitoring": {},
+                "persistence": {},
+            }
+
+    instances: list[_FakeAPI] = []
+
+    def _factory():
+        api = _FakeAPI()
+        instances.append(api)
+        return api
+
+    monkeypatch.setattr(dashboard_app, "_platform_api", _factory)
+
+    response = client.get("/api/new-dashboard/overview")
+
+    assert response.status_code == 200
+    assert len(instances) == 1
 
 
 def test_incident_acknowledgment_requires_incident_id(client):

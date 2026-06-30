@@ -13,8 +13,6 @@ Usage::
 """
 
 from __future__ import annotations
-
-import builtins
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
@@ -204,7 +202,7 @@ class ExperimentManager:
         return _row_to_record(latest) if latest else None
 
     @staticmethod
-    def _dedup_latest(rows: builtins.list[dict[str, Any]]) -> builtins.list[dict[str, Any]]:
+    def _dedup_latest(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen: dict[str, dict[str, Any]] = {}
         for row in rows:
             eid = row.get("experiment_id", "")
