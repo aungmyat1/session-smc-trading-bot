@@ -22,5 +22,8 @@ pandas>=2.2,<4
 flask>=3.0,<4
 flask-cors>=4,<7
 
+# Gemini AI — new-dashboard strategy intake and failure diagnosis
+google-generativeai>=0.8
+
 # Future isolated Vantage/MetaAPI execution adapter
 metaapi-cloud-sdk>=29,<30

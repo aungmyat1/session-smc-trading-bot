@@ -63,7 +63,7 @@ export default function ReplayView({ replayReport, strategyName }: ReplayViewPro
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch("/api/new-dashboard/gemini/explain-failure", {
+      const response = await fetch("/api/gemini/explain-failure", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

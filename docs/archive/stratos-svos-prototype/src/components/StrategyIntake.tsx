@@ -62,7 +62,7 @@ export default function StrategyIntake({ onAddStrategy, onClose }: StrategyIntak
     const stopSim = simulateLoading();
 
     try {
-      const response = await fetch("/api/new-dashboard/gemini/parse", {
+      const response = await fetch("/api/gemini/parse", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

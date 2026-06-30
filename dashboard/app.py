@@ -57,6 +57,7 @@ from dashboard.control_state import activate_emergency_stop, clear_emergency_sto
 from dashboard.report_service import generate as generate_reports_payload
 from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
 from dashboard.status_mapper import health_to_status
+from dashboard import strategy_service, gemini_service
 import scripts.health_check as health_check
 from svos.api.service import SVOSOperationalAPI
 
@@ -868,23 +869,90 @@ def api_new_dashboard_overview():
     return jsonify(_new_dashboard_overview())
 
 
-@app.route("/api/new-dashboard/strategies")
+@app.route("/api/new-dashboard/strategies", methods=["GET"])
 def api_new_dashboard_strategies():
-    registry = _platform_api().registry_snapshot()
-    return jsonify({
-        "strategies": registry.get("strategies", []),
-        "lifecycle_stages": registry.get("lifecycle_stages", []),
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(strategy_service.list_strategies())
 
 
-@app.route("/api/new-dashboard/strategies/<strategy>")
-def api_new_dashboard_strategy(strategy: str):
+@app.route("/api/new-dashboard/strategies", methods=["POST"])
+def api_new_dashboard_strategies_create():
+    data = request.get_json(silent=True) or {}
     try:
-        payload = _platform_api().strategy_snapshot(strategy)
-    except KeyError:
-        return jsonify({"error": "Strategy not found", "strategy": strategy}), 404
-    return jsonify({**payload, "fetched_at": _now_iso()})
+        new_strat = strategy_service.create_strategy(data)
+        write_audit_log("strategy_created", status="created", detail={"id": new_strat["id"], "name": new_strat["name"]})
+        return jsonify(new_strat), 201
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
+@app.route("/api/new-dashboard/strategies/<strategy_id>", methods=["GET"])
+def api_new_dashboard_strategy(strategy_id: str):
+    strat = strategy_service.get_strategy(strategy_id)
+    if strat is None:
+        return jsonify({"error": "Strategy not found", "id": strategy_id}), 404
+    return jsonify(strat)
+
+
+@app.route("/api/new-dashboard/strategies/<strategy_id>", methods=["PUT"])
+def api_new_dashboard_strategy_update(strategy_id: str):
+    patch = request.get_json(silent=True) or {}
+    updated = strategy_service.update_strategy(strategy_id, patch)
+    if updated is None:
+        return jsonify({"error": "Strategy not found", "id": strategy_id}), 404
+    return jsonify(updated)
+
+
+@app.route("/api/new-dashboard/strategies/<strategy_id>/promote", methods=["POST"])
+def api_new_dashboard_strategy_promote(strategy_id: str):
+    promoted = strategy_service.promote_strategy(strategy_id)
+    if promoted is None:
+        return jsonify({"error": "Strategy not found", "id": strategy_id}), 404
+    write_audit_log("strategy_promoted", status="promoted", detail={"id": strategy_id, "stage": promoted.get("status")})
+    return jsonify(promoted)
+
+
+@app.route("/api/new-dashboard/strategies/<strategy_id>/demote", methods=["POST"])
+def api_new_dashboard_strategy_demote(strategy_id: str):
+    body = request.get_json(silent=True) or {}
+    target_stage = body.get("targetStage", "")
+    reason = body.get("comments", body.get("reason", ""))
+    demoted = strategy_service.demote_strategy(strategy_id, target_stage, reason)
+    if demoted is None:
+        return jsonify({"error": "Strategy not found", "id": strategy_id}), 404
+    write_audit_log("strategy_demoted", status="demoted", detail={"id": strategy_id, "stage": demoted.get("status"), "reason": reason})
+    return jsonify(demoted)
+
+
+@app.route("/api/new-dashboard/gemini/parse", methods=["POST"])
+def api_new_dashboard_gemini_parse():
+    body = request.get_json(silent=True) or {}
+    text = body.get("text", "")
+    if not text:
+        return jsonify({"error": "text field required"}), 400
+    try:
+        result = gemini_service.parse_strategy_idea(text)
+        return jsonify(result)
+    except RuntimeError as exc:
+        if "GEMINI_API_KEY" in str(exc) or "not installed" in str(exc):
+            return jsonify({"error": str(exc)}), 503
+        return jsonify({"error": str(exc)}), 502
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+
+@app.route("/api/new-dashboard/gemini/explain-failure", methods=["POST"])
+def api_new_dashboard_gemini_explain():
+    body = request.get_json(silent=True) or {}
+    trades = body.get("trades", [])
+    try:
+        result = gemini_service.explain_failure(trades)
+        return jsonify(result)
+    except RuntimeError as exc:
+        if "GEMINI_API_KEY" in str(exc) or "not installed" in str(exc):
+            return jsonify({"error": str(exc)}), 503
+        return jsonify({"error": str(exc)}), 502
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 502
 
 
 @app.route("/api/new-dashboard/reports")

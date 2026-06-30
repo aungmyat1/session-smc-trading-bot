@@ -1,0 +1,6 @@
+{
+  "name": "Strategy Validation Operating System",
+  "description": "An institutional strategy validation operating system that provides a governed, reproducible, and evidence-based research environment for verifying quantitative trading strategies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

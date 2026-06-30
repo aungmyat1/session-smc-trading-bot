@@ -68,7 +68,7 @@ export default function App() {
   // Load all strategies from backend on mount
   const fetchStrategies = async () => {
     try {
-      const response = await fetch("/api/new-dashboard/strategies");
+      const response = await fetch("/api/strategies");
       if (!response.ok) {
         throw new Error("Failed to load strategies database.");
       }
@@ -105,7 +105,7 @@ export default function App() {
   // POST new strategy intake
   const handleAddStrategy = async (name: string, description: string, rules: StrategyRules) => {
     try {
-      const response = await fetch("/api/new-dashboard/strategies", {
+      const response = await fetch("/api/strategies", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -136,7 +136,7 @@ export default function App() {
   const handlePromoteStrategy = async () => {
     if (!selectedStrategyId) return;
     try {
-      const response = await fetch(`/api/new-dashboard/strategies/${selectedStrategyId}/promote`, {
+      const response = await fetch(`/api/strategies/${selectedStrategyId}/promote`, {
         method: "POST"
       });
 
@@ -173,7 +173,7 @@ export default function App() {
   const handleDemoteStrategy = async (targetStage: ValidationStage, comments: string) => {
     if (!selectedStrategyId) return;
     try {
-      const response = await fetch(`/api/new-dashboard/strategies/${selectedStrategyId}/demote`, {
+      const response = await fetch(`/api/strategies/${selectedStrategyId}/demote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -220,7 +220,7 @@ export default function App() {
         logicalDefects: defects
       };
 
-      const response = await fetch(`/api/new-dashboard/strategies/${selectedStrategyId}`, {
+      const response = await fetch(`/api/strategies/${selectedStrategyId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
