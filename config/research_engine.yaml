@@ -1,6 +1,6 @@
 data:
   raw_root: data/historical
-  parquet_root: research_engine
+  parquet_root: data
   symbols:
     - EURUSD
     - GBPUSD

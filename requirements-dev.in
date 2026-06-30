@@ -7,3 +7,11 @@ pytest-cov>=5,<8
 ruff>=0.6,<1
 mypy>=1.11,<2
 types-PyYAML>=6,<7
+
+# Code quality and formatting
+black>=24,<27
+isort>=5.12,<9
+
+# Security scanning
+bandit>=1.7,<2
+pip-audit>=2.7,<3

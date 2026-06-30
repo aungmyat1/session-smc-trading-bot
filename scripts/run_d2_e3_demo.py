@@ -28,6 +28,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from monitoring.logging_utils import build_gzip_timed_rotating_handler
+
 load_dotenv()
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -38,8 +40,9 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.handlers.TimedRotatingFileHandler(
-            "logs/d2e3_demo.log", when="midnight", utc=True, backupCount=14,
+        build_gzip_timed_rotating_handler(
+            "logs/d2e3_demo.log",
+            backup_count=7,
         ),
     ],
 )

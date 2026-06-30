@@ -34,20 +34,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from monitoring.logging_utils import build_gzip_timed_rotating_handler
+
 load_dotenv()
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 
 Path("logs").mkdir(exist_ok=True)
 
-_file_handler = logging.handlers.TimedRotatingFileHandler(
+_file_handler = build_gzip_timed_rotating_handler(
     "logs/bot.log",
-    when="midnight",
-    utc=True,
-    backupCount=7,        # keep 7 days of rotated logs
-    encoding="utf-8",
+    backup_count=7,
 )
-_file_handler.suffix = "%Y-%m-%d"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -105,15 +103,28 @@ def _build_recovery_summary(
     seen_signals: dict[str, set[str]],
 ) -> str:
     """Summarize restart-recovered bot state for startup alerting."""
-    events = trade_logger.read_all()
     counts = {
-        "signals": sum(1 for event in events if event.get("event") == "SIGNAL_CREATED"),
-        "orders": sum(1 for event in events if event.get("event") == "ORDER_SUBMITTED"),
-        "fills": sum(1 for event in events if event.get("event") == "ORDER_FILLED"),
-        "rejections": sum(1 for event in events if event.get("event") == "ORDER_REJECTED"),
-        "closes": sum(1 for event in events if event.get("event") == "POSITION_CLOSED"),
-        "errors": sum(1 for event in events if event.get("event") == "ERROR"),
+        "signals": 0,
+        "orders": 0,
+        "fills": 0,
+        "rejections": 0,
+        "closes": 0,
+        "errors": 0,
     }
+    for event in trade_logger.iter_events():
+        match event.get("event"):
+            case "SIGNAL_CREATED":
+                counts["signals"] += 1
+            case "ORDER_SUBMITTED":
+                counts["orders"] += 1
+            case "ORDER_FILLED":
+                counts["fills"] += 1
+            case "ORDER_REJECTED":
+                counts["rejections"] += 1
+            case "POSITION_CLOSED":
+                counts["closes"] += 1
+            case "ERROR":
+                counts["errors"] += 1
     seen_total = sum(len(v) for v in seen_signals.values())
     state = risk.state
     lines = [
@@ -386,7 +397,7 @@ async def _scan_pair(
 def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str, set[str]]:
     """Rebuild per-symbol signal dedup state from the append-only trade log."""
     seen: dict[str, set[str]] = {sym: set() for sym in pairs}
-    for event in trade_logger.read_all():
+    for event in trade_logger.iter_events():
         if event.get("event") != "SIGNAL_CREATED":
             continue
         symbol = event.get("symbol")

@@ -1,0 +1,107 @@
+# Architecture boundary rules for the SMC Trading Bot / SVOS platform.
+# Used by agents/quality/validators/architecture.py
+
+# Layer definitions — each layer is identified by regex patterns matched
+# against the file path or import module path.
+layers:
+  lifecycle:
+    patterns:
+      - "svos/lifecycle"
+      - "svos\\.lifecycle"
+  governance:
+    patterns:
+      - "svos/governance"
+      - "svos\\.governance"
+  application:
+    patterns:
+      - "svos/application"
+      - "svos\\.application"
+  registry:
+    patterns:
+      - "svos/registry"
+      - "svos\\.registry"
+  strategy:
+    patterns:
+      - "^strategies/"
+      - "^strategy/"
+      - "strategy_audit/"
+      - "^strategies\\."
+      - "^strategy\\."
+  indicator:
+    patterns:
+      - "^indicators/"
+      - "^core/indicators"
+      - "^indicators\\."
+  risk:
+    patterns:
+      - "^risk/"
+      - "/risk_engine"
+      - "\\.risk\\."
+  execution:
+    patterns:
+      - "^execution/"
+      - "^execution_simulator/"
+      - "^execution\\."
+  repository:
+    patterns:
+      - "^db/"
+      - "\\.repository\\."
+  database:
+    patterns:
+      - "^db/"
+      - "^research_db/"
+      - "alembic/"
+      - "\\.db\\."
+  research:
+    patterns:
+      - "^research/"
+      - "^research_engine/"
+      - "\\.research\\."
+  monitoring:
+    patterns:
+      - "^monitoring/"
+      - "svos/monitoring"
+
+# Forbidden cross-layer dependencies.
+# Violations cause architecture score deduction and FAIL if max_violations=0.
+forbidden:
+  - from: strategy
+    to: database
+    reason: "Strategy must access data through the repository layer, not the database directly"
+
+  - from: strategy
+    to: execution
+    reason: "Strategy emits signals only; execution is a downstream concern"
+
+  - from: indicator
+    to: execution
+    reason: "Indicators are pure computation — no side-effects or order submission"
+
+  - from: indicator
+    to: database
+    reason: "Indicators must not hold database state; accept pre-fetched data as input"
+
+  - from: research
+    to: execution
+    reason: "Research is read-only; it must not submit orders or touch the execution layer"
+
+  - from: research
+    to: database
+    reason: "Research reads from curated data layers, not the live operational database"
+
+  - from: execution
+    to: research
+    reason: "Execution depends on live order flow, not research artifacts"
+
+  - from: lifecycle
+    to: execution
+    reason: "Lifecycle management must not trigger live order submissions directly"
+
+# Allowed cross-layer dependencies (documentation only — not enforced programmatically).
+# strategy    → indicator      ALLOWED: strategy uses indicators for signal generation
+# strategy    → risk           ALLOWED: strategy delegates position sizing to risk engine
+# risk        → execution      ALLOWED: risk engine authorises and sizes orders
+# execution   → repository     ALLOWED: execution persists fills via the repository layer
+# repository  → database       ALLOWED: repository encapsulates all DB access
+# application → strategy       ALLOWED: integration services load and run strategies
+# application → lifecycle      ALLOWED: integration services drive lifecycle transitions

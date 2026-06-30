@@ -28,13 +28,13 @@ replays do not compete with live demo execution.
 docker compose --env-file .env up -d postgres
 ```
 
-3. Bootstrap the schema and seed rows:
+3. Bootstrap the full schema and seed rows:
 
 ```bash
 python3 scripts/bootstrap_quant_db.py --database-url "$DATABASE_URL"
 ```
 
-4. Verify the database:
+4. Verify the bootstrap inputs:
 
 ```bash
 python3 scripts/bootstrap_quant_db.py --dry-run
@@ -55,11 +55,20 @@ paired service.
 
 ## Database layout
 
-The schema is defined in `db/schema_v2.sql` and includes:
+The database is initialized from both:
+
+- `db/schema_v2.sql` for market/research/analytics/config
+- `db/schema_v3.sql` for strategy/governance/evidence/experiments/robustness/execution/operations
+
+That includes:
 
 - `market.*` for instruments, candles, session ranges, and SMC events
 - `research.*` for strategies, replay runs, trades, trade features, and equity
 - `analytics.*` for metrics and gates
+- `strategy.*` for canonical strategy identity and immutable versions
+- `governance.*` for stage state, decisions, approvals, and outbox
+- `evidence.*` for artifacts, bindings, reports, and legacy imports
+- `experiments.*`, `robustness.*`, `execution.*`, and `operations.*` for the SVOS control plane
 
 The bootstrap script seeds:
 

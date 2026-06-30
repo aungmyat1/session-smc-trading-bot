@@ -32,7 +32,7 @@ def main() -> None:
 
     cfg = _load_yaml(Path(args.config))
     raw_root = Path(cfg.get("data", {}).get("raw_root", "data/raw"))
-    parquet_root = Path(cfg.get("data", {}).get("parquet_root", "research_engine"))
+    parquet_root = Path(cfg.get("data", {}).get("parquet_root", "data"))
     duckdb_path = Path(cfg.get("analytics", {}).get("duckdb_path", "research.db"))
     symbols = args.symbols or cfg.get("data", {}).get("symbols", ["EURUSD", "GBPUSD", "XAUUSD"])
 

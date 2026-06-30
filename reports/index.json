@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-28T18:42:34.424659+00:00",
+  "generated_at": "2026-06-30T04:29:14.366167+00:00",
   "latest": {
     "strategy-audit-loop": {
       "created_at": "2026-06-28T11:43:43.203844+00:00",
@@ -8,9 +8,81 @@
       "report_id": "docs__SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",
       "report_type": "strategy-audit-loop",
       "title": "SVOS Strategy Audit Feedback Loop Report"
+    },
+    "svos-stage": {
+      "created_at": "2026-06-29T07:19:43.521346+00:00",
+      "filename": "incident.md",
+      "path": "reports/svos/platform/incidents/INC-20260629-LIVE-CONFIG-DRIFT/incident.md",
+      "report_id": "reports__svos__platform__incidents__INC-20260629-LIVE-CONFIG-DRIFT__incident.md",
+      "report_type": "svos-stage",
+      "title": "Operating Incident: Live Configuration Drift"
     }
   },
   "reports": [
+    {
+      "created_at": "2026-06-29T07:19:43.521346+00:00",
+      "filename": "incident.md",
+      "path": "reports/svos/platform/incidents/INC-20260629-LIVE-CONFIG-DRIFT/incident.md",
+      "report_id": "reports__svos__platform__incidents__INC-20260629-LIVE-CONFIG-DRIFT__incident.md",
+      "report_type": "svos-stage",
+      "title": "Operating Incident: Live Configuration Drift"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.912762+00:00",
+      "filename": "run_summary.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/run_summary.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__run_summary.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Run Summary"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.912194+00:00",
+      "filename": "06_production_approval.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/06_production_approval.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__06_production_approval.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Production Approval Report"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.911660+00:00",
+      "filename": "05_virtual_demo.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/05_virtual_demo.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__05_virtual_demo.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Virtual Demo Report"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.910838+00:00",
+      "filename": "04_robustness.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/04_robustness.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__04_robustness.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Robustness Tests Report"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.909882+00:00",
+      "filename": "03_backtest.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/03_backtest.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__03_backtest.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Backtest Report"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.909112+00:00",
+      "filename": "02_historical_replay.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/02_historical_replay.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__02_historical_replay.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Historical Replay Report"
+    },
+    {
+      "created_at": "2026-06-28T19:30:27.908225+00:00",
+      "filename": "01_strategy_audit.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/01_strategy_audit.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260628T193027.905087Z-a333558ec4__01_strategy_audit.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Strategy Audit Report"
+    },
     {
       "created_at": "2026-06-28T11:43:43.203844+00:00",
       "filename": "SVOS_STRATEGY_AUDIT_LOOP_REPORT.md",

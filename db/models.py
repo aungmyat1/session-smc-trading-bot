@@ -28,7 +28,7 @@ v3 (new control-plane additions)
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy import (
     BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey,
     Integer, JSON, Numeric, String, Text, UniqueConstraint,

@@ -1,0 +1,25 @@
+# Production Approval Agent — governance gate thresholds.
+# All values are compared against live agent report data.
+# Raising a threshold NEVER automatically APPROVES; it only tightens the gate.
+
+report_dir: reports
+
+# Testing gates
+# Baseline: 86.9% (measured post-implementation). Target: 90%.
+# New agents/approval/ is not yet under test — raise threshold as coverage is added.
+minimum_coverage: 86            # unit test coverage % — ratchet to 90 as unit tests are added
+minimum_testing_score: 85       # overall testing agent composite score
+minimum_strategy_score: 90      # strategy rule validation score (TR-001)
+
+# Quality gates
+minimum_quality_score: 90       # code quality composite score (QA-001)
+minimum_security_score: 90      # security composite score (SEC-001)
+minimum_documentation_score: 70 # documentation coverage score (advisory, DOC-001)
+
+# Historical replay gates (TR-002) — checked only if replay has run
+minimum_profit_factor: 1.25
+minimum_sharpe: 1.2
+maximum_drawdown: 15.0          # %
+minimum_trades: 200
+minimum_win_rate: 0.40
+minimum_rr: 1.5

@@ -16,6 +16,7 @@ Events (all six must be used; add no others):
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Iterator
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -119,14 +120,18 @@ class TradeLogger:
 
     def read_all(self) -> list[dict]:
         """Return every logged event as a list of dicts. Skips malformed lines."""
+        return list(self.iter_events())
+
+    def iter_events(self) -> Iterator[dict]:
+        """Yield logged events one at a time to avoid loading large journals at once."""
         if not self._file.exists():
-            return []
-        events: list[dict] = []
-        for line in self._file.read_text().splitlines():
-            line = line.strip()
-            if line:
+            return
+        with self._file.open(encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
                 try:
-                    events.append(json.loads(line))
+                    yield json.loads(line)
                 except json.JSONDecodeError:
                     logger.warning("Skipping malformed JSONL line: %r", line[:80])
-        return events

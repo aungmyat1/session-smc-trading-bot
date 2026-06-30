@@ -1,0 +1,31 @@
+# Quality Agent configuration
+
+fail_fast: false
+
+# Code quality thresholds
+# Post-Phase-1 baseline: ruff=100 (clean), mypy=100 (follow-imports=skip), black/isort=100
+# Composite = 100. Threshold raised to 90 to catch regressions.
+minimum_quality_score: 90
+maximum_complexity: 10        # McCabe complexity ceiling (for future pylint integration)
+# mypy is scoped to match the existing CI gate (pyproject.toml typed paths only).
+mypy_dirs:
+  - svos/lifecycle
+  - svos/shared
+
+# Security thresholds
+minimum_security_score: 90
+
+# Architecture compliance
+minimum_architecture_score: 90
+max_architecture_violations: 0
+architecture_rules: quality/architecture_rules.yaml
+
+# Dependency validation
+import_rules: quality/import_rules.yaml
+
+# Documentation thresholds
+# Current baseline: ~59%. Ratchet up by 5% per quarter as the codebase matures.
+minimum_documentation_score: 55
+# Sub-metric baselines reflect current codebase state; ratchet quarterly.
+minimum_docstring_pct: 10     # current: ~14% — tighten as codebase matures
+minimum_typehint_pct: 30      # current: measured via composite score

@@ -1,0 +1,36 @@
+# Import coupling rules — used by agents/quality/validators/dependency.py
+# Complements architecture_rules.yaml with module-level forbidden import pairs.
+
+forbidden_imports:
+  - from: strategies
+    to: db
+    reason: "Direct DB import from strategies — use repository abstraction"
+
+  - from: strategies
+    to: execution
+    reason: "Strategies must not import from execution layer"
+
+  - from: indicators
+    to: execution
+    reason: "Indicators are stateless transforms — no execution dependency"
+
+  - from: research
+    to: execution
+    reason: "Research pipeline is read-only — no execution imports"
+
+  - from: research_engine
+    to: execution
+    reason: "Research engine must not import execution layer"
+
+  - from: svos.reports
+    to: execution
+    reason: "Report builders have no business importing execution modules"
+
+  - from: svos.reports
+    to: db
+    reason: "Report builders must not access the database directly"
+
+# Packages that may never be imported outside their own package.
+internal_only:
+  - package: svos.lifecycle.internals
+    reason: "Lifecycle internals are private — use svos.lifecycle public API"

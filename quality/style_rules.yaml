@@ -1,0 +1,39 @@
+# Style rules — reference for ruff/black/isort configuration.
+# Runtime enforcement is done by agents/quality/validators/code_quality.py.
+# These values must stay in sync with [tool.ruff] in pyproject.toml.
+
+ruff:
+  line_length: 140          # matches pyproject.toml
+  target_version: "py312"
+  select:
+    - E4   # pycodestyle errors (imports)
+    - E7   # pycodestyle errors (statements)
+    - E9   # pycodestyle errors (runtime)
+    - F    # pyflakes
+  ignore: []
+  exclude:
+    - archive/
+    - data/
+    - logs/
+    - reports/
+    - "*.pyi"
+
+black:
+  line_length: 140
+  target_versions:
+    - py312
+  skip_magic_trailing_comma: false
+
+isort:
+  profile: black
+  line_length: 140
+  known_first_party:
+    - svos
+    - agents
+    - db
+    - dashboard
+
+# Complexity
+max_complexity: 10          # McCabe complexity ceiling
+max_function_length: 80     # lines (advisory — not auto-enforced)
+max_module_length: 500      # lines (advisory)

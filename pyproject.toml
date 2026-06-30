@@ -21,3 +21,26 @@ check_untyped_defs = true
 no_implicit_optional = true
 warn_unused_ignores = true
 show_error_codes = true
+
+[tool.pytest.ini_options]
+# Run svos coverage on every test invocation.
+# Pass --no-cov to skip (e.g. during rapid iteration: pytest --no-cov tests/svos/).
+addopts = "--cov=svos --cov-report=term-missing --cov-fail-under=67"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["svos"]
+omit = [
+  "svos/ui/*",
+  "svos/experiments/*",
+]
+
+[tool.coverage.report]
+# Lines that are empty, comments, or __all__ / import guards are excluded.
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "^\\s*\\.\\.\\.$",
+  "raise NotImplementedError",
+]
+show_missing = true

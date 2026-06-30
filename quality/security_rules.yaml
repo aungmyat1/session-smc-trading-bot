@@ -1,0 +1,32 @@
+# Security rules — reference configuration for the security validator.
+# Runtime scanning is performed by agents/quality/validators/security.py.
+
+# Bandit severity thresholds
+bandit:
+  fail_on_high: true        # Any HIGH severity = FAIL
+  fail_on_medium: false     # MEDIUM = WARNING only
+  skip_tests: []            # bandit test IDs to suppress (empty = suppress nothing)
+  exclude_paths:
+    - tests/
+    - archive/
+    - data/
+
+# pip-audit settings
+pip_audit:
+  fail_on_any_vuln: false   # fail only if fix_versions exists (actionable vuln)
+  ignore_ids: []            # CVE IDs to suppress after review
+
+# Secret patterns (used by internal scanner in security.py)
+# These are in addition to the hardcoded patterns in the validator.
+secret_patterns:
+  - name: aws_access_key
+    pattern: 'AKIA[0-9A-Z]{16}'
+  - name: private_key_block
+    pattern: '-----BEGIN (RSA|EC|DSA|OPENSSH) PRIVATE KEY-----'
+  - name: jwt_token
+    pattern: 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
+
+# Files that are explicitly allowed to contain credential-shaped strings
+allowlist:
+  - ".env.example"   # template only — actual values must not appear
+  - "tests/"         # test fixtures may contain dummy credentials

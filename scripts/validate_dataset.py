@@ -29,6 +29,7 @@ import pyarrow.parquet as pq
 ROOT = Path(__file__).resolve().parent.parent
 DATA_RAW  = ROOT / "data" / "raw" / "dukascopy"
 DATA_PROC = ROOT / "data" / "processed"
+DATA_MARKET = ROOT / "data" / "market"
 REPORTS   = ROOT / "reports"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -55,6 +56,34 @@ EXPECTED_TF_GAPS = {
     "H4":  pd.Timedelta(hours=4),
     "D1":  pd.Timedelta(days=1),
 }
+
+LEGACY_PROCESSED_COLS = [
+    "timestamp_utc",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "ask_open",
+    "bid_open",
+    "spread_avg",
+    "spread_max",
+    "tick_count",
+]
+
+LAYERED_MARKET_COLS = [
+    "timestamp_utc",
+    "symbol",
+    "timeframe",
+    "open",
+    "high",
+    "low",
+    "close",
+    "tick_volume",
+    "real_volume",
+    "spread_mean",
+    "spread_max",
+]
 
 
 def parse_year_month(value: str) -> tuple[int, int]:
@@ -305,7 +334,10 @@ def summarize_acquisition(sym: str) -> dict | None:
 
 
 def validate_processed(sym: str, tf: str, report: ValidationReport):
-    path = DATA_PROC / sym / f"{tf}.parquet"
+    legacy_path = DATA_PROC / sym / f"{tf}.parquet"
+    partition_root = DATA_MARKET / tf.lower() / sym
+    partition_paths = sorted(partition_root.glob("year=*/month=*/part-*.parquet")) if partition_root.exists() else []
+    path = legacy_path if legacy_path.exists() else (partition_paths[0] if partition_paths else legacy_path)
     stats = {
         "symbol": sym,
         "timeframe": tf,
@@ -316,13 +348,17 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
         "duplicates": 0,
         "schema_ok": False,
         "sorted": False,
+        "storage": "legacy" if legacy_path.exists() else "partitioned" if partition_paths else "missing",
     }
-    if not path.exists():
-        report.add("WARN", f"{sym} {tf}: processed file missing — run build_timeframes.py")
+    if not legacy_path.exists() and not partition_paths:
+        report.add("WARN", f"{sym} {tf}: market dataset missing — run build_timeframes.py or research pipeline")
         return stats
 
     try:
-        df = pd.read_parquet(path)
+        if legacy_path.exists():
+            df = pd.read_parquet(legacy_path)
+        else:
+            df = pd.concat([pd.read_parquet(partition) for partition in partition_paths], ignore_index=True)
     except Exception as e:
         report.add("ERROR", f"{sym} {tf}: cannot read Parquet: {e}")
         return stats
@@ -339,22 +375,14 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
     # Ensure timestamp column
     ts_col = "timestamp_utc" if "timestamp_utc" in df.columns else df.columns[0]
     df[ts_col] = pd.to_datetime(df[ts_col], utc=True)
-    expected_cols = [
-        "timestamp_utc",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "ask_open",
-        "bid_open",
-        "spread_avg",
-        "spread_max",
-        "tick_count",
-    ]
-    missing_cols = [column for column in expected_cols if column not in df.columns]
-    if missing_cols:
-        report.add("ERROR", f"{sym} {tf}: missing columns {missing_cols}")
+    schema_variants = [LEGACY_PROCESSED_COLS, LAYERED_MARKET_COLS]
+    matched_schema = next((cols for cols in schema_variants if all(column in df.columns for column in cols)), None)
+    if matched_schema is None:
+        missing_cols = [
+            [column for column in candidate if column not in df.columns]
+            for candidate in schema_variants
+        ]
+        report.add("ERROR", f"{sym} {tf}: missing columns for supported schemas {missing_cols}")
     else:
         stats["schema_ok"] = True
         report.add("PASS", f"{sym} {tf}: schema complete")
@@ -393,8 +421,9 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
             report.add("PASS", f"{sym} {tf}: OHLC low integrity OK")
 
     # Spread anomalies
-    if "spread_avg" in df.columns and sym in PIP_SIZE:
-        spread_pips = df["spread_avg"] / PIP_SIZE[sym]
+    spread_col = "spread_avg" if "spread_avg" in df.columns else "spread_mean" if "spread_mean" in df.columns else None
+    if spread_col and sym in PIP_SIZE:
+        spread_pips = df[spread_col] / PIP_SIZE[sym]
         threshold   = SPREAD_WARN_PIPS.get(sym, 10.0)
         anomalies   = (spread_pips > threshold).sum()
         if anomalies:

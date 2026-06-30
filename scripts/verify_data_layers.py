@@ -20,19 +20,34 @@ DEFAULT_SYMBOLS = ["EURUSD", "GBPUSD", "XAUUSD"]
 DEFAULT_TIMEFRAMES = ["M1", "M5", "M15", "H1", "H4", "D1"]
 REQUIRED_RAW_COLS = {"timestamp_ms", "ask", "bid", "ask_vol", "bid_vol"}
 REQUIRED_NORMALIZED_COLS = {"timestamp_utc", "bid", "ask", "spread", "ask_vol", "bid_vol"}
-REQUIRED_PROCESSED_COLS = {
-    "timestamp_utc",
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "ask_open",
-    "bid_open",
-    "spread_avg",
-    "spread_max",
-    "tick_count",
-}
+REQUIRED_MARKET_SCHEMA_VARIANTS = [
+    {
+        "timestamp_utc",
+        "symbol",
+        "timeframe",
+        "open",
+        "high",
+        "low",
+        "close",
+        "tick_volume",
+        "real_volume",
+        "spread_mean",
+        "spread_max",
+    },
+    {
+        "timestamp_utc",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "ask_open",
+        "bid_open",
+        "spread_avg",
+        "spread_max",
+        "tick_count",
+    },
+]
 
 
 @dataclass
@@ -113,6 +128,31 @@ def _check_parquet_schema(layer: str, path: Path, required_cols: set[str], issue
     }
 
 
+def _check_market_schema(path: Path, issues: list[LayerIssue]) -> dict[str, Any]:
+    if not path.exists():
+        _add_issue(issues, "ERROR", "market", "missing parquet file", path=str(path))
+        return {"path": str(path), "exists": False}
+
+    try:
+        schema = pq.read_schema(path)
+        cols = set(schema.names)
+    except Exception as exc:
+        _add_issue(issues, "ERROR", "market", "unable to read parquet schema", path=str(path), error=str(exc))
+        return {"path": str(path), "exists": True, "schema_ok": False}
+
+    matched = any(required_cols.issubset(cols) for required_cols in REQUIRED_MARKET_SCHEMA_VARIANTS)
+    if not matched:
+        missing = [sorted(required_cols - cols) for required_cols in REQUIRED_MARKET_SCHEMA_VARIANTS]
+        _add_issue(issues, "ERROR", "market", "missing required parquet columns", path=str(path), missing=missing)
+    return {
+        "path": str(path),
+        "exists": True,
+        "schema_ok": matched,
+        "columns": sorted(cols),
+        "mtime": _mtime_utc(path),
+    }
+
+
 def verify_layers(symbols: list[str], timeframes: list[str], max_age_hours: float) -> dict[str, Any]:
     issues: list[LayerIssue] = []
     results: list[LayerResult] = []
@@ -120,7 +160,7 @@ def verify_layers(symbols: list[str], timeframes: list[str], max_age_hours: floa
     layer_dirs = {
         "raw": DATA / "raw",
         "normalized": DATA / "normalized",
-        "market": DATA / "processed",
+        "market": DATA / "market",
         "sessions": DATA / "sessions",
         "structure": DATA / "structure",
         "liquidity": DATA / "liquidity",
@@ -186,9 +226,16 @@ def verify_layers(symbols: list[str], timeframes: list[str], max_age_hours: floa
                 _add_issue(issues, "WARN", "normalized", "normalized parquet is stale", symbol=symbol, age_hours=age)
 
         for tf in timeframes:
-            proc_path = DATA / "processed" / symbol / f"{tf}.parquet"
-            proc_details = _check_parquet_schema("market", proc_path, REQUIRED_PROCESSED_COLS, issues)
-            if proc_details.get("exists") and proc_details.get("mtime"):
+            market_root = DATA / "market" / tf.lower() / symbol
+            market_parts = sorted(market_root.glob("year=*/month=*/part-*.parquet")) if market_root.exists() else []
+            proc_path = market_parts[0] if market_parts else DATA / "processed" / symbol / f"{tf}.parquet"
+            proc_details = _check_market_schema(proc_path, issues)
+            if market_parts:
+                newest = max(market_parts, key=lambda path: path.stat().st_mtime)
+                age = _freshness_hours(newest)
+                if age is not None and age > max_age_hours:
+                    _add_issue(issues, "WARN", "market", "market parquet is stale", symbol=symbol, timeframe=tf, age_hours=age)
+            elif proc_details.get("exists") and proc_details.get("mtime"):
                 age = _freshness_hours(proc_path)
                 if age is not None and age > max_age_hours:
                     _add_issue(issues, "WARN", "market", "processed parquet is stale", symbol=symbol, timeframe=tf, age_hours=age)

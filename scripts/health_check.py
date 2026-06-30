@@ -37,10 +37,11 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
-from research.lineage import build_release_metadata
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
+
+from research.lineage import build_release_metadata
 
 try:
     from dotenv import load_dotenv

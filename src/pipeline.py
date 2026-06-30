@@ -8,8 +8,8 @@ import pandas as pd
 from src.analytics.duckdb_store import DuckDBStore
 from src.analytics.queries import ResearchQueries
 from src.backtest.simulator import TradeSimulator, TradeSimulationConfig
+from src.data.layered_store import LayeredResearchStore
 from src.data.loader import load_symbol_history
-from src.data.parquet_store import save_parquet
 from src.data.validator import validate_candles
 from src.features.fvg import detect_fvg
 from src.features.liquidity import detect_liquidity_sweeps
@@ -49,6 +49,7 @@ class ResearchEngine:
         self.ny_config = ny_config or NYMomentumConfig()
         self.vwap_config = vwap_config or VWAPMeanReversionConfig()
         self.store = DuckDBStore(paths.duckdb_path)
+        self.dataset_store = LayeredResearchStore(paths.parquet_root)
 
     def build_symbol(self, symbol: str, timeframe: str = "M1") -> dict[str, pd.DataFrame]:
         loaded = load_symbol_history(symbol, self.paths.raw_root, timeframe=timeframe, validate=False)
@@ -75,31 +76,7 @@ class ResearchEngine:
             signals = signals.sort_values(["pair", "timestamp", "strategy_name"]).reset_index(drop=True)
         trades = self.trade_simulator.simulate(candles, signals)
 
-        out_dir = self.paths.parquet_root / symbol
-        out_dir.mkdir(parents=True, exist_ok=True)
-        save_parquet(candles, out_dir / "candles.parquet")
-        save_parquet(sessions, out_dir / "sessions.parquet")
-        save_parquet(swings, out_dir / "swings.parquet")
-        save_parquet(structure, out_dir / "structure.parquet")
-        save_parquet(liquidity, out_dir / "liquidity.parquet")
-        save_parquet(fvg, out_dir / "fvg.parquet")
-        save_parquet(order_blocks, out_dir / "order_blocks.parquet")
-        save_parquet(signals, out_dir / "signals.parquet")
-        save_parquet(trades, out_dir / "trades.parquet")
-
-        self.store.create_tables({
-            "candles": candles,
-            "sessions": sessions,
-            "swings": swings,
-            "structure": structure,
-            "liquidity": liquidity,
-            "fvg": fvg,
-            "order_blocks": order_blocks,
-            "signals": signals,
-            "trades": trades,
-        })
-
-        return {
+        outputs = {
             "candles": candles,
             "sessions": sessions,
             "swings": swings,
@@ -110,6 +87,9 @@ class ResearchEngine:
             "signals": signals,
             "trades": trades,
         }
+        self.dataset_store.write_outputs(outputs, symbol=symbol, timeframe=loaded.timeframe)
+        self.store.create_tables(outputs)
+        return outputs
 
     def queries(self) -> ResearchQueries:
         return ResearchQueries(self.store)

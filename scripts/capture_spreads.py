@@ -41,14 +41,23 @@ load_dotenv(_ROOT / ".env")
 sys.path.insert(0, str(_ROOT))
 
 from execution.metaapi_client import MetaAPIClient          # noqa: E402
+from monitoring.logging_utils import build_gzip_timed_rotating_handler  # noqa: E402
 from strategy.session_liquidity.session_builder import (    # noqa: E402
     classify_session as _classify_session_builder,
 )
 
+(_ROOT / "logs").mkdir(exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%H:%M:%S",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        build_gzip_timed_rotating_handler(
+            _ROOT / "logs" / "spread_capture.log",
+            backup_count=7,
+        ),
+    ],
 )
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,37 @@
+# Testing Agent configuration
+# All thresholds are configurable here — no magic numbers in code.
+
+# Test execution
+fail_fast: false
+
+# Unit test thresholds
+minimum_coverage: 67          # must match pytest.ini --cov-fail-under
+unit_test_dirs:               # searched in order; first match with test_*.py wins
+  - tests/unit
+  - tests
+
+# Integration test directories (all matched dirs are merged)
+integration_test_dirs:
+  - tests/integration
+  - tests/svos
+  - tests/execution
+  - tests/database
+
+# Strategy rule validation
+minimum_strategy_score: 60    # WARNINGs = not yet configured (half credit); FAILs = hard violations
+minimum_rr: 1.5               # minimum acceptable risk-reward ratio
+maximum_risk_pct: 2.0         # maximum % account risk per trade
+maximum_daily_loss: 5.0       # maximum % daily drawdown limit
+
+# Historical replay thresholds (Phase 2 / 3 metrics)
+minimum_profit_factor: 1.0    # PF_net must exceed 1.0
+minimum_win_rate: 0.40        # 40% win rate floor
+minimum_rr: 1.5               # average RR floor
+maximum_drawdown: 20.0        # max drawdown % ceiling
+minimum_trades: 50            # minimum trade count for statistical significance
+
+# Regression tolerance
+baseline_path: reports/testing_baseline.json
+regression_tolerance_pass_rate: 5.0     # % points allowed to regress
+regression_tolerance_coverage: 3.0      # % points allowed to regress
+regression_tolerance_duration_pct: 50.0 # % duration increase allowed

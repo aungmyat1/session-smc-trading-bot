@@ -50,9 +50,10 @@ def test_compute_month_coverage_detects_missing_months():
     assert coverage["missing_months"] == [(2024, 2)]
 
 
-def test_validate_raw_and_processed_reports_coverage(tmp_path, monkeypatch):
+def test_validate_raw_and_partitioned_market_reports_coverage(tmp_path, monkeypatch):
     raw_root = tmp_path / "raw"
     proc_root = tmp_path / "processed"
+    market_root = tmp_path / "market"
 
     _write_ticks(
         raw_root / "EURUSD" / "2024" / "01" / "ticks.parquet",
@@ -64,12 +65,13 @@ def test_validate_raw_and_processed_reports_coverage(tmp_path, monkeypatch):
     )
 
     _write_bars(
-        proc_root / "EURUSD" / "M15.parquet",
+        market_root / "m15" / "EURUSD" / "year=2024" / "month=01" / "part-000.parquet",
         pd.to_datetime(["2024-01-02T00:00:00Z", "2024-01-02T00:15:00Z"], utc=True),
     )
 
     monkeypatch.setattr(validate_dataset, "DATA_RAW", raw_root)
     monkeypatch.setattr(validate_dataset, "DATA_PROC", proc_root)
+    monkeypatch.setattr(validate_dataset, "DATA_MARKET", market_root)
 
     report = validate_dataset.ValidationReport()
     raw_stats = validate_dataset.validate_raw_ticks(

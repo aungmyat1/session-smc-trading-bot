@@ -12,6 +12,7 @@ from svos.application.intake import IntakeResult, IntakeService
 from svos.application.replay import ReplayIntegrationService, ReplayResult
 from svos.application.robustness import RobustnessIntegrationService, RobustnessResult
 from svos.application.run_manifest import RunManifest, RunManifestBuilder
+from svos.application.virtual_demo import VirtualDemoIntegrationService, VirtualDemoResult
 
 __all__ = [
     "AdapterEntry",
@@ -30,4 +31,6 @@ __all__ = [
     "StrategyAdapterRegistry",
     "get_adapter_registry",
     "resolve_adapter",
+    "VirtualDemoIntegrationService",
+    "VirtualDemoResult",
 ]

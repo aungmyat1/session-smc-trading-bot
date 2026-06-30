@@ -497,6 +497,49 @@ class RobustnessReportBuilder:
         return json_path
 
 
+class VirtualDemoReportBuilder:
+    """Builds the canonical JSON + Markdown virtual demo report."""
+
+    def __init__(self, root: Any) -> None:
+        root_path = Path(root) if not isinstance(root, Path) else root
+        self.reports_root = root_path / "data" / "svos" / "reports" / "virtual_demo"
+
+    def build_virtual_demo_report(
+        self,
+        *,
+        strategy: str,
+        version_id: str,
+        status: str,
+        drift_checks: list[dict[str, Any]],
+        summary: dict[str, Any],
+        manifest: dict[str, Any] | None = None,
+    ) -> Path:
+        generated_at = now_iso()
+        payload: dict[str, Any] = {
+            "schema_version": _SCHEMA_VERSION,
+            "report_type": "virtual_demo_report",
+            "stage": "VIRTUAL_DEMO",
+            "strategy": strategy,
+            "version_id": version_id,
+            "status": status,
+            "generated_at": generated_at,
+            "drift_checks": drift_checks,
+            "summary": summary,
+            "run_manifest": manifest or {},
+        }
+        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        payload["report_id"] = report_id
+
+        dest_dir = self.reports_root / strategy
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        json_path = dest_dir / f"virtual_demo_{report_id[:16]}.json"
+        md_path = dest_dir / f"virtual_demo_{report_id[:16]}.md"
+
+        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        md_path.write_text(_render_virtual_demo_md(payload), encoding="utf-8")
+        return json_path
+
+
 def _render_robustness_md(report: dict[str, Any]) -> str:
     status = report["status"]
     icon = "✅" if status == "PASS" else "❌"
@@ -520,5 +563,39 @@ def _render_robustness_md(report: dict[str, Any]) -> str:
         for name, cs in comp_statuses.items():
             cs_icon = "✅" if cs == "PASS" else "❌"
             sections.append(f"| {name.replace('_', ' ').title()} | {cs_icon} {cs} |")
+    sections += ["", f"*Schema version {report['schema_version']}*"]
+    return "\n".join(sections) + "\n"
+
+
+def _render_virtual_demo_md(report: dict[str, Any]) -> str:
+    status = report["status"]
+    icon = "✅" if status == "PASS" else "❌"
+    s = report.get("summary", {})
+    checks = report.get("drift_checks", [])
+    fill_rate = s.get("fill_rate", 0)
+    fill_pct = f"{fill_rate:.1%}" if isinstance(fill_rate, (int, float)) else str(fill_rate)
+    sections = [
+        f"# Virtual Demo Report — {report['strategy']}",
+        "",
+        f"**Status:** {icon} {status}  ",
+        f"**Generated:** {report['generated_at']}  ",
+        f"**Version ID:** `{report['version_id']}`  ",
+        "",
+        "## Execution Summary",
+        "",
+        f"- Signals submitted: {s.get('signal_count', 0)}",
+        f"- Orders filled: {s.get('filled_count', 0)}",
+        f"- Fill rate: {fill_pct}",
+        f"- Virtual profit factor: {s.get('virtual_pf', 0):.3f}",
+        f"- Expected profit factor: {s.get('expected_pf') or 'N/A'}",
+    ]
+    if checks:
+        sections += ["", "## Drift Checks", "", "| Check | Pass | Expected | Actual | Delta % |",
+                     "|-------|------|----------|--------|---------|"]
+        for c in checks:
+            ok = "✅" if c.get("passed") else "❌"
+            sections.append(
+                f"| {c['name']} | {ok} | {c.get('expected', '')} | {c.get('actual', '')} | {c.get('delta_pct', '')}% |"
+            )
     sections += ["", f"*Schema version {report['schema_version']}*"]
     return "\n".join(sections) + "\n"

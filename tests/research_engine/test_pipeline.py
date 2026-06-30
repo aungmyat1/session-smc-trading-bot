@@ -29,6 +29,7 @@ def test_research_engine_builds_symbol(tmp_path):
     )
     result = engine.build_symbol("EURUSD", timeframe="M1")
     assert "signals" in result
-    assert (tmp_path / "parquet" / "EURUSD" / "candles.parquet").exists()
+    assert (tmp_path / "parquet" / "market" / "m1" / "EURUSD" / "year=2024" / "month=01" / "part-000.parquet").exists()
+    assert (tmp_path / "parquet" / "structure" / "swings" / "EURUSD" / "year=2024" / "month=01" / "part-000.parquet").exists()
+    assert (tmp_path / "parquet" / "metadata" / "layers_manifest.json").exists()
     assert (tmp_path / "research.db").exists()
-

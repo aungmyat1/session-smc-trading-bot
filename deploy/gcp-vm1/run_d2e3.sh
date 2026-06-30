@@ -12,4 +12,4 @@ fi
 exec env \
   DEMO_LIVE="${DEMO_LIVE:-false}" \
   LIVE_TRADING="${LIVE_TRADING:-false}" \
-  "$PYTHON_BIN" scripts/run_d2_e3_demo.py >> logs/d2e3_demo.log 2>&1
+  "$PYTHON_BIN" scripts/run_d2_e3_demo.py

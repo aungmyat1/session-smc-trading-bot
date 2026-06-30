@@ -4,8 +4,9 @@
 This is the one-shot initializer for a clean PostgreSQL instance on the
 research VPS. It:
   1. Applies `db/schema_v2.sql`
-  2. Seeds the core instruments and strategy rows
-  3. Verifies that the main schemas are reachable
+  2. Applies `db/schema_v3.sql`
+  3. Seeds the core instruments and strategy rows
+  4. Verifies that the main schemas are reachable
 
 Usage:
     python3 scripts/bootstrap_quant_db.py
@@ -29,7 +30,10 @@ sys.path.insert(0, str(ROOT))
 
 from db.runtime import resolve_database_url
 
-SCHEMA_PATH = ROOT / "db" / "schema_v2.sql"
+SCHEMA_PATHS = [
+    ROOT / "db" / "schema_v2.sql",
+    ROOT / "db" / "schema_v3.sql",
+]
 
 DEFAULT_DATABASE_URL = resolve_database_url()
 
@@ -56,16 +60,19 @@ STRATEGIES = [
 ]
 
 
-def _read_schema() -> str:
-    if not SCHEMA_PATH.exists():
-        raise FileNotFoundError(f"missing schema file: {SCHEMA_PATH}")
-    return SCHEMA_PATH.read_text(encoding="utf-8")
+def _read_schemas() -> list[tuple[Path, str]]:
+    payloads: list[tuple[Path, str]] = []
+    for path in SCHEMA_PATHS:
+        if not path.exists():
+            raise FileNotFoundError(f"missing schema file: {path}")
+        payloads.append((path, path.read_text(encoding="utf-8")))
+    return payloads
 
 
 def _apply_schema(conn) -> None:
-    schema_sql = _read_schema()
     with conn.cursor() as cur:
-        cur.execute(schema_sql)
+        for _path, schema_sql in _read_schemas():
+            cur.execute(schema_sql)
 
 
 def _seed(conn) -> None:
@@ -99,6 +106,9 @@ def _verify(conn) -> dict[str, int]:
             ("research_runs", "research.replay_runs"),
             ("research_trades", "research.trades"),
             ("analytics_metrics", "analytics.strategy_metrics"),
+            ("strategy_entities", "strategy.strategy"),
+            ("governance_stage_state", "governance.stage_state"),
+            ("evidence_artifacts", "evidence.artifact"),
         ]:
             schema_name, table_name = table.split(".", 1)
             cur.execute(
@@ -118,7 +128,8 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.dry_run:
-        print(f"Schema file: {SCHEMA_PATH}")
+        for path in SCHEMA_PATHS:
+            print(f"Schema file: {path}")
         print("Dry run requested; no database changes made.")
         return
 
