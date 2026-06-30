@@ -57,12 +57,24 @@ def test_pg_active_true_when_backends_injected(tmp_path):
     assert platform._pg_active is True
 
 
-def test_build_pg_backends_raises_on_bad_url():
-    """_build_pg_backends should raise when given an invalid URL."""
+def test_build_pg_backends_returns_backends():
+    """_build_pg_backends wires up backends without a live DB driver."""
+    from db.control_plane import PostgresControlPlane
+    from db.evidence_repository import PostgresEvidenceRepository
     from svos.lifecycle.manager import StrategyLifecycleManager
+
     lifecycle = StrategyLifecycleManager()
-    with pytest.raises(Exception):
-        _build_pg_backends("postgresql://invalid:invalid@localhost:1/nonexistent", lifecycle)
+    mock_engine = MagicMock()
+    mock_sessions = MagicMock()
+    with (
+        patch("sqlalchemy.create_engine", return_value=mock_engine),
+        patch("sqlalchemy.orm.sessionmaker", return_value=mock_sessions),
+    ):
+        control, evidence = _build_pg_backends(
+            "postgresql://user:pass@localhost:5432/db", lifecycle
+        )
+    assert isinstance(control, PostgresControlPlane)
+    assert isinstance(evidence, PostgresEvidenceRepository)
 
 
 def test_bootstrap_pg_calls_session_factory(tmp_path):
