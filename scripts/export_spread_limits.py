@@ -97,9 +97,9 @@ def main() -> int:
             "stress2x": data["stress2x"],
         }
         if "_note" in costs["profiles"]["vantage_measured"]:
-            costs["profiles"]["vantage_measured"]["_note"] = (
-                f"Measured from research/spread_samples.csv via E6 pipeline. Generated: {now_str}."
-            )
+            costs["profiles"]["vantage_measured"][
+                "_note"
+            ] = f"Measured from research/spread_samples.csv via E6 pipeline. Generated: {now_str}."
     costs["active_profile"] = "vantage_measured"
     COSTS_PATH.write_text(json.dumps(costs, indent=2), encoding="utf-8")
     print(f"[+] Updated:  {display_path(COSTS_PATH)}")

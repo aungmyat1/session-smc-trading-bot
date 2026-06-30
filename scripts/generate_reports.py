@@ -13,7 +13,7 @@ import json
 import os
 import sqlite3
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -176,7 +176,9 @@ def _parse_dt(value: Any) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def _records_since(records: list[dict[str, Any]], since: datetime) -> list[dict[str, Any]]:
+def _records_since(
+    records: list[dict[str, Any]], since: datetime
+) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for item in records:
         dt = _parse_dt(item.get("timestamp") or item.get("ts"))
@@ -220,7 +222,13 @@ def _trade_db_summary(path: Path = TRADE_DB) -> dict[str, Any]:
         "wins": len(wins),
         "losses": len(losses),
         "win_rate_pct": round(len(wins) / len(closed) * 100, 1) if closed else 0.0,
-        "avg_r": round(sum(float(r.get("r_multiple") or 0.0) for r in closed) / len(closed), 3) if closed else 0.0,
+        "avg_r": (
+            round(
+                sum(float(r.get("r_multiple") or 0.0) for r in closed) / len(closed), 3
+            )
+            if closed
+            else 0.0
+        ),
         "profit_factor": round(gross_win / gross_loss, 3) if gross_loss > 0 else 0.0,
         "gross_win_r": round(gross_win, 3),
         "gross_loss_r": round(gross_loss, 3),
@@ -264,11 +272,24 @@ def _read_log_tail(path: Path, lines: int = 400) -> list[str]:
 
 def _recent_log_scan() -> dict[str, Any]:
     lines = _read_log_tail(BOT_LOG, 600) + _read_log_tails(RUNNER_LOGS, 400)
-    errors = [line for line in lines if "ERROR" in line and not _is_benign_runtime_line(line)]
-    critical = [line for line in lines if ("CRITICAL" in line or "FATAL" in line) and not _is_benign_runtime_line(line)]
+    errors = [
+        line for line in lines if "ERROR" in line and not _is_benign_runtime_line(line)
+    ]
+    critical = [
+        line
+        for line in lines
+        if ("CRITICAL" in line or "FATAL" in line) and not _is_benign_runtime_line(line)
+    ]
     disconnect = any("DISCONNECTED" in line or "RPC timeout" in line for line in lines)
     reconnect = any("reconnect" in line.lower() for line in lines)
-    last_success = next((line for line in reversed(lines) if "connected" in line.lower() or "filled" in line.lower()), "")
+    last_success = next(
+        (
+            line
+            for line in reversed(lines)
+            if "connected" in line.lower() or "filled" in line.lower()
+        ),
+        "",
+    )
     return {
         "error_count": len(errors),
         "critical_count": len(critical),
@@ -289,10 +310,17 @@ def _health_snapshot() -> dict[str, Any]:
     logs = _recent_log_scan()
     broker_status = {
         "status": "WARN" if logs["disconnect_seen"] else "UNKNOWN",
-        "detail": "recent disconnects seen in logs" if logs["disconnect_seen"] else "no live probe performed by report generator",
+        "detail": (
+            "recent disconnects seen in logs"
+            if logs["disconnect_seen"]
+            else "no live probe performed by report generator"
+        ),
     }
     if execution["status"] in {"SHADOW", "READY"} and not logs["disconnect_seen"]:
-        broker_status = {"status": "INFO", "detail": "execution mode configured; broker/API not actively probed"}
+        broker_status = {
+            "status": "INFO",
+            "detail": "execution mode configured; broker/API not actively probed",
+        }
     return {
         "runner": runner,
         "database": db_status,
@@ -309,8 +337,10 @@ def _trade_records_window(days: int) -> dict[str, Any]:
     journal_records = _records_since(_jsonl_records(DEMO_JOURNALS), since)
     event_records = _records_since(_jsonl_records([TRADE_EVENT_LOG]), since)
     db_rows = [
-        row for row in _trade_db_rows()
-        if (_parse_dt(row.get("timestamp")) or datetime.min.replace(tzinfo=UTC)) >= since
+        row
+        for row in _trade_db_rows()
+        if (_parse_dt(row.get("timestamp")) or datetime.min.replace(tzinfo=UTC))
+        >= since
     ]
     return {
         "journal_records": journal_records,
@@ -323,7 +353,11 @@ def _journal_metrics(days: int) -> dict[str, Any]:
     window = _trade_records_window(days)
     records = window["journal_records"]
     opens = [r for r in records if r.get("record_type") == "open"]
-    closes = [r for r in records if r.get("record_type") == "close" and r.get("result_R") is not None]
+    closes = [
+        r
+        for r in records
+        if r.get("record_type") == "close" and r.get("result_R") is not None
+    ]
     wins = [r for r in closes if float(r.get("result_R") or 0.0) > 0]
     losses = [r for r in closes if float(r.get("result_R") or 0.0) < 0]
     gross_win = sum(float(r.get("result_R") or 0.0) for r in wins)
@@ -368,7 +402,9 @@ def _event_metrics(days: int) -> dict[str, Any]:
     records = _trade_records_window(days)["event_records"]
     counter = Counter(str(r.get("event") or "UNKNOWN") for r in records)
     rejects = [r for r in records if r.get("event") == "ORDER_REJECTED"]
-    reasons = Counter(str(r.get("reason") or "UNKNOWN").split(":", 1)[0] for r in rejects)
+    reasons = Counter(
+        str(r.get("reason") or "UNKNOWN").split(":", 1)[0] for r in rejects
+    )
     return {
         "signals": counter.get("SIGNAL_CREATED", 0),
         "submitted": counter.get("ORDER_SUBMITTED", 0),
@@ -377,7 +413,11 @@ def _event_metrics(days: int) -> dict[str, Any]:
         "rejected": counter.get("ORDER_REJECTED", 0),
         "errors": counter.get("ERROR", 0),
         "reject_reasons": dict(reasons),
-        "fill_rate": round(counter.get("ORDER_FILLED", 0) / counter.get("ORDER_SUBMITTED", 1), 3) if counter.get("ORDER_SUBMITTED", 0) else 0.0,
+        "fill_rate": (
+            round(counter.get("ORDER_FILLED", 0) / counter.get("ORDER_SUBMITTED", 1), 3)
+            if counter.get("ORDER_SUBMITTED", 0)
+            else 0.0
+        ),
     }
 
 
@@ -386,10 +426,24 @@ def _strategy_metrics(days: int = 30) -> dict[str, Any]:
     records = _journal_metrics(days)
     closes = records["window"]["journal_records"]
     strategy_closes = [r for r in closes if r.get("record_type") == "close"]
-    open_records = [r for r in records["window"]["journal_records"] if r.get("record_type") == "open"]
-    session = Counter(str(r.get("session") or "unknown") for r in open_records).most_common(1)
-    best_symbol = max(records["pairs"].items(), key=lambda item: item[1])[0] if records["pairs"] else "n/a"
-    worst_symbol = min(records["pairs"].items(), key=lambda item: item[1])[0] if records["pairs"] else "n/a"
+    open_records = [
+        r
+        for r in records["window"]["journal_records"]
+        if r.get("record_type") == "open"
+    ]
+    session = Counter(
+        str(r.get("session") or "unknown") for r in open_records
+    ).most_common(1)
+    best_symbol = (
+        max(records["pairs"].items(), key=lambda item: item[1])[0]
+        if records["pairs"]
+        else "n/a"
+    )
+    worst_symbol = (
+        min(records["pairs"].items(), key=lambda item: item[1])[0]
+        if records["pairs"]
+        else "n/a"
+    )
     status = str(manifest.get("status", "unknown")).upper()
     if manifest.get("last_svos_status") == "FAIL":
         recommendation = "CONTINUE DEMO"
@@ -446,7 +500,9 @@ def _risk_metrics(days: int = 1) -> dict[str, Any]:
         "daily_risk_used_pct": round(float(state.get("daily_loss_pct", 0.0)) * 100, 3),
         "per_trade_risk_pct": limits["per_trade_risk_pct"],
         "max_drawdown_r": records["max_drawdown_r"],
-        "consecutive_losses": int(state.get("consecutive_losses", records["consecutive_losses"])),
+        "consecutive_losses": int(
+            state.get("consecutive_losses", records["consecutive_losses"])
+        ),
         "emergency_stop_status": "ENGAGED" if state.get("halted") else "CLEAR",
         "risk_breaches": breaches or ["NONE"],
         "recommendation": recommendation,
@@ -490,14 +546,26 @@ def _live_readiness_metrics() -> dict[str, Any]:
     strategy = _strategy_metrics(30)
     incidents = _incident_metrics(30)
     validation = _safe_load_yaml(VALIDATION_CONFIG)
-    gate_ok = bool(manifest.get("approved")) and bool(manifest.get("last_svos_verification_ready"))
+    gate_ok = bool(manifest.get("approved")) and bool(
+        manifest.get("last_svos_verification_ready")
+    )
     execution_ready = health["execution"]["status"] in {"READY", "SHADOW"}
     database_stable = health["database"]["status"] in {"PASS", "SKIP"}
     risk_ok = health["risk"]["status"] == "PASS"
-    governance_ok = manifest.get("deployment_target") in {"execution", "shadow", "demo", "live"}
+    governance_ok = manifest.get("deployment_target") in {
+        "execution",
+        "shadow",
+        "demo",
+        "live",
+    }
     if not gate_ok:
         verdict = "NOT_READY"
-    elif execution_ready and database_stable and risk_ok and strategy["recommendation"] in {"PROMOTE", "CONTINUE DEMO"}:
+    elif (
+        execution_ready
+        and database_stable
+        and risk_ok
+        and strategy["recommendation"] in {"PROMOTE", "CONTINUE DEMO"}
+    ):
         verdict = "DEMO_READY"
     else:
         verdict = "NOT_READY"
@@ -523,7 +591,10 @@ def _incident_metrics(days: int = 7) -> dict[str, Any]:
     lines = _read_log_tail(BOT_LOG, 1000) + _read_log_tails(RUNNER_LOGS, 1000)
     filtered = []
     for line in lines:
-        if not any(token in line for token in ("ERROR", "CRITICAL", "WARN", "disconnect", "Disconnect")):
+        if not any(
+            token in line
+            for token in ("ERROR", "CRITICAL", "WARN", "disconnect", "Disconnect")
+        ):
             continue
         if _is_benign_runtime_line(line):
             continue
@@ -538,7 +609,9 @@ def _incident_metrics(days: int = 7) -> dict[str, Any]:
     }
 
 
-def _final_recommendation(daily: dict[str, Any], risk: dict[str, Any], health: dict[str, Any]) -> str:
+def _final_recommendation(
+    daily: dict[str, Any], risk: dict[str, Any], health: dict[str, Any]
+) -> str:
     if risk["risk_breaches"] != ["NONE"] or health["logs"]["critical_count"] > 0:
         return "PAUSE"
     if health["database"]["status"] == "FAIL" or health["runner"]["status"] == "FAIL":
@@ -712,7 +785,9 @@ def build_execution_report(ts: datetime) -> str:
 def build_system_health_report(ts: datetime) -> str:
     health = _health_snapshot()
     log_count = health["logs"]["error_count"]
-    missing_data = "YES" if not TRADE_EVENT_LOG.exists() and not TRADE_DB.exists() else "NO"
+    missing_data = (
+        "YES" if not TRADE_EVENT_LOG.exists() and not TRADE_DB.exists() else "NO"
+    )
     lines = _markdown_header("System Health Report", ts)
     lines += [
         "## Health Checks",
@@ -807,7 +882,9 @@ BUILDERS = {
 }
 
 
-def generate_report(report_type: str, *, root: Path = ROOT, generated_at: datetime | None = None) -> Path:
+def generate_report(
+    report_type: str, *, root: Path = ROOT, generated_at: datetime | None = None
+) -> Path:
     if report_type not in BUILDERS:
         raise ValueError(f"Unsupported report type: {report_type}")
     generated_at = generated_at or _now()
@@ -818,20 +895,31 @@ def generate_report(report_type: str, *, root: Path = ROOT, generated_at: dateti
     return path
 
 
-def generate_many(report_type: str, *, root: Path = ROOT, generated_at: datetime | None = None) -> list[ReportArtifact]:
+def generate_many(
+    report_type: str, *, root: Path = ROOT, generated_at: datetime | None = None
+) -> list[ReportArtifact]:
     generated_at = generated_at or _now()
     if report_type == "all":
         return [
-            ReportArtifact(kind, generate_report(kind, root=root, generated_at=generated_at))
+            ReportArtifact(
+                kind, generate_report(kind, root=root, generated_at=generated_at)
+            )
             for kind in BUILDERS
             if kind != "database-health"
         ]
-    return [ReportArtifact(report_type, generate_report(report_type, root=root, generated_at=generated_at))]
+    return [
+        ReportArtifact(
+            report_type,
+            generate_report(report_type, root=root, generated_at=generated_at),
+        )
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate trading platform reports")
-    parser.add_argument("--type", required=True, choices=SUPPORTED_TYPES, help="Report type to generate")
+    parser.add_argument(
+        "--type", required=True, choices=SUPPORTED_TYPES, help="Report type to generate"
+    )
     args = parser.parse_args(argv)
 
     try:

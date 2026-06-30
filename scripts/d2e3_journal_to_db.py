@@ -13,13 +13,13 @@ into the quant research schema:
 The script is idempotent at the row level via ON CONFLICT DO NOTHING / UPDATE
 where appropriate. It is safe to run repeatedly on the same journal file.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import math
-import os
 import logging
+import math
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -204,7 +204,9 @@ def build_monthly_metrics(trades: list[dict]) -> list[dict]:
             {
                 "month": month,
                 "trades": len(values),
-                "win_rate": round((len(wins) / len(values)) * 100.0, 2) if values else 0.0,
+                "win_rate": (
+                    round((len(wins) / len(values)) * 100.0, 2) if values else 0.0
+                ),
                 "profit_factor": _profit_factor(values) if values else 0.0,
                 "net_r": round(sum(values), 2),
                 "drawdown": 0.0 if not values else round(max(0.0, abs(sum(losses))), 4),
@@ -224,7 +226,9 @@ def _connect_database(database_url: str):
     try:
         return psycopg2.connect(database_url)
     except psycopg2.Error as exc:
-        log.warning("Research DB unavailable at %s: %s", database_url.split("@")[-1], exc)
+        log.warning(
+            "Research DB unavailable at %s: %s", database_url.split("@")[-1], exc
+        )
         return None
 
 
@@ -256,7 +260,12 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
     events = load_events(log_file)
     trades = build_trade_records(events)
     if not events or not trades:
-        return {"run_id": run_id, "trades": len(trades), "events": len(events), "skipped": True}
+        return {
+            "run_id": run_id,
+            "trades": len(trades),
+            "events": len(events),
+            "skipped": True,
+        }
     if run_id is None:
         first_ts = events[0]["_ts"] if events else datetime.now(timezone.utc)
         run_id = f"d2e3_demo_{first_ts.strftime('%Y%m%dT%H%M%SZ')}"
@@ -275,8 +284,16 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             strategy_id = _get_strategy_id(cur)
             symbol = trades[0]["symbol"] if trades else "EURUSD"
-            start_date = trades[0]["signal_ts"].date() if trades and trades[0]["signal_ts"] else None
-            end_date = trades[-1]["close_ts"].date() if trades and trades[-1]["close_ts"] else None
+            start_date = (
+                trades[0]["signal_ts"].date()
+                if trades and trades[0]["signal_ts"]
+                else None
+            )
+            end_date = (
+                trades[-1]["close_ts"].date()
+                if trades and trades[-1]["close_ts"]
+                else None
+            )
             cur.execute(
                 """
                 INSERT INTO research.replay_runs
@@ -290,8 +307,16 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
                     scenario = EXCLUDED.scenario,
                     data_source = EXCLUDED.data_source
                 """,
-                    (run_id, strategy_id, symbol, start_date, end_date, "demo", "MetaAPI_Demo"),
-                )
+                (
+                    run_id,
+                    strategy_id,
+                    symbol,
+                    start_date,
+                    end_date,
+                    "demo",
+                    "MetaAPI_Demo",
+                ),
+            )
 
             cur.execute(
                 "DELETE FROM analytics.strategy_metrics WHERE run_id = %s AND strategy = %s",
@@ -381,7 +406,13 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
                         equity_r = EXCLUDED.equity_r,
                         drawdown = EXCLUDED.drawdown
                     """,
-                    (run_id, row["date"], row["daily_r"], row["equity_r"], row["drawdown"]),
+                    (
+                        run_id,
+                        row["date"],
+                        row["daily_r"],
+                        row["equity_r"],
+                        row["drawdown"],
+                    ),
                 )
 
             metrics = build_metrics(trades)
@@ -416,7 +447,15 @@ def sync_journal(database_url: str, log_file: Path, run_id: str | None = None) -
                         run_id, month, trades, win_rate, profit_factor, net_r, drawdown
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (run_id, row["month"], row["trades"], row["win_rate"], row["profit_factor"], row["net_r"], row["drawdown"]),
+                    (
+                        run_id,
+                        row["month"],
+                        row["trades"],
+                        row["win_rate"],
+                        row["profit_factor"],
+                        row["net_r"],
+                        row["drawdown"],
+                    ),
                 )
         conn.commit()
 
@@ -434,13 +473,24 @@ def main() -> None:
     events = load_events(args.log)
     trades = build_trade_records(events)
     if args.dry_run:
-        print(json.dumps({
-            "log": str(args.log),
-            "events": len(events),
-            "trades": len(trades),
-            "sample_run_id": args.run_id or (f"d2e3_demo_{events[0]['_ts'].strftime('%Y%m%dT%H%M%SZ')}" if events else None),
-            "skipped": not events or not trades,
-        }, indent=2, default=str))
+        print(
+            json.dumps(
+                {
+                    "log": str(args.log),
+                    "events": len(events),
+                    "trades": len(trades),
+                    "sample_run_id": args.run_id
+                    or (
+                        f"d2e3_demo_{events[0]['_ts'].strftime('%Y%m%dT%H%M%SZ')}"
+                        if events
+                        else None
+                    ),
+                    "skipped": not events or not trades,
+                },
+                indent=2,
+                default=str,
+            )
+        )
         return
 
     result = sync_journal(args.database_url, args.log, args.run_id)

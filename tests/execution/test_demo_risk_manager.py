@@ -1,10 +1,10 @@
 """Tests for execution/demo_risk_manager.py"""
 
 import pytest
-from execution.demo_risk_manager import (
-    calculate_lots, new_state, check_limits, record_result, reset_daily,
-    LIMITS, _MIN_LOT, _MAX_LOT,
-)
+
+from execution.demo_risk_manager import (_MAX_LOT, _MIN_LOT, LIMITS,
+                                         calculate_lots, check_limits,
+                                         new_state, record_result, reset_daily)
 
 
 class TestCalculateLots:

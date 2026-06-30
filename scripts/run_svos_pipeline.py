@@ -11,7 +11,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.svos.engine import SVOSRunner
+from research.svos.engine import SVOSRunner  # noqa: E402
 
 
 def _load_json(path: str | None) -> dict:
@@ -71,7 +71,11 @@ def _print_stage_update(stage, stages, promoted_stage) -> None:
     next_action = "n/a"
     if stage.status == "PASS" and stage.next_stage:
         next_action = f"proceed to {stage.next_stage}"
-    elif stage.status == "PASS" and stage.stage == "production_approval" and stage.can_promote:
+    elif (
+        stage.status == "PASS"
+        and stage.stage == "production_approval"
+        and stage.can_promote
+    ):
         next_action = "live promotion is permitted if explicitly enabled"
     elif stage.fix_instructions:
         next_action = stage.fix_instructions[0]
@@ -112,7 +116,9 @@ def main() -> int:
         replay=_load_json(args.replay_json) or None,
         backtest=_load_json(args.backtest_json) or None,
         robustness=_load_json(args.robustness_json) or None,
-        virtual_demo=_load_json(args.virtual_demo_json) or _load_json(args.demo_json) or None,
+        virtual_demo=_load_json(args.virtual_demo_json)
+        or _load_json(args.demo_json)
+        or None,
         stage_observer=_print_stage_update,
     )
     print(result.to_json())

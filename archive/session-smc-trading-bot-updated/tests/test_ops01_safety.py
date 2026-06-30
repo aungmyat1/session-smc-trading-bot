@@ -6,16 +6,17 @@ state persistence round-trip, no duplicate orders, logging integrity.
 """
 
 import json
-import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from execution.order_manager import OrderManager, MAX_OPEN_TRADES
-from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition
-from execution.risk_manager import RiskManager, BotState, STATE_FILE
-from execution.trade_logger import TradeLogger, _VALID_EVENTS
+import pytest
+
+from execution.metaapi_client import BrokerPosition, MetaAPIClient, OrderResult
+from execution.order_manager import MAX_OPEN_TRADES, OrderManager
+from execution.risk_manager import STATE_FILE, BotState, RiskManager
+from execution.trade_logger import _VALID_EVENTS, TradeLogger
 
 _UTC = timezone.utc
 
@@ -49,7 +50,9 @@ class FakeSignal:
 
 @pytest.fixture(autouse=True)
 def isolate_state(tmp_path, monkeypatch):
-    monkeypatch.setattr("execution.risk_manager.STATE_FILE", tmp_path / "bot_state.json")
+    monkeypatch.setattr(
+        "execution.risk_manager.STATE_FILE", tmp_path / "bot_state.json"
+    )
 
 
 @pytest.fixture
@@ -71,22 +74,35 @@ def make_client(open_positions=None, spread_ok=True):
     client = MagicMock(spec=MetaAPIClient)
     client.check_spread = AsyncMock(return_value=(spread_ok, 1.2))
     client.get_open_positions = AsyncMock(return_value=open_positions or [])
-    client.place_order = AsyncMock(return_value=OrderResult(
-        order_id="DRY_RUN", symbol="EURUSD", direction="long",
-        volume=0.01, entry_price=0.0, sl=1.06, tp=1.09, dry_run=True,
-    ))
+    client.place_order = AsyncMock(
+        return_value=OrderResult(
+            order_id="DRY_RUN",
+            symbol="EURUSD",
+            direction="long",
+            volume=0.01,
+            entry_price=0.0,
+            sl=1.06,
+            tp=1.09,
+            dry_run=True,
+        )
+    )
     return client
 
 
 def signal(ts_offset_s: int = 0) -> FakeSignal:
     return FakeSignal(
-        side="long", entry=1.08, stop_loss=1.07, take_profit=1.13,
-        risk_pips=10.0, session="london",
+        side="long",
+        entry=1.08,
+        stop_loss=1.07,
+        take_profit=1.13,
+        risk_pips=10.0,
+        session="london",
         timestamp=datetime(2026, 1, 15, 7, 30, tzinfo=_UTC),
     )
 
 
 # ── MAX_OPEN_TRADES ───────────────────────────────────────────────────────────
+
 
 class TestMaxOpenTrades:
     def test_constant_is_one(self):
@@ -112,6 +128,7 @@ class TestMaxOpenTrades:
 
 # ── Signal deduplication ──────────────────────────────────────────────────────
 
+
 class TestSignalDeduplication:
     @pytest.mark.asyncio
     async def test_same_signal_not_submitted_twice(self, risk, trade_logger):
@@ -133,10 +150,24 @@ class TestSignalDeduplication:
         assert client.place_order.call_count == 1
 
     def test_different_timestamps_produce_different_keys(self):
-        s1 = FakeSignal("long", 1.08, 1.07, 1.13, 10.0, "london",
-                        datetime(2026, 1, 15, 7, 30, tzinfo=_UTC))
-        s2 = FakeSignal("long", 1.08, 1.07, 1.13, 10.0, "london",
-                        datetime(2026, 1, 15, 8, 30, tzinfo=_UTC))
+        s1 = FakeSignal(
+            "long",
+            1.08,
+            1.07,
+            1.13,
+            10.0,
+            "london",
+            datetime(2026, 1, 15, 7, 30, tzinfo=_UTC),
+        )
+        s2 = FakeSignal(
+            "long",
+            1.08,
+            1.07,
+            1.13,
+            10.0,
+            "london",
+            datetime(2026, 1, 15, 8, 30, tzinfo=_UTC),
+        )
         assert s1.timestamp.isoformat() != s2.timestamp.isoformat()
 
     def test_seen_set_accumulates_across_polls(self):
@@ -155,6 +186,7 @@ class TestSignalDeduplication:
 
 # ── Heartbeat fields ──────────────────────────────────────────────────────────
 
+
 class TestHeartbeatFields:
     def test_all_seven_fields_present(self):
         hb = {
@@ -166,8 +198,15 @@ class TestHeartbeatFields:
             "open_positions": 0,
             "last_signal_time": "none",
         }
-        required = {"timestamp", "uptime_seconds", "connection_status",
-                    "balance", "equity", "open_positions", "last_signal_time"}
+        required = {
+            "timestamp",
+            "uptime_seconds",
+            "connection_status",
+            "balance",
+            "equity",
+            "open_positions",
+            "last_signal_time",
+        }
         assert required <= set(hb.keys())
 
     def test_connection_status_values(self):
@@ -176,6 +215,7 @@ class TestHeartbeatFields:
 
     def test_uptime_seconds_non_negative(self):
         from datetime import timedelta
+
         start = datetime(2026, 6, 21, 8, 0, tzinfo=_UTC)
         now = datetime(2026, 6, 21, 8, 5, tzinfo=_UTC)
         uptime = int((now - start).total_seconds())
@@ -184,6 +224,7 @@ class TestHeartbeatFields:
 
 
 # ── State persistence ─────────────────────────────────────────────────────────
+
 
 class TestStatePersistence:
     def test_bot_state_survives_restart(self, tmp_path, monkeypatch):
@@ -232,17 +273,26 @@ class TestStatePersistence:
 
 # ── Logging integrity ─────────────────────────────────────────────────────────
 
+
 class TestLoggingIntegrity:
     def test_all_six_event_types_defined(self):
-        assert _VALID_EVENTS == frozenset({
-            "SIGNAL_CREATED", "ORDER_SUBMITTED", "ORDER_FILLED",
-            "ORDER_REJECTED", "POSITION_CLOSED", "ERROR",
-        })
+        assert _VALID_EVENTS == frozenset(
+            {
+                "SIGNAL_CREATED",
+                "ORDER_SUBMITTED",
+                "ORDER_FILLED",
+                "ORDER_REJECTED",
+                "POSITION_CLOSED",
+                "ERROR",
+            }
+        )
 
     def test_each_line_is_valid_json(self, log_file):
         tl = TradeLogger(log_file)
         tl.signal_created("EURUSD", "london", "long", 1.08, 1.07, 1.13, 10.0)
-        tl.order_submitted("EURUSD", "london", "long", 0.01, 1.07, 1.13, 0.01, 10000.0, 1.0)
+        tl.order_submitted(
+            "EURUSD", "london", "long", 0.01, 1.07, 1.13, 0.01, 10000.0, 1.0
+        )
         tl.order_filled("EURUSD", "DRY_RUN", 0.0, 0.01, 1.07, 1.13, dry_run=True)
         for line in log_file.read_text().strip().splitlines():
             parsed = json.loads(line)
@@ -268,7 +318,9 @@ class TestLoggingIntegrity:
     def test_no_corruption_on_concurrent_writes(self, log_file):
         tl = TradeLogger(log_file)
         for i in range(20):
-            tl.signal_created("EURUSD", "london", "long", 1.08+i*0.001, 1.07, 1.13, 10.0)
+            tl.signal_created(
+                "EURUSD", "london", "long", 1.08 + i * 0.001, 1.07, 1.13, 10.0
+            )
         events = tl.read_all()
         assert len(events) == 20
         for e in events:
@@ -277,9 +329,12 @@ class TestLoggingIntegrity:
 
 # ── Runtime safety: no uncaught exceptions path ───────────────────────────────
 
+
 class TestRuntimeSafety:
     @pytest.mark.asyncio
-    async def test_broker_exception_on_get_positions_logged_as_error(self, log_file, risk):
+    async def test_broker_exception_on_get_positions_logged_as_error(
+        self, log_file, risk
+    ):
         trade_logger = TradeLogger(log_file)
         client = make_client()
         client.get_open_positions = AsyncMock(side_effect=RuntimeError("broker down"))
@@ -292,13 +347,15 @@ class TestRuntimeSafety:
         assert len(errors) == 1
 
     def test_live_trading_gate(self):
-        import execution.metaapi_client as m
         # In test environment, LIVE_TRADING should be False
         # (tests run with no .env or with LIVE_TRADING unset)
         # This asserts the module reads from os.getenv correctly
         import os
+
+        import execution.metaapi_client as m
+
         raw = os.getenv("LIVE_TRADING", "false").lower()
-        assert raw in ("false", "true")   # always one of the two
+        assert raw in ("false", "true")  # always one of the two
 
     @pytest.mark.asyncio
     async def test_rejected_signal_does_not_update_seen_set(self, risk, trade_logger):

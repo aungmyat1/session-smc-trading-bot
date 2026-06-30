@@ -38,12 +38,19 @@ class DeploymentGate:
         score_map = {result.name: result.score for result in report.module_results}
         for name, minimum in self.minimum_scores.items():
             if name in score_map and score_map[name] < minimum:
-                rationale.append(f"{name} below minimum: {score_map[name]:.1f} < {minimum:.1f}")
+                rationale.append(
+                    f"{name} below minimum: {score_map[name]:.1f} < {minimum:.1f}"
+                )
         if report.readiness_score < self.minimum_readiness:
-            rationale.append(f"readiness below minimum: {report.readiness_score:.1f} < {self.minimum_readiness:.1f}")
+            rationale.append(
+                f"readiness below minimum: {report.readiness_score:.1f} < {self.minimum_readiness:.1f}"
+            )
         if rationale:
             return DeploymentDecision("REJECTED", "Research", "Research", rationale)
         if report.deployment_status == "Production":
-            return DeploymentDecision("APPROVED", "Production", report.capital_tier, rationale)
-        return DeploymentDecision("APPROVED", report.deployment_status, report.capital_tier, rationale)
-
+            return DeploymentDecision(
+                "APPROVED", "Production", report.capital_tier, rationale
+            )
+        return DeploymentDecision(
+            "APPROVED", report.deployment_status, report.capital_tier, rationale
+        )

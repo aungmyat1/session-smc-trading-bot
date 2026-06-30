@@ -15,11 +15,21 @@ VALIDATOR_RESULT_SCHEMA = {
 
 VALIDATION_REPORT_SCHEMA = {
     "type": "object",
-    "required": ["strategy_name", "overall_score", "overall_status", "readiness_decision", "validator_results", "audit_log"],
+    "required": [
+        "strategy_name",
+        "overall_score",
+        "overall_status",
+        "readiness_decision",
+        "validator_results",
+        "audit_log",
+    ],
     "properties": {
         "strategy_name": {"type": "string"},
         "overall_score": {"type": "number"},
-        "overall_status": {"type": "string", "enum": ["PASS", "FAIL", "PARTIAL", "WARN"]},
+        "overall_status": {
+            "type": "string",
+            "enum": ["PASS", "FAIL", "PARTIAL", "WARN"],
+        },
         "readiness_decision": {
             "type": "string",
             "enum": ["READY_FOR_REPLAY", "REQUIRES_REVISION", "INCOMPLETE", "REJECTED"],

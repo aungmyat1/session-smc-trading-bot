@@ -23,14 +23,13 @@ from typing import Any
 from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import ReplayReportBuilder
 
-
 _PASS_STATUSES = {"PASS"}
 
 
 @dataclass(slots=True)
 class ReplayResult:
     strategy: str
-    status: str                  # PASS | FAIL
+    status: str  # PASS | FAIL
     version_id: str
     trade_count: int
     report_artifact: str
@@ -92,7 +91,10 @@ class ReplayIntegrationService:
 
         validation_result = self._run_gate(trades, available_features or [])
         status = validation_result.status
-        checks = [asdict(c) if hasattr(c, "__dataclass_fields__") else dict(c) for c in validation_result.checks]
+        checks = [
+            asdict(c) if hasattr(c, "__dataclass_fields__") else dict(c)
+            for c in validation_result.checks
+        ]
         trade_count = len(trades)
 
         current = self._platform.registry.ensure_strategy(strategy)
@@ -142,7 +144,9 @@ class ReplayIntegrationService:
         )
 
     def _run_gate(self, trades: list[dict[str, Any]], available_features: list[str]):
-        from research.validation.engine import ReplayTrade, ReplayValidationInput, ValidationGate
+        from research.validation.engine import (ReplayTrade,
+                                                ReplayValidationInput,
+                                                ValidationGate)
 
         replay_trades = [
             ReplayTrade(
@@ -164,10 +168,14 @@ class ReplayIntegrationService:
                     or trade.get("action")
                     or ""
                 ),
-                entry_price=float(trade.get("entry_price") or trade.get("entry") or 0.0),
+                entry_price=float(
+                    trade.get("entry_price") or trade.get("entry") or 0.0
+                ),
                 stop_loss=float(trade.get("stop_loss") or trade.get("sl") or 0.0),
                 take_profit=float(trade.get("take_profit") or trade.get("tp") or 0.0),
-                position_size=float(trade.get("position_size") or trade.get("lots") or 0.0),
+                position_size=float(
+                    trade.get("position_size") or trade.get("lots") or 0.0
+                ),
                 required_features=list(trade.get("required_features") or []),
             )
             for idx, trade in enumerate(trades, start=1)
@@ -186,16 +194,25 @@ class ReplayIntegrationService:
         gate = ValidationGate()
         return gate.validate_replay(payload)
 
-    def _drive_lifecycle(self, strategy: str, status: str, actor: str, current: Any) -> None:
+    def _drive_lifecycle(
+        self, strategy: str, status: str, actor: str, current: Any
+    ) -> None:
         current_stage = str(current.current_stage)
         if status == "PASS" and current_stage == "AUDIT":
             target, reason = "HISTORICAL_REPLAY", "Replay validation passed"
         elif status == "FAIL" and current_stage in ("AUDIT", "HISTORICAL_REPLAY"):
-            target, reason = "REFINEMENT", "Replay validation failed — requires spec revision"
+            target, reason = (
+                "REFINEMENT",
+                "Replay validation failed — requires spec revision",
+            )
         else:
             return
         try:
-            self._platform.audited_transition(strategy, to_stage=target, actor=actor, reason=reason)
+            self._platform.audited_transition(
+                strategy, to_stage=target, actor=actor, reason=reason
+            )
         except Exception as exc:
-            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(exc):
+            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(
+                exc
+            ):
                 raise

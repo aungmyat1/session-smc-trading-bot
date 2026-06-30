@@ -1,4 +1,5 @@
 """Dependency validator — detects circular imports and forbidden module coupling."""
+
 from __future__ import annotations
 
 import ast
@@ -9,12 +10,22 @@ from typing import Any
 
 import yaml
 
-from agents.quality.agent import Status, StageResult
+from agents.quality.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_IMPORT_RULES = "quality/import_rules.yaml"
-_EXCLUDED = {".git", "__pycache__", ".pytest_cache", "archive", "data", "logs", "reports", ".mypy_cache", ".ruff_cache"}
+_EXCLUDED = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "archive",
+    "data",
+    "logs",
+    "reports",
+    ".mypy_cache",
+    ".ruff_cache",
+}
 # Only scan these top-level packages to keep the graph small and fast.
 _SOURCE_PACKAGES = ["svos", "agents", "db", "dashboard", "strategies", "strategy"]
 
@@ -31,7 +42,9 @@ class DependencyValidator:
         graph = self._build_graph()
 
         cycles = self._find_cycles(graph)
-        forbidden_violations = self._check_forbidden(graph, import_rules.get("forbidden_imports", []))
+        forbidden_violations = self._check_forbidden(
+            graph, import_rules.get("forbidden_imports", [])
+        )
 
         errors: list[str] = []
         warnings: list[str] = []
@@ -39,9 +52,13 @@ class DependencyValidator:
         for cycle in cycles[:20]:
             errors.append(f"CYCLE: {' → '.join(cycle)}")
         for v in forbidden_violations[:20]:
-            errors.append(f"FORBIDDEN_IMPORT: {v['from']} imports {v['to']} ({v.get('reason', '')})")
+            errors.append(
+                f"FORBIDDEN_IMPORT: {v['from']} imports {v['to']} ({v.get('reason', '')})"
+            )
 
-        score = max(0.0, round(100.0 - len(cycles) * 15.0 - len(forbidden_violations) * 5.0, 1))
+        score = max(
+            0.0, round(100.0 - len(cycles) * 15.0 - len(forbidden_violations) * 5.0, 1)
+        )
         details: dict[str, Any] = {
             "modules_scanned": len(graph),
             "cycles_found": len(cycles),
@@ -97,7 +114,9 @@ class DependencyValidator:
 
     def _is_project_module(self, module: str) -> bool:
         top = module.split(".")[0]
-        return (self._root / top).exists() or (self._root / top).with_suffix(".py").exists()
+        return (self._root / top).exists() or (self._root / top).with_suffix(
+            ".py"
+        ).exists()
 
     @staticmethod
     def _extract_imports(path: Path) -> list[str]:
@@ -166,7 +185,13 @@ class DependencyValidator:
                     continue
                 for target in targets:
                     if to_mod and to_mod in target:
-                        violations.append({"from": source, "to": target, "reason": rule.get("reason", "")})
+                        violations.append(
+                            {
+                                "from": source,
+                                "to": target,
+                                "reason": rule.get("reason", ""),
+                            }
+                        )
         return violations
 
     def _load_import_rules(self) -> dict[str, Any]:

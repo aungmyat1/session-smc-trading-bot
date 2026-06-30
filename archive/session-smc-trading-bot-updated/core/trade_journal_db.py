@@ -94,12 +94,12 @@ class TradeJournalDB:
     def record_signal(
         self,
         signal: Signal,
-        router_result:    str = "",
-        breaker_result:   str = "",
+        router_result: str = "",
+        breaker_result: str = "",
         portfolio_result: str = "",
         execution_result: str = "",
-        broker_order_id:  str = "",
-        position_size:    float = 0.0,
+        broker_order_id: str = "",
+        position_size: float = 0.0,
     ) -> int:
         """
         Insert a trade record at signal time. Returns the new row id.
@@ -107,16 +107,19 @@ class TradeJournalDB:
         """
         import json
 
-        direction = "long" if signal.action == "BUY" else \
-                    "short" if signal.action == "SELL" else signal.action.lower()
+        direction = (
+            "long"
+            if signal.action == "BUY"
+            else "short" if signal.action == "SELL" else signal.action.lower()
+        )
 
         row = (
             datetime.now(timezone.utc).isoformat(),
             signal.strategy_name,
             signal.symbol,
             direction,
-            signal.entry_price,    # signal_price (at generation time)
-            signal.entry_price,    # entry_price (filled price updated on close)
+            signal.entry_price,  # signal_price (at generation time)
+            signal.entry_price,  # entry_price (filled price updated on close)
             signal.stop_loss,
             signal.take_profit,
             position_size,
@@ -157,20 +160,20 @@ class TradeJournalDB:
 
     def update_close(
         self,
-        trade_id:       int,
-        close_price:    float,
-        profit_loss:    float,
-        r_multiple:     float,
+        trade_id: int,
+        close_price: float,
+        profit_loss: float,
+        r_multiple: float,
         reason_for_exit: str = "tp_hit",
-        entry_price:    Optional[float] = None,
+        entry_price: Optional[float] = None,
     ) -> None:
         """Mark a trade closed with its outcome."""
         fields = {
-            "close_price":     close_price,
-            "profit_loss":     profit_loss,
-            "r_multiple":      round(r_multiple, 3),
+            "close_price": close_price,
+            "profit_loss": profit_loss,
+            "r_multiple": round(r_multiple, 3),
             "reason_for_exit": reason_for_exit,
-            "status":          "CLOSED",
+            "status": "CLOSED",
         }
         if entry_price is not None:
             fields["entry_price"] = entry_price
@@ -219,8 +222,8 @@ class TradeJournalDB:
 
     def summary(self) -> dict:
         with self._connect() as conn:
-            total  = conn.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
-            open_  = conn.execute(
+            total = conn.execute("SELECT COUNT(*) FROM trades").fetchone()[0]
+            open_ = conn.execute(
                 "SELECT COUNT(*) FROM trades WHERE status='OPEN'"
             ).fetchone()[0]
             closed = conn.execute(
@@ -239,27 +242,27 @@ class TradeJournalDB:
                 FROM trades WHERE status='CLOSED'
             """).fetchone()
 
-            wins       = row["wins"]   or 0
-            losses     = row["losses"] or 0
-            avg_r      = round(row["avg_r"] or 0.0, 3)
-            total_pnl  = round(row["total_pnl"] or 0.0, 2)
+            wins = row["wins"] or 0
+            losses = row["losses"] or 0
+            avg_r = round(row["avg_r"] or 0.0, 3)
+            total_pnl = round(row["total_pnl"] or 0.0, 2)
 
-        win_rate    = round(wins / (wins + losses) * 100, 1) if (wins + losses) else 0.0
-        gross_wins  = self._sum_r(closed=True, side="win")
+        win_rate = round(wins / (wins + losses) * 100, 1) if (wins + losses) else 0.0
+        gross_wins = self._sum_r(closed=True, side="win")
         gross_losses = abs(self._sum_r(closed=True, side="loss"))
         pf = round(gross_wins / gross_losses, 3) if gross_losses > 0 else 0.0
 
         return {
-            "total":       total,
-            "open":        open_,
-            "closed":      closed,
-            "blocked":     blocked,
-            "wins":        wins,
-            "losses":      losses,
-            "win_rate_pct":win_rate,
-            "avg_r":       avg_r,
+            "total": total,
+            "open": open_,
+            "closed": closed,
+            "blocked": blocked,
+            "wins": wins,
+            "losses": losses,
+            "win_rate_pct": win_rate,
+            "avg_r": avg_r,
             "profit_factor": pf,
-            "total_pnl":   total_pnl,
+            "total_pnl": total_pnl,
         }
 
     def _sum_r(self, closed: bool, side: str) -> float:

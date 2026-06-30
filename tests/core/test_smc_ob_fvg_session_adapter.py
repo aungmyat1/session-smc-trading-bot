@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from strategies.adapters.smc_ob_fvg_session_adapter import SMCOrderBlockFVGSessionAdapter
+from strategies.adapters.smc_ob_fvg_session_adapter import \
+    SMCOrderBlockFVGSessionAdapter
 
 
 def _ts(hour: int, minute: int) -> str:
     return f"2026-06-24T{hour:02d}:{minute:02d}:00+00:00"
 
 
-def _candle(hour: int, minute: int, open_: float, high: float, low: float, close: float) -> dict:
+def _candle(
+    hour: int, minute: int, open_: float, high: float, low: float, close: float
+) -> dict:
     return {
         "time": _ts(hour, minute),
         "open": open_,
@@ -27,7 +30,16 @@ def _setup_bars() -> list[dict]:
         hour = idx // 4
         minute = (idx % 4) * 15
         shift = 0.0001 if idx % 2 == 0 else -0.0001
-        bars.append(_candle(hour, minute, base, base + 0.0002 + shift, base - 0.0002, base + shift / 2))
+        bars.append(
+            _candle(
+                hour,
+                minute,
+                base,
+                base + 0.0002 + shift,
+                base - 0.0002,
+                base + shift / 2,
+            )
+        )
 
     bars.extend(
         [

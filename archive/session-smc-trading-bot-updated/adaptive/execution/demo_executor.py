@@ -35,7 +35,9 @@ class DemoExecutor:
     def __init__(self, dry_run: bool | None = None) -> None:
         self.dry_run = dry_run if dry_run is not None else _DRY_RUN_DEFAULT
 
-    async def execute(self, signal: AdaptiveSignal, account_balance: float = 0.0) -> dict:
+    async def execute(
+        self, signal: AdaptiveSignal, account_balance: float = 0.0
+    ) -> dict:
         """
         Simulate order execution.
 
@@ -66,18 +68,22 @@ class DemoExecutor:
 
         _logger.info(
             "DRY_RUN order: %s %s %s @ %.5f SL=%.5f TP=%.5f",
-            signal.direction, signal.pair, signal.strategy,
-            signal.entry_price, signal.sl_price, signal.tp_price,
+            signal.direction,
+            signal.pair,
+            signal.strategy,
+            signal.entry_price,
+            signal.sl_price,
+            signal.tp_price,
         )
 
         return {
-            "order_id":  order_id,
-            "dry_run":   True,
-            "symbol":    signal.pair,
+            "order_id": order_id,
+            "dry_run": True,
+            "symbol": signal.pair,
             "direction": signal.direction,
-            "entry":     signal.entry_price,
-            "sl":        signal.sl_price,
-            "tp":        signal.tp_price,
+            "entry": signal.entry_price,
+            "sl": signal.sl_price,
+            "tp": signal.tp_price,
             "timestamp": ts,
-            "status":    "simulated",
+            "status": "simulated",
         }

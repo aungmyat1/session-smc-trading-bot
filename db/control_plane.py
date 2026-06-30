@@ -8,20 +8,14 @@ and outbox event. It never falls back to YAML or JSONL.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Callable, Sequence, cast
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.models import (
-    ArtifactBinding,
-    GateDecision,
-    Outbox,
-    StageState,
-    StageTransition,
-    StrategyEntity,
-)
+from db.models import (ArtifactBinding, GateDecision, Outbox, StageState,
+                       StageTransition, StrategyEntity)
 from svos.lifecycle.manager import StrategyLifecycleManager
 
 
@@ -74,7 +68,11 @@ class PostgresControlPlane:
         self.lifecycle = lifecycle or StrategyLifecycleManager()
 
     def commit_transition(self, command: TransitionCommand) -> CommittedTransition:
-        if not command.actor.strip() or not command.reason.strip() or not command.policy_version.strip():
+        if (
+            not command.actor.strip()
+            or not command.reason.strip()
+            or not command.policy_version.strip()
+        ):
             raise ControlPlaneError("actor, reason, and policy_version are required")
         source = self.lifecycle.normalize_stage(command.from_stage)
         target = self.lifecycle.normalize_stage(command.to_stage)
@@ -83,26 +81,39 @@ class PostgresControlPlane:
         with self.session_factory() as session:
             with session.begin():
                 strategy = session.scalar(
-                    select(StrategyEntity).where(StrategyEntity.slug == command.strategy_slug)
+                    select(StrategyEntity).where(
+                        StrategyEntity.slug == command.strategy_slug
+                    )
                 )
                 if strategy is None:
-                    raise ControlPlaneError(f"unknown strategy: {command.strategy_slug}")
+                    raise ControlPlaneError(
+                        f"unknown strategy: {command.strategy_slug}"
+                    )
                 state = session.scalar(
                     select(StageState)
                     .where(StageState.strategy_id == strategy.id)
                     .with_for_update()
                 )
                 if state is None:
-                    raise ControlPlaneError(f"missing stage state: {command.strategy_slug}")
-                if state.opt_lock != command.expected_revision or state.current_stage != source.value:
+                    raise ControlPlaneError(
+                        f"missing stage state: {command.strategy_slug}"
+                    )
+                if (
+                    state.opt_lock != command.expected_revision
+                    or state.current_stage != source.value
+                ):
                     raise ControlPlaneConflict(
                         f"stale lifecycle state: expected {source.value}@{command.expected_revision}, "
                         f"found {state.current_stage}@{state.opt_lock}"
                     )
                 if state.current_version_id != command.version_id:
-                    raise ControlPlaneConflict("strategy version changed after gate evaluation")
+                    raise ControlPlaneConflict(
+                        "strategy version changed after gate evaluation"
+                    )
 
-                self._validate_evidence(session, strategy.id, command, source.value)
+                self._validate_evidence(
+                    session, cast(UUID, strategy.id), command, source.value
+                )
 
                 decision = GateDecision(
                     strategy_id=strategy.id,
@@ -131,9 +142,9 @@ class PostgresControlPlane:
                     actor=command.actor,
                     reason=command.reason,
                 )
-                state.current_stage = target.value
-                state.opt_lock = next_revision
-                state.updated_by = command.actor
+                state.current_stage = target.value  # type: ignore[assignment]
+                state.opt_lock = next_revision  # type: ignore[assignment]
+                state.updated_by = command.actor  # type: ignore[assignment]
                 outbox = Outbox(
                     event_type="stage_transition",
                     strategy_id=strategy.id,
@@ -149,11 +160,11 @@ class PostgresControlPlane:
                 session.add_all([transition, outbox])
                 session.flush()
                 result = CommittedTransition(
-                    decision_id=decision.id,
-                    transition_id=transition.id,
-                    strategy_id=strategy.id,
+                    decision_id=cast(UUID, decision.id),
+                    transition_id=cast(UUID, transition.id),
+                    strategy_id=cast(UUID, strategy.id),
                     from_revision=command.expected_revision,
-                    to_revision=next_revision,
+                    to_revision=int(next_revision),
                 )
             return result
 
@@ -167,7 +178,9 @@ class PostgresControlPlane:
         if source_stage in self._NO_EVIDENCE_SOURCES:
             return
         if not command.evidence_ids:
-            raise ControlPlaneEvidenceError(f"qualifying evidence is required for {source_stage}")
+            raise ControlPlaneEvidenceError(
+                f"qualifying evidence is required for {source_stage}"
+            )
         bindings: Sequence[ArtifactBinding] = session.scalars(
             select(ArtifactBinding).where(ArtifactBinding.id.in_(command.evidence_ids))
         ).all()

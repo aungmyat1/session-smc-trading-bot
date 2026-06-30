@@ -156,7 +156,9 @@ class RobustnessIntegrationService:
     # ── engine wrappers ────────────────────────────────────────────────────
 
     @staticmethod
-    def _normalize_trades(trades: list[dict[str, Any]], r_key: str) -> list[dict[str, Any]]:
+    def _normalize_trades(
+        trades: list[dict[str, Any]], r_key: str
+    ) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         for t in trades:
             if not isinstance(t, dict):
@@ -171,6 +173,7 @@ class RobustnessIntegrationService:
     def _run_walk_forward(trades: list[dict[str, Any]]) -> dict[str, Any]:
         try:
             from research.robustness import walk_forward_analysis
+
             return walk_forward_analysis(trades, r_key="std_net_r")
         except Exception as exc:
             return {"passed": False, "reason": str(exc), "folds": []}
@@ -179,6 +182,7 @@ class RobustnessIntegrationService:
     def _run_monte_carlo(trades: list[dict[str, Any]]) -> dict[str, Any]:
         try:
             from research.robustness import monte_carlo_resampling
+
             return monte_carlo_resampling(trades, r_key="std_net_r")
         except Exception as exc:
             return {"passed": False, "reason": str(exc), "iterations": 0}
@@ -189,30 +193,49 @@ class RobustnessIntegrationService:
             return {"status": "SKIPPED", "reason": "no parameter grid provided"}
         try:
             from research.robustness import parameter_sensitivity
-            return parameter_sensitivity(parameter_grid)
+
+            rr_results: dict[str, Any] = {
+                str(i): g for i, g in enumerate(parameter_grid)
+            }
+            return parameter_sensitivity(rr_results)
         except Exception as exc:
             return {"status": "ERROR", "reason": str(exc)}
 
     @staticmethod
-    def _run_regime(trades: list[dict[str, Any]], regime_labels: list[str]) -> dict[str, Any]:
+    def _run_regime(
+        trades: list[dict[str, Any]], regime_labels: list[str]
+    ) -> dict[str, Any]:
         if not regime_labels:
             return {"status": "SKIPPED", "reason": "no regime labels provided"}
         try:
             from research.robustness import regime_analysis
-            return regime_analysis(trades, regime_labels=regime_labels, r_key="std_net_r")
+
+            return regime_analysis(trades, r_key="std_net_r")
         except Exception as exc:
             return {"status": "ERROR", "reason": str(exc)}
 
-    def _drive_lifecycle(self, strategy: str, status: str, actor: str, current: Any) -> None:
+    def _drive_lifecycle(
+        self, strategy: str, status: str, actor: str, current: Any
+    ) -> None:
         current_stage = str(current.current_stage)
         if status == "PASS" and current_stage == "STATISTICAL_VALIDATION":
             target, reason = "ROBUSTNESS_VALIDATION", "Robustness validation passed"
-        elif status == "FAIL" and current_stage in ("STATISTICAL_VALIDATION", "ROBUSTNESS_VALIDATION"):
-            target, reason = "REFINEMENT", "Robustness validation failed — walk-forward or Monte Carlo did not pass"
+        elif status == "FAIL" and current_stage in (
+            "STATISTICAL_VALIDATION",
+            "ROBUSTNESS_VALIDATION",
+        ):
+            target, reason = (
+                "REFINEMENT",
+                "Robustness validation failed — walk-forward or Monte Carlo did not pass",
+            )
         else:
             return
         try:
-            self._platform.audited_transition(strategy, to_stage=target, actor=actor, reason=reason)
+            self._platform.audited_transition(
+                strategy, to_stage=target, actor=actor, reason=reason
+            )
         except Exception as exc:
-            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(exc):
+            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(
+                exc
+            ):
                 raise

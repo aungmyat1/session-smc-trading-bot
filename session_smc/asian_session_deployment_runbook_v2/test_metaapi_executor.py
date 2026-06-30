@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from smc_bot.broker.metaapi_executor import MetaApiExecutor
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared fixtures
@@ -43,6 +42,7 @@ def _make_executor(monkeypatch=None) -> MetaApiExecutor:
 # connect()
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestConnect:
 
     @pytest.mark.asyncio
@@ -53,7 +53,9 @@ class TestConnect:
         mock_account.get_streaming_connection.return_value = mock_conn
 
         mock_api = AsyncMock()
-        mock_api.metatrader_account_api.get_account = AsyncMock(return_value=mock_account)
+        mock_api.metatrader_account_api.get_account = AsyncMock(
+            return_value=mock_account
+        )
 
         with patch("smc_bot.broker.metaapi_executor.MetaApi", return_value=mock_api):
             ex = MetaApiExecutor(CFG)
@@ -64,7 +66,14 @@ class TestConnect:
 
     @pytest.mark.asyncio
     async def test_connect_raises_without_token(self):
-        bad_cfg = {"metaapi": {"token": "", "account_id": "", "demo": True, "deploy_timeout": 10}}
+        bad_cfg = {
+            "metaapi": {
+                "token": "",
+                "account_id": "",
+                "demo": True,
+                "deploy_timeout": 10,
+            }
+        }
         ex = MetaApiExecutor(bad_cfg)
         with pytest.raises(RuntimeError, match="METAAPI_TOKEN"):
             await ex.connect()
@@ -77,7 +86,9 @@ class TestConnect:
         mock_account.get_streaming_connection.return_value = mock_conn
 
         mock_api = AsyncMock()
-        mock_api.metatrader_account_api.get_account = AsyncMock(return_value=mock_account)
+        mock_api.metatrader_account_api.get_account = AsyncMock(
+            return_value=mock_account
+        )
 
         with patch("smc_bot.broker.metaapi_executor.MetaApi", return_value=mock_api):
             ex = MetaApiExecutor(CFG)
@@ -90,11 +101,12 @@ class TestConnect:
 # check_connected guard
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestCheckConnected:
 
     @pytest.mark.asyncio
     async def test_raises_if_not_connected(self):
-        ex = MetaApiExecutor(CFG)   # _conn is None
+        ex = MetaApiExecutor(CFG)  # _conn is None
         with pytest.raises(RuntimeError, match="connect()"):
             await ex.get_open_positions()
 
@@ -102,6 +114,7 @@ class TestCheckConnected:
 # ─────────────────────────────────────────────────────────────────────────────
 # get_balance
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestGetBalance:
 
@@ -126,6 +139,7 @@ class TestGetBalance:
 # place_market_order
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestPlaceMarketOrder:
 
     @pytest.mark.asyncio
@@ -135,12 +149,18 @@ class TestPlaceMarketOrder:
             return_value={"positionId": "pos_001"}
         )
         result = await ex.place_market_order(
-            symbol="EURUSD", side="long", volume=0.10,
-            sl=1.0980, tp=1.1100, comment="asian_sweep",
+            symbol="EURUSD",
+            side="long",
+            volume=0.10,
+            sl=1.0980,
+            tp=1.1100,
+            comment="asian_sweep",
         )
         ex._conn.create_market_buy_order.assert_called_once_with(
-            "EURUSD", 0.10,
-            stop_loss=1.0980, take_profit=1.1100,
+            "EURUSD",
+            0.10,
+            stop_loss=1.0980,
+            take_profit=1.1100,
             options={"comment": "asian_sweep"},
         )
         assert result["positionId"] == "pos_001"
@@ -152,8 +172,12 @@ class TestPlaceMarketOrder:
             return_value={"positionId": "pos_002"}
         )
         result = await ex.place_market_order(
-            symbol="GBPUSD", side="short", volume=0.05,
-            sl=1.2700, tp=1.2400, comment="london_range",
+            symbol="GBPUSD",
+            side="short",
+            volume=0.05,
+            sl=1.2700,
+            tp=1.2400,
+            comment="london_range",
         )
         ex._conn.create_market_sell_order.assert_called_once()
         assert result["positionId"] == "pos_002"
@@ -164,12 +188,13 @@ class TestPlaceMarketOrder:
         ex._conn.create_market_buy_order = AsyncMock(return_value={"positionId": "p"})
         await ex.place_market_order("EURUSD", "long", 0.123456, 1.09, 1.11)
         call_args = ex._conn.create_market_buy_order.call_args
-        assert call_args.args[1] == 0.12   # rounded down
+        assert call_args.args[1] == 0.12  # rounded down
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # place_limit_order
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPlaceLimitOrder:
 
@@ -186,7 +211,9 @@ class TestPlaceLimitOrder:
     @pytest.mark.asyncio
     async def test_limit_sell(self):
         ex = _make_executor()
-        ex._conn.create_limit_sell_order = AsyncMock(return_value={"orderId": "ord_002"})
+        ex._conn.create_limit_sell_order = AsyncMock(
+            return_value={"orderId": "ord_002"}
+        )
         await ex.place_limit_order(
             "XAUUSD", "short", 0.05, price=1920.0, sl=1930.0, tp=1880.0
         )
@@ -196,6 +223,7 @@ class TestPlaceLimitOrder:
 # ─────────────────────────────────────────────────────────────────────────────
 # place_reduce_only (partial close)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestPlaceReduceOnly:
 
@@ -219,6 +247,7 @@ class TestPlaceReduceOnly:
 # set_sl / set_tp
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestModifyPosition:
 
     @pytest.mark.asyncio
@@ -240,6 +269,7 @@ class TestModifyPosition:
 # get_open_positions / get_positions_for_symbol
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestGetPositions:
 
     @pytest.mark.asyncio
@@ -256,11 +286,13 @@ class TestGetPositions:
     @pytest.mark.asyncio
     async def test_get_positions_for_symbol_filters(self):
         ex = _make_executor()
-        ex._conn.get_positions = AsyncMock(return_value=[
-            {"id": "p1", "symbol": "EURUSD"},
-            {"id": "p2", "symbol": "XAUUSD"},
-            {"id": "p3", "symbol": "EURUSD"},
-        ])
+        ex._conn.get_positions = AsyncMock(
+            return_value=[
+                {"id": "p1", "symbol": "EURUSD"},
+                {"id": "p2", "symbol": "XAUUSD"},
+                {"id": "p3", "symbol": "EURUSD"},
+            ]
+        )
         result = await ex.get_positions_for_symbol("EURUSD")
         assert len(result) == 2
         assert all(p["symbol"] == "EURUSD" for p in result)
@@ -277,6 +309,7 @@ class TestGetPositions:
 # close_position
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestClosePosition:
 
     @pytest.mark.asyncio
@@ -290,6 +323,7 @@ class TestClosePosition:
 # ─────────────────────────────────────────────────────────────────────────────
 # get_current_price
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestGetCurrentPrice:
 
@@ -309,6 +343,7 @@ class TestGetCurrentPrice:
 # get_today_closed_pnl
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestTodayClosedPnl:
 
     @pytest.mark.asyncio
@@ -316,9 +351,9 @@ class TestTodayClosedPnl:
         ex = _make_executor()
         deals = [
             {"type": "DEAL_TYPE_SELL", "profit": 50.0},
-            {"type": "DEAL_TYPE_BUY",  "profit": -30.0},
+            {"type": "DEAL_TYPE_BUY", "profit": -30.0},
             {"type": "DEAL_TYPE_BALANCE", "profit": 1000.0},  # should be excluded
         ]
         ex._conn.get_deals_by_time_range = AsyncMock(return_value=deals)
         pnl = await ex.get_today_closed_pnl()
-        assert pnl == pytest.approx(20.0, rel=1e-5)   # 50 - 30, balance excluded
+        assert pnl == pytest.approx(20.0, rel=1e-5)  # 50 - 30, balance excluded

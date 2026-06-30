@@ -1,4 +1,5 @@
 """Regression validator — detects unexpected changes in test results vs baseline."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +8,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,9 @@ class RegressionValidator:
                 status=Status.WARNING,
                 score=90.0,
                 details={"action": "baseline_unreadable"},
-                warnings=["Baseline file exists but could not be parsed — skipping regression check"],
+                warnings=[
+                    "Baseline file exists but could not be parsed — skipping regression check"
+                ],
             )
 
         regressions, improvements = self._compare(current, baseline)
@@ -63,8 +66,14 @@ class RegressionValidator:
             "regressions": regressions,
             "improvements": improvements,
         }
-        errors = [f"REGRESSION {k}: {v['current']} vs baseline {v['baseline']} (delta={v['delta']:.2f})" for k, v in regressions.items()]
-        info_warnings = [f"IMPROVED {k}: {v['current']} vs baseline {v['baseline']}" for k, v in improvements.items()]
+        errors = [
+            f"REGRESSION {k}: {v['current']} vs baseline {v['baseline']} (delta={v['delta']:.2f})"
+            for k, v in regressions.items()
+        ]
+        info_warnings = [
+            f"IMPROVED {k}: {v['current']} vs baseline {v['baseline']}"
+            for k, v in improvements.items()
+        ]
 
         # Update baseline if no regressions.
         if not regressions:
@@ -95,7 +104,11 @@ class RegressionValidator:
             return -1.0
         try:
             root_el = ET.parse(xml_path).getroot()
-            suite = root_el if root_el.tag == "testsuite" else (root_el.find("testsuite") or root_el)
+            suite = (
+                root_el
+                if root_el.tag == "testsuite"
+                else (root_el.find("testsuite") or root_el)
+            )
             total = int(suite.get("tests", 0))
             failures = int(suite.get("failures", 0)) + int(suite.get("errors", 0))
             return round((total - failures) / total * 100.0, 2) if total > 0 else -1.0
@@ -128,7 +141,12 @@ class RegressionValidator:
                 continue
             delta = base - cur  # positive = current is worse
             if delta > tolerance:
-                regressions[metric] = {"current": cur, "baseline": base, "delta": delta, "tolerance": tolerance}
+                regressions[metric] = {
+                    "current": cur,
+                    "baseline": base,
+                    "delta": delta,
+                    "tolerance": tolerance,
+                }
             elif cur - base > 0:
                 improvements[metric] = {"current": cur, "baseline": base}
         return regressions, improvements

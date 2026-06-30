@@ -25,27 +25,27 @@ sys.path.insert(0, str(_ROOT))
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-BASE_RUN_ID   = "20260621T060745-f6ac57"
-RR_VARIANTS   = [2.0, 3.0, 4.0, 5.0]
-PHASE0_N      = 100
-PHASE0_PF     = 1.0
+BASE_RUN_ID = "20260621T060745-f6ac57"
+RR_VARIANTS = [2.0, 3.0, 4.0, 5.0]
+PHASE0_N = 100
+PHASE0_PF = 1.0
 
 # ST-A baseline (RR=5, combined)
 BASELINE = {"n": 181, "pf_std": 1.126, "pf_2x": 0.965, "rr": 5.0}
 
 EXPERIMENTS = [
     {
-        "id":   "EXP-01",
+        "id": "EXP-01",
         "name": "Minimum SL Floor",
         "hypothesis": "Narrow-SL setups have spread_cost_R ≥ 1.08R — removing them improves net PF.",
         "variants": [
-            {"label": "≥ 5 pip",  "fn": lambda t: t["sl_pips"] >= 5.0},
-            {"label": "≥ 7 pip",  "fn": lambda t: t["sl_pips"] >= 7.0},
+            {"label": "≥ 5 pip", "fn": lambda t: t["sl_pips"] >= 5.0},
+            {"label": "≥ 7 pip", "fn": lambda t: t["sl_pips"] >= 7.0},
             {"label": "≥ 10 pip", "fn": lambda t: t["sl_pips"] >= 10.0},
         ],
     },
     {
-        "id":   "EXP-02",
+        "id": "EXP-02",
         "name": "Minimum Asian Range",
         "hypothesis": "Wider ranges produce larger sweeps and reduce spread_cost_R on SL.",
         "variants": [
@@ -55,7 +55,7 @@ EXPERIMENTS = [
         ],
     },
     {
-        "id":   "EXP-03",
+        "id": "EXP-03",
         "name": "NY Session Only",
         "hypothesis": "NY win rate (39.6%) and PF 2×=1.344 dominate vs London 28.1% / 0.819.",
         "variants": [
@@ -63,18 +63,21 @@ EXPERIMENTS = [
         ],
     },
     {
-        "id":   "EXP-04",
+        "id": "EXP-04",
         "name": "Exclude GBPUSD London",
         "hypothesis": "GBPUSD London (PF 2×=0.701) is the single largest drag on combined PF.",
         "variants": [
-            {"label": "Ex GBP/LON",
-             "fn": lambda t: not (t["sym"] == "GBPUSD" and t["session"] == "london")},
+            {
+                "label": "Ex GBP/LON",
+                "fn": lambda t: not (t["sym"] == "GBPUSD" and t["session"] == "london"),
+            },
         ],
     },
 ]
 
 
 # ── Pure functions (importable for tests) ─────────────────────────────────────
+
 
 def load_trades(trades_csv, run_id):
     """
@@ -91,19 +94,21 @@ def load_trades(trades_csv, run_id):
                 continue
             m = re.search(r"2x_net_r=([-\d.]+)", row.get("notes", ""))
             net_r_2x = float(m.group(1)) if m else float(row["net_r"])
-            rows.append({
-                "sym":               row["symbol"],
-                "session":           row["session"],
-                "rr":                float(row["rr"]),
-                "sl_pips":           float(row["sl_pips"]),
-                "asian_range_pips":  float(row["asian_range_pips"]),
-                "gross_r":           float(row["gross_r"]),
-                "net_r_std":         float(row["net_r"]),
-                "net_r_2x":          net_r_2x,
-                "bars_held":         int(row["bars_held"]),
-                "exit_reason":       row["exit_reason"],
-                "year":              row["timestamp_utc"][:4],
-            })
+            rows.append(
+                {
+                    "sym": row["symbol"],
+                    "session": row["session"],
+                    "rr": float(row["rr"]),
+                    "sl_pips": float(row["sl_pips"]),
+                    "asian_range_pips": float(row["asian_range_pips"]),
+                    "gross_r": float(row["gross_r"]),
+                    "net_r_std": float(row["net_r"]),
+                    "net_r_2x": net_r_2x,
+                    "bars_held": int(row["bars_held"]),
+                    "exit_reason": row["exit_reason"],
+                    "year": row["timestamp_utc"][:4],
+                }
+            )
     return rows
 
 
@@ -121,14 +126,18 @@ def compute_metrics(trades):
     """
     if not trades:
         return {
-            "n": 0, "win_rate": 0.0, "gross_pf": 0.0,
-            "net_pf_std": 0.0, "net_pf_2x": 0.0,
-            "max_dd": 0.0, "avg_dur_min": 0.0,
+            "n": 0,
+            "win_rate": 0.0,
+            "gross_pf": 0.0,
+            "net_pf_std": 0.0,
+            "net_pf_2x": 0.0,
+            "max_dd": 0.0,
+            "avg_dur_min": 0.0,
         }
 
     def _pf(rs):
-        wins_r  = [r for r in rs if r > 0]
-        loss_r  = [r for r in rs if r <= 0]
+        wins_r = [r for r in rs if r > 0]
+        loss_r = [r for r in rs if r <= 0]
         gw = sum(wins_r)
         gl = abs(sum(loss_r))
         if gl == 0:
@@ -147,18 +156,18 @@ def compute_metrics(trades):
                 dd = peak - running
         return dd
 
-    n         = len(trades)
-    gross_rs  = [t["gross_r"]   for t in trades]
-    std_rs    = [t["net_r_std"] for t in trades]
-    stress_rs = [t["net_r_2x"]  for t in trades]
+    n = len(trades)
+    gross_rs = [t["gross_r"] for t in trades]
+    std_rs = [t["net_r_std"] for t in trades]
+    stress_rs = [t["net_r_2x"] for t in trades]
 
     return {
-        "n":           n,
-        "win_rate":    sum(1 for r in std_rs if r > 0) / n,
-        "gross_pf":    _pf(gross_rs),
-        "net_pf_std":  _pf(std_rs),
-        "net_pf_2x":   _pf(stress_rs),
-        "max_dd":      _max_dd(std_rs),
+        "n": n,
+        "win_rate": sum(1 for r in std_rs if r > 0) / n,
+        "gross_pf": _pf(gross_rs),
+        "net_pf_std": _pf(std_rs),
+        "net_pf_2x": _pf(stress_rs),
+        "max_dd": _max_dd(std_rs),
         "avg_dur_min": sum(t["bars_held"] for t in trades) * 15 / n,
     }
 
@@ -166,9 +175,9 @@ def compute_metrics(trades):
 def gate_check(m):
     """Return True if metrics pass Phase-0 gate (n≥100 AND pf_std>1 AND pf_2x>1)."""
     return (
-        m["n"]          >= PHASE0_N
+        m["n"] >= PHASE0_N
         and m["net_pf_std"] > PHASE0_PF
-        and m["net_pf_2x"]  > PHASE0_PF
+        and m["net_pf_2x"] > PHASE0_PF
     )
 
 
@@ -185,20 +194,23 @@ def run_all_experiments(trades):
         for variant in exp["variants"]:
             for rr in RR_VARIANTS:
                 rr_trades = [t for t in trades if t["rr"] == rr]
-                filtered  = apply_filter(rr_trades, variant["fn"])
+                filtered = apply_filter(rr_trades, variant["fn"])
                 m = compute_metrics(filtered)
-                results.append({
-                    "exp_id":       exp["id"],
-                    "exp_name":     exp["name"],
-                    "variant":      variant["label"],
-                    "rr":           rr,
-                    **m,
-                    "gate":         gate_check(m),
-                })
+                results.append(
+                    {
+                        "exp_id": exp["id"],
+                        "exp_name": exp["name"],
+                        "variant": variant["label"],
+                        "rr": rr,
+                        **m,
+                        "gate": gate_check(m),
+                    }
+                )
     return results
 
 
 # ── Report helpers ─────────────────────────────────────────────────────────────
+
 
 def _pct(v):
     return f"{v * 100:.1f}%"
@@ -222,6 +234,7 @@ def _best_rr(rows):
 
 
 # ── Report writer ─────────────────────────────────────────────────────────────
+
 
 def write_report(results, today_utc):
     """Write docs/EXPERIMENT_RESULTS.md."""
@@ -267,7 +280,7 @@ def write_report(results, today_utc):
 
     passing = []
     for i, r in enumerate(summary_rows, 1):
-        d2x  = _delta(r["net_pf_2x"], BASELINE["pf_2x"])
+        d2x = _delta(r["net_pf_2x"], BASELINE["pf_2x"])
         gate = "✅ PASS" if r["gate"] else "❌ FAIL"
         if r["gate"]:
             passing.append(r)
@@ -299,13 +312,14 @@ def write_report(results, today_utc):
         lines += [f"*Hypothesis:* {exp['hypothesis']}", ""]
 
         # Collect variants for this experiment
-        exp_variants = list(dict.fromkeys(
-            r["variant"] for r in results if r["exp_id"] == exp["id"]
-        ))
+        exp_variants = list(
+            dict.fromkeys(r["variant"] for r in results if r["exp_id"] == exp["id"])
+        )
 
         for variant_label in exp_variants:
             variant_rows = [
-                r for r in results
+                r
+                for r in results
                 if r["exp_id"] == exp["id"] and r["variant"] == variant_label
             ]
             variant_rows.sort(key=lambda r: r["rr"])
@@ -317,7 +331,7 @@ def write_report(results, today_utc):
                 "|---|---|---|---|---|---|---|---|---|---|",
             ]
             for r in variant_rows:
-                d2x  = _delta(r["net_pf_2x"], BASELINE["pf_2x"])
+                d2x = _delta(r["net_pf_2x"], BASELINE["pf_2x"])
                 gate = "✅" if r["gate"] else "❌"
                 lines.append(
                     f"| RR{r['rr']:.0f} | {r['n']} | {_pct(r['win_rate'])} "
@@ -409,13 +423,17 @@ def write_report(results, today_utc):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     from datetime import datetime, timezone
+
     today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     trades_csv = _ROOT / "research" / "trades.csv"
     if not trades_csv.exists():
-        print(f"ERROR: {trades_csv} not found — run backtest_session_liquidity.py first")
+        print(
+            f"ERROR: {trades_csv} not found — run backtest_session_liquidity.py first"
+        )
         sys.exit(1)
 
     print(f"[+] Loading trades (run={BASE_RUN_ID}) ...")
@@ -435,13 +453,17 @@ def main():
     for r in results:
         groups.setdefault((r["exp_id"], r["variant"]), []).append(r)
 
-    print(f"\n{'Exp':<8} {'Variant':<16} {'RR':<4} {'n':>5} {'PF std':>8} {'PF 2×':>8} {'Gate'}")
+    print(
+        f"\n{'Exp':<8} {'Variant':<16} {'RR':<4} {'n':>5} {'PF std':>8} {'PF 2×':>8} {'Gate'}"
+    )
     print("-" * 70)
     for (eid, vl), rows in sorted(groups.items()):
         best = _best_rr(rows)
         gate = "PASS" if best["gate"] else "fail"
-        print(f"{eid:<8} {vl:<16} RR{best['rr']:.0f}  {best['n']:>5}"
-              f"  {best['net_pf_std']:>7.3f}  {best['net_pf_2x']:>7.3f}  {gate}")
+        print(
+            f"{eid:<8} {vl:<16} RR{best['rr']:.0f}  {best['n']:>5}"
+            f"  {best['net_pf_std']:>7.3f}  {best['net_pf_2x']:>7.3f}  {gate}"
+        )
 
     print()
     write_report(results, today_utc)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass, field
-from typing import Awaitable, Callable, Coroutine
+from typing import Callable
 
 from execution_simulator.broker.virtual_broker import VirtualBroker
 from execution_simulator.replay_engine.market_feed import MarketFeed
@@ -38,4 +38,3 @@ class ReplayRunner:
             self.errors.append(str(exc))
             raise
         return self
-

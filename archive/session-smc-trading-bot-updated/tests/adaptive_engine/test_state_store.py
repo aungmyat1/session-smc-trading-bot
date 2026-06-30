@@ -1,8 +1,10 @@
 """Tests for adaptive/state/state_store.py"""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
+
 from adaptive.state.state_store import StateStore
 
 

@@ -1,4 +1,5 @@
 """Production Approval Agent — consumes Testing and Quality reports, emits APPROVED/REJECTED."""
+
 from __future__ import annotations
 
 import json
@@ -73,7 +74,8 @@ class ApprovalAgent:
         rule_results = evaluate_rules(safe_reports, self._cfg)
 
         failed_mandatory = [
-            r.rule_id for r in rule_results
+            r.rule_id
+            for r in rule_results
             if r.mandatory and r.outcome == RuleOutcome.FAIL
         ]
         warnings = [
@@ -82,7 +84,9 @@ class ApprovalAgent:
             if not r.mandatory and r.outcome == RuleOutcome.FAIL
         ]
 
-        status = ReleaseStatus.APPROVED if not failed_mandatory else ReleaseStatus.REJECTED
+        status = (
+            ReleaseStatus.APPROVED if not failed_mandatory else ReleaseStatus.REJECTED
+        )
 
         t = safe_reports.get("testing", {})
         q = safe_reports.get("quality", {})
@@ -93,8 +97,12 @@ class ApprovalAgent:
             quality_score=float(q.get("quality_score", 0)),
             security_score=float(q.get("security_score", 0)),
             architecture_score=float(q.get("architecture_score", 0)),
-            strategy_validation_score=float((t.get("strategy_validation") or {}).get("score", 0)),
-            historical_validation_status=((t.get("historical_replay") or {}).get("status", "SKIP")),
+            strategy_validation_score=float(
+                (t.get("strategy_validation") or {}).get("score", 0)
+            ),
+            historical_validation_status=(
+                (t.get("historical_replay") or {}).get("status", "SKIP")
+            ),
             rule_results=rule_results,
             failed_mandatory_rules=failed_mandatory,
             warnings=warnings,

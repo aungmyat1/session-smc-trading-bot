@@ -53,13 +53,9 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import shared helpers from live_trade_analyzer (same research package)
-from research.live_trade_analyzer import (
-    load_events,
-    build_trades,
-    filter_period,
-    daily_window,
-    weekly_window,
-)
+from research.live_trade_analyzer import (build_trades, daily_window,
+                                          filter_period, load_events,
+                                          weekly_window)
 
 _ROOT = Path(__file__).parent.parent
 _TRADE_LOG = _ROOT / "logs" / "trades.jsonl"
@@ -71,7 +67,7 @@ _UTC = timezone.utc
 _PIP_MUL: dict = {"EURUSD": 10_000.0, "GBPUSD": 10_000.0}
 
 # Latency alert thresholds
-_LATENCY_WARN_MS = 2_000    # warn if avg signal→order > 2 s (unusually slow)
+_LATENCY_WARN_MS = 2_000  # warn if avg signal→order > 2 s (unusually slow)
 _FILL_LATENCY_WARN_MS = 5_000  # warn if avg order→fill > 5 s
 
 # Duplicate detection: entry must match within 0.5 pip, within 2× poll interval
@@ -80,6 +76,7 @@ _DUP_TIME_TOL_S = 120
 
 
 # ── Percentile helper ─────────────────────────────────────────────────────────
+
 
 def _percentile(values: list, p: float) -> Optional[float]:
     """
@@ -154,7 +151,7 @@ def load_bot_log_disconnects(bot_log: Path = _BOT_LOG) -> list:
             # Scan next up-to-5 continuation lines (until next timestamped entry)
             for j in range(i + 1, min(i + 6, len(lines))):
                 if _TS_PAT.match(lines[j]):
-                    break   # new log entry starts — stop scanning this block
+                    break  # new log entry starts — stop scanning this block
                 if "connection_status=DISCONNECTED" in lines[j]:
                     try:
                         ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(
@@ -170,6 +167,7 @@ def load_bot_log_disconnects(bot_log: Path = _BOT_LOG) -> list:
 
 # ── Latency extraction (shared pass over events) ──────────────────────────────
 
+
 def _extract_latency_pairs(events: list) -> dict:
     """
     Single pass: extract (SIGNAL_CREATED → ORDER_SUBMITTED) and
@@ -182,8 +180,8 @@ def _extract_latency_pairs(events: list) -> dict:
         'ord_to_fill_dry': list[bool],
     }
     """
-    pending_signal: dict = {}   # sym → most recent SIGNAL_CREATED
-    pending_submit: dict = {}   # sym → most recent ORDER_SUBMITTED
+    pending_signal: dict = {}  # sym → most recent SIGNAL_CREATED
+    pending_submit: dict = {}  # sym → most recent ORDER_SUBMITTED
 
     sig_to_order_s: list = []
     sig_to_order_dry: list = []
@@ -230,6 +228,7 @@ def _extract_latency_pairs(events: list) -> dict:
 
 # ── Individual metric computers ───────────────────────────────────────────────
 
+
 def compute_signal_to_order_latency(events: list) -> dict:
     """
     Time from SIGNAL_CREATED to ORDER_SUBMITTED (per submitted signal).
@@ -251,7 +250,9 @@ def compute_order_to_fill_latency(events: list) -> dict:
     pairs = _extract_latency_pairs(events)
     stats = _latency_stats(pairs["ord_to_fill_s"], pairs["ord_to_fill_dry"])
     if stats.get("avg_ms", 0) > _FILL_LATENCY_WARN_MS:
-        stats["warning"] = f"avg > {_FILL_LATENCY_WARN_MS}ms — check broker connectivity"
+        stats["warning"] = (
+            f"avg > {_FILL_LATENCY_WARN_MS}ms — check broker connectivity"
+        )
     if stats.get("dry_run_samples", 0) > 0:
         stats["dry_run_note"] = (
             "DRY_RUN fills are simulated in place_order(); latency reflects "
@@ -265,8 +266,11 @@ def compute_fill_to_close_duration(trades: list) -> dict:
     Time from ORDER_FILLED to POSITION_CLOSED in minutes, with percentiles.
     Broken down by exit_reason (sl / tp1 / tp2 / session_close / unknown).
     """
-    durations = [t["hold_minutes"] for t in trades
-                 if t.get("result_r") is not None and t.get("hold_minutes") is not None]
+    durations = [
+        t["hold_minutes"]
+        for t in trades
+        if t.get("result_r") is not None and t.get("hold_minutes") is not None
+    ]
 
     by_reason: dict = defaultdict(lambda: {"count": 0, "minutes": []})
     for t in trades:
@@ -307,8 +311,11 @@ def compute_slippage_distribution(trades: list) -> dict:
     Positive = bought above / sold below signal entry (adverse for LONG).
     Includes percentiles and breakdown by symbol and side.
     """
-    slips = [(t["slippage_pips"], t.get("symbol", "?"), t.get("side", "?"))
-             for t in trades if t.get("slippage_pips") is not None]
+    slips = [
+        (t["slippage_pips"], t.get("symbol", "?"), t.get("side", "?"))
+        for t in trades
+        if t.get("slippage_pips") is not None
+    ]
 
     if not slips:
         return {
@@ -364,10 +371,10 @@ def compute_spread_distribution(events: list) -> dict:
     Rejection rate per session computed from SIGNAL_CREATED session tags.
     """
     # Track session of each signal per symbol for rejection attribution
-    last_signal_session: dict = {}   # sym → session of most recent SIGNAL_CREATED
+    last_signal_session: dict = {}  # sym → session of most recent SIGNAL_CREATED
     rej_spreads_by_sym: dict = defaultdict(list)
-    rej_by_session: dict = defaultdict(int)    # sess → spread reject count
-    sig_by_session: dict = defaultdict(int)    # sess → total signal count
+    rej_by_session: dict = defaultdict(int)  # sess → spread reject count
+    sig_by_session: dict = defaultdict(int)  # sess → total signal count
 
     for ev in events:
         sym = ev.get("symbol", "")
@@ -388,7 +395,7 @@ def compute_spread_distribution(events: list) -> dict:
                     rej_by_session[sess] += 1
                 except (IndexError, ValueError):
                     pass
-            last_signal_session.pop(sym, None)   # reject consumed this signal
+            last_signal_session.pop(sym, None)  # reject consumed this signal
 
     # Build per-symbol spread summary
     sym_summary: dict = {}
@@ -412,7 +419,9 @@ def compute_spread_distribution(events: list) -> dict:
         session_rates[sess] = {
             "signals": total_sigs,
             "spread_rejects": spread_rejects,
-            "reject_rate": round(spread_rejects / total_sigs, 4) if total_sigs else None,
+            "reject_rate": (
+                round(spread_rejects / total_sigs, 4) if total_sigs else None
+            ),
         }
 
     return {
@@ -494,13 +503,17 @@ def compute_reconnect_during_trade(trades: list, disconnects: list) -> dict:
         close_ts = t.get("close_ts") or _MAX_DT
         in_window = [d for d in disconnects if fill_ts <= d <= close_ts]
         if in_window:
-            affected.append({
-                "symbol": t.get("symbol"),
-                "fill_ts": fill_ts.isoformat(),
-                "close_ts": t["close_ts"].isoformat() if t.get("close_ts") else None,
-                "disconnect_count": len(in_window),
-                "disconnect_timestamps": [d.isoformat() for d in in_window],
-            })
+            affected.append(
+                {
+                    "symbol": t.get("symbol"),
+                    "fill_ts": fill_ts.isoformat(),
+                    "close_ts": (
+                        t["close_ts"].isoformat() if t.get("close_ts") else None
+                    ),
+                    "disconnect_count": len(in_window),
+                    "disconnect_timestamps": [d.isoformat() for d in in_window],
+                }
+            )
 
     return {
         "trades_checked": len(trades),
@@ -541,9 +554,11 @@ def compute_duplicate_signal_attempts(events: list) -> dict:
         ts_i = ev["_ts"]
 
         for prev in signal_events[:i]:
-            if (prev.get("symbol") != sym
-                    or prev.get("side") != side
-                    or prev.get("session") != sess):
+            if (
+                prev.get("symbol") != sym
+                or prev.get("side") != side
+                or prev.get("session") != sess
+            ):
                 continue
             prev_entry = prev.get("entry")
             if entry is None or prev_entry is None:
@@ -553,16 +568,18 @@ def compute_duplicate_signal_attempts(events: list) -> dict:
             delta_s = (ts_i - prev["_ts"]).total_seconds()
             if delta_s > _DUP_TIME_TOL_S:
                 continue
-            duplicates.append({
-                "symbol": sym,
-                "session": sess,
-                "side": side,
-                "entry": entry,
-                "first_ts": prev["_ts"].isoformat(),
-                "repeat_ts": ts_i.isoformat(),
-                "delta_seconds": round(delta_s, 1),
-            })
-            break   # flag once per event
+            duplicates.append(
+                {
+                    "symbol": sym,
+                    "session": sess,
+                    "side": side,
+                    "entry": entry,
+                    "first_ts": prev["_ts"].isoformat(),
+                    "repeat_ts": ts_i.isoformat(),
+                    "delta_seconds": round(delta_s, 1),
+                }
+            )
+            break  # flag once per event
 
     return {
         "detected": len(duplicates),
@@ -575,6 +592,7 @@ def compute_duplicate_signal_attempts(events: list) -> dict:
 
 
 # ── Summary assembler ─────────────────────────────────────────────────────────
+
 
 def compute_execution_summary(
     trades: list,
@@ -607,6 +625,7 @@ def compute_execution_summary(
 
 # ── Console output ────────────────────────────────────────────────────────────
 
+
 def _f(v: Optional[float], d: int = 1) -> str:
     return f"{v:.{d}f}" if v is not None else "—"
 
@@ -626,9 +645,11 @@ def print_execution_summary(s: dict) -> None:
     _hdr("Signal → Order Latency (includes async spread + position check)")
     sig = s["signal_to_order_latency"]
     if sig.get("samples", 0):
-        print(f"  avg={_f(sig['avg_ms'])}ms  p50={_f(sig['p50_ms'])}ms  "
-              f"p95={_f(sig['p95_ms'])}ms  max={_f(sig['max_ms'])}ms  "
-              f"(n={sig['samples']}, dry={sig['dry_run_samples']})")
+        print(
+            f"  avg={_f(sig['avg_ms'])}ms  p50={_f(sig['p50_ms'])}ms  "
+            f"p95={_f(sig['p95_ms'])}ms  max={_f(sig['max_ms'])}ms  "
+            f"(n={sig['samples']}, dry={sig['dry_run_samples']})"
+        )
         if sig.get("warning"):
             print(f"  ⚠  {sig['warning']}")
     else:
@@ -637,9 +658,11 @@ def print_execution_summary(s: dict) -> None:
     _hdr("Order → Fill Latency (broker round-trip)")
     fill = s["order_to_fill_latency"]
     if fill.get("samples", 0):
-        print(f"  avg={_f(fill['avg_ms'])}ms  p50={_f(fill['p50_ms'])}ms  "
-              f"p95={_f(fill['p95_ms'])}ms  max={_f(fill['max_ms'])}ms  "
-              f"(n={fill['samples']}, dry={fill['dry_run_samples']})")
+        print(
+            f"  avg={_f(fill['avg_ms'])}ms  p50={_f(fill['p50_ms'])}ms  "
+            f"p95={_f(fill['p95_ms'])}ms  max={_f(fill['max_ms'])}ms  "
+            f"(n={fill['samples']}, dry={fill['dry_run_samples']})"
+        )
         if fill.get("dry_run_note"):
             print(f"  note: {fill['dry_run_note'][:80]}...")
     else:
@@ -648,27 +671,37 @@ def print_execution_summary(s: dict) -> None:
     _hdr("Fill → Close Duration")
     dur = s["fill_to_close_duration"]
     if dur.get("samples", 0):
-        print(f"  avg={_f(dur['avg_minutes'])}min  "
-              f"p25={_f(dur['p25_minutes'])}  p50={_f(dur['p50_minutes'])}  "
-              f"p75={_f(dur['p75_minutes'])}  max={_f(dur['max_minutes'])}min  "
-              f"(n={dur['samples']})")
+        print(
+            f"  avg={_f(dur['avg_minutes'])}min  "
+            f"p25={_f(dur['p25_minutes'])}  p50={_f(dur['p50_minutes'])}  "
+            f"p75={_f(dur['p75_minutes'])}  max={_f(dur['max_minutes'])}min  "
+            f"(n={dur['samples']})"
+        )
         for reason, d in dur["by_exit_reason"].items():
-            print(f"    {reason:<18} : {d['count']} trades  "
-                  f"avg={_f(d['avg_minutes'])}min")
+            print(
+                f"    {reason:<18} : {d['count']} trades  "
+                f"avg={_f(d['avg_minutes'])}min"
+            )
     else:
         print("  no closed trades yet")
 
     _hdr("Slippage Distribution")
     slip = s["slippage_distribution"]
     if slip.get("samples", 0):
-        print(f"  avg={_f(slip['avg_pips'])}pip  "
-              f"p50={_f(slip['p50_pips'])}  p95={_f(slip['p95_pips'])}  "
-              f"max_adverse={_f(slip['max_adverse_pips'])}pip  (n={slip['samples']})")
-        print(f"  adverse={slip['adverse_count']}  "
-              f"favourable={slip['favourable_count']}  zero={slip['zero_count']}")
+        print(
+            f"  avg={_f(slip['avg_pips'])}pip  "
+            f"p50={_f(slip['p50_pips'])}  p95={_f(slip['p95_pips'])}  "
+            f"max_adverse={_f(slip['max_adverse_pips'])}pip  (n={slip['samples']})"
+        )
+        print(
+            f"  adverse={slip['adverse_count']}  "
+            f"favourable={slip['favourable_count']}  zero={slip['zero_count']}"
+        )
         for sym, d in slip.get("by_symbol", {}).items():
-            print(f"    {sym:<10}  avg={_f(d['avg_pips'])}pip  "
-                  f"p95={_f(d['p95_pips'])}pip  adverse={d['adverse_count']}")
+            print(
+                f"    {sym:<10}  avg={_f(d['avg_pips'])}pip  "
+                f"p95={_f(d['p95_pips'])}pip  adverse={d['adverse_count']}"
+            )
     else:
         print("  no fill data yet")
 
@@ -678,23 +711,39 @@ def print_execution_summary(s: dict) -> None:
     rej_sym = spread.get("rejections_by_symbol", {})
     if rej_sym:
         for sym, d in rej_sym.items():
-            print(f"    {sym} rejections: count={d['count']}  "
-                  f"avg={_f(d['avg_pip'], 2)}pip  max={_f(d['max_pip'], 2)}pip")
+            print(
+                f"    {sym} rejections: count={d['count']}  "
+                f"avg={_f(d['avg_pip'], 2)}pip  max={_f(d['max_pip'], 2)}pip"
+            )
     sess_rates = spread.get("rejection_rate_by_session", {})
     if sess_rates:
         print("  rejection_rate_by_session:")
         for sess, d in sess_rates.items():
-            rate_str = f"{d['reject_rate'] * 100:.1f}%" if d["reject_rate"] is not None else "—"
-            print(f"    {sess:<12}  signals={d['signals']}  "
-                  f"spread_rejects={d['spread_rejects']}  rate={rate_str}")
+            rate_str = (
+                f"{d['reject_rate'] * 100:.1f}%"
+                if d["reject_rate"] is not None
+                else "—"
+            )
+            print(
+                f"    {sess:<12}  signals={d['signals']}  "
+                f"spread_rejects={d['spread_rejects']}  rate={rate_str}"
+            )
 
     _hdr("Execution Failures")
     fail = s["execution_failures"]
-    fill_rate = f"{fail['fill_rate'] * 100:.1f}%" if fail["fill_rate"] is not None else "—"
-    print(f"  signals={fail['signals_processed']}  fills={fail['orders_filled']}  "
-          f"rejects={fail['orders_rejected']}  fill_rate={fill_rate}")
+    fill_rate = (
+        f"{fail['fill_rate'] * 100:.1f}%" if fail["fill_rate"] is not None else "—"
+    )
+    print(
+        f"  signals={fail['signals_processed']}  fills={fail['orders_filled']}  "
+        f"rejects={fail['orders_rejected']}  fill_rate={fill_rate}"
+    )
     for k, v in fail.get("by_reason", {}).items():
-        pct = f"{v['pct_of_signals'] * 100:.1f}%" if v["pct_of_signals"] is not None else "—"
+        pct = (
+            f"{v['pct_of_signals'] * 100:.1f}%"
+            if v["pct_of_signals"] is not None
+            else "—"
+        )
         print(f"    {k:<30}  count={v['count']}  ({pct} of signals)")
     errs = fail.get("errors", {})
     print(f"  errors: {errs.get('count', 0)}")
@@ -704,25 +753,32 @@ def print_execution_summary(s: dict) -> None:
 
     _hdr("Reconnect During Trade")
     rc = s["reconnect_during_trade"]
-    print(f"  trades_checked={rc['trades_checked']}  "
-          f"trades_with_disconnect={rc['trades_with_disconnect']}  "
-          f"total_disconnects={rc['total_disconnects_in_period']}")
+    print(
+        f"  trades_checked={rc['trades_checked']}  "
+        f"trades_with_disconnect={rc['trades_with_disconnect']}  "
+        f"total_disconnects={rc['total_disconnects_in_period']}"
+    )
     for d in rc.get("details", []):
-        print(f"    {d['symbol']} | {d['disconnect_count']} disconnect(s) | "
-              f"fill={d['fill_ts'][:16]}")
+        print(
+            f"    {d['symbol']} | {d['disconnect_count']} disconnect(s) | "
+            f"fill={d['fill_ts'][:16]}"
+        )
 
     _hdr("Duplicate Signal Attempts")
     dup = s["duplicate_signal_attempts"]
     print(f"  detected={dup['detected']}")
     for d in dup.get("details", []):
-        print(f"    {d['symbol']} {d['side']} entry={d['entry']}  "
-              f"Δ={d['delta_seconds']}s")
+        print(
+            f"    {d['symbol']} {d['side']} entry={d['entry']}  "
+            f"Δ={d['delta_seconds']}s"
+        )
 
     print()
     print(sep)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def run(
     write_daily: bool = True,
@@ -754,7 +810,9 @@ def run(
             d_trades, d_events, d_disconnects, "daily", now.strftime("%Y-%m-%d"), now
         )
         _DAILY_OUT.parent.mkdir(parents=True, exist_ok=True)
-        _DAILY_OUT.write_text(json.dumps(daily, indent=2, default=str), encoding="utf-8")
+        _DAILY_OUT.write_text(
+            json.dumps(daily, indent=2, default=str), encoding="utf-8"
+        )
         if not quiet:
             print_execution_summary(daily)
             print(f"→ {_DAILY_OUT}")
@@ -765,10 +823,17 @@ def run(
         w_disconnects = [d for d in disconnects if w_start <= d < w_end]
         iso_year, iso_week, _ = now.isocalendar()
         weekly = compute_execution_summary(
-            w_trades, w_events, w_disconnects, "weekly", f"{iso_year}-W{iso_week:02d}", now
+            w_trades,
+            w_events,
+            w_disconnects,
+            "weekly",
+            f"{iso_year}-W{iso_week:02d}",
+            now,
         )
         _WEEKLY_OUT.parent.mkdir(parents=True, exist_ok=True)
-        _WEEKLY_OUT.write_text(json.dumps(weekly, indent=2, default=str), encoding="utf-8")
+        _WEEKLY_OUT.write_text(
+            json.dumps(weekly, indent=2, default=str), encoding="utf-8"
+        )
         if not quiet:
             print_execution_summary(weekly)
             print(f"→ {_WEEKLY_OUT}")
@@ -777,13 +842,25 @@ def run(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="RESEARCH-05 Execution Quality Analyzer")
+    parser = argparse.ArgumentParser(
+        description="RESEARCH-05 Execution Quality Analyzer"
+    )
     parser.add_argument("--daily", action="store_true", help="Daily summary only")
     parser.add_argument("--weekly", action="store_true", help="Weekly summary only")
-    parser.add_argument("--log", type=Path, default=_TRADE_LOG, metavar="PATH",
-                        help="JSONL trade log (default: logs/trades.jsonl)")
-    parser.add_argument("--botlog", type=Path, default=_BOT_LOG, metavar="PATH",
-                        help="Bot log file (default: logs/bot.log)")
+    parser.add_argument(
+        "--log",
+        type=Path,
+        default=_TRADE_LOG,
+        metavar="PATH",
+        help="JSONL trade log (default: logs/trades.jsonl)",
+    )
+    parser.add_argument(
+        "--botlog",
+        type=Path,
+        default=_BOT_LOG,
+        metavar="PATH",
+        help="Bot log file (default: logs/bot.log)",
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress console output")
     args = parser.parse_args()
 

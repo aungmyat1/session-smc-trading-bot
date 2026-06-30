@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 
 from strategy_validation.cli import main
-from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
+from strategy_validation.pipeline.strategy_validation_pipeline import \
+    StrategyValidationPipeline
 
 
 def _good_spec() -> str:
@@ -65,7 +66,10 @@ def test_pipeline_ready_spec_passes():
     assert report.strategy_name == "ReplayReady"
     assert report.overall_score >= 80
     assert report.readiness_decision in {"READY_FOR_REPLAY", "REQUIRES_REVISION"}
-    assert any(result.validator_name == "Input Validation" for result in report.validator_results)
+    assert any(
+        result.validator_name == "Input Validation"
+        for result in report.validator_results
+    )
 
 
 def test_pipeline_detects_stage1_issues():
@@ -74,8 +78,16 @@ def test_pipeline_detects_stage1_issues():
 
     assert report.overall_status == "FAIL"
     assert report.readiness_decision in {"REJECTED", "INCOMPLETE"}
-    assert any("Subjective wording" in finding.message for result in report.validator_results for finding in result.findings)
-    assert any("daily trade cap" in finding.message for result in report.validator_results for finding in result.findings)
+    assert any(
+        "Subjective wording" in finding.message
+        for result in report.validator_results
+        for finding in result.findings
+    )
+    assert any(
+        "daily trade cap" in finding.message
+        for result in report.validator_results
+        for finding in result.findings
+    )
 
 
 def test_report_files_are_written(tmp_path):

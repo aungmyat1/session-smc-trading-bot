@@ -120,7 +120,10 @@ def generate_vwap_mean_reversion_signals(
     df["date"] = df["timestamp"].dt.floor("D")
     for _, day in df.groupby("date", sort=True):
         for session in ("london", "new_york"):
-            sess = day[day["timestamp"].dt.hour.map(lambda hour: _session_name(hour, cfg)) == session].copy()
+            sess = day[
+                day["timestamp"].dt.hour.map(lambda hour: _session_name(hour, cfg))
+                == session
+            ].copy()
             if len(sess) < max(cfg.min_bars, cfg.min_session_bars):
                 continue
 
@@ -138,7 +141,7 @@ def generate_vwap_mean_reversion_signals(
             prev_close = float(prev["close"])
 
             lookback = min(5, len(sess) - 1)
-            prior_window = sess.iloc[-(lookback + 1):-1]
+            prior_window = sess.iloc[-(lookback + 1) : -1]
             rolling_high = float(prior_window["high"].max())
             rolling_low = float(prior_window["low"].min())
             sweep_buffer = max(pip * cfg.sweep_buffer_mult, atr * 0.1)
@@ -147,7 +150,9 @@ def generate_vwap_mean_reversion_signals(
             distance_atr = distance_from_vwap / atr
 
             long_sweep = low < rolling_low - sweep_buffer
-            long_reclaim = close > prev_close and (close - low) >= atr * cfg.reclaim_atr_mult
+            long_reclaim = (
+                close > prev_close and (close - low) >= atr * cfg.reclaim_atr_mult
+            )
             long_extension = vwap - close >= atr * cfg.extreme_atr_mult
             if long_sweep and long_reclaim and long_extension and close < vwap:
                 entry = close
@@ -174,12 +179,16 @@ def generate_vwap_mean_reversion_signals(
                                 "atr": round(atr, 6),
                                 "distance_from_vwap": round(distance_from_vwap, 6),
                                 "distance_atr": round(distance_atr, 2),
-                                "confidence": round(min(0.95, 0.62 + min(0.28, distance_atr / 6.0)), 2),
+                                "confidence": round(
+                                    min(0.95, 0.62 + min(0.28, distance_atr / 6.0)), 2
+                                ),
                             }
                         )
 
             short_sweep = high > rolling_high + sweep_buffer
-            short_reclaim = close < prev_close and (high - close) >= atr * cfg.reclaim_atr_mult
+            short_reclaim = (
+                close < prev_close and (high - close) >= atr * cfg.reclaim_atr_mult
+            )
             short_extension = close - vwap >= atr * cfg.extreme_atr_mult
             if short_sweep and short_reclaim and short_extension and close > vwap:
                 entry = close
@@ -206,7 +215,9 @@ def generate_vwap_mean_reversion_signals(
                                 "atr": round(atr, 6),
                                 "distance_from_vwap": round(distance_from_vwap, 6),
                                 "distance_atr": round(distance_atr, 2),
-                                "confidence": round(min(0.95, 0.62 + min(0.28, distance_atr / 6.0)), 2),
+                                "confidence": round(
+                                    min(0.95, 0.62 + min(0.28, distance_atr / 6.0)), 2
+                                ),
                             }
                         )
 
@@ -235,6 +246,8 @@ def generate_vwap_mean_reversion_signals(
     out = out.sort_values(["pair", "timestamp"]).reset_index(drop=True)
     if cfg.max_signals_per_day > 0:
         out["date"] = out["timestamp"].dt.floor("D")
-        out = out.groupby(["pair", "date"], group_keys=False).head(cfg.max_signals_per_day)
+        out = out.groupby(["pair", "date"], group_keys=False).head(
+            cfg.max_signals_per_day
+        )
         out = out.drop(columns=["date"]).reset_index(drop=True)
     return out

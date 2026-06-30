@@ -40,14 +40,14 @@ _ACCOUNT_ID_VARS = {
 
 class MT5Connector:
     def __init__(self, mode: str = "demo") -> None:
-        self._mode       = mode
-        self._token      = os.environ.get("METAAPI_TOKEN", "")
-        env_key          = _ACCOUNT_ID_VARS.get(mode, "VANTAGE_DEMO_METAAPI_ID")
+        self._mode = mode
+        self._token = os.environ.get("METAAPI_TOKEN", "")
+        env_key = _ACCOUNT_ID_VARS.get(mode, "VANTAGE_DEMO_METAAPI_ID")
         self._account_id = os.environ.get(env_key, "")
-        self._api        = None
-        self._account    = None
+        self._api = None
+        self._account = None
         self._connection = None
-        self._last_hb:   datetime | None = None
+        self._last_hb: datetime | None = None
 
     # ── Connection ─────────────────────────────────────────────────────────
 
@@ -69,8 +69,10 @@ class MT5Connector:
             raise RuntimeError("pip install metaapi-cloud-sdk>=29")
 
         _log.info("Connecting to Vantage demo (account=%s)…", self._account_id)
-        self._api     = MetaApi(self._token)
-        self._account = await self._api.metatrader_account_api.get_account(self._account_id)
+        self._api = MetaApi(self._token)
+        self._account = await self._api.metatrader_account_api.get_account(
+            self._account_id
+        )
 
         if self._account.state not in ("DEPLOYING", "DEPLOYED"):
             _log.info("Deploying account…")
@@ -101,6 +103,7 @@ class MT5Connector:
         _log.warning("Reconnecting…")
         await self.disconnect()
         import asyncio
+
         await asyncio.sleep(_RECONNECT_DELAY_S)
         await self.connect()
 
@@ -112,22 +115,28 @@ class MT5Connector:
         Attempts reconnect if check fails.
         """
         import time
+
         t0 = time.monotonic()
         try:
             await self._connection.get_account_information()
             latency = round((time.monotonic() - t0) * 1000)
             self._last_hb = datetime.now(timezone.utc)
             return {
-                "connected":      True,
-                "latency_ms":     latency,
+                "connected": True,
+                "latency_ms": latency,
                 "last_heartbeat": self._last_hb.isoformat(),
             }
         except Exception as exc:
             _log.warning("Heartbeat failed: %s — reconnecting", exc)
             try:
                 await self.reconnect()
-                return {"connected": True, "latency_ms": -1,
-                        "last_heartbeat": self._last_hb.isoformat() if self._last_hb else ""}
+                return {
+                    "connected": True,
+                    "latency_ms": -1,
+                    "last_heartbeat": (
+                        self._last_hb.isoformat() if self._last_hb else ""
+                    ),
+                }
             except Exception:
                 return {"connected": False, "latency_ms": -1, "last_heartbeat": ""}
 

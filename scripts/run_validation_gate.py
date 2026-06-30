@@ -11,10 +11,8 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.validation.engine import (
-    ValidationRunner,
-    load_validation_config,
-)
+from research.validation.engine import (ValidationRunner,  # noqa: E402
+                                        load_validation_config)
 
 
 def _load_json(path: str | None) -> dict:
@@ -29,14 +27,20 @@ def _load_json(path: str | None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run validation gates for a strategy")
     parser.add_argument("--strategy", required=True, help="Strategy name")
-    parser.add_argument("--mode", choices=["replay", "backtest", "full"], default="full")
+    parser.add_argument(
+        "--mode", choices=["replay", "backtest", "full"], default="full"
+    )
     parser.add_argument("--replay-json", help="Replay validation payload JSON")
     parser.add_argument("--backtest-json", help="Backtest validation payload JSON")
     parser.add_argument("--latest-json", help="Latest metrics JSON")
     parser.add_argument("--previous-json", help="Previous metrics JSON")
     parser.add_argument("--stage", default="backtest", help="Current lifecycle stage")
-    parser.add_argument("--outdir", default="reports/validation", help="Output directory")
-    parser.add_argument("--config", default="config/validation.yaml", help="Validation config")
+    parser.add_argument(
+        "--outdir", default="reports/validation", help="Output directory"
+    )
+    parser.add_argument(
+        "--config", default="config/validation.yaml", help="Validation config"
+    )
     parser.add_argument("--registry", help="Strategy registry/catalog path")
     args = parser.parse_args()
 
@@ -53,7 +57,9 @@ def main() -> int:
         output_dir=_ROOT / args.outdir,
     )
     replay = _load_json(args.replay_json) if args.mode in {"replay", "full"} else None
-    backtest = _load_json(args.backtest_json) if args.mode in {"backtest", "full"} else None
+    backtest = (
+        _load_json(args.backtest_json) if args.mode in {"backtest", "full"} else None
+    )
     latest = _load_json(args.latest_json) if args.mode in {"backtest", "full"} else None
     previous = _load_json(args.previous_json) or None
 

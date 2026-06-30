@@ -10,10 +10,11 @@ Performs:
 - Metric recalculation
 """
 
-import polars as pl
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 import numpy as np
+import polars as pl
 
 DATA_PATH = Path("data/raw/EURUSD/EURUSD_M1_raw.parquet")
 REPORT_PATH = Path("reports/ST_A2_REPLAY_AUDIT.md")
@@ -44,27 +45,29 @@ def simulate_trades(df: pl.DataFrame, rr: float = 3.0):
         hit_tp = np.random.random() < 0.64
         result_r = rr if hit_tp else -1.0
 
-        trades.append({
-            "trade_id": f"EURUSD-2024-{i}",
-            "entry_time": row["time"],
-            "direction": direction,
-            "result_r": result_r,
-            "session": "London" if 8 <= row["time"].hour < 16 else "NewYork"
-        })
+        trades.append(
+            {
+                "trade_id": f"EURUSD-2024-{i}",
+                "entry_time": row["time"],
+                "direction": direction,
+                "result_r": result_r,
+                "session": "London" if 8 <= row["time"].hour < 16 else "NewYork",
+            }
+        )
     return pl.DataFrame(trades)
 
 
 def audit_trade_frequency(trades: pl.DataFrame):
-    trades_per_day = trades.group_by(pl.col("entry_time").dt.date()).agg(pl.count().alias("trades"))
+    trades_per_day = trades.group_by(pl.col("entry_time").dt.date()).agg(
+        pl.count().alias("trades")
+    )
     avg_per_day = trades_per_day["trades"].mean()
     max_per_day = trades_per_day["trades"].max()
     return avg_per_day, max_per_day, len(trades_per_day)
 
 
 def check_duplicates(trades: pl.DataFrame):
-    duplicates = trades.filter(
-        pl.col("entry_time").is_duplicated()
-    )
+    duplicates = trades.filter(pl.col("entry_time").is_duplicated())
     return len(duplicates)
 
 
@@ -81,8 +84,10 @@ def recalculate_metrics(trades: pl.DataFrame):
     win_rate = wins / total * 100
     avg_r = trades["result_r"].mean()
     expectancy = avg_r
-    profit_factor = abs(trades.filter(pl.col("result_r") > 0)["result_r"].sum() /
-                        trades.filter(pl.col("result_r") < 0)["result_r"].sum())
+    profit_factor = abs(
+        trades.filter(pl.col("result_r") > 0)["result_r"].sum()
+        / trades.filter(pl.col("result_r") < 0)["result_r"].sum()
+    )
 
     # Max drawdown
     equity = 0
@@ -102,11 +107,13 @@ def recalculate_metrics(trades: pl.DataFrame):
         "profit_factor": round(profit_factor, 2),
         "expectancy": round(expectancy, 2),
         "max_drawdown": round(max_dd, 2),
-        "avg_r": round(avg_r, 2)
+        "avg_r": round(avg_r, 2),
     }
 
 
-def generate_audit_report(trades, metrics, avg_per_day, max_per_day, duplicates, bias_check):
+def generate_audit_report(
+    trades, metrics, avg_per_day, max_per_day, duplicates, bias_check
+):
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     report = f"""# ST-A2 REPLAY AUDIT REPORT
@@ -187,7 +194,9 @@ def main():
     bias_check = check_look_ahead_bias(df)
     metrics = recalculate_metrics(trades)
 
-    generate_audit_report(trades, metrics, avg_per_day, max_per_day, duplicates, bias_check)
+    generate_audit_report(
+        trades, metrics, avg_per_day, max_per_day, duplicates, bias_check
+    )
 
 
 if __name__ == "__main__":

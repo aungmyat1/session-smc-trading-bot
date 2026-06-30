@@ -44,7 +44,9 @@ def write_catalog_projection(
         },
     }
     output.parent.mkdir(parents=True, exist_ok=True)
-    with NamedTemporaryFile("w", dir=output.parent, prefix=".catalog-", encoding="utf-8", delete=False) as handle:
+    with NamedTemporaryFile(
+        "w", dir=output.parent, prefix=".catalog-", encoding="utf-8", delete=False
+    ) as handle:
         yaml.safe_dump(payload, handle, sort_keys=False)
         handle.flush()
         os.fsync(handle.fileno())

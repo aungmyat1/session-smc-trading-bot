@@ -6,25 +6,26 @@ Exit codes:
   1  One or more CRITICAL checks failed (UNHEALTHY)
   2  Warnings only (DEGRADED — system functional but sub-optimal)
 """
+
 from __future__ import annotations
 
 import importlib
 import json
 import logging
 import os
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)-8s %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -54,11 +55,19 @@ class HealthReport:
 
     @property
     def critical_failures(self) -> list[CheckResult]:
-        return [c for c in self.checks if c.status == CheckStatus.FAIL and c.level == CheckLevel.CRITICAL]
+        return [
+            c
+            for c in self.checks
+            if c.status == CheckStatus.FAIL and c.level == CheckLevel.CRITICAL
+        ]
 
     @property
     def warnings(self) -> list[CheckResult]:
-        return [c for c in self.checks if c.status == CheckStatus.FAIL and c.level == CheckLevel.WARNING]
+        return [
+            c
+            for c in self.checks
+            if c.status == CheckStatus.FAIL and c.level == CheckLevel.WARNING
+        ]
 
     def overall(self) -> str:
         if self.critical_failures:
@@ -71,12 +80,15 @@ class HealthReport:
 def check_python_version(report: HealthReport) -> None:
     v = sys.version_info
     ok = v >= (3, 11)
-    report.checks.append(CheckResult(
-        "python_version",
-        CheckStatus.PASS if ok else CheckStatus.FAIL,
-        CheckLevel.CRITICAL,
-        f"Python {v.major}.{v.minor}.{v.micro}" + ("" if ok else " — requires ≥3.11"),
-    ))
+    report.checks.append(
+        CheckResult(
+            "python_version",
+            CheckStatus.PASS if ok else CheckStatus.FAIL,
+            CheckLevel.CRITICAL,
+            f"Python {v.major}.{v.minor}.{v.micro}"
+            + ("" if ok else " — requires ≥3.11"),
+        )
+    )
 
 
 def check_required_packages(report: HealthReport) -> None:
@@ -97,15 +109,40 @@ def check_required_packages(report: HealthReport) -> None:
     for mod, pkg in required:
         try:
             importlib.import_module(mod)
-            report.checks.append(CheckResult(f"pkg:{pkg}", CheckStatus.PASS, CheckLevel.CRITICAL, f"{pkg} importable"))
+            report.checks.append(
+                CheckResult(
+                    f"pkg:{pkg}",
+                    CheckStatus.PASS,
+                    CheckLevel.CRITICAL,
+                    f"{pkg} importable",
+                )
+            )
         except ImportError:
-            report.checks.append(CheckResult(f"pkg:{pkg}", CheckStatus.FAIL, CheckLevel.CRITICAL, f"{pkg} not installed"))
+            report.checks.append(
+                CheckResult(
+                    f"pkg:{pkg}",
+                    CheckStatus.FAIL,
+                    CheckLevel.CRITICAL,
+                    f"{pkg} not installed",
+                )
+            )
     for mod, pkg in optional:
         try:
             importlib.import_module(mod)
-            report.checks.append(CheckResult(f"pkg:{pkg}", CheckStatus.PASS, CheckLevel.INFO, f"{pkg} available"))
+            report.checks.append(
+                CheckResult(
+                    f"pkg:{pkg}", CheckStatus.PASS, CheckLevel.INFO, f"{pkg} available"
+                )
+            )
         except ImportError:
-            report.checks.append(CheckResult(f"pkg:{pkg}", CheckStatus.SKIP, CheckLevel.WARNING, f"{pkg} not installed — quality gates limited"))
+            report.checks.append(
+                CheckResult(
+                    f"pkg:{pkg}",
+                    CheckStatus.SKIP,
+                    CheckLevel.WARNING,
+                    f"{pkg} not installed — quality gates limited",
+                )
+            )
 
 
 def check_config_files(report: HealthReport) -> None:
@@ -118,12 +155,14 @@ def check_config_files(report: HealthReport) -> None:
     ]
     for rel in required_configs:
         p = _ROOT / rel
-        report.checks.append(CheckResult(
-            f"config:{rel}",
-            CheckStatus.PASS if p.exists() else CheckStatus.FAIL,
-            CheckLevel.CRITICAL,
-            str(p),
-        ))
+        report.checks.append(
+            CheckResult(
+                f"config:{rel}",
+                CheckStatus.PASS if p.exists() else CheckStatus.FAIL,
+                CheckLevel.CRITICAL,
+                str(p),
+            )
+        )
 
 
 def check_agent_modules(report: HealthReport) -> None:
@@ -135,9 +174,17 @@ def check_agent_modules(report: HealthReport) -> None:
     for mod in modules:
         try:
             importlib.import_module(mod)
-            report.checks.append(CheckResult(f"module:{mod}", CheckStatus.PASS, CheckLevel.CRITICAL, "importable"))
+            report.checks.append(
+                CheckResult(
+                    f"module:{mod}", CheckStatus.PASS, CheckLevel.CRITICAL, "importable"
+                )
+            )
         except ImportError as exc:
-            report.checks.append(CheckResult(f"module:{mod}", CheckStatus.FAIL, CheckLevel.CRITICAL, str(exc)))
+            report.checks.append(
+                CheckResult(
+                    f"module:{mod}", CheckStatus.FAIL, CheckLevel.CRITICAL, str(exc)
+                )
+            )
 
 
 def check_data_dirs(report: HealthReport) -> None:
@@ -148,12 +195,14 @@ def check_data_dirs(report: HealthReport) -> None:
     }
     for rel, level in dirs.items():
         p = _ROOT / rel
-        report.checks.append(CheckResult(
-            f"dir:{rel}",
-            CheckStatus.PASS if p.exists() else CheckStatus.FAIL,
-            level,
-            str(p),
-        ))
+        report.checks.append(
+            CheckResult(
+                f"dir:{rel}",
+                CheckStatus.PASS if p.exists() else CheckStatus.FAIL,
+                level,
+                str(p),
+            )
+        )
 
 
 def check_env_vars(report: HealthReport) -> None:
@@ -163,44 +212,95 @@ def check_env_vars(report: HealthReport) -> None:
         "VANTAGE_DEMO_METAAPI_ID",
     ]
     secret_vars_present = any(os.environ.get(v) for v in optional_vars)
-    report.checks.append(CheckResult(
-        "env:broker_credentials",
-        CheckStatus.PASS if secret_vars_present else CheckStatus.SKIP,
-        CheckLevel.INFO,
-        "Broker credentials present" if secret_vars_present else "No broker credentials (offline mode only)",
-    ))
+    report.checks.append(
+        CheckResult(
+            "env:broker_credentials",
+            CheckStatus.PASS if secret_vars_present else CheckStatus.SKIP,
+            CheckLevel.INFO,
+            (
+                "Broker credentials present"
+                if secret_vars_present
+                else "No broker credentials (offline mode only)"
+            ),
+        )
+    )
 
 
 def check_database_connectivity(report: HealthReport) -> None:
     pg_url = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
     if not pg_url:
-        report.checks.append(CheckResult(
-            "database:connectivity",
-            CheckStatus.SKIP,
-            CheckLevel.WARNING,
-            "DATABASE_URL not set — database features unavailable",
-        ))
+        report.checks.append(
+            CheckResult(
+                "database:connectivity",
+                CheckStatus.SKIP,
+                CheckLevel.WARNING,
+                "DATABASE_URL not set — database features unavailable",
+            )
+        )
         return
     try:
         import sqlalchemy as sa
+
         engine = sa.create_engine(pg_url, connect_args={"connect_timeout": 5})
         with engine.connect() as conn:
             conn.execute(sa.text("SELECT 1"))
-        report.checks.append(CheckResult("database:connectivity", CheckStatus.PASS, CheckLevel.CRITICAL, "PostgreSQL reachable"))
+        report.checks.append(
+            CheckResult(
+                "database:connectivity",
+                CheckStatus.PASS,
+                CheckLevel.CRITICAL,
+                "PostgreSQL reachable",
+            )
+        )
     except Exception as exc:
-        report.checks.append(CheckResult("database:connectivity", CheckStatus.FAIL, CheckLevel.CRITICAL, str(exc)[:120]))
+        report.checks.append(
+            CheckResult(
+                "database:connectivity",
+                CheckStatus.FAIL,
+                CheckLevel.CRITICAL,
+                str(exc)[:120],
+            )
+        )
 
 
 def check_ruff_clean(report: HealthReport) -> None:
     proc = subprocess.run(
-        ["python", "-m", "ruff", "check", "svos/", "db/", "agents/", "--output-format=concise"],
-        cwd=_ROOT, capture_output=True, text=True,
+        [
+            "python",
+            "-m",
+            "ruff",
+            "check",
+            "svos/",
+            "db/",
+            "agents/",
+            "--output-format=concise",
+        ],
+        cwd=_ROOT,
+        capture_output=True,
+        text=True,
     )
     if proc.returncode == 0:
-        report.checks.append(CheckResult("lint:ruff", CheckStatus.PASS, CheckLevel.WARNING, "zero violations"))
+        report.checks.append(
+            CheckResult(
+                "lint:ruff", CheckStatus.PASS, CheckLevel.WARNING, "zero violations"
+            )
+        )
     else:
-        count = len([l for l in proc.stdout.splitlines() if l.strip() and not l.startswith("Found")])
-        report.checks.append(CheckResult("lint:ruff", CheckStatus.FAIL, CheckLevel.WARNING, f"{count} violations found"))
+        count = len(
+            [
+                line
+                for line in proc.stdout.splitlines()
+                if line.strip() and not line.startswith("Found")
+            ]
+        )
+        report.checks.append(
+            CheckResult(
+                "lint:ruff",
+                CheckStatus.FAIL,
+                CheckLevel.WARNING,
+                f"{count} violations found",
+            )
+        )
 
 
 def check_permissions(report: HealthReport) -> None:
@@ -212,9 +312,20 @@ def check_permissions(report: HealthReport) -> None:
         try:
             test_file.write_text("ok")
             test_file.unlink()
-            report.checks.append(CheckResult(f"perm:write:{rel}", CheckStatus.PASS, CheckLevel.CRITICAL, "writable"))
+            report.checks.append(
+                CheckResult(
+                    f"perm:write:{rel}",
+                    CheckStatus.PASS,
+                    CheckLevel.CRITICAL,
+                    "writable",
+                )
+            )
         except OSError as exc:
-            report.checks.append(CheckResult(f"perm:write:{rel}", CheckStatus.FAIL, CheckLevel.CRITICAL, str(exc)))
+            report.checks.append(
+                CheckResult(
+                    f"perm:write:{rel}", CheckStatus.FAIL, CheckLevel.CRITICAL, str(exc)
+                )
+            )
 
 
 def main() -> int:
@@ -247,10 +358,23 @@ def main() -> int:
     # Write JSON summary
     out = _ROOT / "reports" / "health_check.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({
-        "status": overall,
-        "checks": [{"name": c.name, "status": c.status.value, "level": c.level.value, "detail": c.detail} for c in report.checks],
-    }, indent=2))
+    out.write_text(
+        json.dumps(
+            {
+                "status": overall,
+                "checks": [
+                    {
+                        "name": c.name,
+                        "status": c.status.value,
+                        "level": c.level.value,
+                        "detail": c.detail,
+                    }
+                    for c in report.checks
+                ],
+            },
+            indent=2,
+        )
+    )
     print(f"\nHealth report → {out}")
 
     return 0 if overall == "HEALTHY" else (2 if overall == "DEGRADED" else 1)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
+from dashboard.runtime import (dashboard_bind_host, dashboard_public_host,
+                               dashboard_url)
 
 
 def test_dashboard_bind_host_prefers_explicit_host(monkeypatch):

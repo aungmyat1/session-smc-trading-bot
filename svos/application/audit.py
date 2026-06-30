@@ -23,18 +23,17 @@ from typing import Any
 from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import AuditReportBuilder
 
-
 _PASS_DECISIONS = {"READY_FOR_REPLAY"}
 
 
 @dataclass(slots=True)
 class AuditResult:
     strategy: str
-    status: str                  # PASS | FAIL
+    status: str  # PASS | FAIL
     version_id: str
     readiness_decision: str
     overall_score: float
-    report_artifact: str         # absolute path to audit report JSON
+    report_artifact: str  # absolute path to audit report JSON
     evidence_id: str
     manifest_id: str
     critical_issues: list[str] = field(default_factory=list)
@@ -138,7 +137,9 @@ class AuditIntegrationService:
         )
 
         # ── drive lifecycle transition ────────────────────────────────────
-        self._drive_lifecycle(strategy, status, actor, current, overall_score, readiness)
+        self._drive_lifecycle(
+            strategy, status, actor, current, overall_score, readiness
+        )
 
         evidence_id = str(
             evidence.get("evidence", {}).get("evidence_id", "")
@@ -165,7 +166,8 @@ class AuditIntegrationService:
 
     def _run_engine(self, specification: str, strategy: str):
         from strategy_validation.models import StrategyDocument
-        from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
+        from strategy_validation.pipeline.strategy_validation_pipeline import \
+            StrategyValidationPipeline
 
         document = StrategyDocument(
             strategy_name=strategy,
@@ -203,5 +205,7 @@ class AuditIntegrationService:
         except Exception as exc:
             # If evidence is missing or stage is wrong, do not crash — the
             # AuditResult already records the status; caller can inspect it.
-            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(exc):
+            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(
+                exc
+            ):
                 raise

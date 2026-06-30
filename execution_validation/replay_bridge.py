@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from execution_validation.engine import ExecutionValidationReport, ExecutionValidationSuite
-from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
+from execution_simulator.broker.virtual_broker import (VirtualBroker,
+                                                       VirtualBrokerConfig)
 from execution_simulator.replay_engine.event_stream import MarketEvent
+from execution_validation.engine import (ExecutionValidationReport,
+                                         ExecutionValidationSuite)
 from simulator.forward_test import ForwardTestSimulator
 
 _UTC = timezone.utc
@@ -18,7 +20,9 @@ def _utc_time(value: Any) -> datetime:
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
-def _candle_to_event(candle: dict, symbol: str, spread_pips: float = 1.0, point_size: float = 0.0001) -> MarketEvent:
+def _candle_to_event(
+    candle: dict, symbol: str, spread_pips: float = 1.0, point_size: float = 0.0001
+) -> MarketEvent:
     ts = _utc_time(candle["time"])
     close = float(candle["close"])
     spread = spread_pips * point_size
@@ -32,7 +36,11 @@ def _candle_to_event(candle: dict, symbol: str, spread_pips: float = 1.0, point_
 
 
 def _signal_id(signal: Any) -> str:
-    return getattr(signal, "signal_id", "") or getattr(signal, "id", "") or signal.timestamp.isoformat()
+    return (
+        getattr(signal, "signal_id", "")
+        or getattr(signal, "id", "")
+        or signal.timestamp.isoformat()
+    )
 
 
 @dataclass(slots=True)
@@ -79,7 +87,9 @@ async def build_validation_payload_from_candles(
 
     seen_ids: set[str] = set()
     for candle in sorted(candles_m15, key=lambda c: c["time"]):
-        event = _candle_to_event(candle, symbol, spread_pips=spread_pips, point_size=point_size)
+        event = _candle_to_event(
+            candle, symbol, spread_pips=spread_pips, point_size=point_size
+        )
         broker.on_market_event(event)
 
         new_signals = simulator.feed(candle)
@@ -157,7 +167,12 @@ async def build_validation_payload_from_candles(
 
     # Add one explicit spread rejection case for broker rule coverage.
     if signals_payload:
-        rejected_event = _candle_to_event(candles_m15[0], symbol, spread_pips=max(spread_pips * 10.0, 10.0), point_size=point_size)
+        rejected_event = _candle_to_event(
+            candles_m15[0],
+            symbol,
+            spread_pips=max(spread_pips * 10.0, 10.0),
+            point_size=point_size,
+        )
         broker_rule_samples.append(
             {
                 "symbol": symbol,

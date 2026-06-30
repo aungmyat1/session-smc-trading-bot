@@ -1,15 +1,12 @@
 import json
 from pathlib import Path
 
-from research.svos.engine import (
-    DemoValidationInput,
-    RobustnessValidationInput,
-    SVOSRunner,
-    StrategyAuditEngine,
-    StrategyIntakeEngine,
-    audit_strategy_text,
-)
-from research.validation.engine import BacktestValidationInput, ReplayTrade, ReplayValidationInput
+from research.svos.engine import (DemoValidationInput,
+                                  RobustnessValidationInput,
+                                  StrategyAuditEngine, StrategyIntakeEngine,
+                                  SVOSRunner, audit_strategy_text)
+from research.validation.engine import (BacktestValidationInput, ReplayTrade,
+                                        ReplayValidationInput)
 
 
 def _fixture_catalog_text() -> str:
@@ -75,7 +72,13 @@ def _valid_replay() -> ReplayValidationInput:
                 required_features=["sweep", "bias"],
             )
         ],
-        state_transitions=[("IDLE", "SETUP"), ("SETUP", "CONFIRMED"), ("CONFIRMED", "ORDER_PLACED"), ("ORDER_PLACED", "FILLED"), ("FILLED", "CLOSED")],
+        state_transitions=[
+            ("IDLE", "SETUP"),
+            ("SETUP", "CONFIRMED"),
+            ("CONFIRMED", "ORDER_PLACED"),
+            ("ORDER_PLACED", "FILLED"),
+            ("FILLED", "CLOSED"),
+        ],
         required_features=["sweep", "bias"],
         available_features=["sweep", "bias"],
     )
@@ -169,7 +172,9 @@ def test_audit_warns_on_many_fixed_parameters():
 
 
 def test_intake_creates_canonical_strategy_record():
-    result = StrategyIntakeEngine().intake(_complete_strategy_text(), strategy_name="TEST")
+    result = StrategyIntakeEngine().intake(
+        _complete_strategy_text(), strategy_name="TEST"
+    )
     assert result.status == "PASS"
     assert result.metadata["strategy_name"] == "TEST"
     assert result.metadata["version_history_initialized"] is True
@@ -227,7 +232,10 @@ def test_runner_passes_all_stages_and_promotes(tmp_path):
         allow_live_promotion=False,
     )
     assert result.overall_status == "PASS"
-    assert any(stage.stage == "verification_ready" and stage.status == "PASS" for stage in result.stages)
+    assert any(
+        stage.stage == "verification_ready" and stage.status == "PASS"
+        for stage in result.stages
+    )
     assert result.stages[-1].stage == "virtual_demo"
     assert result.stages[-1].status == "PASS"
     assert result.promoted_stage is None
@@ -261,7 +269,10 @@ def test_runner_audit_stage_uses_canonical_strategy_validation_report(tmp_path):
     assert result.stages[-1].stage == "audit"
     assert result.stages[-1].status == "PASS"
     assert "validation_report" in result.stages[-1].metadata
-    assert result.stages[-1].metadata["validation_report"]["readiness_decision"] == "READY_FOR_REPLAY"
+    assert (
+        result.stages[-1].metadata["validation_report"]["readiness_decision"]
+        == "READY_FOR_REPLAY"
+    )
     assert (tmp_path / "ST-A2" / "stages" / "01_audit.json").exists()
 
 
@@ -289,7 +300,11 @@ def test_runner_generates_enhancement_stage_for_failed_audit(tmp_path):
     result = runner.run_pipeline("London Session\nLiquidity Sweep\nRR 1:2\nRisk 0.3%")
 
     assert result.overall_status == "FAIL"
-    assert [stage.stage for stage in result.stages] == ["intake", "audit", "enhancement"]
+    assert [stage.stage for stage in result.stages] == [
+        "intake",
+        "audit",
+        "enhancement",
+    ]
     audit_stage = result.stages[1]
     enhancement_stage = result.stages[2]
     assert audit_stage.status in {"FIX", "FAIL"}
@@ -387,7 +402,10 @@ def test_runner_returns_fix_when_demo_metrics_missing(tmp_path):
         ),
     )
     assert result.overall_status == "FAIL"
-    assert any(stage.stage == "virtual_demo" and stage.status == "FAIL" for stage in result.stages)
+    assert any(
+        stage.stage == "virtual_demo" and stage.status == "FAIL"
+        for stage in result.stages
+    )
     assert get_strategy_status(catalog_copy, "ST-A2") != "live"
 
 
@@ -445,7 +463,9 @@ def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
     assert result.promoted_stage is None
     assert get_strategy_status(catalog_copy, "ST-A2") == "walk_forward"
     approval_report = json.loads(
-        (Path(result.canonical_report["report_dir"]) / "06_production_approval.json").read_text(encoding="utf-8")
+        (
+            Path(result.canonical_report["report_dir"]) / "06_production_approval.json"
+        ).read_text(encoding="utf-8")
     )
     assert approval_report["status"] == "NOT_RUN"
     assert approval_report["promotion_allowed"] is False
@@ -454,7 +474,9 @@ def test_runner_does_not_promote_to_live_without_explicit_allow(tmp_path):
 def test_runner_writes_immutable_six_stage_report_package(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
-    runner = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy")
+    runner = SVOSRunner(
+        "ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy"
+    )
     result = runner.run_pipeline(
         _complete_strategy_text(),
         replay=_valid_replay(),
@@ -466,22 +488,46 @@ def test_runner_writes_immutable_six_stage_report_package(tmp_path):
             parameter_stability_passed=True,
             regime_analysis_passed=True,
             execution_cost_passed=True,
-            latest_metrics={"profit_factor": 1.22, "win_rate": 0.36, "expectancy": 0.11, "max_drawdown": 4.8},
-            previous_metrics={"profit_factor": 1.20, "win_rate": 0.35, "expectancy": 0.10, "max_drawdown": 4.7},
+            latest_metrics={
+                "profit_factor": 1.22,
+                "win_rate": 0.36,
+                "expectancy": 0.11,
+                "max_drawdown": 4.8,
+            },
+            previous_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
         ),
         virtual_demo=DemoValidationInput(
             completed_successfully=True,
             days_monitored=20,
             min_demo_days=14,
             tolerance_pct=0.10,
-            research_metrics={"profit_factor": 1.20, "win_rate": 0.35, "expectancy": 0.10, "max_drawdown": 4.7},
-            live_metrics={"profit_factor": 1.18, "win_rate": 0.34, "expectancy": 0.099, "max_drawdown": 4.9},
+            research_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
+            live_metrics={
+                "profit_factor": 1.18,
+                "win_rate": 0.34,
+                "expectancy": 0.099,
+                "max_drawdown": 4.9,
+            },
             execution_validation_report=_valid_execution_report(),
             expected_signals=12,
             observed_signals=12,
             expected_trades=5,
             observed_trades=5,
-            execution_metrics={"average_spread_pips": 0.8, "slippage_pips": 0.1, "latency_ms": 90},
+            execution_metrics={
+                "average_spread_pips": 0.8,
+                "slippage_pips": 0.1,
+                "latency_ms": 90,
+            },
             order_outcomes={"rejected": 0, "missed": 0, "duplicated": 0, "delayed": 0},
             risk_controls={"position_sizing": True, "daily_loss_limit": True},
         ),
@@ -507,21 +553,27 @@ def test_runner_writes_immutable_six_stage_report_package(tmp_path):
 
     summary = json.loads((report_dir / "run_summary.json").read_text(encoding="utf-8"))
     assert summary["overall_status"] == "IN_PROGRESS"
-    assert [stage["status"] for stage in summary["stages"]] == ["PASS"] * 5 + ["NOT_RUN"]
-    demo_report = json.loads((report_dir / "05_virtual_demo.json").read_text(encoding="utf-8"))
+    assert [stage["status"] for stage in summary["stages"]] == ["PASS"] * 5 + [
+        "NOT_RUN"
+    ]
+    demo_report = json.loads(
+        (report_dir / "05_virtual_demo.json").read_text(encoding="utf-8")
+    )
     assert demo_report["metrics"]["execution"]["expected_signals"] == 12
     assert demo_report["promotion_allowed"] is True
     assert demo_report["evidence_hashes"]["strategy_spec"]
     assert (tmp_path / "data" / "svos" / "reports" / "index.json").exists()
-    assert (tmp_path / "data" / "svos" / "registry" / "ST-A2" / "evidence.jsonl").exists()
+    assert (
+        tmp_path / "data" / "svos" / "registry" / "ST-A2" / "evidence.jsonl"
+    ).exists()
 
 
 def test_canonical_reports_block_downstream_stages_after_missing_replay(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
-    result = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
-        _complete_strategy_text()
-    )
+    result = SVOSRunner(
+        "ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy"
+    ).run_pipeline(_complete_strategy_text())
 
     report_dir = Path(result.canonical_report["report_dir"])
     summary = json.loads((report_dir / "run_summary.json").read_text(encoding="utf-8"))
@@ -536,7 +588,9 @@ def test_canonical_reports_block_downstream_stages_after_missing_replay(tmp_path
 def test_virtual_demo_drift_routes_back_to_backtest(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
-    result = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
+    result = SVOSRunner(
+        "ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy"
+    ).run_pipeline(
         _complete_strategy_text(),
         replay=_valid_replay(),
         backtest=_valid_backtest(),
@@ -547,23 +601,45 @@ def test_virtual_demo_drift_routes_back_to_backtest(tmp_path):
             parameter_stability_passed=True,
             regime_analysis_passed=True,
             execution_cost_passed=True,
-            latest_metrics={"profit_factor": 1.22, "win_rate": 0.36, "expectancy": 0.11, "max_drawdown": 4.8},
-            previous_metrics={"profit_factor": 1.20, "win_rate": 0.35, "expectancy": 0.10, "max_drawdown": 4.7},
+            latest_metrics={
+                "profit_factor": 1.22,
+                "win_rate": 0.36,
+                "expectancy": 0.11,
+                "max_drawdown": 4.8,
+            },
+            previous_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
         ),
         virtual_demo=DemoValidationInput(
             completed_successfully=True,
             days_monitored=20,
             min_demo_days=14,
             tolerance_pct=0.05,
-            research_metrics={"profit_factor": 1.20, "win_rate": 0.35, "expectancy": 0.10, "max_drawdown": 4.7},
-            live_metrics={"profit_factor": 0.80, "win_rate": 0.25, "expectancy": 0.02, "max_drawdown": 8.0},
+            research_metrics={
+                "profit_factor": 1.20,
+                "win_rate": 0.35,
+                "expectancy": 0.10,
+                "max_drawdown": 4.7,
+            },
+            live_metrics={
+                "profit_factor": 0.80,
+                "win_rate": 0.25,
+                "expectancy": 0.02,
+                "max_drawdown": 8.0,
+            },
             execution_validation_report=_valid_execution_report(),
         ),
     )
 
     report_dir = Path(result.canonical_report["report_dir"])
     demo = json.loads((report_dir / "05_virtual_demo.json").read_text(encoding="utf-8"))
-    approval = json.loads((report_dir / "06_production_approval.json").read_text(encoding="utf-8"))
+    approval = json.loads(
+        (report_dir / "06_production_approval.json").read_text(encoding="utf-8")
+    )
     assert demo["status"] == "FAIL"
     assert demo["remediation"]["route"] == "backtest"
     assert demo["promotion_allowed"] is False
@@ -574,17 +650,21 @@ def test_virtual_demo_drift_routes_back_to_backtest(tmp_path):
 def test_changed_spec_creates_patch_version_without_overwriting_reports(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
     catalog_copy.write_text(_fixture_catalog_text(), encoding="utf-8")
-    first = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
-        _complete_strategy_text(), stop_after="audit"
-    )
+    first = SVOSRunner(
+        "ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy"
+    ).run_pipeline(_complete_strategy_text(), stop_after="audit")
     revised = _complete_strategy_text().replace("Take Profit: 2R", "Take Profit: 3R")
-    second = SVOSRunner("ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy").run_pipeline(
-        revised, stop_after="audit"
-    )
+    second = SVOSRunner(
+        "ST-A2", registry_path=catalog_copy, output_dir=tmp_path / "legacy"
+    ).run_pipeline(revised, stop_after="audit")
 
     first_dir = Path(first.canonical_report["report_dir"])
     second_dir = Path(second.canonical_report["report_dir"])
-    assert first.canonical_report["strategy_id"] == second.canonical_report["strategy_id"] == "ST-A2"
+    assert (
+        first.canonical_report["strategy_id"]
+        == second.canonical_report["strategy_id"]
+        == "ST-A2"
+    )
     assert first.canonical_report["strategy_version"] == "2.1"
     assert second.canonical_report["strategy_version"] == "2.1.1"
     assert first_dir.exists()

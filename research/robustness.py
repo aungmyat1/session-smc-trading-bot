@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from random import Random
 from statistics import mean, median
 from typing import Any, Iterable
 
 
-def _trade_rows(trades: Iterable[dict[str, Any]], r_key: str = "std_net_r") -> list[dict[str, Any]]:
+def _trade_rows(
+    trades: Iterable[dict[str, Any]], r_key: str = "std_net_r"
+) -> list[dict[str, Any]]:
     rows = []
     for trade in trades:
         if not isinstance(trade, dict):
@@ -159,10 +160,16 @@ def parameter_sensitivity(
         normalized.append((rr, metrics))
 
     if len(normalized) < 2:
-        return {"passed": False, "reason": "insufficient_rr_variants", "rr_results": rr_results}
+        return {
+            "passed": False,
+            "reason": "insufficient_rr_variants",
+            "rr_results": rr_results,
+        }
 
     normalized.sort(key=lambda item: item[0])
-    best_rr, best_metrics = max(normalized, key=lambda item: float(item[1].get("net_pf", 0.0) or 0.0))
+    best_rr, best_metrics = max(
+        normalized, key=lambda item: float(item[1].get("net_pf", 0.0) or 0.0)
+    )
     best_pf = float(best_metrics.get("net_pf", 0.0) or 0.0)
     runner_up_pf = max(
         float(metrics.get("net_pf", 0.0) or 0.0)
@@ -176,7 +183,11 @@ def parameter_sensitivity(
         if abs(rr - best_rr) <= 1.0 and rr != best_rr
     ]
     neighborhood_pf = median(neighboring) if neighboring else runner_up_pf
-    passed = best_pf >= 1.0 and spread <= max(0.35, best_pf * 0.25) and neighborhood_pf >= 0.85
+    passed = (
+        best_pf >= 1.0
+        and spread <= max(0.35, best_pf * 0.25)
+        and neighborhood_pf >= 0.85
+    )
     return {
         "passed": passed,
         "best_rr": best_rr,

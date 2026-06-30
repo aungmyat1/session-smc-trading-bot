@@ -1,2 +1,1 @@
 """Trade simulation layer."""
-

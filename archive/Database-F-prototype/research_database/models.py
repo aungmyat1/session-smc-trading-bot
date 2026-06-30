@@ -3,10 +3,13 @@ research_database/models.py
 SQLAlchemy ORM models for trading_research database.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, ForeignKey, JSON, Date, BigInteger
-from sqlalchemy.orm import relationship
-from .database import Base
 from datetime import datetime
+
+from sqlalchemy import (JSON, BigInteger, Boolean, Column, Date, DateTime,
+                        ForeignKey, Integer, Numeric, String)
+from sqlalchemy.orm import relationship
+
+from .database import Base
 
 
 class Instrument(Base):

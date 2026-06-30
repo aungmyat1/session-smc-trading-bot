@@ -9,11 +9,9 @@ Covers:
 import unittest
 from datetime import date, datetime, timezone
 
-from strategy.session_liquidity.session_builder import (
-    AsianRange,
-    build_asian_range,
-    classify_session,
-)
+from strategy.session_liquidity.session_builder import (AsianRange,
+                                                        build_asian_range,
+                                                        classify_session)
 
 UTC = timezone.utc
 
@@ -40,19 +38,19 @@ def _dt(s: str) -> datetime:
 
 WINTER_CANDLES = [
     # pre-Asian prev day (excluded — before 18:00 EST)
-    _c("2024-01-15T22:45:00Z", 1.0900, 1.0890),   # 17:45 EST
+    _c("2024-01-15T22:45:00Z", 1.0900, 1.0890),  # 17:45 EST
     # Asian prev day 18:00–23:45 EST
-    _c("2024-01-15T23:00:00Z", 1.0920, 1.0895),   # 18:00 EST ← start
-    _c("2024-01-15T23:15:00Z", 1.0925, 1.0900),   # 18:15 EST
-    _c("2024-01-16T00:00:00Z", 1.0930, 1.0905),   # 19:00 EST
-    _c("2024-01-16T02:00:00Z", 1.0915, 1.0892),   # 21:00 EST
+    _c("2024-01-15T23:00:00Z", 1.0920, 1.0895),  # 18:00 EST ← start
+    _c("2024-01-15T23:15:00Z", 1.0925, 1.0900),  # 18:15 EST
+    _c("2024-01-16T00:00:00Z", 1.0930, 1.0905),  # 19:00 EST
+    _c("2024-01-16T02:00:00Z", 1.0915, 1.0892),  # 21:00 EST
     # Asian trade_date 00:00–01:45 EST
-    _c("2024-01-16T05:00:00Z", 1.0940, 1.0880),   # 00:00 EST ← HIGH & LOW
-    _c("2024-01-16T05:15:00Z", 1.0910, 1.0895),   # 00:15 EST
-    _c("2024-01-16T06:45:00Z", 1.0905, 1.0898),   # 01:45 EST ← last Asian bar
+    _c("2024-01-16T05:00:00Z", 1.0940, 1.0880),  # 00:00 EST ← HIGH & LOW
+    _c("2024-01-16T05:15:00Z", 1.0910, 1.0895),  # 00:15 EST
+    _c("2024-01-16T06:45:00Z", 1.0905, 1.0898),  # 01:45 EST ← last Asian bar
     # London session (excluded)
-    _c("2024-01-16T07:00:00Z", 1.0960, 1.0850),   # 02:00 EST — must be excluded
-    _c("2024-01-16T08:00:00Z", 1.0965, 1.0855),   # 03:00 EST — excluded
+    _c("2024-01-16T07:00:00Z", 1.0960, 1.0850),  # 02:00 EST — must be excluded
+    _c("2024-01-16T08:00:00Z", 1.0965, 1.0855),  # 03:00 EST — excluded
 ]
 
 TRADE_DATE_WINTER = date(2024, 1, 16)

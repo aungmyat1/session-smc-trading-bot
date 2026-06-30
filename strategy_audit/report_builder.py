@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from .models import AuditReport
 
@@ -91,8 +90,14 @@ def _minimal_pdf(lines: list[str]) -> bytes:
     objects: list[bytes] = []
     objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
     objects.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
-    objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>")
-    objects.append(f"<< /Length {len(content.encode('latin-1'))} >>\nstream\n{content}\nendstream".encode("latin-1"))
+    objects.append(
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"
+    )
+    objects.append(
+        f"<< /Length {len(content.encode('latin-1'))} >>\nstream\n{content}\nendstream".encode(
+            "latin-1"
+        )
+    )
     objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
     out = bytearray(b"%PDF-1.4\n")
     offsets = [0]
@@ -128,4 +133,3 @@ def write_reports(report: AuditReport, output_dir: Path) -> dict[str, Path]:
     paths["html"].write_text(build_html(report), encoding="utf-8")
     paths["pdf"].write_bytes(build_pdf(report))
     return paths
-

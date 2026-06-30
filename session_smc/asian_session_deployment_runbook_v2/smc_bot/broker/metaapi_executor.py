@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
-from decimal import Decimal, ROUND_HALF_UP
-import inspect
+from decimal import ROUND_HALF_UP, Decimal
 
 log = logging.getLogger(__name__)
 
 
 def _round_volume(volume: float) -> float:
     return float(Decimal(str(volume)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
 
 try:
     from metaapi_cloud_sdk import MetaApi
@@ -23,7 +24,9 @@ class MetaApiExecutor:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         self.token = os.getenv("METAAPI_TOKEN", cfg["metaapi"].get("token", ""))
-        self.account_id = os.getenv("METAAPI_ACCOUNT_ID", cfg["metaapi"].get("account_id", ""))
+        self.account_id = os.getenv(
+            "METAAPI_ACCOUNT_ID", cfg["metaapi"].get("account_id", "")
+        )
         self.timeout = cfg["metaapi"].get("deploy_timeout", 300)
         self._api = None
         self._account = None
@@ -35,11 +38,15 @@ class MetaApiExecutor:
                 "metaapi-cloud-sdk not installed. Run: pip install metaapi-cloud-sdk"
             )
         if not self.token or not self.account_id:
-            raise RuntimeError("METAAPI_TOKEN and METAAPI_ACCOUNT_ID must be set in .env")
+            raise RuntimeError(
+                "METAAPI_TOKEN and METAAPI_ACCOUNT_ID must be set in .env"
+            )
 
         log.info("Connecting to MetaAPI account %s …", self.account_id)
         self._api = MetaApi(self.token)
-        self._account = await self._api.metatrader_account_api.get_account(self.account_id)
+        self._account = await self._api.metatrader_account_api.get_account(
+            self.account_id
+        )
 
         state = self._account.state
         if state not in ("DEPLOYING", "DEPLOYED"):
@@ -105,7 +112,12 @@ class MetaApiExecutor:
 
         log.info(
             "MARKET %s %s %.2f lots | SL=%.5f TP=%.5f [%s]",
-            side.upper(), symbol, volume, sl, tp, comment,
+            side.upper(),
+            symbol,
+            volume,
+            sl,
+            tp,
+            comment,
         )
 
         if side == "long":
@@ -143,19 +155,31 @@ class MetaApiExecutor:
 
         log.info(
             "LIMIT %s %s %.2f lots @ %.5f | SL=%.5f TP=%.5f [%s]",
-            side.upper(), symbol, volume, price, sl, tp, comment,
+            side.upper(),
+            symbol,
+            volume,
+            price,
+            sl,
+            tp,
+            comment,
         )
 
         if side == "long":
             result = await self._conn.create_limit_buy_order(
-                symbol, volume, price,
-                stop_loss=sl, take_profit=tp,
+                symbol,
+                volume,
+                price,
+                stop_loss=sl,
+                take_profit=tp,
                 options={"comment": comment},
             )
         else:
             result = await self._conn.create_limit_sell_order(
-                symbol, volume, price,
-                stop_loss=sl, take_profit=tp,
+                symbol,
+                volume,
+                price,
+                stop_loss=sl,
+                take_profit=tp,
                 options={"comment": comment},
             )
 
@@ -172,7 +196,9 @@ class MetaApiExecutor:
         volume = _round_volume(volume)
         log.info(
             "PARTIAL CLOSE positionId=%s volume=%.2f [%s]",
-            position_id, volume, comment,
+            position_id,
+            volume,
+            comment,
         )
         result = await self._conn.close_position_partially(position_id, volume)
         return result

@@ -22,4 +22,3 @@ class Order:
     magic: int = 0
     comment: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
-

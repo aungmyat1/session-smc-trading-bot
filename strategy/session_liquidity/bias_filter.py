@@ -28,6 +28,7 @@ _UTC = timezone.utc
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+
 def _parse_utc(t) -> datetime:
     if isinstance(t, datetime):
         return t if t.tzinfo else t.replace(tzinfo=_UTC)
@@ -47,8 +48,9 @@ def _swing_highs(highs: list[float], n: int) -> list[int]:
     out: list[int] = []
     ln = len(highs)
     for i in range(n, ln - n):
-        if (all(highs[i] > highs[i - k] for k in range(1, n + 1)) and
-                all(highs[i] > highs[i + k] for k in range(1, n + 1))):
+        if all(highs[i] > highs[i - k] for k in range(1, n + 1)) and all(
+            highs[i] > highs[i + k] for k in range(1, n + 1)
+        ):
             out.append(i)
     return out
 
@@ -66,13 +68,15 @@ def _swing_lows(lows: list[float], n: int) -> list[int]:
     out: list[int] = []
     ln = len(lows)
     for i in range(n, ln - n):
-        if (all(lows[i] < lows[i - k] for k in range(1, n + 1)) and
-                all(lows[i] < lows[i + k] for k in range(1, n + 1))):
+        if all(lows[i] < lows[i - k] for k in range(1, n + 1)) and all(
+            lows[i] < lows[i + k] for k in range(1, n + 1)
+        ):
             out.append(i)
     return out
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def htf_bias(
     candles_4h: list[dict],

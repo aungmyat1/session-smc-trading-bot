@@ -21,7 +21,12 @@ class ForexData:
         bid = price.get("bid", 0.0)
         ask = price.get("ask", 0.0)
         spread = round((ask - bid) / 0.0001, 1)
-        return {"bid": bid, "ask": ask, "spread_pips": spread, "time": price.get("time")}
+        return {
+            "bid": bid,
+            "ask": ask,
+            "spread_pips": spread,
+            "time": price.get("time"),
+        }
 
     async def get_candles(
         self,
@@ -48,20 +53,23 @@ class ForexData:
             )
 
         result = []
-        for c in (candles or []):
-            result.append({
-                "time": c.get("time"),
-                "open": c.get("open"),
-                "high": c.get("high"),
-                "low": c.get("low"),
-                "close": c.get("close"),
-                "volume": c.get("tickVolume", 0),
-            })
+        for c in candles or []:
+            result.append(
+                {
+                    "time": c.get("time"),
+                    "open": c.get("open"),
+                    "high": c.get("high"),
+                    "low": c.get("low"),
+                    "close": c.get("close"),
+                    "volume": c.get("tickVolume", 0),
+                }
+            )
         return result
 
     async def get_multi_tf_candles(self, symbol: str, count: int = 200) -> dict:
         """Convenience: fetch 4H, 1H, and 15M candles in parallel."""
         import asyncio
+
         results = await asyncio.gather(
             self.get_candles(symbol, "4h", count),
             self.get_candles(symbol, "1h", count),

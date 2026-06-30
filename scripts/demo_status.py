@@ -8,7 +8,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,14 +17,15 @@ sys.path.insert(0, str(_ROOT))
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(_ROOT / ".env")
 except ImportError:
     pass
 
-from execution.mt5_connector         import MT5Connector
-from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager         import TradeManager
-from execution.trade_journal         import DemoTradeJournal
+from execution.mt5_connector import MT5Connector  # noqa: E402
+from execution.trade_journal import DemoTradeJournal  # noqa: E402
+from execution.trade_manager import TradeManager  # noqa: E402
+from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
 
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
@@ -41,14 +41,16 @@ async def _status() -> None:
         return
 
     executor = VantageDemoExecutor(connector)
-    manager  = TradeManager(executor)
-    journal  = DemoTradeJournal()
+    manager = TradeManager(executor)
+    journal = DemoTradeJournal()
 
     try:
-        hb    = await asyncio.wait_for(connector.heartbeat(), timeout=_RPC_TIMEOUT_S)
-        acct  = await asyncio.wait_for(executor.get_account_info(), timeout=_RPC_TIMEOUT_S)
-        pos   = await asyncio.wait_for(manager.get_positions(), timeout=_RPC_TIMEOUT_S)
-        summ  = journal.summary()
+        hb = await asyncio.wait_for(connector.heartbeat(), timeout=_RPC_TIMEOUT_S)
+        acct = await asyncio.wait_for(
+            executor.get_account_info(), timeout=_RPC_TIMEOUT_S
+        )
+        pos = await asyncio.wait_for(manager.get_positions(), timeout=_RPC_TIMEOUT_S)
+        summ = journal.summary()
     except Exception as exc:
         print(f"[ERROR] Status fetch failed: {exc}")
         return
@@ -63,12 +65,14 @@ async def _status() -> None:
 
     # Connection
     status_icon = "🟢" if hb["connected"] else "🔴"
-    print(f"\n  CONNECTION:    {status_icon}  {'OK' if hb['connected'] else 'DISCONNECTED'}")
+    print(
+        f"\n  CONNECTION:    {status_icon}  {'OK' if hb['connected'] else 'DISCONNECTED'}"
+    )
     print(f"  Latency:       {hb['latency_ms']} ms")
     print(f"  Last HB:       {hb['last_heartbeat']}")
 
     # Account
-    print(f"\n  ACCOUNT")
+    print("\n  ACCOUNT")
     print(f"  Balance:       {acct['balance']:.2f} {acct['currency']}")
     print(f"  Equity:        {acct['equity']:.2f} {acct['currency']}")
     print(f"  Free margin:   {acct['free_margin']:.2f} {acct['currency']}")
@@ -76,11 +80,13 @@ async def _status() -> None:
     # Open positions
     print(f"\n  OPEN POSITIONS: {len(pos)}")
     for p in pos:
-        print(f"    {p['symbol']} {p['direction'].upper()} "
-              f"{p['lots']}lot  entry={p['entry']}  P&L={p['profit']:.2f}")
+        print(
+            f"    {p['symbol']} {p['direction'].upper()} "
+            f"{p['lots']}lot  entry={p['entry']}  P&L={p['profit']:.2f}"
+        )
 
     # Journal summary
-    print(f"\n  JOURNAL SUMMARY")
+    print("\n  JOURNAL SUMMARY")
     print(f"  Total opened:  {summ['total_opened']}")
     print(f"  Total closed:  {summ['total_closed']}")
     print(f"  Wins:          {summ['wins']}")

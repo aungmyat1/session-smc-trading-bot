@@ -25,27 +25,29 @@ DATA_RAW = ROOT / "data" / "raw" / "dukascopy"
 DATA_PROC = ROOT / "data" / "processed"
 
 TIMEFRAMES = {
-    "M1":  "1min",
-    "M5":  "5min",
+    "M1": "1min",
+    "M5": "5min",
     "M15": "15min",
-    "H1":  "1h",
-    "H4":  "4h",
-    "D1":  "1D",
+    "H1": "1h",
+    "H4": "4h",
+    "D1": "1D",
 }
 
-OHLCV_SCHEMA = pa.schema([
-    ("timestamp_utc", pa.timestamp("ns", tz="UTC")),
-    ("open",          pa.float64()),
-    ("high",          pa.float64()),
-    ("low",           pa.float64()),
-    ("close",         pa.float64()),
-    ("volume",        pa.float64()),
-    ("ask_open",      pa.float32()),
-    ("bid_open",      pa.float32()),
-    ("spread_avg",    pa.float32()),
-    ("spread_max",    pa.float32()),
-    ("tick_count",    pa.int32()),
-])
+OHLCV_SCHEMA = pa.schema(
+    [
+        ("timestamp_utc", pa.timestamp("ns", tz="UTC")),
+        ("open", pa.float64()),
+        ("high", pa.float64()),
+        ("low", pa.float64()),
+        ("close", pa.float64()),
+        ("volume", pa.float64()),
+        ("ask_open", pa.float32()),
+        ("bid_open", pa.float32()),
+        ("spread_avg", pa.float32()),
+        ("spread_max", pa.float32()),
+        ("tick_count", pa.int32()),
+    ]
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("build_tf")
@@ -72,18 +74,20 @@ def _resample_to_ohlcv(ticks: pd.DataFrame, freq: str) -> pd.DataFrame:
     spread = ticks["spread"]
     vol = ticks["ask_vol"] + ticks["bid_vol"]
 
-    bars = pd.DataFrame({
-        "open":       mid.resample(freq).first(),
-        "high":       mid.resample(freq).max(),
-        "low":        mid.resample(freq).min(),
-        "close":      mid.resample(freq).last(),
-        "volume":     vol.resample(freq).sum(),
-        "ask_open":   ask.resample(freq).first().astype("float32"),
-        "bid_open":   bid.resample(freq).first().astype("float32"),
-        "spread_avg": spread.resample(freq).mean().astype("float32"),
-        "spread_max": spread.resample(freq).max().astype("float32"),
-        "tick_count": mid.resample(freq).count().astype("int32"),
-    })
+    bars = pd.DataFrame(
+        {
+            "open": mid.resample(freq).first(),
+            "high": mid.resample(freq).max(),
+            "low": mid.resample(freq).min(),
+            "close": mid.resample(freq).last(),
+            "volume": vol.resample(freq).sum(),
+            "ask_open": ask.resample(freq).first().astype("float32"),
+            "bid_open": bid.resample(freq).first().astype("float32"),
+            "spread_avg": spread.resample(freq).mean().astype("float32"),
+            "spread_max": spread.resample(freq).max().astype("float32"),
+            "tick_count": mid.resample(freq).count().astype("int32"),
+        }
+    )
     bars = bars.dropna(subset=["open"])
     bars = bars[bars["tick_count"] > 0]
     return bars.reset_index()
@@ -114,10 +118,16 @@ def _available_months(sym: str) -> list[tuple[int, int]]:
     return months
 
 
-def build_symbol(sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple | None):
+def build_symbol(
+    sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple | None
+):
     months = _available_months(sym)
     if not months:
-        log.error("No raw ticks found for %s at %s — run download_dukascopy.py first", sym, DATA_RAW / sym)
+        log.error(
+            "No raw ticks found for %s at %s — run download_dukascopy.py first",
+            sym,
+            DATA_RAW / sym,
+        )
         return
 
     if start_ym:
@@ -161,7 +171,11 @@ def build_symbol(sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple
         if not frames:
             log.warning("%s %s: no bars produced", sym, tf)
             continue
-        bars = pd.concat(frames, ignore_index=True).sort_values("timestamp_utc").reset_index(drop=True)
+        bars = (
+            pd.concat(frames, ignore_index=True)
+            .sort_values("timestamp_utc")
+            .reset_index(drop=True)
+        )
         out_path = out_dir / f"{tf}.parquet"
         table = pa.Table.from_pandas(bars, schema=OHLCV_SCHEMA, preserve_index=False)
         pq.write_table(table, out_path, compression="snappy", row_group_size=50_000)
@@ -171,8 +185,12 @@ def build_symbol(sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple
 def main():
     parser = argparse.ArgumentParser(description="Build OHLCV Parquet from raw ticks")
     parser.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    parser.add_argument("--timeframes", nargs="+", default=list(TIMEFRAMES.keys()),
-                        choices=list(TIMEFRAMES.keys()))
+    parser.add_argument(
+        "--timeframes",
+        nargs="+",
+        default=list(TIMEFRAMES.keys()),
+        choices=list(TIMEFRAMES.keys()),
+    )
     parser.add_argument("--start", help="Start year-month e.g. 2021-01")
     parser.add_argument("--end", help="End year-month e.g. 2026-06")
     args = parser.parse_args()
@@ -182,7 +200,7 @@ def main():
         return int(y), int(m)
 
     start_ym = parse_ym(args.start) if args.start else None
-    end_ym   = parse_ym(args.end)   if args.end   else None
+    end_ym = parse_ym(args.end) if args.end else None
 
     for sym in args.symbols:
         build_symbol(sym, args.timeframes, start_ym, end_ym)

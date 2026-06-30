@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
-from execution.metaapi_client import AccountInfo, BrokerPosition, OrderResult, SymbolPrice
 from core.broker_interface import BrokerInterface
+from execution.metaapi_client import (AccountInfo, BrokerPosition, OrderResult,
+                                      SymbolPrice)
 from execution_events import ExecutionEvent
 from execution_simulator.broker.order_manager import OrderManager, VirtualOrder
-from execution_simulator.broker.position_manager import PositionManager, VirtualPosition
+from execution_simulator.broker.position_manager import (PositionManager,
+                                                         VirtualPosition)
 from execution_simulator.database.execution_log import ExecutionLog
 from execution_simulator.execution.fill_engine import FillEngine
 from execution_simulator.execution.risk_engine import RiskEngine
@@ -49,7 +51,9 @@ class VirtualBroker(BrokerInterface):
         self._order_ids = itertools.count(1)
         self._position_ids = itertools.count(1)
         self._orders = OrderManager()
-        self._positions = PositionManager(contract_size_by_symbol=self.config.contract_size_by_symbol)
+        self._positions = PositionManager(
+            contract_size_by_symbol=self.config.contract_size_by_symbol
+        )
         self._fill_engine = FillEngine(
             latency_ms=self.config.latency_ms,
             slippage_points=self.config.slippage_points,
@@ -120,7 +124,12 @@ class VirtualBroker(BrokerInterface):
         event = self._require_market()
         point = (self.config.point_size_by_symbol or {}).get(symbol, 0.0001)
         spread_pips = round((event.ask - event.bid) / point, 2)
-        return SymbolPrice(bid=event.bid, ask=event.ask, spread_pips=spread_pips, time=event.timestamp.isoformat())
+        return SymbolPrice(
+            bid=event.bid,
+            ask=event.ask,
+            spread_pips=spread_pips,
+            time=event.timestamp.isoformat(),
+        )
 
     async def get_price(self, symbol: str) -> SymbolPrice:
         return await self.get_symbol_price(symbol)
@@ -135,7 +144,9 @@ class VirtualBroker(BrokerInterface):
         except Exception:
             return False, 0.0
 
-    async def get_open_positions(self, magic: int | None = None) -> list[BrokerPosition]:
+    async def get_open_positions(
+        self, magic: int | None = None
+    ) -> list[BrokerPosition]:
         if not self._connected:
             return []
         positions = self._positions.open_positions()
@@ -198,15 +209,25 @@ class VirtualBroker(BrokerInterface):
         position = self._positions.get(position_id)
         if position is None or not position.is_open:
             return False
-        closed = self._positions.close_position(position_id, close_price, close_time, reason)
+        closed = self._positions.close_position(
+            position_id, close_price, close_time, reason
+        )
         self._emit_event(
             "POSITION_CLOSED",
             order_id=closed.order_id,
             price=close_price,
             message=reason,
-            metadata={"symbol": closed.symbol, "position_id": closed.position_id, "profit": closed.profit},
+            metadata={
+                "symbol": closed.symbol,
+                "position_id": closed.position_id,
+                "profit": closed.profit,
+            },
         )
-        duration = (closed.close_time - closed.open_time).total_seconds() if closed.close_time else None
+        duration = (
+            (closed.close_time - closed.open_time).total_seconds()
+            if closed.close_time
+            else None
+        )
         self._log.log_position(
             position_id=closed.position_id,
             order_id=closed.order_id,
@@ -226,14 +247,34 @@ class VirtualBroker(BrokerInterface):
             direction = position.direction.lower()
             if direction in {"long", "buy"}:
                 if market.bid <= position.stop_loss:
-                    self._close_position_internal(position.position_id, position.stop_loss, market.timestamp, "STOP_LOSS")
+                    self._close_position_internal(
+                        position.position_id,
+                        position.stop_loss,
+                        market.timestamp,
+                        "STOP_LOSS",
+                    )
                 elif market.bid >= position.take_profit:
-                    self._close_position_internal(position.position_id, position.take_profit, market.timestamp, "TAKE_PROFIT")
+                    self._close_position_internal(
+                        position.position_id,
+                        position.take_profit,
+                        market.timestamp,
+                        "TAKE_PROFIT",
+                    )
             else:
                 if market.ask >= position.stop_loss:
-                    self._close_position_internal(position.position_id, position.stop_loss, market.timestamp, "STOP_LOSS")
+                    self._close_position_internal(
+                        position.position_id,
+                        position.stop_loss,
+                        market.timestamp,
+                        "STOP_LOSS",
+                    )
                 elif market.ask <= position.take_profit:
-                    self._close_position_internal(position.position_id, position.take_profit, market.timestamp, "TAKE_PROFIT")
+                    self._close_position_internal(
+                        position.position_id,
+                        position.take_profit,
+                        market.timestamp,
+                        "TAKE_PROFIT",
+                    )
 
     async def place_order(
         self,
@@ -290,7 +331,11 @@ class VirtualBroker(BrokerInterface):
                 "ORDER_VALIDATED",
                 order_id=order_id,
                 message=risk.reason,
-                metadata={"symbol": symbol, "allowed": False, "spread_pips": risk.spread_pips},
+                metadata={
+                    "symbol": symbol,
+                    "allowed": False,
+                    "spread_pips": risk.spread_pips,
+                },
             )
             self._emit_event(
                 "ORDER_REJECTED",
@@ -337,7 +382,9 @@ class VirtualBroker(BrokerInterface):
                 "filled_price": fill.filled_price,
                 "slippage": fill.slippage,
                 "latency_ms": fill.latency_ms,
-                "point_size": (self.config.point_size_by_symbol or {}).get(symbol, 0.0001),
+                "point_size": (self.config.point_size_by_symbol or {}).get(
+                    symbol, 0.0001
+                ),
             },
         )
         self._orders.update_fill(
@@ -364,7 +411,9 @@ class VirtualBroker(BrokerInterface):
             comment=comment,
             metadata={
                 "requested_price": fill.requested_price,
-                "signal_timestamp": signal_timestamp.isoformat() if signal_timestamp else None,
+                "signal_timestamp": (
+                    signal_timestamp.isoformat() if signal_timestamp else None
+                ),
                 "expected_entry": expected_entry,
                 "filled_price": fill.filled_price,
                 "slippage": fill.slippage,
@@ -443,8 +492,8 @@ class VirtualBroker(BrokerInterface):
                 symbol=order["symbol"],
                 direction=order.get("direction", order.get("type", "")),
                 volume=float(order["volume"]),
-                sl=float(order["SL"] if "SL" in order else order.get("sl")),
-                tp=float(order["TP"] if "TP" in order else order.get("tp")),
+                sl=float(order["SL"] if "SL" in order else order.get("sl") or 0.0),
+                tp=float(order["TP"] if "TP" in order else order.get("tp") or 0.0),
                 magic=int(order.get("magic", 0)),
                 comment=str(order.get("comment", "")),
                 signal_timestamp=order.get("signal_timestamp"),
@@ -462,7 +511,13 @@ class VirtualBroker(BrokerInterface):
             expected_entry=getattr(order, "expected_entry", None),
         )
 
-    async def modify_order(self, order_id: str, sl: float | None = None, tp: float | None = None, **changes: Any) -> bool:
+    async def modify_order(
+        self,
+        order_id: str,
+        sl: float | None = None,
+        tp: float | None = None,
+        **changes: Any,
+    ) -> bool:
         order = self._orders.get(order_id)
         if order is None or not self._connected:
             return False
@@ -483,8 +538,12 @@ class VirtualBroker(BrokerInterface):
         position = self._positions.get(position_id)
         if position is None or not position.is_open:
             return False
-        close_price = market.bid if position.direction.lower() in {"long", "buy"} else market.ask
-        return self._close_position_internal(position_id, close_price, market.timestamp, reason)
+        close_price = (
+            market.bid if position.direction.lower() in {"long", "buy"} else market.ask
+        )
+        return self._close_position_internal(
+            position_id, close_price, market.timestamp, reason
+        )
 
     def execution_events(self) -> list[ExecutionEvent]:
         return list(self._events)
@@ -494,7 +553,9 @@ class VirtualBroker(BrokerInterface):
             return False
         for position in self._positions.open_positions():
             if position.order_id == order_id or position.position_id == order_id:
-                return await self.close_position(position.position_id, reason="ORDER_CLOSED")
+                return await self.close_position(
+                    position.position_id, reason="ORDER_CLOSED"
+                )
         return False
 
     def execution_summary(self) -> dict[str, int]:
@@ -504,7 +565,11 @@ class VirtualBroker(BrokerInterface):
         return {
             "connected": self._connected,
             "market_event": {
-                "timestamp": self._market_event.timestamp.isoformat() if self._market_event else None,
+                "timestamp": (
+                    self._market_event.timestamp.isoformat()
+                    if self._market_event
+                    else None
+                ),
                 "symbol": self._market_event.symbol if self._market_event else None,
                 "bid": self._market_event.bid if self._market_event else None,
                 "ask": self._market_event.ask if self._market_event else None,
@@ -520,7 +585,9 @@ class VirtualBroker(BrokerInterface):
                     "take_profit": order.take_profit,
                     "requested_at": order.requested_at.isoformat(),
                     "status": order.status,
-                    "filled_at": order.filled_at.isoformat() if order.filled_at else None,
+                    "filled_at": (
+                        order.filled_at.isoformat() if order.filled_at else None
+                    ),
                     "filled_price": order.filled_price,
                     "requested_price": order.requested_price,
                     "slippage": order.slippage,
@@ -544,13 +611,16 @@ class VirtualBroker(BrokerInterface):
                     "open_time": position.open_time.isoformat(),
                     "magic": position.magic,
                     "comment": position.comment,
-                    "close_time": position.close_time.isoformat() if position.close_time else None,
+                    "close_time": (
+                        position.close_time.isoformat() if position.close_time else None
+                    ),
                     "close_price": position.close_price,
                     "exit_reason": position.exit_reason,
                     "profit": position.profit,
                     "metadata": position.metadata,
                 }
-                for position in self._positions.open_positions() + self._positions.closed_positions()
+                for position in self._positions.open_positions()
+                + self._positions.closed_positions()
             ],
             "events": [
                 {
@@ -602,7 +672,11 @@ class VirtualBroker(BrokerInterface):
                 open_time=datetime.fromisoformat(item["open_time"]),
                 magic=int(item.get("magic", 0)),
                 comment=str(item.get("comment", "")),
-                close_time=datetime.fromisoformat(item["close_time"]) if item.get("close_time") else None,
+                close_time=(
+                    datetime.fromisoformat(item["close_time"])
+                    if item.get("close_time")
+                    else None
+                ),
                 close_price=item.get("close_price"),
                 exit_reason=str(item.get("exit_reason", "")),
                 profit=float(item.get("profit", 0.0)),

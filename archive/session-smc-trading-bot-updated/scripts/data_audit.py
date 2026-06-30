@@ -21,7 +21,7 @@ Usage:
 import argparse
 import csv
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "historical"
@@ -117,7 +117,7 @@ def audit_series(candles: list[dict], gran: str) -> dict:
                 # Rough heuristic: skip if the gap spans a weekend
                 gap_spans_weekend = (
                     prev_dt.weekday() >= 4  # Friday or later
-                    and dt.weekday() <= 1   # Monday or Tuesday
+                    and dt.weekday() <= 1  # Monday or Tuesday
                 )
                 if not gap_spans_weekend and expected > 0:
                     gaps += expected
@@ -190,21 +190,58 @@ def generate_report(audits: dict, target_years: float) -> str:
             lines.append(f"  Total bars: {r['n']:,}")
             lines.append(f"  Coverage:   {r['coverage_days']} days")
             lines.append("")
-            lines.append(format_check("Coverage ≥ 4.5yr", f"{r['coverage_days']}d", f"≥{round(target_years*365*0.9)}d", lambda v: coverage_ok))
-            lines.append(format_check("Missing bars %", f"{r['gap_pct']}%", "< 0.1%", lambda v: missing_ok))
-            lines.append(format_check("Duplicates", r["duplicates"], "0", lambda v: dup_ok))
-            lines.append(format_check("Weekend bars", r["weekend_bars"], "0 (note: small count ok near DST)", lambda v: True))
-            lines.append(format_check("Price errors (high<low)", r["price_errors"], "0", lambda v: price_ok))
-            lines.append(format_check("Out-of-order bars", r["out_of_order"], "0", lambda v: order_ok))
-            lines.append(f"  {'✅' if symbol_pass else '❌'} **{gran} {'PASS' if symbol_pass else 'FAIL'}**")
+            lines.append(
+                format_check(
+                    "Coverage ≥ 4.5yr",
+                    f"{r['coverage_days']}d",
+                    f"≥{round(target_years*365*0.9)}d",
+                    lambda v: coverage_ok,
+                )
+            )
+            lines.append(
+                format_check(
+                    "Missing bars %", f"{r['gap_pct']}%", "< 0.1%", lambda v: missing_ok
+                )
+            )
+            lines.append(
+                format_check("Duplicates", r["duplicates"], "0", lambda v: dup_ok)
+            )
+            lines.append(
+                format_check(
+                    "Weekend bars",
+                    r["weekend_bars"],
+                    "0 (note: small count ok near DST)",
+                    lambda v: True,
+                )
+            )
+            lines.append(
+                format_check(
+                    "Price errors (high<low)",
+                    r["price_errors"],
+                    "0",
+                    lambda v: price_ok,
+                )
+            )
+            lines.append(
+                format_check(
+                    "Out-of-order bars", r["out_of_order"], "0", lambda v: order_ok
+                )
+            )
+            lines.append(
+                f"  {'✅' if symbol_pass else '❌'} **{gran} {'PASS' if symbol_pass else 'FAIL'}**"
+            )
             lines.append("")
 
     lines.append("---")
     lines.append(f"## Overall Verdict")
     lines.append("")
-    lines.append(f"**{'✅ ALL PASS — data ready for backtest' if all_pass else '❌ FAILURES — fix data gaps before backtesting'}**")
+    lines.append(
+        f"**{'✅ ALL PASS — data ready for backtest' if all_pass else '❌ FAILURES — fix data gaps before backtesting'}**"
+    )
     lines.append("")
-    lines.append("Gate: missing < 0.1%, duplicates = 0, price errors = 0, coverage ≥ 4.5yr per series.")
+    lines.append(
+        "Gate: missing < 0.1%, duplicates = 0, price errors = 0, coverage ≥ 4.5yr per series."
+    )
 
     return "\n".join(lines)
 
@@ -227,7 +264,9 @@ def main(target_years: float) -> None:
             audits[f"{symbol}_{gran}"] = r
             if candles:
                 found_any = True
-                print(f"{r['n']:,} bars | gaps={r['gaps']} ({r['gap_pct']}%) | dups={r['duplicates']}")
+                print(
+                    f"{r['n']:,} bars | gaps={r['gaps']} ({r['gap_pct']}%) | dups={r['duplicates']}"
+                )
             else:
                 print("NOT FOUND")
 
@@ -242,7 +281,9 @@ def main(target_years: float) -> None:
 
     # Quick console verdict
     has_fail = any(
-        a.get("gap_pct", 100) >= 0.1 or a.get("duplicates", 1) > 0 or a.get("price_errors", 1) > 0
+        a.get("gap_pct", 100) >= 0.1
+        or a.get("duplicates", 1) > 0
+        or a.get("price_errors", 1) > 0
         for a in audits.values()
         if not a.get("errors")
     )

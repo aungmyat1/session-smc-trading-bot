@@ -13,10 +13,15 @@ def _get(obj: Any, name: str, default: Any = None) -> Any:
     return getattr(obj, name, default)
 
 
-def assess_order_execution(expected_orders: list[Any], filled_orders: list[Any]) -> CheckResult:
+def assess_order_execution(
+    expected_orders: list[Any], filled_orders: list[Any]
+) -> CheckResult:
     matched = 0
     mismatches: list[str] = []
-    filled_by_id = {str(_get(order, "order_id", _get(order, "id", ""))): order for order in filled_orders}
+    filled_by_id = {
+        str(_get(order, "order_id", _get(order, "id", ""))): order
+        for order in filled_orders
+    }
 
     for expected in expected_orders:
         order_id = str(_get(expected, "order_id", _get(expected, "id", "")))
@@ -27,11 +32,13 @@ def assess_order_execution(expected_orders: list[Any], filled_orders: list[Any])
         numeric_fields = ("volume", "stop_loss", "take_profit")
         string_fields = ("symbol", "direction")
         numeric_ok = all(
-            abs(float(_get(expected, field, 0.0)) - float(_get(actual, field, 0.0))) <= 1e-9
+            abs(float(_get(expected, field, 0.0)) - float(_get(actual, field, 0.0)))
+            <= 1e-9
             for field in numeric_fields
         )
         string_ok = all(
-            str(_get(expected, field, "")).upper() == str(_get(actual, field, "")).upper()
+            str(_get(expected, field, "")).upper()
+            == str(_get(actual, field, "")).upper()
             for field in string_fields
         )
         if numeric_ok and string_ok:

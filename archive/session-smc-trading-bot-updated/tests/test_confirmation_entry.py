@@ -5,18 +5,30 @@ Strategy: build carefully crafted synthetic session candles where each phase
 of the signal chain is satisfied, verify a Signal is returned, then break one
 phase at a time and verify None is returned.
 """
+
 import pytest
-from session_smc.confirmation_entry import generate_signal_A, Signal, DEFAULT_CONFIG
+
+from session_smc.confirmation_entry import (DEFAULT_CONFIG, Signal,
+                                            generate_signal_A)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def c(o, h, l, cl, t="2024-01-01T07:00:00Z"):
     return {"open": o, "high": h, "low": l, "close": cl, "time": t, "volume": 100}
 
 
 def flat_candles(price, n, start_hour=7):
-    return [c(price, price + 0.0001, price - 0.0001, price,
-              f"2024-01-01T{start_hour + i:02d}:00:00Z") for i in range(n)]
+    return [
+        c(
+            price,
+            price + 0.0001,
+            price - 0.0001,
+            price,
+            f"2024-01-01T{start_hour + i:02d}:00:00Z",
+        )
+        for i in range(n)
+    ]
 
 
 def bullish_htf(n=20):
@@ -25,7 +37,7 @@ def bullish_htf(n=20):
     confirms idx 4 as swing low (needs right neighbor).
     """
     highs = [1.0, 2.0, 1.0, 3.0, 1.0, 4.0]
-    lows  = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
+    lows = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
     base = [c(l, h, l, h) for h, l in zip(highs, lows)]
     filler = flat_candles(2.0, max(0, n - len(base)))
     return base + filler
@@ -36,13 +48,14 @@ def bearish_htf(n=20):
     LH: peaks 5→4→3 (idx 1,3,5); LL: valleys 1.5→1.0 (idx 2,4).
     """
     highs = [1.0, 5.0, 2.0, 4.0, 1.5, 3.0, 1.0]
-    lows  = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
+    lows = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
     base = [c(l, h, l, h) for h, l in zip(highs, lows)]
     filler = flat_candles(1.5, max(0, n - len(base)))
     return base + filler
 
 
 # ── Synthetic full-signal session ────────────────────────────────────────────
+
 
 def build_bullish_session():
     """
@@ -103,6 +116,7 @@ def build_bullish_session():
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestGenerateSignalA:
     _cfg = {**DEFAULT_CONFIG, "atr_period": 5, "swing_n": 1}

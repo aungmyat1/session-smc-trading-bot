@@ -1,18 +1,17 @@
 """Unit tests for P1-4: strategy-generic backtest dispatch in payload_builder."""
+
 from __future__ import annotations
 
 import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 from core.strategy_registry import get_backtest_script
 from research.svos import payload_builder
-from research.svos.payload_builder import _no_backtest_summary, _run_backtest_script
-
+from research.svos.payload_builder import _no_backtest_summary
 
 # ── get_backtest_script registry lookup ──────────────────────────────────────
+
 
 def test_get_backtest_script_sta2_returns_path() -> None:
     result = get_backtest_script("ST-A2")
@@ -41,6 +40,7 @@ def test_get_backtest_script_ny_momentum_returns_none() -> None:
 
 # ── _no_backtest_summary stub ─────────────────────────────────────────────────
 
+
 def test_no_backtest_summary_any_pass_false() -> None:
     stub = _no_backtest_summary("LondonBreakout")
     assert stub["any_pass"] is False
@@ -62,6 +62,7 @@ def test_no_backtest_summary_run_id_contains_strategy() -> None:
 
 # ── build_svos_payload_bundle dispatches per strategy ────────────────────────
 
+
 def test_build_svos_payload_bundle_no_script_strategy(tmp_path, monkeypatch) -> None:
     """LondonBreakout has no backtest_script → uses _no_backtest_summary (no subprocess)."""
     monkeypatch.setattr(payload_builder, "load_m15", lambda *a, **kw: [])
@@ -81,7 +82,9 @@ def test_build_svos_payload_bundle_no_script_strategy(tmp_path, monkeypatch) -> 
     async def fake_execution_validation(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(payload_builder, "run_replay_validation_from_candles", fake_execution_validation)
+    monkeypatch.setattr(
+        payload_builder, "run_replay_validation_from_candles", fake_execution_validation
+    )
 
     bundle = payload_builder.build_svos_payload_bundle(
         strategy="LondonBreakout",
@@ -89,7 +92,9 @@ def test_build_svos_payload_bundle_no_script_strategy(tmp_path, monkeypatch) -> 
         output_dir=tmp_path,
     )
 
-    assert subprocess_called == [], "backtest script subprocess.run was unexpectedly called"
+    assert (
+        subprocess_called == []
+    ), "backtest script subprocess.run was unexpectedly called"
     assert bundle.backtest["completed_successfully"] is False
     assert bundle.backtest["trade_count"] == 0
 
@@ -129,7 +134,9 @@ def test_build_svos_payload_bundle_sta2_calls_subprocess(tmp_path, monkeypatch) 
     async def fake_execution_validation(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(payload_builder, "run_replay_validation_from_candles", fake_execution_validation)
+    monkeypatch.setattr(
+        payload_builder, "run_replay_validation_from_candles", fake_execution_validation
+    )
 
     payload_builder.build_svos_payload_bundle(
         strategy="ST-A2",

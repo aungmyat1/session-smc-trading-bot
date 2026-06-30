@@ -26,27 +26,27 @@ import math
 _PIP_VALUE_PER_LOT: dict[str, float] = {
     "EURUSD": 10.0,
     "GBPUSD": 10.0,
-    "USDJPY": 9.09,   # approx at 110
-    "XAUUSD": 10.0,   # 100 oz/lot × $0.10/pip = $10/pip/lot
+    "USDJPY": 9.09,  # approx at 110
+    "XAUUSD": 10.0,  # 100 oz/lot × $0.10/pip = $10/pip/lot
 }
-_MIN_LOT  = 0.01
-_MAX_LOT  = 0.5      # demo cap
+_MIN_LOT = 0.01
+_MAX_LOT = 0.5  # demo cap
 _LOT_STEP = 0.01
 
-DEFAULT_RISK_PCT = 0.0025   # 0.25%
+DEFAULT_RISK_PCT = 0.0025  # 0.25%
 
 LIMITS = {
-    "max_trades_per_day":     4,
-    "max_open_positions":     2,
-    "daily_loss_limit":       0.015,
+    "max_trades_per_day": 4,
+    "max_open_positions": 2,
+    "daily_loss_limit": 0.015,
     "max_consecutive_losses": 3,
 }
 
 
 def calculate_lots(
-    balance:  float,
-    sl_pips:  float,
-    symbol:   str = "EURUSD",
+    balance: float,
+    sl_pips: float,
+    symbol: str = "EURUSD",
     risk_pct: float = DEFAULT_RISK_PCT,
 ) -> float:
     """
@@ -58,22 +58,22 @@ def calculate_lots(
     if sl_pips <= 0 or balance <= 0:
         return _MIN_LOT
 
-    risk_usd     = balance * risk_pct
-    pip_val      = _PIP_VALUE_PER_LOT.get(symbol, 10.0)
-    raw_lots     = risk_usd / (sl_pips * pip_val)
-    stepped      = math.floor(raw_lots / _LOT_STEP) * _LOT_STEP
+    risk_usd = balance * risk_pct
+    pip_val = _PIP_VALUE_PER_LOT.get(symbol, 10.0)
+    raw_lots = risk_usd / (sl_pips * pip_val)
+    stepped = math.floor(raw_lots / _LOT_STEP) * _LOT_STEP
     return max(_MIN_LOT, min(_MAX_LOT, round(stepped, 2)))
 
 
 def new_state() -> dict:
     return {
-        "trades_today":          0,
-        "open_positions":        0,
-        "daily_loss_pct":        0.0,
-        "consecutive_losses":    0,
-        "halted":                False,
-        "halt_reason":           "",
-        "last_reset":            "",
+        "trades_today": 0,
+        "open_positions": 0,
+        "daily_loss_pct": 0.0,
+        "consecutive_losses": 0,
+        "halted": False,
+        "halt_reason": "",
+        "last_reset": "",
     }
 
 
@@ -119,10 +119,10 @@ def record_result(state: dict, outcome: str, pnl_pct: float = 0.0) -> dict:
 
     # Engage halt
     if state["daily_loss_pct"] >= LIMITS["daily_loss_limit"]:
-        state["halted"]      = True
+        state["halted"] = True
         state["halt_reason"] = "DAILY_LOSS_LIMIT"
     elif state["consecutive_losses"] >= LIMITS["max_consecutive_losses"]:
-        state["halted"]      = True
+        state["halted"] = True
         state["halt_reason"] = "CONSECUTIVE_LOSS_LIMIT"
 
     return state
@@ -130,10 +130,11 @@ def record_result(state: dict, outcome: str, pnl_pct: float = 0.0) -> dict:
 
 def reset_daily(state: dict) -> dict:
     from datetime import datetime, timezone
-    state["trades_today"]       = 0
-    state["daily_loss_pct"]     = 0.0
+
+    state["trades_today"] = 0
+    state["daily_loss_pct"] = 0.0
     state["consecutive_losses"] = 0
-    state["halted"]             = False
-    state["halt_reason"]        = ""
-    state["last_reset"]         = datetime.now(timezone.utc).isoformat()
+    state["halted"] = False
+    state["halt_reason"] = ""
+    state["last_reset"] = datetime.now(timezone.utc).isoformat()
     return state

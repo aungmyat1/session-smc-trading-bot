@@ -1,12 +1,10 @@
 """Tests for session_smc/swing_detector.py"""
+
 import pytest
-from session_smc.swing_detector import (
-    swing_highs,
-    swing_lows,
-    last_swing_high,
-    last_swing_low,
-    classify_structure,
-)
+
+from session_smc.swing_detector import (classify_structure, last_swing_high,
+                                        last_swing_low, swing_highs,
+                                        swing_lows)
 
 
 def c(h, l, o=None, cl=None):
@@ -15,6 +13,7 @@ def c(h, l, o=None, cl=None):
 
 
 # ── swing_highs ───────────────────────────────────────────────────────────────
+
 
 class TestSwingHighs:
     def test_too_few_candles_returns_empty(self):
@@ -61,6 +60,7 @@ class TestSwingHighs:
 
 # ── swing_lows ────────────────────────────────────────────────────────────────
 
+
 class TestSwingLows:
     def test_single_trough_n1(self):
         candles = [c(10, 5), c(10, 2), c(10, 5)]
@@ -82,6 +82,7 @@ class TestSwingLows:
 
 
 # ── last_swing_high / last_swing_low ─────────────────────────────────────────
+
 
 class TestLastSwing:
     def _candles(self):
@@ -120,12 +121,13 @@ class TestLastSwing:
 
 # ── classify_structure ────────────────────────────────────────────────────────
 
+
 class TestClassifyStructure:
     def _bullish_candles(self):
         # Two confirmed swing highs (HH) and two confirmed swing lows (HL) with n=1
         # highs: 1,2,1,3,1  lows: 1,0.5,1,0.7,1
         highs = [1, 2, 1, 3, 1]
-        lows  = [1, 0.5, 1, 0.7, 1]
+        lows = [1, 0.5, 1, 0.7, 1]
         return [c(h, l) for h, l in zip(highs, lows)]
 
     def _bearish_candles(self):
@@ -133,7 +135,7 @@ class TestClassifyStructure:
         # swing_highs n=1: idx 1(5), idx 3(4), idx 5(3)  → LH ✓
         # swing_lows  n=1: idx 2(1.5), idx 4(1.0)        → LL ✓
         highs = [1.0, 5.0, 2.0, 4.0, 1.5, 3.0, 1.0]
-        lows  = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
+        lows = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
         return [c(h, l) for h, l in zip(highs, lows)]
 
     def test_bullish_structure(self):
@@ -150,7 +152,7 @@ class TestClassifyStructure:
     def test_neutral_mixed(self):
         # HH but LL → mixed
         highs = [1, 2, 1, 3, 1]
-        lows  = [1, 0.8, 1, 0.5, 1]
+        lows = [1, 0.8, 1, 0.5, 1]
         cd = [c(h, l) for h, l in zip(highs, lows)]
         result = classify_structure(cd, n=1)
         # HH: 2→3 ✓, HL: 0.8→0.5 ✗ (LL instead) → 'neutral'

@@ -16,4 +16,3 @@ class ExecutionEvent:
     price: float | None = None
     message: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
-

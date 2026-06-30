@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import (StrategyDocument, ValidationFinding,
+                      ValidationRecommendation, ValidationStatus,
+                      ValidatorResult)
 from ..module_base import BaseValidator
 
 
@@ -23,7 +25,10 @@ class LogicalConsistencyValidator(BaseValidator):
                 )
             )
 
-        if re.search(r"maximum\s+2\s+trades?/day", text) and "unlimited entries" in text:
+        if (
+            re.search(r"maximum\s+2\s+trades?/day", text)
+            and "unlimited entries" in text
+        ):
             findings.append(
                 ValidationFinding(
                     code="conflicting_trade_limits",
@@ -32,7 +37,9 @@ class LogicalConsistencyValidator(BaseValidator):
                 )
             )
 
-        if "not implemented" in text and any(term in text for term in ("implemented", "must", "required")):
+        if "not implemented" in text and any(
+            term in text for term in ("implemented", "must", "required")
+        ):
             findings.append(
                 ValidationFinding(
                     code="spec_implementation_mismatch",
@@ -42,7 +49,10 @@ class LogicalConsistencyValidator(BaseValidator):
             )
 
         exit_rules = str(document.extracted_fields.get("exit_rules", "")).lower()
-        if "single tp only" in exit_rules and any(term in exit_rules for term in ("partial", "runner", "break even", "trailing")):
+        if "single tp only" in exit_rules and any(
+            term in exit_rules
+            for term in ("partial", "runner", "break even", "trailing")
+        ):
             findings.append(
                 ValidationFinding(
                     code="conflicting_exit_model",
@@ -62,8 +72,23 @@ class LogicalConsistencyValidator(BaseValidator):
                 )
             )
 
-        score = round(max(0.0, 100.0 - sum(30 if item.severity == "ERROR" else 15 for item in findings)), 2)
-        status = "PASS" if not findings else "FAIL" if any(item.severity == "ERROR" for item in findings) else "PARTIAL"
+        score = round(
+            max(
+                0.0,
+                100.0
+                - sum(30 if item.severity == "ERROR" else 15 for item in findings),
+            ),
+            2,
+        )
+        status: ValidationStatus = (
+            "PASS"
+            if not findings
+            else (
+                "FAIL"
+                if any(item.severity == "ERROR" for item in findings)
+                else "PARTIAL"
+            )
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

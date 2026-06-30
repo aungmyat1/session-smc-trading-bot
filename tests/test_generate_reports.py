@@ -8,7 +8,6 @@ import pytest
 
 import scripts.generate_reports as generate_reports
 
-
 UTC = timezone.utc
 
 
@@ -33,24 +32,21 @@ strategies:
     symbols: [EURUSD, GBPUSD]
     last_svos_status: FAIL
     last_svos_verification_ready: true
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "config" / "demo.yaml",
         """
 execution:
   mode: demo
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "config" / "research_engine.yaml",
         """
 analytics:
   duckdb_path: research.db
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "logs" / "st_a2_runner.log",
@@ -152,17 +148,43 @@ analytics:
 
     monkeypatch.setenv("DB_BACKEND", "duckdb")
     monkeypatch.setattr(generate_reports, "ROOT", tmp_path)
-    monkeypatch.setattr(generate_reports, "TRADE_EVENT_LOG", tmp_path / "logs" / "trades.jsonl")
+    monkeypatch.setattr(
+        generate_reports, "TRADE_EVENT_LOG", tmp_path / "logs" / "trades.jsonl"
+    )
     monkeypatch.setattr(generate_reports, "BOT_LOG", tmp_path / "logs" / "bot.log")
-    monkeypatch.setattr(generate_reports, "RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
-    monkeypatch.setattr(generate_reports, "DEMO_JOURNALS", [tmp_path / "logs" / "st_a2_demo_trades.jsonl"])
-    monkeypatch.setattr(generate_reports, "TRADE_DB", tmp_path / "data" / "trade_journal.db")
-    monkeypatch.setattr(generate_reports, "BOT_STATE", tmp_path / "logs" / "bot_state.json")
-    monkeypatch.setattr(generate_reports, "EXECUTION_DAILY", tmp_path / "logs" / "execution_summary_daily.json")
-    monkeypatch.setattr(generate_reports, "EXECUTION_WEEKLY", tmp_path / "logs" / "execution_summary_weekly.json")
-    monkeypatch.setattr(generate_reports, "CATALOG", tmp_path / "config" / "strategy_catalog.yaml")
-    monkeypatch.setattr(generate_reports, "DEMO_CONFIG", tmp_path / "config" / "demo.yaml")
-    monkeypatch.setattr(generate_reports, "VALIDATION_CONFIG", tmp_path / "config" / "validation.yaml")
+    monkeypatch.setattr(
+        generate_reports, "RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log"
+    )
+    monkeypatch.setattr(
+        generate_reports,
+        "DEMO_JOURNALS",
+        [tmp_path / "logs" / "st_a2_demo_trades.jsonl"],
+    )
+    monkeypatch.setattr(
+        generate_reports, "TRADE_DB", tmp_path / "data" / "trade_journal.db"
+    )
+    monkeypatch.setattr(
+        generate_reports, "BOT_STATE", tmp_path / "logs" / "bot_state.json"
+    )
+    monkeypatch.setattr(
+        generate_reports,
+        "EXECUTION_DAILY",
+        tmp_path / "logs" / "execution_summary_daily.json",
+    )
+    monkeypatch.setattr(
+        generate_reports,
+        "EXECUTION_WEEKLY",
+        tmp_path / "logs" / "execution_summary_weekly.json",
+    )
+    monkeypatch.setattr(
+        generate_reports, "CATALOG", tmp_path / "config" / "strategy_catalog.yaml"
+    )
+    monkeypatch.setattr(
+        generate_reports, "DEMO_CONFIG", tmp_path / "config" / "demo.yaml"
+    )
+    monkeypatch.setattr(
+        generate_reports, "VALIDATION_CONFIG", tmp_path / "config" / "validation.yaml"
+    )
     monkeypatch.setattr(generate_reports.health_check, "_ROOT", tmp_path)
 
 
@@ -182,7 +204,9 @@ def test_report_directories_exist():
         assert path.exists(), f"missing report directory: {path}"
 
 
-def test_generate_daily_report_creates_markdown_with_required_sections(tmp_path, monkeypatch):
+def test_generate_daily_report_creates_markdown_with_required_sections(
+    tmp_path, monkeypatch
+):
     _configure_tmp_repo(tmp_path, monkeypatch)
     ts = datetime(2026, 6, 28, 12, 30, tzinfo=UTC)
 
@@ -231,7 +255,9 @@ def test_report_generation_does_not_call_live_broker_checks(tmp_path, monkeypatc
     monkeypatch.setattr(generate_reports.health_check, "check_broker", _forbidden)
     monkeypatch.setattr(generate_reports.health_check, "check_data_feed", _forbidden)
 
-    path = generate_reports.generate_report("system-health", root=tmp_path, generated_at=ts)
+    path = generate_reports.generate_report(
+        "system-health", root=tmp_path, generated_at=ts
+    )
 
     assert path.exists()
     content = path.read_text(encoding="utf-8")
@@ -251,7 +277,9 @@ def test_incident_metrics_ignore_benign_engineio_shutdown_noise(tmp_path, monkey
         )
         + "\n",
     )
-    monkeypatch.setattr(generate_reports, "RUNNER_LOGS", [tmp_path / "logs" / "strategy_demo.log"])
+    monkeypatch.setattr(
+        generate_reports, "RUNNER_LOGS", [tmp_path / "logs" / "strategy_demo.log"]
+    )
 
     metrics = generate_reports._incident_metrics()
     log_scan = generate_reports._recent_log_scan()

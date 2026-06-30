@@ -31,9 +31,9 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import socket
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -41,10 +41,11 @@ from urllib.parse import urlparse
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.lineage import build_release_metadata
+from research.lineage import build_release_metadata  # noqa: E402
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(_ROOT / ".env")
 except ImportError:
     pass
@@ -59,8 +60,8 @@ _RUNNER_LOGS = [
     _ROOT / "logs" / "st_a2_demo.log",
     _ROOT / "logs" / "st_a2_runner.log",
 ]
-_PAIRS       = ["EURUSD", "XAUUSD"]
-_STALE_S     = 300   # runner log is stale if no entry within 5 min
+_PAIRS = ["EURUSD", "XAUUSD"]
+_STALE_S = 300  # runner log is stale if no entry within 5 min
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20
 _DB_CONNECT_TIMEOUT_S = 3
@@ -79,8 +80,8 @@ def check_runner() -> dict:
 
     age_s = datetime.now().timestamp() - active_log.stat().st_mtime
     try:
-        lines    = active_log.read_text(errors="replace").splitlines()
-        last_line = next((l for l in reversed(lines) if l.strip()), "")
+        lines = active_log.read_text(errors="replace").splitlines()
+        last_line = next((line for line in reversed(lines) if line.strip()), "")
     except OSError:
         last_line = ""
 
@@ -90,12 +91,17 @@ def check_runner() -> dict:
             "detail": f"last activity {int(age_s)}s ago (>{_STALE_S}s)",
             "last_line": last_line[-120:],
         }
-    return {"status": "PASS", "detail": f"active ({int(age_s)}s ago)", "last_line": last_line[-120:]}
+    return {
+        "status": "PASS",
+        "detail": f"active ({int(age_s)}s ago)",
+        "last_line": last_line[-120:],
+    }
 
 
 async def check_broker() -> dict:
     try:
         from execution.mt5_connector import MT5Connector
+
         conn = MT5Connector(mode="demo")
         await asyncio.wait_for(conn.connect(), timeout=_CONNECT_TIMEOUT_S)
         hb = await asyncio.wait_for(conn.heartbeat(), timeout=_RPC_TIMEOUT_S)
@@ -116,9 +122,10 @@ async def check_data_feed() -> dict:
     try:
         from execution.mt5_connector import MT5Connector
         from execution.vantage_demo_executor import VantageDemoExecutor
+
         conn = MT5Connector(mode="demo")
         await asyncio.wait_for(conn.connect(), timeout=_CONNECT_TIMEOUT_S)
-        ex   = VantageDemoExecutor(conn)
+        ex = VantageDemoExecutor(conn)
         pairs: dict = {}
         for sym in _PAIRS:
             try:
@@ -135,7 +142,7 @@ async def check_data_feed() -> dict:
         return {"status": "FAIL", "detail": str(exc)[:200]}
 
     errors = [s for s, v in pairs.items() if "error" in v]
-    wide   = [s for s, v in pairs.items() if not v.get("within_limit", True)]
+    wide = [s for s, v in pairs.items() if not v.get("within_limit", True)]
     if errors:
         return {"status": "FAIL", "detail": f"fetch failed: {errors}", "pairs": pairs}
     if wide:
@@ -162,7 +169,9 @@ def _load_db_health_state() -> dict:
 
 def _write_db_health_state(state: dict) -> None:
     _DB_HEALTH_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _DB_HEALTH_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+    _DB_HEALTH_STATE_PATH.write_text(
+        json.dumps(state, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
 
 def _record_db_probe_result(endpoint_key: str, ok: bool) -> int:
@@ -257,7 +266,11 @@ def _infer_db_backend(explicit_backend: str | None = None) -> tuple[str, dict]:
         if scheme.startswith("duckdb"):
             return "duckdb", {"database_url": database_url}
 
-    if os.environ.get("DB_HOST") or os.environ.get("DB_PORT") or os.environ.get("DB_NAME"):
+    if (
+        os.environ.get("DB_HOST")
+        or os.environ.get("DB_PORT")
+        or os.environ.get("DB_NAME")
+    ):
         return "postgres", {}
 
     research_cfg = _load_yaml(_ROOT / "config" / "research_engine.yaml")
@@ -312,10 +325,24 @@ def check_research_db(db_backend: str | None = None) -> dict:
 
     database_url = meta.get("database_url") or os.environ.get("DATABASE_URL", "")
     parsed = urlparse(database_url) if database_url else None
-    host = parsed.hostname if parsed and parsed.hostname else os.environ.get("DB_HOST", "localhost")
-    port = parsed.port if parsed and parsed.port else int(os.environ.get("DB_PORT", "5432"))
-    db_name = parsed.path.lstrip("/") if parsed and parsed.path else os.environ.get("DB_NAME", "")
-    db_user = parsed.username if parsed and parsed.username else os.environ.get("DB_USER", "")
+    host = (
+        parsed.hostname
+        if parsed and parsed.hostname
+        else os.environ.get("DB_HOST", "localhost")
+    )
+    port = (
+        parsed.port
+        if parsed and parsed.port
+        else int(os.environ.get("DB_PORT", "5432"))
+    )
+    db_name = (
+        parsed.path.lstrip("/")
+        if parsed and parsed.path
+        else os.environ.get("DB_NAME", "")
+    )
+    db_user = (
+        parsed.username if parsed and parsed.username else os.environ.get("DB_USER", "")
+    )
     required = backend == "postgres"
     service_status = _postgres_service_status()
     endpoint_key = f"{db_user or '?'}@{host}:{port}/{db_name or '?'}"
@@ -388,31 +415,45 @@ def check_risk_engine() -> dict:
         except Exception:
             pass
 
-    from execution.demo_risk_manager import check_limits, LIMITS
+    from execution.demo_risk_manager import LIMITS, check_limits
+
     result = check_limits(state)
     if not result["approved"]:
-        return {"status": "FAIL", "detail": f"blocked: {result['reason']}", "state": state}
+        return {
+            "status": "FAIL",
+            "detail": f"blocked: {result['reason']}",
+            "state": state,
+        }
 
     trades = state.get("trades_today", 0)
-    cap    = LIMITS["max_trades_per_day"]
+    cap = LIMITS["max_trades_per_day"]
     return {
         "status": "PASS",
-        "detail": (f"trades={trades}/{cap}  "
-                   f"consec_L={state.get('consecutive_losses', 0)}  "
-                   f"daily_loss={state.get('daily_loss_pct', 0.0):.2%}"),
+        "detail": (
+            f"trades={trades}/{cap}  "
+            f"consec_L={state.get('consecutive_losses', 0)}  "
+            f"daily_loss={state.get('daily_loss_pct', 0.0):.2%}"
+        ),
     }
 
 
 def check_portfolio() -> dict:
     from core.portfolio_manager import PortfolioManager
-    pm    = PortfolioManager()
+
+    pm = PortfolioManager()
     stats = pm.stats()
     if pm.any_loss_limit_hit():
-        return {"status": "FAIL", "detail": "portfolio loss limit triggered", "stats": stats}
+        return {
+            "status": "FAIL",
+            "detail": "portfolio loss limit triggered",
+            "stats": stats,
+        }
     return {
         "status": "PASS",
-        "detail": (f"daily={stats['daily_pnl_pct']:+.3f}%  "
-                   f"weekly={stats['weekly_pnl_pct']:+.3f}%"),
+        "detail": (
+            f"daily={stats['daily_pnl_pct']:+.3f}%  "
+            f"weekly={stats['weekly_pnl_pct']:+.3f}%"
+        ),
     }
 
 
@@ -426,27 +467,39 @@ def check_execution() -> dict:
             "emergency_stop": emergency,
         }
 
-    mode      = os.environ.get("TRADING_MODE", "shadow").lower()
+    mode = os.environ.get("TRADING_MODE", "shadow").lower()
     demo_only = os.environ.get("DEMO_ONLY", "true").lower() not in ("false", "0", "no")
-    live      = os.environ.get("LIVE_TRADING", "false").lower() in ("true", "1", "yes")
+    live = os.environ.get("LIVE_TRADING", "false").lower() in ("true", "1", "yes")
 
     if live or mode == "live":
-        return {"status": "BLOCKED",
-                "detail": "LIVE_TRADING or TRADING_MODE=live — see CLAUDE.md §0"}
+        return {
+            "status": "BLOCKED",
+            "detail": "LIVE_TRADING or TRADING_MODE=live — see CLAUDE.md §0",
+        }
     if mode == "shadow" or demo_only:
-        return {"status": "SHADOW",
-                "detail": f"mode={mode}  DEMO_ONLY={demo_only}  (no live orders)"}
-    return {"status": "READY",
-            "detail": f"mode={mode}  DEMO_ONLY={demo_only}  LIVE_TRADING={live}"}
+        return {
+            "status": "SHADOW",
+            "detail": f"mode={mode}  DEMO_ONLY={demo_only}  (no live orders)",
+        }
+    return {
+        "status": "READY",
+        "detail": f"mode={mode}  DEMO_ONLY={demo_only}  LIVE_TRADING={live}",
+    }
 
 
 def check_journal() -> dict:
     from core.trade_journal_db import TradeJournalDB
+
     try:
         s = TradeJournalDB().summary()
-        return {"status": "PASS", "summary": s,
-                "detail": (f"total={s['total']}  open={s['open']}  "
-                           f"closed={s['closed']}  W={s['wins']}  L={s['losses']}")}
+        return {
+            "status": "PASS",
+            "summary": s,
+            "detail": (
+                f"total={s['total']}  open={s['open']}  "
+                f"closed={s['closed']}  W={s['wins']}  L={s['losses']}"
+            ),
+        }
     except Exception as exc:
         return {"status": "FAIL", "detail": str(exc)[:200]}
 
@@ -455,17 +508,32 @@ def check_recovery() -> dict:
     state_path = _ROOT / "logs" / "bot_state.json"
     journal_path = _ROOT / "logs" / "trades.jsonl"
     state: dict = {}
-    journal_stats: dict = {"records": 0, "signals": 0, "orders": 0, "fills": 0, "rejections": 0, "closes": 0}
+    journal_stats: dict = {
+        "records": 0,
+        "signals": 0,
+        "orders": 0,
+        "fills": 0,
+        "rejections": 0,
+        "closes": 0,
+    }
 
     if state_path.exists():
         try:
             state = json.loads(state_path.read_text())
         except Exception:
-            return {"status": "WARN", "detail": "bot_state.json exists but could not be parsed", "state_file": str(state_path)}
+            return {
+                "status": "WARN",
+                "detail": "bot_state.json exists but could not be parsed",
+                "state_file": str(state_path),
+            }
 
     if journal_path.exists():
         try:
-            lines = [line for line in journal_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            lines = [
+                line
+                for line in journal_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
             journal_stats["records"] = len(lines)
             for line in lines:
                 try:
@@ -484,10 +552,19 @@ def check_recovery() -> dict:
                 elif event_type == "POSITION_CLOSED":
                     journal_stats["closes"] += 1
         except Exception as exc:
-            return {"status": "WARN", "detail": f"trade journal unreadable: {exc}", "state": state}
+            return {
+                "status": "WARN",
+                "detail": f"trade journal unreadable: {exc}",
+                "state": state,
+            }
 
     if not state and not journal_stats["records"]:
-        return {"status": "WARN", "detail": "no restart recovery state found", "state": state, "journal": journal_stats}
+        return {
+            "status": "WARN",
+            "detail": "no restart recovery state found",
+            "state": state,
+            "journal": journal_stats,
+        }
 
     return {
         "status": "PASS",
@@ -502,30 +579,41 @@ def check_recovery() -> dict:
 
 # ── Output ─────────────────────────────────────────────────────────────────────
 
-_ICON = {"PASS": "✓", "WARN": "~", "FAIL": "✗",
-         "READY": "✓", "SHADOW": "~", "BLOCKED": "✗", "SKIP": "-"}
+_ICON = {
+    "PASS": "✓",
+    "WARN": "~",
+    "FAIL": "✗",
+    "READY": "✓",
+    "SHADOW": "~",
+    "BLOCKED": "✗",
+    "SKIP": "-",
+}
 
 
 def _fmt(label: str, r: dict, w: int = 14) -> str:
-    st   = r.get("status", "?")
+    st = r.get("status", "?")
     icon = _ICON.get(st, "?")
     return f"  {label:<{w}}  {icon} {st:<8}  {r.get('detail', '')}"
 
 
 async def _run_all(no_broker: bool, no_db: bool, db_backend: str | None = None) -> dict:
     results: dict[str, dict] = {}
-    results["Runner"]      = check_runner()
+    results["Runner"] = check_runner()
     results["Risk Engine"] = check_risk_engine()
-    results["Recovery"]    = check_recovery()
-    results["Portfolio"]   = check_portfolio()
-    results["Execution"]   = check_execution()
-    results["Journal"]     = check_journal()
-    results["Research DB"] = {"status": "SKIP", "detail": "--no-db"} if no_db else check_research_db(db_backend)
+    results["Recovery"] = check_recovery()
+    results["Portfolio"] = check_portfolio()
+    results["Execution"] = check_execution()
+    results["Journal"] = check_journal()
+    results["Research DB"] = (
+        {"status": "SKIP", "detail": "--no-db"}
+        if no_db
+        else check_research_db(db_backend)
+    )
     if not no_broker:
-        results["Broker"]    = await check_broker()
+        results["Broker"] = await check_broker()
         results["Data Feed"] = await check_data_feed()
     else:
-        results["Broker"]    = {"status": "SKIP", "detail": "--no-broker"}
+        results["Broker"] = {"status": "SKIP", "detail": "--no-broker"}
         results["Data Feed"] = {"status": "SKIP", "detail": "--no-broker"}
     return results
 
@@ -541,10 +629,12 @@ def _verdict(results: dict) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="ST-A2 health check")
-    parser.add_argument("--no-broker", action="store_true",
-                        help="Skip broker connection (offline-safe)")
-    parser.add_argument("--no-db", action="store_true",
-                        help="Skip research database reachability probe")
+    parser.add_argument(
+        "--no-broker", action="store_true", help="Skip broker connection (offline-safe)"
+    )
+    parser.add_argument(
+        "--no-db", action="store_true", help="Skip research database reachability probe"
+    )
     parser.add_argument(
         "--db-backend",
         choices=sorted(_DB_BACKEND_CHOICES),
@@ -558,12 +648,20 @@ def main() -> None:
         os.environ["DB_BACKEND"] = args.db_backend
 
     results = asyncio.run(_run_all(args.no_broker, args.no_db, args.db_backend))
-    now     = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     if args.as_json:
-        print(json.dumps({"timestamp": now, "checks": results,
-                          "verdict": _verdict(results),
-                          "release": build_release_metadata()}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "timestamp": now,
+                    "checks": results,
+                    "verdict": _verdict(results),
+                    "release": build_release_metadata(),
+                },
+                indent=2,
+            )
+        )
         return
 
     print()
@@ -574,7 +672,7 @@ def main() -> None:
     for label, r in results.items():
         print(_fmt(label, r))
     print()
-    v    = _verdict(results)
+    v = _verdict(results)
     icon = "✓" if "READY" in v else "✗"
     print(f"  Overall:  {icon} {v}")
     print("=" * 62)
@@ -582,10 +680,12 @@ def main() -> None:
     j = results.get("Journal", {}).get("summary", {})
     if j.get("total", 0) > 0:
         print()
-        print(f"  Journal: {j['total']} records  "
-              f"open={j['open']}  closed={j['closed']}  "
-              f"W={j['wins']}  L={j['losses']}  "
-              f"avgR={j['avg_r']}  PF={j['profit_factor']}")
+        print(
+            f"  Journal: {j['total']} records  "
+            f"open={j['open']}  closed={j['closed']}  "
+            f"W={j['wins']}  L={j['losses']}  "
+            f"avgR={j['avg_r']}  PF={j['profit_factor']}"
+        )
     print()
 
 

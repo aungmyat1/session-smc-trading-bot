@@ -22,6 +22,7 @@ sys.path.insert(0, str(_ROOT))
 os.environ["LIVE_TRADING"] = "false"
 
 from dotenv import load_dotenv
+
 load_dotenv(_ROOT / ".env", override=False)
 
 from execution.metaapi_client import MetaAPIClient
@@ -55,9 +56,11 @@ async def attempt_reconnect(client: MetaAPIClient, attempt: int, label: str) -> 
 
     elapsed = time.monotonic() - t0
     icon = "✅" if success else "❌"
-    print(f"  {icon}  Attempt {attempt} ({label}): success={success}  "
-          f"balance={balance:.0f}  elapsed={elapsed:.1f}s"
-          + (f"  err={error}" if error else ""))
+    print(
+        f"  {icon}  Attempt {attempt} ({label}): success={success}  "
+        f"balance={balance:.0f}  elapsed={elapsed:.1f}s"
+        + (f"  err={error}" if error else "")
+    )
     return {
         "attempt": attempt,
         "label": label,
@@ -119,7 +122,9 @@ async def run() -> dict:
     print()
     print("=" * 60)
     verdict = "✅ PASS" if all_passed else "❌ FAIL"
-    print(f"  VERDICT: {verdict}  ({sum(r['success'] for r in results)}/{len(results)} reconnects)")
+    print(
+        f"  VERDICT: {verdict}  ({sum(r['success'] for r in results)}/{len(results)} reconnects)"
+    )
     print("=" * 60)
 
     return {
@@ -136,8 +141,11 @@ def write_report(data: dict) -> None:
     passed = data.get("passed", False)
     attempts = data.get("reconnect_attempts", [])
 
-    verdict = "### ✅ PASS — all reconnect attempts succeeded" if passed \
+    verdict = (
+        "### ✅ PASS — all reconnect attempts succeeded"
+        if passed
         else "### ❌ FAIL — one or more reconnect attempts failed"
+    )
 
     lines = [
         "# OPS01_RECONNECT_AUDIT.md",
@@ -174,8 +182,10 @@ def write_report(data: dict) -> None:
     for a in attempts:
         icon = "✅" if a["success"] else "❌"
         err = f"  `{a['error']}`" if a["error"] else ""
-        lines.append(f"| {a['attempt']} | {a['label']} | {icon}{err} | "
-                     f"{a['balance']:,.0f} | {a['elapsed_s']}s |")
+        lines.append(
+            f"| {a['attempt']} | {a['label']} | {icon}{err} | "
+            f"{a['balance']:,.0f} | {a['elapsed_s']}s |"
+        )
 
     lines += [
         "",

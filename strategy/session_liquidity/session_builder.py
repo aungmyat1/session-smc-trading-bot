@@ -15,17 +15,41 @@ Provides:
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Mapping
+from typing import Any
 from zoneinfo import ZoneInfo
 
 _EST = ZoneInfo("America/New_York")
 _UTC = timezone.utc
 
 SESSION_WINDOWS_V2 = {
-    "asian":   {"start_h": 0,  "end_h": 8,  "label": "Asian",    "range_thr": 0.50, "trend_thr": 0.70},
-    "london":  {"start_h": 7,  "end_h": 12, "label": "London",   "range_thr": 0.55, "trend_thr": 0.75},
-    "overlap": {"start_h": 12, "end_h": 15, "label": "Overlap",  "range_thr": 0.60, "trend_thr": 0.80},
-    "newyork": {"start_h": 12, "end_h": 17, "label": "NewYork",  "range_thr": 0.55, "trend_thr": 0.75},
+    "asian": {
+        "start_h": 0,
+        "end_h": 8,
+        "label": "Asian",
+        "range_thr": 0.50,
+        "trend_thr": 0.70,
+    },
+    "london": {
+        "start_h": 7,
+        "end_h": 12,
+        "label": "London",
+        "range_thr": 0.55,
+        "trend_thr": 0.75,
+    },
+    "overlap": {
+        "start_h": 12,
+        "end_h": 15,
+        "label": "Overlap",
+        "range_thr": 0.60,
+        "trend_thr": 0.80,
+    },
+    "newyork": {
+        "start_h": 12,
+        "end_h": 17,
+        "label": "NewYork",
+        "range_thr": 0.55,
+        "trend_thr": 0.75,
+    },
 }
 
 _SESSION_PRIORITY = ("overlap", "newyork", "london", "asian")
@@ -33,7 +57,7 @@ _SESSION_PRIORITY = ("overlap", "newyork", "london", "asian")
 
 @dataclass
 class AsianRange:
-    trade_date: date   # EST calendar date this range feeds into
+    trade_date: date  # EST calendar date this range feeds into
     high: float
     low: float
 
@@ -44,6 +68,7 @@ class AsianRange:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _parse_utc(t) -> datetime:
     """Parse ISO string or datetime to UTC-aware datetime."""
@@ -96,7 +121,9 @@ def _atr(records: list[dict], period: int = 14) -> float:
     return round(atr, 6)
 
 
-def active_sessions(dt_utc: datetime, session_windows: dict[str, dict] | None = None) -> list[str]:
+def active_sessions(
+    dt_utc: datetime, session_windows: dict[str, dict] | None = None
+) -> list[str]:
     """Return all V2 sessions active at the given UTC datetime."""
     windows = session_windows or SESSION_WINDOWS_V2
     hour = _parse_utc(dt_utc).hour
@@ -107,7 +134,9 @@ def active_sessions(dt_utc: datetime, session_windows: dict[str, dict] | None = 
     return active
 
 
-def classify_session_v2(dt_utc: datetime, session_windows: dict[str, dict] | None = None) -> str | None:
+def classify_session_v2(
+    dt_utc: datetime, session_windows: dict[str, dict] | None = None
+) -> str | None:
     """
     V2 priority classifier for overlapping windows.
 
@@ -122,6 +151,7 @@ def classify_session_v2(dt_utc: datetime, session_windows: dict[str, dict] | Non
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def build_asian_range(candles_m15: list[dict], trade_date: date) -> "AsianRange | None":
     """
@@ -189,7 +219,9 @@ def build_session_box(df_1h: Any, start_h: int, end_h: int) -> dict:
     Returns box_high, box_low, box_range, ATR(14), and the candle count.
     """
     records = _as_records(df_1h)
-    session_rows = [row for row in records if start_h <= _parse_utc(row["time"]).hour < end_h]
+    session_rows = [
+        row for row in records if start_h <= _parse_utc(row["time"]).hour < end_h
+    ]
     if len(session_rows) < 3:
         raise ValueError("session not yet complete")
 
@@ -200,7 +232,11 @@ def build_session_box(df_1h: Any, start_h: int, end_h: int) -> dict:
     ratio = round(box_range / atr, 4) if atr else None
 
     session_name = next(
-        (name for name, cfg in SESSION_WINDOWS_V2.items() if cfg["start_h"] == start_h and cfg["end_h"] == end_h),
+        (
+            name
+            for name, cfg in SESSION_WINDOWS_V2.items()
+            if cfg["start_h"] == start_h and cfg["end_h"] == end_h
+        ),
         "custom",
     )
     return {

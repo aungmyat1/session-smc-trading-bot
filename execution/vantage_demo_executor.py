@@ -32,12 +32,18 @@ _PIP: dict[str, float] = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
     "USDJPY": 0.01,
-    "XAUUSD": 0.1,    # Gold: 1 pip = $0.10 (price quoted to 2 decimals, e.g. 2340.50)
+    "XAUUSD": 0.1,  # Gold: 1 pip = $0.10 (price quoted to 2 decimals, e.g. 2340.50)
 }
 
 _TF_MAP = {
-    "M5": "5m", "M15": "15m", "H1": "1h", "H4": "4h",
-    "m5": "5m", "m15": "15m", "h1": "1h", "h4": "4h",
+    "M5": "5m",
+    "M15": "15m",
+    "H1": "1h",
+    "H4": "4h",
+    "m5": "5m",
+    "m15": "15m",
+    "h1": "1h",
+    "h4": "4h",
 }
 
 
@@ -59,11 +65,11 @@ class VantageDemoExecutor:
         raw = await self._conn._account.get_historical_candles(symbol, tf, end, count)
         return [
             {
-                "time":   c.get("time"),
-                "open":   c.get("open"),
-                "high":   c.get("high"),
-                "low":    c.get("low"),
-                "close":  c.get("close"),
+                "time": c.get("time"),
+                "open": c.get("open"),
+                "high": c.get("high"),
+                "low": c.get("low"),
+                "close": c.get("close"),
                 "volume": c.get("tickVolume", 0),
             }
             for c in (raw or [])
@@ -75,35 +81,35 @@ class VantageDemoExecutor:
         ask = float(p.get("ask", 0))
         pip = _PIP.get(symbol, 0.0001)
         return {
-            "bid":         bid,
-            "ask":         ask,
+            "bid": bid,
+            "ask": ask,
             "spread_pips": round((ask - bid) / pip, 1),
-            "time":        p.get("time", ""),
+            "time": p.get("time", ""),
         }
 
     async def get_account_info(self) -> dict:
         info = await self._rpc().get_account_information()
         return {
-            "balance":    float(info.get("balance", 0)),
-            "equity":     float(info.get("equity", 0)),
-            "margin":     float(info.get("margin", 0)),
-            "free_margin":float(info.get("freeMargin", 0)),
-            "currency":   info.get("currency", "USD"),
+            "balance": float(info.get("balance", 0)),
+            "equity": float(info.get("equity", 0)),
+            "margin": float(info.get("margin", 0)),
+            "free_margin": float(info.get("freeMargin", 0)),
+            "currency": info.get("currency", "USD"),
         }
 
     async def get_positions(self) -> list[dict]:
         positions = await self._rpc().get_positions()
         return [
             {
-                "id":         p.get("id"),
-                "symbol":     p.get("symbol"),
-                "direction":  p.get("type", "").replace("POSITION_TYPE_", "").lower(),
-                "lots":       p.get("volume"),
-                "entry":      p.get("openPrice"),
-                "sl":         p.get("stopLoss"),
-                "tp":         p.get("takeProfit"),
-                "profit":     p.get("profit"),
-                "magic":      p.get("magic"),
+                "id": p.get("id"),
+                "symbol": p.get("symbol"),
+                "direction": p.get("type", "").replace("POSITION_TYPE_", "").lower(),
+                "lots": p.get("volume"),
+                "entry": p.get("openPrice"),
+                "sl": p.get("stopLoss"),
+                "tp": p.get("takeProfit"),
+                "profit": p.get("profit"),
+                "magic": p.get("magic"),
             }
             for p in (positions or [])
         ]
@@ -119,7 +125,7 @@ class VantageDemoExecutor:
     async def place_order(
         self,
         symbol: str,
-        direction: str,        # "buy" | "sell"
+        direction: str,  # "buy" | "sell"
         lots: float,
         sl: float,
         tp: float,
@@ -128,19 +134,37 @@ class VantageDemoExecutor:
     ) -> dict:
         order_id = f"SIM-{symbol[:3]}-{uuid.uuid4().hex[:6].upper()}"
         if not self._guard(f"place_order {direction} {symbol} {lots}lot"):
-            return {"order_id": order_id, "simulated": True, "symbol": symbol,
-                    "direction": direction, "lots": lots, "sl": sl, "tp": tp}
-        result = await self._rpc().create_market_buy_order(
-            symbol, lots, sl, tp, {"magic": magic, "comment": comment}
-        ) if direction == "buy" else await self._rpc().create_market_sell_order(
-            symbol, lots, sl, tp, {"magic": magic, "comment": comment}
+            return {
+                "order_id": order_id,
+                "simulated": True,
+                "symbol": symbol,
+                "direction": direction,
+                "lots": lots,
+                "sl": sl,
+                "tp": tp,
+            }
+        result = (
+            await self._rpc().create_market_buy_order(
+                symbol, lots, sl, tp, {"magic": magic, "comment": comment}
+            )
+            if direction == "buy"
+            else await self._rpc().create_market_sell_order(
+                symbol, lots, sl, tp, {"magic": magic, "comment": comment}
+            )
         )
-        return {"order_id": result.get("orderId", order_id), "simulated": False,
-                "symbol": symbol, "direction": direction, "lots": lots, "sl": sl, "tp": tp}
+        return {
+            "order_id": result.get("orderId", order_id),
+            "simulated": False,
+            "symbol": symbol,
+            "direction": direction,
+            "lots": lots,
+            "sl": sl,
+            "tp": tp,
+        }
 
     async def close_position(self, position_id: str) -> bool:
         if not self._guard(f"close_position {position_id}"):
-            return True   # simulated success
+            return True  # simulated success
         try:
             await self._rpc().close_position(position_id)
             return True

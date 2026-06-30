@@ -73,7 +73,11 @@ def _stage_dict(stage: Any) -> dict[str, Any]:
 
 
 def _is_missing_evidence(stage: dict[str, Any]) -> bool:
-    codes = {str(item.get("code", "")) for item in stage.get("issues", []) if isinstance(item, dict)}
+    codes = {
+        str(item.get("code", ""))
+        for item in stage.get("issues", [])
+        if isinstance(item, dict)
+    }
     if "missing_input" in codes:
         return True
     return bool(codes) and all(
@@ -85,12 +89,18 @@ def _is_missing_evidence(stage: dict[str, Any]) -> bool:
 def _public_status(source: list[dict[str, Any]], public_stage: str) -> str:
     if not source:
         return "NOT_RUN"
-    if public_stage == "virtual_demo" and not any(item.get("stage") == "virtual_demo" for item in source):
+    if public_stage == "virtual_demo" and not any(
+        item.get("stage") == "virtual_demo" for item in source
+    ):
         return "NOT_RUN"
     statuses = {str(item.get("status", "")).upper() for item in source}
     if statuses == {"PASS"}:
         return "PASS"
-    if any(_is_missing_evidence(item) for item in source if str(item.get("status", "")).upper() != "PASS"):
+    if any(
+        _is_missing_evidence(item)
+        for item in source
+        if str(item.get("status", "")).upper() != "PASS"
+    ):
         return "BLOCKED"
     return "FAIL"
 
@@ -98,20 +108,31 @@ def _public_status(source: list[dict[str, Any]], public_stage: str) -> str:
 def _checks(source: list[dict[str, Any]]) -> list[dict[str, Any]]:
     checks: list[dict[str, Any]] = []
     for item in source:
-        metadata = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
-        validation = metadata.get("validation", {}) if isinstance(metadata.get("validation"), dict) else {}
+        metadata = (
+            item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        )
+        validation = (
+            metadata.get("validation", {})
+            if isinstance(metadata.get("validation"), dict)
+            else {}
+        )
         for check in validation.get("checks", []):
             if isinstance(check, dict):
                 checks.append(
                     {
                         "name": str(check.get("name", "validation_check")),
                         "passed": bool(check.get("passed", False)),
-                        "hard_gate": str(check.get("severity", "ERROR")).upper() == "ERROR",
+                        "hard_gate": str(check.get("severity", "ERROR")).upper()
+                        == "ERROR",
                         "message": str(check.get("message", "")),
                         "details": check.get("details", {}),
                     }
                 )
-        validation_report = metadata.get("validation_report", {}) if isinstance(metadata.get("validation_report"), dict) else {}
+        validation_report = (
+            metadata.get("validation_report", {})
+            if isinstance(metadata.get("validation_report"), dict)
+            else {}
+        )
         for result in validation_report.get("validator_results", []):
             if isinstance(result, dict):
                 checks.append(
@@ -151,7 +172,9 @@ def _checks(source: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _score(source: list[dict[str, Any]], checks: list[dict[str, Any]]) -> float | None:
     for item in source:
-        metadata = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        metadata = (
+            item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        )
         value = metadata.get("overall_score")
         if isinstance(value, (int, float)):
             return round(float(value), 2)
@@ -163,17 +186,33 @@ def _score(source: list[dict[str, Any]], checks: list[dict[str, Any]]) -> float 
 def _metrics(public_stage: str, source: list[dict[str, Any]]) -> dict[str, Any]:
     metrics: dict[str, Any] = {}
     for item in source:
-        metadata = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
-        validation = metadata.get("validation", {}) if isinstance(metadata.get("validation"), dict) else {}
-        for key, value in validation.get("metadata", {}).items() if isinstance(validation.get("metadata"), dict) else []:
+        metadata = (
+            item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        )
+        validation = (
+            metadata.get("validation", {})
+            if isinstance(metadata.get("validation"), dict)
+            else {}
+        )
+        for key, value in (
+            validation.get("metadata", {}).items()
+            if isinstance(validation.get("metadata"), dict)
+            else []
+        ):
             metrics[key] = value
         if public_stage in {"historical_replay", "backtest"}:
             for check in validation.get("checks", []):
-                if not isinstance(check, dict) or not isinstance(check.get("details"), dict):
+                if not isinstance(check, dict) or not isinstance(
+                    check.get("details"), dict
+                ):
                     continue
                 metrics.update(check["details"])
         if public_stage == "strategy_audit":
-            report = metadata.get("validation_report", {}) if isinstance(metadata.get("validation_report"), dict) else {}
+            report = (
+                metadata.get("validation_report", {})
+                if isinstance(metadata.get("validation_report"), dict)
+                else {}
+            )
             metrics.update(
                 {
                     "overall_score": report.get("overall_score"),
@@ -182,7 +221,12 @@ def _metrics(public_stage: str, source: list[dict[str, Any]]) -> dict[str, Any]:
                 }
             )
         elif public_stage == "robustness":
-            metrics.update({"regression": metadata.get("regression"), "checks": metadata.get("checks", {})})
+            metrics.update(
+                {
+                    "regression": metadata.get("regression"),
+                    "checks": metadata.get("checks", {}),
+                }
+            )
         elif public_stage == "virtual_demo" and item.get("stage") == "virtual_demo":
             metrics.update(
                 {
@@ -203,7 +247,9 @@ def _metrics(public_stage: str, source: list[dict[str, Any]]) -> dict[str, Any]:
     return {key: value for key, value in metrics.items() if value is not None}
 
 
-def _thresholds(public_stage: str, source: list[dict[str, Any]], config: dict[str, Any]) -> dict[str, Any]:
+def _thresholds(
+    public_stage: str, source: list[dict[str, Any]], config: dict[str, Any]
+) -> dict[str, Any]:
     if public_stage == "strategy_audit":
         return {"minimum_readiness_score": 85, "critical_ambiguities_allowed": 0}
     if public_stage == "backtest":
@@ -225,9 +271,17 @@ def _thresholds(public_stage: str, source: list[dict[str, Any]], config: dict[st
             "regression_thresholds": config.get("regression_thresholds", {}),
         }
     if public_stage == "virtual_demo":
-        demo = next((item for item in source if item.get("stage") == "virtual_demo"), {})
-        metadata = demo.get("metadata", {}) if isinstance(demo.get("metadata"), dict) else {}
-        evidence = metadata.get("virtual_demo_evidence", {}) if isinstance(metadata.get("virtual_demo_evidence"), dict) else {}
+        demo = next(
+            (item for item in source if item.get("stage") == "virtual_demo"), {}
+        )
+        metadata = (
+            demo.get("metadata", {}) if isinstance(demo.get("metadata"), dict) else {}
+        )
+        evidence = (
+            metadata.get("virtual_demo_evidence", {})
+            if isinstance(metadata.get("virtual_demo_evidence"), dict)
+            else {}
+        )
         return {
             "minimum_days": metadata.get("min_demo_days", 14),
             "metric_drift_tolerance": evidence.get("tolerance_pct", 0.05),
@@ -247,7 +301,9 @@ def _virtual_demo_route(source: list[dict[str, Any]]) -> str:
         return "strategy_audit"
     if any("metric_drift" in code or "drawdown_drift" in code for code in codes):
         return "backtest"
-    if any("execution" in code or "broker" in code or "recovery" in code for code in codes):
+    if any(
+        "execution" in code or "broker" in code or "recovery" in code for code in codes
+    ):
         return "robustness"
     return "research"
 
@@ -278,7 +334,9 @@ def _render_stage(report: dict[str, Any]) -> str:
     if report["findings"]:
         lines.extend(["", "## Findings", ""])
         for finding in report["findings"]:
-            lines.append(f"- {finding.get('severity', 'INFO')}: {finding.get('message', '')}")
+            lines.append(
+                f"- {finding.get('severity', 'INFO')}: {finding.get('message', '')}"
+            )
     lines.extend(
         [
             "",
@@ -314,7 +372,14 @@ def _render_stage(report: dict[str, Any]) -> str:
         lines.extend(["", "## Visualization Data"])
         for visualization in report["visualizations"]:
             lines.extend(["", f"### {visualization.get('title', 'Chart')}"])
-            _append_markdown_value(lines, {key: value for key, value in visualization.items() if key not in {"title", "type"}})
+            _append_markdown_value(
+                lines,
+                {
+                    key: value
+                    for key, value in visualization.items()
+                    if key not in {"title", "type"}
+                },
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -355,18 +420,36 @@ def _append_markdown_value(lines: list[str], value: Any) -> None:
         if all(isinstance(item, dict) for item in value):
             keys = list(dict.fromkeys(key for item in value for key in item.keys()))
             if keys and all(_scalar(item.get(key)) for item in value for key in keys):
-                lines.extend(["", "| " + " | ".join(_humanize(str(key)) for key in keys) + " |", "|" + "---|" * len(keys)])
+                lines.extend(
+                    [
+                        "",
+                        "| " + " | ".join(_humanize(str(key)) for key in keys) + " |",
+                        "|" + "---|" * len(keys),
+                    ]
+                )
                 for item in value:
-                    lines.append("| " + " | ".join(_display(item.get(key)) for key in keys) + " |")
+                    lines.append(
+                        "| "
+                        + " | ".join(_display(item.get(key)) for key in keys)
+                        + " |"
+                    )
                 return
         lines.append("")
         for item in value:
             if _scalar(item):
                 lines.append(f"- {_display(item)}")
             else:
-                lines.extend(["```json", json.dumps(item, indent=2, sort_keys=True, default=str), "```"])
+                lines.extend(
+                    [
+                        "```json",
+                        json.dumps(item, indent=2, sort_keys=True, default=str),
+                        "```",
+                    ]
+                )
         return
-    lines.extend(["", "```json", json.dumps(value, indent=2, sort_keys=True, default=str), "```"])
+    lines.extend(
+        ["", "```json", json.dumps(value, indent=2, sort_keys=True, default=str), "```"]
+    )
 
 
 def _render_summary(summary: dict[str, Any]) -> str:
@@ -386,7 +469,9 @@ def _render_summary(summary: dict[str, Any]) -> str:
     ]
     for stage in summary["stages"]:
         score = stage["score"] if stage["score"] is not None else "n/a"
-        lines.append(f"| {stage['stage_label']} | {stage['status']} | {score} | {'yes' if stage['promotion_allowed'] else 'no'} |")
+        lines.append(
+            f"| {stage['stage_label']} | {stage['status']} | {score} | {'yes' if stage['promotion_allowed'] else 'no'} |"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -430,7 +515,9 @@ def _write_supporting_report(
     }
     json_path = report_dir / f"{stem}.json"
     markdown_path = report_dir / f"{stem}.md"
-    json_path.write_text(json.dumps(report, indent=2, sort_keys=True, default=str), encoding="utf-8")
+    json_path.write_text(
+        json.dumps(report, indent=2, sort_keys=True, default=str), encoding="utf-8"
+    )
     markdown_path.write_text(_render_supporting(report), encoding="utf-8")
     return {**report, "json_path": str(json_path), "markdown_path": str(markdown_path)}
 
@@ -462,10 +549,19 @@ def write_stage_report_package(
     previous_version: str | None = None,
 ) -> StageReportPackage:
     generated_at = _now()
-    input_hashes = {name: _hash_payload(value) for name, value in input_payloads.items() if value is not None}
+    input_hashes = {
+        name: _hash_payload(value)
+        for name, value in input_payloads.items()
+        if value is not None
+    }
     input_hashes["validation_config"] = _hash_payload(validation_config)
     spec_hash = hashlib.sha256(strategy_text.encode("utf-8")).hexdigest()
-    run_seed = {"strategy": strategy_id, "version": strategy_version, "generated_at": generated_at, "inputs": input_hashes}
+    run_seed = {
+        "strategy": strategy_id,
+        "version": strategy_version,
+        "generated_at": generated_at,
+        "inputs": input_hashes,
+    }
     stamp = datetime.fromisoformat(generated_at).strftime("%Y%m%dT%H%M%S.%fZ")
     run_id = f"{stamp}-{_hash_payload(run_seed)[:10]}"
     report_dir = (
@@ -483,15 +579,32 @@ def write_stage_report_package(
     latest_passed = ""
 
     for public_stage, label, stem in PUBLIC_STAGES:
-        source = [internal_by_name[name] for name in _SOURCE_STAGES[public_stage] if name in internal_by_name]
+        source = [
+            internal_by_name[name]
+            for name in _SOURCE_STAGES[public_stage]
+            if name in internal_by_name
+        ]
         status = "BLOCKED" if upstream_blocker else _public_status(source, public_stage)
         checks = _checks(source) if source else []
-        findings = [_issue_dict(issue) for item in source for issue in item.get("issues", [])]
-        actions = [str(action) for item in source for action in item.get("fix_instructions", []) if str(action).strip()]
+        findings = [
+            _issue_dict(issue) for item in source for issue in item.get("issues", [])
+        ]
+        actions = [
+            str(action)
+            for item in source
+            for action in item.get("fix_instructions", [])
+            if str(action).strip()
+        ]
         if status == "BLOCKED" and upstream_blocker and not actions:
             actions = [f"Resolve the {upstream_blocker} gate before running {label}."]
-        route = _virtual_demo_route(source) if public_stage == "virtual_demo" and status == "FAIL" else _REMEDIATION_ROUTES[public_stage]
-        source_allows_promotion = bool(source) and all(bool(item.get("can_promote", False)) for item in source)
+        route = (
+            _virtual_demo_route(source)
+            if public_stage == "virtual_demo" and status == "FAIL"
+            else _REMEDIATION_ROUTES[public_stage]
+        )
+        source_allows_promotion = bool(source) and all(
+            bool(item.get("can_promote", False)) for item in source
+        )
         promotion_allowed = (
             status == "PASS"
             and source_allows_promotion
@@ -542,13 +655,20 @@ def write_stage_report_package(
             "hard_gate_results": checks,
             "metrics": metrics,
             "findings": findings,
-            "warnings": [finding for finding in findings if str(finding.get("severity", "")).upper() in {"WARN", "WARNING", "MEDIUM"}],
+            "warnings": [
+                finding
+                for finding in findings
+                if str(finding.get("severity", "")).upper()
+                in {"WARN", "WARNING", "MEDIUM"}
+            ],
             "evidence_hashes": evidence_hashes,
             "remediation": {"route": route, "actions": list(dict.fromkeys(actions))},
             "version_comparison": {
                 "previous_version": previous_version,
                 "current_version": strategy_version,
-                "changed": bool(previous_version and previous_version != strategy_version),
+                "changed": bool(
+                    previous_version and previous_version != strategy_version
+                ),
             },
             "internal_sources": [item.get("stage") for item in source],
             "sections": sections,
@@ -558,19 +678,35 @@ def write_stage_report_package(
         }
         json_path = report_dir / f"{stem}.json"
         markdown_path = report_dir / f"{stem}.md"
-        json_path.write_text(json.dumps(report, indent=2, sort_keys=True, default=str), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True, default=str), encoding="utf-8"
+        )
         markdown_path.write_text(_render_stage(report), encoding="utf-8")
-        reports.append({**report, "json_path": str(json_path), "markdown_path": str(markdown_path)})
+        reports.append(
+            {**report, "json_path": str(json_path), "markdown_path": str(markdown_path)}
+        )
         if status == "PASS":
             latest_passed = public_stage
         elif status in {"FAIL", "BLOCKED"} and not upstream_blocker:
             upstream_blocker = public_stage
 
     audit_source = internal_by_name.get("audit", {})
-    audit_spec = audit_source.get("spec", {}) if isinstance(audit_source.get("spec"), dict) else {}
-    strategy_fields = audit_spec.get("fields", {}) if isinstance(audit_spec.get("fields"), dict) else {}
+    audit_spec = (
+        audit_source.get("spec", {})
+        if isinstance(audit_source.get("spec"), dict)
+        else {}
+    )
+    strategy_fields = (
+        audit_spec.get("fields", {})
+        if isinstance(audit_spec.get("fields"), dict)
+        else {}
+    )
     stage_overview = [
-        {"stage": report["stage_label"], "status": report["status"], "score": report["score"]}
+        {
+            "stage": report["stage_label"],
+            "status": report["status"],
+            "score": report["score"],
+        }
         for report in reports
     ]
     supporting: list[dict[str, Any]] = []
@@ -599,14 +735,27 @@ def write_stage_report_package(
                 },
                 "stage_overview": stage_overview,
                 "current_position": {
-                    "status": "IN_PROGRESS" if any(report["status"] != "PASS" for report in reports) else "QUALIFIED",
-                    "current_stage": next((report["stage_label"] for report in reports if report["status"] != "PASS"), "Production Approval"),
+                    "status": (
+                        "IN_PROGRESS"
+                        if any(report["status"] != "PASS" for report in reports)
+                        else "QUALIFIED"
+                    ),
+                    "current_stage": next(
+                        (
+                            report["stage_label"]
+                            for report in reports
+                            if report["status"] != "PASS"
+                        ),
+                        "Production Approval",
+                    ),
                 },
             },
         )
     )
 
-    failed_reports = [report for report in reports if report["status"] in {"FAIL", "BLOCKED"}]
+    failed_reports = [
+        report for report in reports if report["status"] in {"FAIL", "BLOCKED"}
+    ]
     improvement_items = [
         {
             "stage": report["stage_label"],
@@ -629,9 +778,14 @@ def write_stage_report_package(
                 "version_history": {
                     "previous_version": previous_version,
                     "current_version": strategy_version,
-                    "changed": bool(previous_version and previous_version != strategy_version),
+                    "changed": bool(
+                        previous_version and previous_version != strategy_version
+                    ),
                 },
-                "evidence_change": {"strategy_spec_hash": spec_hash, "input_hashes": input_hashes},
+                "evidence_change": {
+                    "strategy_spec_hash": spec_hash,
+                    "input_hashes": input_hashes,
+                },
                 "reason": "Immutable SVOS validation snapshot.",
             },
         )
@@ -672,21 +826,40 @@ def write_stage_report_package(
             strategy_version=strategy_version,
             generated_at=generated_at,
             sections={
-                "status": "NO_ACTION_REQUIRED" if not improvement_items else "ACTION_REQUIRED",
+                "status": (
+                    "NO_ACTION_REQUIRED" if not improvement_items else "ACTION_REQUIRED"
+                ),
                 "recommended_changes": improvement_items,
                 "revalidation_required": bool(improvement_items),
             },
         )
     )
 
-    active = next((report for report in reports if report["status"] in {"FAIL", "BLOCKED"}), None)
-    pending = next((report for report in reports if report["status"] in {"NOT_RUN", "IN_PROGRESS"}), None)
+    active = next(
+        (report for report in reports if report["status"] in {"FAIL", "BLOCKED"}), None
+    )
+    pending = next(
+        (
+            report
+            for report in reports
+            if report["status"] in {"NOT_RUN", "IN_PROGRESS"}
+        ),
+        None,
+    )
     focus = active or pending
-    overall_status = "PASS" if all(report["status"] == "PASS" for report in reports) else (active["status"] if active else "IN_PROGRESS")
-    next_task = "No further validation task." if focus is None else (
-        focus["remediation"]["actions"][0]
-        if focus["remediation"]["actions"]
-        else f"Complete the {focus['stage_label']} stage."
+    overall_status = (
+        "PASS"
+        if all(report["status"] == "PASS" for report in reports)
+        else (active["status"] if active else "IN_PROGRESS")
+    )
+    next_task = (
+        "No further validation task."
+        if focus is None
+        else (
+            focus["remediation"]["actions"][0]
+            if focus["remediation"]["actions"]
+            else f"Complete the {focus['stage_label']} stage."
+        )
     )
     summary = {
         "schema_version": SCHEMA_VERSION,
@@ -725,7 +898,9 @@ def write_stage_report_package(
     }
     summary_json = report_dir / "run_summary.json"
     summary_markdown = report_dir / "run_summary.md"
-    summary_json.write_text(json.dumps(summary, indent=2, sort_keys=True, default=str), encoding="utf-8")
+    summary_json.write_text(
+        json.dumps(summary, indent=2, sort_keys=True, default=str), encoding="utf-8"
+    )
     summary_markdown.write_text(_render_summary(summary), encoding="utf-8")
     supporting.append(
         _write_supporting_report(
@@ -741,13 +916,21 @@ def write_stage_report_package(
                 "lifecycle_summary": stage_overview,
                 "overall_status": overall_status,
                 "overall_score": round(
-                    sum(float(report["score"]) for report in reports if report["score"] is not None)
-                    / max(1, sum(1 for report in reports if report["score"] is not None)),
+                    sum(
+                        float(report["score"])
+                        for report in reports
+                        if report["score"] is not None
+                    )
+                    / max(
+                        1, sum(1 for report in reports if report["score"] is not None)
+                    ),
                     2,
                 ),
                 "latest_passed_stage": latest_passed,
                 "active_blocker": active["stage"] if active else None,
-                "final_decision": "QUALIFIED" if overall_status == "PASS" else "NOT_QUALIFIED",
+                "final_decision": (
+                    "QUALIFIED" if overall_status == "PASS" else "NOT_QUALIFIED"
+                ),
                 "next_action": next_task,
                 "production_monitoring": "NOT_STARTED - generated only after real production deployment",
             },

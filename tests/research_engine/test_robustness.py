@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from research.robustness import (
-    monte_carlo_resampling,
-    parameter_sensitivity,
-    regime_analysis,
-    walk_forward_analysis,
-)
+from research.robustness import (monte_carlo_resampling, parameter_sensitivity,
+                                 regime_analysis, walk_forward_analysis)
 
 
 def _trades() -> list[dict[str, object]]:

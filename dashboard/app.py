@@ -28,14 +28,14 @@ Run:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
-import hmac
 import subprocess
 import sys
-from functools import wraps
-import hashlib
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
@@ -51,13 +51,17 @@ except ImportError:
     print("Flask not installed. Run: pip install flask flask-cors")
     sys.exit(1)
 
-from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
-from dashboard.audit_log import tail_audit_log, write_audit_log
-from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state, mark_incident_reviewed
-from dashboard.report_service import generate as generate_reports_payload
-from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
-from dashboard.status_mapper import health_to_status
 import scripts.health_check as health_check
+from dashboard.audit_log import tail_audit_log, write_audit_log
+from dashboard.control_state import (activate_emergency_stop,
+                                     clear_emergency_stop, load_control_state,
+                                     mark_incident_reviewed)
+from dashboard.report_service import generate as generate_reports_payload
+from dashboard.report_service import (latest_reports, load_index,
+                                      mark_reviewed, read_report)
+from dashboard.runtime import (dashboard_bind_host, dashboard_public_host,
+                               dashboard_url)
+from dashboard.status_mapper import health_to_status
 from svos.api.service import SVOSOperationalAPI
 
 try:
@@ -79,27 +83,42 @@ CORS(app, resources={r"/api/*": {"origins": _allowed_origins}})
 
 def _require_operator(*allowed_roles: str):
     """Require bearer authentication, a stable actor, and an allowed role."""
+
     def decorator(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
-            configured = str(app.config.get("SVOS_OPERATOR_TOKEN") or os.getenv("SVOS_OPERATOR_TOKEN", ""))
+            configured = str(
+                app.config.get("SVOS_OPERATOR_TOKEN")
+                or os.getenv("SVOS_OPERATOR_TOKEN", "")
+            )
             supplied = request.headers.get("Authorization", "")
             actor = request.headers.get("X-SVOS-Actor", "").strip()
             role = request.headers.get("X-SVOS-Role", "").strip()
             expected = f"Bearer {configured}" if configured else ""
             if not configured:
-                return jsonify({"error": "Operator authentication is not configured"}), 503
+                return (
+                    jsonify({"error": "Operator authentication is not configured"}),
+                    503,
+                )
             if not hmac.compare_digest(supplied, expected):
                 return jsonify({"error": "Unauthorized"}), 401
             if not actor:
                 return jsonify({"error": "Missing immutable operator identity"}), 401
             if role not in allowed_roles:
-                return jsonify({"error": "Forbidden", "required_roles": list(allowed_roles)}), 403
+                return (
+                    jsonify(
+                        {"error": "Forbidden", "required_roles": list(allowed_roles)}
+                    ),
+                    403,
+                )
             request.environ["svos.actor"] = actor
             request.environ["svos.role"] = role
             return view(*args, **kwargs)
+
         return wrapped
+
     return decorator
+
 
 _CATALOG_PATH = _ROOT / "config" / "strategy_catalog.yaml"
 _EVF_REPORTS_DIR = _ROOT / "execution_validation" / "reports"
@@ -137,6 +156,7 @@ _SVOS_STAGE_FILE_MAP = {
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -167,7 +187,11 @@ def _latest_evf_report() -> dict[str, Any]:
     """Return the most-recent EVF JSON report or empty dict."""
     if not _EVF_REPORTS_DIR.exists():
         return {}
-    candidates = sorted(_EVF_REPORTS_DIR.glob("**/*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    candidates = sorted(
+        _EVF_REPORTS_DIR.glob("**/*.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
     for path in candidates:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -180,7 +204,9 @@ def _latest_svos_report(strategy: str) -> dict[str, Any]:
     strategy_dir = _SVOS_REPORTS_DIR / strategy
     if not strategy_dir.exists():
         return {}
-    candidates = sorted(strategy_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    candidates = sorted(
+        strategy_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
     for path in candidates:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -228,25 +254,31 @@ def _svos_stage_report_payload(strategy: str) -> dict[str, Any]:
                 markdown_rel = markdown_path.relative_to(_ROOT).as_posix()
             if json_exists:
                 json_rel = json_path.relative_to(_ROOT).as_posix()
-        stage_reports.append({
-            "phase": entry.get("phase"),
-            "stage": stage_name,
-            "status": entry.get("status", "UNKNOWN"),
-            "can_promote": bool(entry.get("can_promote", False)),
-            "next_stage": entry.get("next_stage"),
-            "created_at": entry.get("created_at", ""),
-            "markdown_path": markdown_rel,
-            "json_path": json_rel,
-            "markdown_report_id": markdown_rel.replace("/", "__") if markdown_rel else "",
-            "json_report_id": json_rel.replace("/", "__") if json_rel else "",
-            "has_markdown": markdown_exists,
-            "has_json": json_exists,
-            "label": stage_name.replace("_", " ").title(),
-        })
+        stage_reports.append(
+            {
+                "phase": entry.get("phase"),
+                "stage": stage_name,
+                "status": entry.get("status", "UNKNOWN"),
+                "can_promote": bool(entry.get("can_promote", False)),
+                "next_stage": entry.get("next_stage"),
+                "created_at": entry.get("created_at", ""),
+                "markdown_path": markdown_rel,
+                "json_path": json_rel,
+                "markdown_report_id": (
+                    markdown_rel.replace("/", "__") if markdown_rel else ""
+                ),
+                "json_report_id": json_rel.replace("/", "__") if json_rel else "",
+                "has_markdown": markdown_exists,
+                "has_json": json_exists,
+                "label": stage_name.replace("_", " ").title(),
+            }
+        )
 
     return {
         "strategy": strategy,
-        "stage_index_path": index_path.relative_to(_ROOT).as_posix() if index_path.exists() else "",
+        "stage_index_path": (
+            index_path.relative_to(_ROOT).as_posix() if index_path.exists() else ""
+        ),
         "stage_reports": stage_reports,
         "overall_status": index.get("overall_status", ""),
         "promoted_stage": index.get("promoted_stage"),
@@ -282,7 +314,10 @@ def _latest_canonical_svos_payload(strategy: str) -> dict[str, Any]:
     summary_path: Path | None = None
     for candidate in candidates:
         payload = _read_json(candidate)
-        if payload.get("strategy_name") == strategy or payload.get("strategy_id") == strategy:
+        if (
+            payload.get("strategy_name") == strategy
+            or payload.get("strategy_id") == strategy
+        ):
             summary = payload
             summary_path = candidate
             break
@@ -297,10 +332,20 @@ def _latest_canonical_svos_payload(strategy: str) -> dict[str, Any]:
         json_fallback = summary_path.parent / f"{stage}.json"
         markdown_fallback = summary_path.parent / f"{stage}.md"
         json_report = _report_path_payload(entry.get("json_path"), json_fallback)
-        markdown_report = _report_path_payload(entry.get("markdown_path"), markdown_fallback)
+        markdown_report = _report_path_payload(
+            entry.get("markdown_path"), markdown_fallback
+        )
         detail = _read_json(_ROOT / json_report["path"]) if json_report["path"] else {}
-        remediation = detail.get("remediation", {}) if isinstance(detail.get("remediation"), dict) else {}
-        findings = detail.get("findings", []) if isinstance(detail.get("findings"), list) else []
+        remediation = (
+            detail.get("remediation", {})
+            if isinstance(detail.get("remediation"), dict)
+            else {}
+        )
+        findings = (
+            detail.get("findings", [])
+            if isinstance(detail.get("findings"), list)
+            else []
+        )
         stage_reports.append(
             {
                 "stage": stage,
@@ -321,7 +366,9 @@ def _latest_canonical_svos_payload(strategy: str) -> dict[str, Any]:
                 "sections": detail.get("sections", {}),
                 "visualizations": detail.get("visualizations", []),
                 "decision": (detail.get("sections", {}) or {}).get("decision", {}),
-                "next_action": (detail.get("sections", {}) or {}).get("next_action", ""),
+                "next_action": (detail.get("sections", {}) or {}).get(
+                    "next_action", ""
+                ),
             }
         )
 
@@ -374,14 +421,30 @@ def _all_trades() -> list[dict]:
 
 def _trade_stats(records: list[dict]) -> dict[str, Any]:
     closed = [
-        r for r in records
+        r
+        for r in records
         if r.get("record_type") != "signal"
-        and (r.get("result_r") is not None or r.get("result_R") is not None or r.get("r_multiple") is not None)
+        and (
+            r.get("result_r") is not None
+            or r.get("result_R") is not None
+            or r.get("r_multiple") is not None
+        )
     ]
     if not closed:
-        return {"total": 0, "wins": 0, "losses": 0, "win_rate": 0.0, "avg_r": 0.0, "total_r": 0.0}
+        return {
+            "total": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_rate": 0.0,
+            "avg_r": 0.0,
+            "total_r": 0.0,
+        }
+
     def _r_value(record: dict[str, Any]) -> float:
-        raw = record.get("result_r", record.get("result_R", record.get("r_multiple", 0))) or 0
+        raw = (
+            record.get("result_r", record.get("result_R", record.get("r_multiple", 0)))
+            or 0
+        )
         try:
             return float(raw)
         except (TypeError, ValueError):
@@ -403,10 +466,17 @@ def _trade_stats(records: list[dict]) -> dict[str, Any]:
 
 
 def _latest_architecture_status() -> dict[str, Any]:
-    text = _ARCHITECTURE_PATH.read_text(encoding="utf-8") if _ARCHITECTURE_PATH.exists() else ""
+    text = (
+        _ARCHITECTURE_PATH.read_text(encoding="utf-8")
+        if _ARCHITECTURE_PATH.exists()
+        else ""
+    )
     current = "SVOS transitional v1.7" if "SVOS transitional v1.7" in text else ""
     target = "ISOP v2" if "ISOP v2" in text else ""
-    return {"current_architecture": current or "transitional", "target_architecture": target or "ISOP v2"}
+    return {
+        "current_architecture": current or "transitional",
+        "target_architecture": target or "ISOP v2",
+    }
 
 
 def _latest_log_lines(limit: int = 200) -> list[str]:
@@ -414,7 +484,9 @@ def _latest_log_lines(limit: int = 200) -> list[str]:
     for path in (_BOT_LOG, *_RUNNER_LOGS):
         if not path.exists():
             continue
-        lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:])
+        lines.extend(
+            path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:]
+        )
     return lines[-limit:]
 
 
@@ -426,14 +498,20 @@ def _is_benign_runtime_line(line: str) -> bool:
 def _incident_summary(limit: int = 20) -> dict[str, Any]:
     lines = _latest_log_lines(600)
     incidents = [
-        line for line in lines
-        if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
+        line
+        for line in lines
+        if any(
+            token in line
+            for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect")
+        )
         and not _is_benign_runtime_line(line)
     ]
     audit = tail_audit_log(limit=limit)
     return {
         "incident_count": len(incidents),
-        "critical_count": sum(1 for line in incidents if "CRITICAL" in line or "FATAL" in line),
+        "critical_count": sum(
+            1 for line in incidents if "CRITICAL" in line or "FATAL" in line
+        ),
         "recent_incidents": incidents[-limit:],
         "recent_audit": audit[-limit:],
     }
@@ -444,16 +522,20 @@ def _incident_id(prefix: str, text: str) -> str:
     return f"{prefix}-{digest}"
 
 
-def _decorate_incidents(lines: list[str], reviewed: dict[str, str], prefix: str) -> list[dict[str, Any]]:
+def _decorate_incidents(
+    lines: list[str], reviewed: dict[str, str], prefix: str
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for line in lines:
         incident_id = _incident_id(prefix, line)
-        items.append({
-            "id": incident_id,
-            "text": line,
-            "reviewed_at": reviewed.get(incident_id, ""),
-            "acknowledged": incident_id in reviewed,
-        })
+        items.append(
+            {
+                "id": incident_id,
+                "text": line,
+                "reviewed_at": reviewed.get(incident_id, ""),
+                "acknowledged": incident_id in reviewed,
+            }
+        )
     return items
 
 
@@ -499,7 +581,9 @@ def _governance_payload() -> dict[str, Any]:
         "approved": bool(current_meta.get("approved", False)),
         "deployment_target": current_meta.get("deployment_target", "unknown"),
         "last_svos_status": current_meta.get("last_svos_status", ""),
-        "last_svos_verification_ready": bool(current_meta.get("last_svos_verification_ready", False)),
+        "last_svos_verification_ready": bool(
+            current_meta.get("last_svos_verification_ready", False)
+        ),
         "last_svos_promoted_stage": current_meta.get("last_svos_promoted_stage", ""),
         "promotion_map": validation_map.get("promotion_map", {}),
         "architecture": architecture,
@@ -521,7 +605,9 @@ def _rgm_payload() -> dict[str, Any]:
     if portfolio.get("status") == "FAIL":
         breaches.append(portfolio.get("detail", "portfolio guard failed"))
     if control["emergency_stop"]["active"]:
-        breaches.append(control["emergency_stop"]["reason"] or "dashboard emergency stop active")
+        breaches.append(
+            control["emergency_stop"]["reason"] or "dashboard emergency stop active"
+        )
     return {
         "risk_status": risk.get("status", "UNKNOWN"),
         "risk_summary": risk.get("detail", ""),
@@ -532,7 +618,9 @@ def _rgm_payload() -> dict[str, Any]:
         "emergency_stop": control["emergency_stop"],
         "incident_count": incidents["incident_count"],
         "risk_breaches": breaches,
-        "qualification_status": "QUALIFIED" if not breaches and risk.get("status") == "PASS" else "REVIEW",
+        "qualification_status": (
+            "QUALIFIED" if not breaches and risk.get("status") == "PASS" else "REVIEW"
+        ),
     }
 
 
@@ -543,7 +631,9 @@ def _smo_payload() -> dict[str, Any]:
     control = load_control_state()
     emergency = control.get("emergency_stop", {})
     reviewed_incidents = control.get("incidents_reviewed", {})
-    recent_incident_items = _decorate_incidents(incidents["recent_incidents"], reviewed_incidents, "incident")
+    recent_incident_items = _decorate_incidents(
+        incidents["recent_incidents"], reviewed_incidents, "incident"
+    )
     monitoring = health_to_status(health["runner"].get("status", "UNKNOWN"))
     if incidents["critical_count"] > 0 or health["database"].get("status") == "FAIL":
         monitoring = "ALERT"
@@ -560,16 +650,24 @@ def _smo_payload() -> dict[str, Any]:
         "recent_incidents": recent_incident_items,
         "recent_audit": incidents["recent_audit"],
         "emergency_stop": emergency,
-        "control_timeline": [entry for entry in incidents["recent_audit"] if str(entry.get("action", "")).startswith("emergency_stop")],
+        "control_timeline": [
+            entry
+            for entry in incidents["recent_audit"]
+            if str(entry.get("action", "")).startswith("emergency_stop")
+        ],
         "incident_reviewed": reviewed_incidents,
-        "unacknowledged_incident_count": sum(1 for item in recent_incident_items if not item["acknowledged"]),
+        "unacknowledged_incident_count": sum(
+            1 for item in recent_incident_items if not item["acknowledged"]
+        ),
         "latest_reports": reports.get("latest", {}),
         "recommendation_badge": reports.get("recommendation_badge", "REVIEW"),
     }
 
 
 def _run_command(cmd: list[str], *, timeout: int = 120) -> tuple[int, str]:
-    proc = subprocess.Popen(cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    proc = subprocess.Popen(
+        cmd, cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    )
     try:
         out, _ = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -577,9 +675,11 @@ def _run_command(cmd: list[str], *, timeout: int = 120) -> tuple[int, str]:
         raise
     return proc.returncode or 0, out[-4000:]
 
+
 # ---------------------------------------------------------------------------
 # SVOS API
 # ---------------------------------------------------------------------------
+
 
 @app.route("/api/svos")
 def api_svos():
@@ -591,35 +691,41 @@ def api_svos():
     for name, meta in strategies.items():
         if not isinstance(meta, dict):
             meta = {}
-        strategy_list.append({
-            "name": name,
-            "status": meta.get("status", "unknown"),
-            "version": meta.get("version", ""),
-            "approved": meta.get("approved", False),
-            "current": meta.get("current", False),
-            "description": meta.get("description", ""),
-            "symbols": meta.get("symbols", []),
-            "timeframes": meta.get("timeframes", []),
-            "requirements": meta.get("requirements", {}),
-            "last_svos_at": meta.get("last_svos_at", ""),
-            "last_svos_status": meta.get("last_svos_status", ""),
-            "last_svos_promoted_stage": meta.get("last_svos_promoted_stage", ""),
-        })
+        strategy_list.append(
+            {
+                "name": name,
+                "status": meta.get("status", "unknown"),
+                "version": meta.get("version", ""),
+                "approved": meta.get("approved", False),
+                "current": meta.get("current", False),
+                "description": meta.get("description", ""),
+                "symbols": meta.get("symbols", []),
+                "timeframes": meta.get("timeframes", []),
+                "requirements": meta.get("requirements", {}),
+                "last_svos_at": meta.get("last_svos_at", ""),
+                "last_svos_status": meta.get("last_svos_status", ""),
+                "last_svos_promoted_stage": meta.get("last_svos_promoted_stage", ""),
+            }
+        )
 
     current_report = _latest_svos_report(current) if current else {}
-    stage_reports = _svos_stage_report_payload(current) if current else {"stage_reports": []}
+    stage_reports = (
+        _svos_stage_report_payload(current) if current else {"stage_reports": []}
+    )
     canonical_run = _latest_canonical_svos_payload(current) if current else {}
 
-    return jsonify({
-        "current_strategy": current,
-        "strategies": strategy_list,
-        "current_report": current_report,
-        "stage_reports": stage_reports.get("stage_reports", []),
-        "stage_report_index_path": stage_reports.get("stage_index_path", ""),
-        "stage_report_updated_at": stage_reports.get("updated_at", ""),
-        "canonical_run": canonical_run,
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "current_strategy": current,
+            "strategies": strategy_list,
+            "current_report": current_report,
+            "stage_reports": stage_reports.get("stage_reports", []),
+            "stage_report_index_path": stage_reports.get("stage_index_path", ""),
+            "stage_report_updated_at": stage_reports.get("updated_at", ""),
+            "canonical_run": canonical_run,
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/svos/run", methods=["POST"])
@@ -629,55 +735,93 @@ def api_svos_run():
     confirm = body.get("confirm_token", "")
     strategy = body.get("strategy", "")
     if confirm != f"CONFIRM-SVOS-{strategy}":
-        write_audit_log("svos_run_denied", status="denied", detail={"strategy": strategy, "reason": "invalid_confirm_token"})
-        return jsonify({"error": "Invalid or missing CONFIRM token", "required": f"CONFIRM-SVOS-{strategy}"}), 403
+        write_audit_log(
+            "svos_run_denied",
+            status="denied",
+            detail={"strategy": strategy, "reason": "invalid_confirm_token"},
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Invalid or missing CONFIRM token",
+                    "required": f"CONFIRM-SVOS-{strategy}",
+                }
+            ),
+            403,
+        )
 
-    cmd = [sys.executable, str(_ROOT / "scripts" / "run_current_strategy_svos.py"), "--strategy", strategy]
+    cmd = [
+        sys.executable,
+        str(_ROOT / "scripts" / "run_current_strategy_svos.py"),
+        "--strategy",
+        strategy,
+    ]
     try:
         rc, out = _run_command(cmd)
-        write_audit_log("svos_run", status="completed", detail={"strategy": strategy, "returncode": rc})
+        write_audit_log(
+            "svos_run",
+            status="completed",
+            detail={"strategy": strategy, "returncode": rc},
+        )
         return jsonify({"status": "completed", "returncode": rc, "output": out})
     except subprocess.TimeoutExpired:
         write_audit_log("svos_run", status="timeout", detail={"strategy": strategy})
         return jsonify({"status": "timeout"}), 408
     except Exception as exc:
-        write_audit_log("svos_run", status="error", detail={"strategy": strategy, "error": str(exc)})
+        write_audit_log(
+            "svos_run", status="error", detail={"strategy": strategy, "error": str(exc)}
+        )
         return jsonify({"error": str(exc)}), 500
+
 
 # ---------------------------------------------------------------------------
 # EVF API
 # ---------------------------------------------------------------------------
 
+
 @app.route("/api/evf")
 def api_evf():
     report = _latest_evf_report()
     checks = report.get("checks", {})
-    check_list = [
-        {"name": k, "passed": v.get("passed", False), "message": v.get("message", ""), "score": v.get("score", 0)}
-        for k, v in checks.items()
-    ] if isinstance(checks, dict) else []
+    check_list = (
+        [
+            {
+                "name": k,
+                "passed": v.get("passed", False),
+                "message": v.get("message", ""),
+                "score": v.get("score", 0),
+            }
+            for k, v in checks.items()
+        ]
+        if isinstance(checks, dict)
+        else []
+    )
 
-    return jsonify({
-        "strategy": report.get("strategy", ""),
-        "period": report.get("period", ""),
-        "status": report.get("status", "UNKNOWN"),
-        "final_score": report.get("final_score", 0),
-        "created_at": report.get("created_at", ""),
-        "signal_accuracy": report.get("signal_accuracy", 0),
-        "order_accuracy": report.get("order_accuracy", 0),
-        "risk_accuracy": report.get("risk_accuracy", 0),
-        "slippage_average_pip": report.get("slippage_average_pip", 0),
-        "slippage_p95_pip": report.get("slippage_p95_pip", 0),
-        "execution_delay_ms_average": report.get("execution_delay_ms_average", 0),
-        "duplicate_order_protection_passed": report.get("duplicate_order_protection_passed", False),
-        "spread_handling_passed": report.get("spread_handling_passed", False),
-        "slippage_passed": report.get("slippage_passed", False),
-        "exit_management_passed": report.get("exit_management_passed", False),
-        "recovery_passed": report.get("recovery_passed", False),
-        "broker_simulation_passed": report.get("broker_simulation_passed", False),
-        "checks": check_list,
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "strategy": report.get("strategy", ""),
+            "period": report.get("period", ""),
+            "status": report.get("status", "UNKNOWN"),
+            "final_score": report.get("final_score", 0),
+            "created_at": report.get("created_at", ""),
+            "signal_accuracy": report.get("signal_accuracy", 0),
+            "order_accuracy": report.get("order_accuracy", 0),
+            "risk_accuracy": report.get("risk_accuracy", 0),
+            "slippage_average_pip": report.get("slippage_average_pip", 0),
+            "slippage_p95_pip": report.get("slippage_p95_pip", 0),
+            "execution_delay_ms_average": report.get("execution_delay_ms_average", 0),
+            "duplicate_order_protection_passed": report.get(
+                "duplicate_order_protection_passed", False
+            ),
+            "spread_handling_passed": report.get("spread_handling_passed", False),
+            "slippage_passed": report.get("slippage_passed", False),
+            "exit_management_passed": report.get("exit_management_passed", False),
+            "recovery_passed": report.get("recovery_passed", False),
+            "broker_simulation_passed": report.get("broker_simulation_passed", False),
+            "checks": check_list,
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/evf/run", methods=["POST"])
@@ -688,45 +832,78 @@ def api_evf_run():
     strategy = body.get("strategy", "")
     payload_path = body.get("payload_path", "")
     if confirm != f"CONFIRM-EVF-{strategy}":
-        write_audit_log("evf_run_denied", status="denied", detail={"strategy": strategy, "reason": "invalid_confirm_token"})
-        return jsonify({"error": "Invalid or missing CONFIRM token", "required": f"CONFIRM-EVF-{strategy}"}), 403
+        write_audit_log(
+            "evf_run_denied",
+            status="denied",
+            detail={"strategy": strategy, "reason": "invalid_confirm_token"},
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Invalid or missing CONFIRM token",
+                    "required": f"CONFIRM-EVF-{strategy}",
+                }
+            ),
+            403,
+        )
 
-    cmd = [sys.executable, str(_ROOT / "scripts" / "run_evf.py"), "--strategy", strategy]
+    cmd = [
+        sys.executable,
+        str(_ROOT / "scripts" / "run_evf.py"),
+        "--strategy",
+        strategy,
+    ]
     if payload_path:
         cmd += ["--payload", payload_path]
     try:
         rc, out = _run_command(cmd)
-        write_audit_log("evf_run", status="completed", detail={"strategy": strategy, "returncode": rc, "payload_path": payload_path})
+        write_audit_log(
+            "evf_run",
+            status="completed",
+            detail={
+                "strategy": strategy,
+                "returncode": rc,
+                "payload_path": payload_path,
+            },
+        )
         return jsonify({"status": "completed", "returncode": rc, "output": out})
     except subprocess.TimeoutExpired:
         write_audit_log("evf_run", status="timeout", detail={"strategy": strategy})
         return jsonify({"status": "timeout"}), 408
     except Exception as exc:
-        write_audit_log("evf_run", status="error", detail={"strategy": strategy, "error": str(exc)})
+        write_audit_log(
+            "evf_run", status="error", detail={"strategy": strategy, "error": str(exc)}
+        )
         return jsonify({"error": str(exc)}), 500
+
 
 # ---------------------------------------------------------------------------
 # Trade status API
 # ---------------------------------------------------------------------------
+
 
 @app.route("/api/trades")
 def api_trades():
     records = _all_trades()
     stats = _trade_stats(records)
     recent = records[:50]
-    return jsonify({
-        "stats": stats,
-        "recent": recent,
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "stats": stats,
+            "recent": recent,
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/demo-runner")
 def api_demo_runner():
-    return jsonify({
-        "runner": _demo_runner_state(),
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "runner": _demo_runner_state(),
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/status")
@@ -746,34 +923,38 @@ def api_status():
     canonical_run = _latest_canonical_svos_payload(current) if current else {}
     demo_runner = _demo_runner_state()
 
-    return jsonify({
-        "system": "ONLINE",
-        "current_strategy": current,
-        "strategy_status": current_meta.get("status", "unknown"),
-        "strategy_approved": current_meta.get("approved", False),
-        "last_svos_status": canonical_run.get("overall_status") or current_meta.get("last_svos_status", ""),
-        "last_svos_at": canonical_run.get("generated_at") or current_meta.get("last_svos_at", ""),
-        "last_svos_active_blocker": canonical_run.get("active_blocker", ""),
-        "evf_status": evf.get("status", "NO REPORT"),
-        "evf_score": evf.get("final_score", 0),
-        "trade_count": stats["total"],
-        "win_rate": stats["win_rate"],
-        "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
-        "demo_runner_mode": demo_runner.get("mode", ""),
-        "demo_runner_status": demo_runner.get("status", ""),
-        "demo_runner_strategy": demo_runner.get("strategy", ""),
-        "demo_runner_updated_at": demo_runner.get("updated_at", ""),
-        "demo_only": demo_runner.get("demo_only"),
-        "rgm_risk_status": rgm["qualification_status"],
-        "governance_approval": governance["approval_status"],
-        "smo_monitoring_status": smo["monitoring_status"],
-        "emergency_stop_active": bool(control["emergency_stop"]["active"]),
-        "emergency_stop_reason": control["emergency_stop"]["reason"],
-        "dashboard_bind_host": bind_host,
-        "dashboard_public_host": public_host,
-        "dashboard_url": dashboard_url(public_host, port),
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "system": "ONLINE",
+            "current_strategy": current,
+            "strategy_status": current_meta.get("status", "unknown"),
+            "strategy_approved": current_meta.get("approved", False),
+            "last_svos_status": canonical_run.get("overall_status")
+            or current_meta.get("last_svos_status", ""),
+            "last_svos_at": canonical_run.get("generated_at")
+            or current_meta.get("last_svos_at", ""),
+            "last_svos_active_blocker": canonical_run.get("active_blocker", ""),
+            "evf_status": evf.get("status", "NO REPORT"),
+            "evf_score": evf.get("final_score", 0),
+            "trade_count": stats["total"],
+            "win_rate": stats["win_rate"],
+            "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
+            "demo_runner_mode": demo_runner.get("mode", ""),
+            "demo_runner_status": demo_runner.get("status", ""),
+            "demo_runner_strategy": demo_runner.get("strategy", ""),
+            "demo_runner_updated_at": demo_runner.get("updated_at", ""),
+            "demo_only": demo_runner.get("demo_only"),
+            "rgm_risk_status": rgm["qualification_status"],
+            "governance_approval": governance["approval_status"],
+            "smo_monitoring_status": smo["monitoring_status"],
+            "emergency_stop_active": bool(control["emergency_stop"]["active"]),
+            "emergency_stop_reason": control["emergency_stop"]["reason"],
+            "dashboard_bind_host": bind_host,
+            "dashboard_public_host": public_host,
+            "dashboard_url": dashboard_url(public_host, port),
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/platform")
@@ -813,12 +994,14 @@ def api_smo():
 @app.route("/api/reports")
 def api_reports():
     payload = load_index()
-    return jsonify({
-        "generated_at": payload.get("generated_at", ""),
-        "reports": payload.get("reports", []),
-        "latest": payload.get("latest", {}),
-        "fetched_at": _now_iso(),
-    })
+    return jsonify(
+        {
+            "generated_at": payload.get("generated_at", ""),
+            "reports": payload.get("reports", []),
+            "latest": payload.get("latest", {}),
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/reports/latest")
@@ -834,7 +1017,15 @@ def api_reports_by_id(report_id: str):
         payload = read_report(report_id)
     except FileNotFoundError:
         return jsonify({"error": "Report not found", "report_id": report_id}), 404
-    return jsonify({**payload, "reviewed_at": load_control_state().get("reports_reviewed", {}).get(report_id, ""), "fetched_at": _now_iso()})
+    return jsonify(
+        {
+            **payload,
+            "reviewed_at": load_control_state()
+            .get("reports_reviewed", {})
+            .get(report_id, ""),
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/reports/<path:report_id>/review", methods=["POST"])
@@ -859,9 +1050,20 @@ def api_reports_generate():
     try:
         payload = generate_reports_payload(report_type)
     except ValueError as exc:
-        write_audit_log("report_generate", status="denied", detail={"report_type": report_type, "error": str(exc)})
+        write_audit_log(
+            "report_generate",
+            status="denied",
+            detail={"report_type": report_type, "error": str(exc)},
+        )
         return jsonify({"error": str(exc)}), 400
-    write_audit_log("report_generate", status="completed", detail={"report_type": report_type, "artifact_count": len(payload.get("artifacts", []))})
+    write_audit_log(
+        "report_generate",
+        status="completed",
+        detail={
+            "report_type": report_type,
+            "artifact_count": len(payload.get("artifacts", [])),
+        },
+    )
     return jsonify(payload)
 
 
@@ -875,15 +1077,29 @@ def api_incidents_ack():
     actor = request.environ["svos.actor"]
     review = mark_incident_reviewed(incident_id)
     reviewed_at = review.get("incidents_reviewed", {}).get(incident_id, "")
-    write_audit_log("incident_acknowledged", status="completed", detail={"incident_id": incident_id, "reviewed_at": reviewed_at, "actor": actor})
-    return jsonify({"incident_id": incident_id, "reviewed_at": reviewed_at, "fetched_at": _now_iso()})
+    write_audit_log(
+        "incident_acknowledged",
+        status="completed",
+        detail={"incident_id": incident_id, "reviewed_at": reviewed_at, "actor": actor},
+    )
+    return jsonify(
+        {
+            "incident_id": incident_id,
+            "reviewed_at": reviewed_at,
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/reports/generate/all", methods=["POST"])
 @_require_operator("research_operator", "admin")
 def api_reports_generate_all():
     payload = generate_reports_payload("all")
-    write_audit_log("report_generate_all", status="completed", detail={"artifact_count": len(payload.get("artifacts", []))})
+    write_audit_log(
+        "report_generate_all",
+        status="completed",
+        detail={"artifact_count": len(payload.get("artifacts", []))},
+    )
     return jsonify(payload)
 
 
@@ -893,12 +1109,37 @@ def api_emergency_stop():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()
     if confirm != "CONFIRM-EMERGENCY-STOP":
-        write_audit_log("emergency_stop_denied", status="denied", detail={"reason": "invalid_confirm_token"})
-        return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-EMERGENCY-STOP"}), 403
-    reason = str(body.get("reason", "Manual operator stop")).strip() or "Manual operator stop"
-    state = activate_emergency_stop(reason=reason, activated_by=request.environ["svos.actor"])
-    write_audit_log("emergency_stop", status="completed", detail=state["emergency_stop"])
-    return jsonify({"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
+        write_audit_log(
+            "emergency_stop_denied",
+            status="denied",
+            detail={"reason": "invalid_confirm_token"},
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Invalid or missing CONFIRM token",
+                    "required": "CONFIRM-EMERGENCY-STOP",
+                }
+            ),
+            403,
+        )
+    reason = (
+        str(body.get("reason", "Manual operator stop")).strip()
+        or "Manual operator stop"
+    )
+    state = activate_emergency_stop(
+        reason=reason, activated_by=request.environ["svos.actor"]
+    )
+    write_audit_log(
+        "emergency_stop", status="completed", detail=state["emergency_stop"]
+    )
+    return jsonify(
+        {
+            "status": "stopped",
+            "emergency_stop": state["emergency_stop"],
+            "fetched_at": _now_iso(),
+        }
+    )
 
 
 @app.route("/api/emergency-stop/clear", methods=["POST"])
@@ -907,16 +1148,43 @@ def api_emergency_stop_clear():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()
     if confirm != "CONFIRM-CLEAR-EMERGENCY-STOP":
-        write_audit_log("emergency_stop_clear_denied", status="denied", detail={"reason": "invalid_confirm_token"})
-        return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-CLEAR-EMERGENCY-STOP"}), 403
-    reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
-    state = clear_emergency_stop(reason=reason, cleared_by=request.environ["svos.actor"])
-    write_audit_log("emergency_stop_clear", status="completed", detail=state["emergency_stop"])
-    return jsonify({"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
+        write_audit_log(
+            "emergency_stop_clear_denied",
+            status="denied",
+            detail={"reason": "invalid_confirm_token"},
+        )
+        return (
+            jsonify(
+                {
+                    "error": "Invalid or missing CONFIRM token",
+                    "required": "CONFIRM-CLEAR-EMERGENCY-STOP",
+                }
+            ),
+            403,
+        )
+    reason = (
+        str(body.get("reason", "Operator review complete")).strip()
+        or "Operator review complete"
+    )
+    state = clear_emergency_stop(
+        reason=reason, cleared_by=request.environ["svos.actor"]
+    )
+    write_audit_log(
+        "emergency_stop_clear", status="completed", detail=state["emergency_stop"]
+    )
+    return jsonify(
+        {
+            "status": "cleared",
+            "emergency_stop": state["emergency_stop"],
+            "fetched_at": _now_iso(),
+        }
+    )
+
 
 # ---------------------------------------------------------------------------
 # Static dashboard
 # ---------------------------------------------------------------------------
+
 
 @app.route("/")
 def index():

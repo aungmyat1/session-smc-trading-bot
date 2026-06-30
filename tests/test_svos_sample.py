@@ -6,7 +6,6 @@ from pathlib import Path
 
 from scripts.run_svos_sample import REPORTS, run_sample
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,7 +25,9 @@ def test_isolated_sample_runs_and_verifies_all_six_reports(tmp_path):
     assert result["strategy_version"] == "1.0.0"
     assert result["isolated_catalog_final_status"] == "walk_forward"
     assert result["live_promotion_requested"] is False
-    assert [stage["stage"] for stage in result["stages"]] == [stage for stage, _ in REPORTS]
+    assert [stage["stage"] for stage in result["stages"]] == [
+        stage for stage, _ in REPORTS
+    ]
     assert [stage["status"] for stage in result["stages"]] == ["PASS"] * 5 + ["NOT_RUN"]
     assert result["stages"][-1]["promotion_allowed"] is False
     assert _sha256(catalog) == catalog_before
@@ -43,7 +44,9 @@ def test_isolated_sample_runs_and_verifies_all_six_reports(tmp_path):
 def test_sample_virtual_demo_report_contains_execution_evidence(tmp_path):
     result = run_sample(tmp_path / "reports" / "svos")
     report_dir = Path(result["report_dir"])
-    report = json.loads((report_dir / "05_virtual_demo.json").read_text(encoding="utf-8"))
+    report = json.loads(
+        (report_dir / "05_virtual_demo.json").read_text(encoding="utf-8")
+    )
 
     execution = report["metrics"]["execution"]
     assert execution["expected_signals"] == execution["observed_signals"] == 12

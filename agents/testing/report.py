@@ -1,4 +1,5 @@
 """Testing Agent report — JSON and Markdown output."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,13 @@ from agents.testing.agent import StageResult, TestingAgentResult
 
 logger = logging.getLogger(__name__)
 
-_STAGES = ("unit_tests", "integration_tests", "strategy_validation", "historical_replay", "regression")
+_STAGES = (
+    "unit_tests",
+    "integration_tests",
+    "strategy_validation",
+    "historical_replay",
+    "regression",
+)
 
 
 def _stage_dict(s: StageResult | None) -> dict[str, Any] | None:
@@ -73,8 +80,14 @@ class TestingReport:
             s = d.get(key)
             if s:
                 cov = f"{s['coverage']}%" if s["coverage"] is not None else "—"
-                icon_s = "✅" if s["status"] == "PASS" else ("⏭" if s["status"] == "SKIP" else "❌")
-                lines.append(f"| {key} | {icon_s} {s['status']} | {s['score']} | {cov} |")
+                icon_s = (
+                    "✅"
+                    if s["status"] == "PASS"
+                    else ("⏭" if s["status"] == "SKIP" else "❌")
+                )
+                lines.append(
+                    f"| {key} | {icon_s} {s['status']} | {s['score']} | {cov} |"
+                )
 
         for key in _STAGES:
             s = d.get(key)

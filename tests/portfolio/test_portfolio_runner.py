@@ -10,23 +10,24 @@ their own test modules).
 
 from __future__ import annotations
 
-import sys
-import types
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 _ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from core.signal import Signal
-
+from core.signal import Signal  # noqa: E402
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
-def _make_signal(strategy="ST-A2", symbol="EURUSD", action="BUY",
-                  confidence=0.80, exec_mode="demo") -> Signal:
+
+def _make_signal(
+    strategy="ST-A2", symbol="EURUSD", action="BUY", confidence=0.80, exec_mode="demo"
+) -> Signal:
     return Signal(
         timestamp="2026-06-24T09:00:00+00:00",
         strategy_name=strategy,
@@ -39,18 +40,20 @@ def _make_signal(strategy="ST-A2", symbol="EURUSD", action="BUY",
         risk_percent=0.30,
         confidence=confidence,
         metadata={
-            "risk_pips":    20.0,
-            "reward_pips":  80.0,
-            "rr":           4.0,
-            "session":      "london",
+            "risk_pips": 20.0,
+            "reward_pips": 80.0,
+            "rr": 4.0,
+            "session": "london",
             "execution_mode": exec_mode,
         },
     )
 
 
 def _fake_candles(n=60) -> list[dict]:
-    return [{"open": 1.1, "high": 1.101, "low": 1.099, "close": 1.1005,
-             "volume": 100} for _ in range(n)]
+    return [
+        {"open": 1.1, "high": 1.101, "low": 1.099, "close": 1.1005, "volume": 100}
+        for _ in range(n)
+    ]
 
 
 def _make_price(symbol="EURUSD") -> dict:
@@ -59,9 +62,14 @@ def _make_price(symbol="EURUSD") -> dict:
 
 
 class _FakeConnector:
-    async def connect(self): pass
-    async def disconnect(self): pass
-    async def reconnect(self): pass
+    async def connect(self):
+        pass
+
+    async def disconnect(self):
+        pass
+
+    async def reconnect(self):
+        pass
 
 
 class _FakeExecutor:
@@ -82,6 +90,7 @@ class _FakeManager:
 
 # ── Strategy stub factory ─────────────────────────────────────────────────────
 
+
 def _make_strategy_stub(name, signal=None):
     """Return a BaseStrategy-like stub that produces the given signal."""
     stub = MagicMock()
@@ -92,69 +101,80 @@ def _make_strategy_stub(name, signal=None):
 
 # ── Helper: run _tick with injected stubs ─────────────────────────────────────
 
-async def _run_tick(strategy_map, signal_map, mode="shadow",
-                    router_pass=True, breaker_pass=True, pm_pass=True):
+
+async def _run_tick(
+    strategy_map,
+    signal_map,
+    mode="shadow",
+    router_pass=True,
+    breaker_pass=True,
+    pm_pass=True,
+):
     """
     Run one portfolio runner tick.
 
     strategy_map: {strategy_name: {pairs, mode}}
     signal_map:   {strategy_name: Signal | None}  — what generate_signal returns
     """
-    connector  = _FakeConnector()
-    executor   = _FakeExecutor()
-    manager    = _FakeManager()
-    journal    = MagicMock()
+    connector = _FakeConnector()
+    executor = _FakeExecutor()
+    manager = _FakeManager()
+    journal = MagicMock()
     journal.log_open = MagicMock()
     risk_state = {"_fetch_fails": 0}
 
     # Build registry stubs
     strategies = {
-        name: _make_strategy_stub(name, signal_map.get(name))
-        for name in strategy_map
+        name: _make_strategy_stub(name, signal_map.get(name)) for name in strategy_map
     }
 
     # Build control-layer stubs
-    router   = MagicMock()
-    breaker  = MagicMock()
-    portmgr  = MagicMock()
-    shadow   = MagicMock()
-    jdb      = MagicMock()
+    router = MagicMock()
+    breaker = MagicMock()
+    portmgr = MagicMock()
+    shadow = MagicMock()
+    jdb = MagicMock()
     jdb.record_signal.return_value = 1
 
     def _router_route(sigs):
         return sigs if router_pass else []
+
     router.route.side_effect = _router_route
 
     def _breaker_check(name):
         return (True, "ok") if breaker_pass else (False, "cooldown")
+
     breaker.check.side_effect = _breaker_check
     breaker.record_signal = MagicMock()
-    breaker.record_trade  = MagicMock()
+    breaker.record_trade = MagicMock()
 
     portmgr.any_loss_limit_hit.return_value = False
     portmgr.evaluate.side_effect = lambda sigs: sigs if pm_pass else []
     portmgr.stats.return_value = {}
     portmgr.record_trade = MagicMock()
 
-    from execution.demo_risk_manager import new_state
-
     with (
-        patch("scripts.run_portfolio._STRATEGY_MAP",   strategy_map),
-        patch("scripts.run_portfolio._ALL_SYMBOLS",     sorted({s for cfg in strategy_map.values() for s in cfg["pairs"]})),
-        patch("scripts.run_portfolio._router",          router),
-        patch("scripts.run_portfolio._breaker",         breaker),
-        patch("scripts.run_portfolio._portmgr",         portmgr),
-        patch("scripts.run_portfolio._shadow",          shadow),
-        patch("scripts.run_portfolio._jdb",             jdb),
-        patch("scripts.run_portfolio.get_strategy",      lambda name: strategies.get(name)),
+        patch("scripts.run_portfolio._STRATEGY_MAP", strategy_map),
+        patch(
+            "scripts.run_portfolio._ALL_SYMBOLS",
+            sorted({s for cfg in strategy_map.values() for s in cfg["pairs"]}),
+        ),
+        patch("scripts.run_portfolio._router", router),
+        patch("scripts.run_portfolio._breaker", breaker),
+        patch("scripts.run_portfolio._portmgr", portmgr),
+        patch("scripts.run_portfolio._shadow", shadow),
+        patch("scripts.run_portfolio._jdb", jdb),
+        patch("scripts.run_portfolio.get_strategy", lambda name: strategies.get(name)),
     ):
         from scripts.run_portfolio import _tick
+
         result = await _tick(mode, connector, executor, manager, journal, risk_state)
 
     return result, shadow, jdb, manager, portmgr, breaker
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestTickNoSignals:
     """Tick with all strategies returning None."""
@@ -254,8 +274,9 @@ class TestCircuitBreakerBlock:
             "ST-A2": {"pairs": ["EURUSD"], "mode": "demo", "enabled": True},
         }
         result, shadow, jdb, manager, *_ = asyncio.run(
-            _run_tick(strategy_map, signal_map={"ST-A2": sig},
-                      mode="demo", breaker_pass=False)
+            _run_tick(
+                strategy_map, signal_map={"ST-A2": sig}, mode="demo", breaker_pass=False
+            )
         )
         shadow.track.assert_not_called()
         jdb.record_signal.assert_called_once()
@@ -273,8 +294,9 @@ class TestPortfolioManagerBlock:
             "ST-A2": {"pairs": ["EURUSD"], "mode": "demo", "enabled": True},
         }
         result, shadow, jdb, *_ = asyncio.run(
-            _run_tick(strategy_map, signal_map={"ST-A2": sig},
-                      mode="demo", pm_pass=False)
+            _run_tick(
+                strategy_map, signal_map={"ST-A2": sig}, mode="demo", pm_pass=False
+            )
         )
         shadow.track.assert_not_called()
         jdb.record_signal.assert_called_once()
@@ -286,7 +308,7 @@ class TestPortfolioLossLimit:
     """When portfolio loss limit is hit, the tick is skipped entirely."""
 
     def test_loss_limit_skips_tick(self):
-        sig = _make_signal(exec_mode="demo")
+        _sig = _make_signal(exec_mode="demo")
         strategy_map = {
             "ST-A2": {"pairs": ["EURUSD"], "mode": "demo", "enabled": True},
         }
@@ -296,18 +318,25 @@ class TestPortfolioLossLimit:
         portmgr.stats.return_value = {}
 
         with (
-            patch("scripts.run_portfolio._STRATEGY_MAP",  strategy_map),
-            patch("scripts.run_portfolio._ALL_SYMBOLS",   ["EURUSD"]),
-            patch("scripts.run_portfolio._portmgr",       portmgr),
-            patch("scripts.run_portfolio._router",        MagicMock()),
-            patch("scripts.run_portfolio._breaker",       MagicMock()),
-            patch("scripts.run_portfolio._shadow",        MagicMock()),
-            patch("scripts.run_portfolio._jdb",           MagicMock()),
+            patch("scripts.run_portfolio._STRATEGY_MAP", strategy_map),
+            patch("scripts.run_portfolio._ALL_SYMBOLS", ["EURUSD"]),
+            patch("scripts.run_portfolio._portmgr", portmgr),
+            patch("scripts.run_portfolio._router", MagicMock()),
+            patch("scripts.run_portfolio._breaker", MagicMock()),
+            patch("scripts.run_portfolio._shadow", MagicMock()),
+            patch("scripts.run_portfolio._jdb", MagicMock()),
         ):
             from scripts.run_portfolio import _tick
-            result = asyncio.run(
-                _tick("demo", _FakeConnector(), _FakeExecutor(),
-                      _FakeManager(), MagicMock(), {})
+
+            asyncio.run(
+                _tick(
+                    "demo",
+                    _FakeConnector(),
+                    _FakeExecutor(),
+                    _FakeManager(),
+                    MagicMock(),
+                    {},
+                )
             )
 
         portmgr.evaluate.assert_not_called()
@@ -317,11 +346,13 @@ class TestMultiStrategySignals:
     """Multiple strategies can fire in the same tick."""
 
     def test_two_uncorrelated_signals_both_recorded(self):
-        sig_eur = _make_signal(strategy="LondonBreakout", symbol="EURUSD", exec_mode="demo")
-        sig_jpy = _make_signal(strategy="NYMomentum",     symbol="USDJPY", exec_mode="demo")
+        sig_eur = _make_signal(
+            strategy="LondonBreakout", symbol="EURUSD", exec_mode="demo"
+        )
+        sig_jpy = _make_signal(strategy="NYMomentum", symbol="USDJPY", exec_mode="demo")
         strategy_map = {
-            "LondonBreakout": {"pairs": ["EURUSD"],  "mode": "demo", "enabled": True},
-            "NYMomentum":     {"pairs": ["USDJPY"],  "mode": "demo", "enabled": True},
+            "LondonBreakout": {"pairs": ["EURUSD"], "mode": "demo", "enabled": True},
+            "NYMomentum": {"pairs": ["USDJPY"], "mode": "demo", "enabled": True},
         }
 
         placed = []
@@ -366,27 +397,42 @@ class TestAutoReconnect:
                 return {"balance": 0.0}
 
         class _TrackingConnector:
-            async def connect(self): pass
-            async def disconnect(self): pass
+            async def connect(self):
+                pass
+
+            async def disconnect(self):
+                pass
+
             async def reconnect(self):
                 reconnect_calls.append(True)
 
         connector = _TrackingConnector()
-        executor  = _FailingExecutor()
+        executor = _FailingExecutor()
 
         with (
-            patch("scripts.run_portfolio._STRATEGY_MAP",   strategy_map),
-            patch("scripts.run_portfolio._ALL_SYMBOLS",    ["EURUSD"]),
-            patch("scripts.run_portfolio._router",         MagicMock()),
-            patch("scripts.run_portfolio._breaker",        MagicMock()),
-            patch("scripts.run_portfolio._portmgr",        MagicMock(**{"any_loss_limit_hit.return_value": False})),
-            patch("scripts.run_portfolio._shadow",         MagicMock()),
-            patch("scripts.run_portfolio._jdb",            MagicMock()),
+            patch("scripts.run_portfolio._STRATEGY_MAP", strategy_map),
+            patch("scripts.run_portfolio._ALL_SYMBOLS", ["EURUSD"]),
+            patch("scripts.run_portfolio._router", MagicMock()),
+            patch("scripts.run_portfolio._breaker", MagicMock()),
+            patch(
+                "scripts.run_portfolio._portmgr",
+                MagicMock(**{"any_loss_limit_hit.return_value": False}),
+            ),
+            patch("scripts.run_portfolio._shadow", MagicMock()),
+            patch("scripts.run_portfolio._jdb", MagicMock()),
         ):
-            from scripts.run_portfolio import _tick, _MAX_FETCH_FAIL
+            from scripts.run_portfolio import _MAX_FETCH_FAIL, _tick
+
             risk_state = {"_fetch_fails": _MAX_FETCH_FAIL - 1}
             asyncio.run(
-                _tick("shadow", connector, executor, _FakeManager(), MagicMock(), risk_state)
+                _tick(
+                    "shadow",
+                    connector,
+                    executor,
+                    _FakeManager(),
+                    MagicMock(),
+                    risk_state,
+                )
             )
 
         assert len(reconnect_calls) >= 1
@@ -407,20 +453,31 @@ class TestDailyReset:
             return {"last_reset": "2026-06-24T00:00:00"}
 
         with (
-            patch("scripts.run_portfolio._STRATEGY_MAP",   strategy_map),
-            patch("scripts.run_portfolio._ALL_SYMBOLS",    ["EURUSD"]),
-            patch("scripts.run_portfolio._router",         MagicMock(**{"route.return_value": []})),
-            patch("scripts.run_portfolio._breaker",        MagicMock()),
-            patch("scripts.run_portfolio._portmgr",        MagicMock(**{"any_loss_limit_hit.return_value": False})),
-            patch("scripts.run_portfolio._shadow",         MagicMock()),
-            patch("scripts.run_portfolio._jdb",            MagicMock()),
-            patch("scripts.run_portfolio.reset_daily",     _fake_reset),
+            patch("scripts.run_portfolio._STRATEGY_MAP", strategy_map),
+            patch("scripts.run_portfolio._ALL_SYMBOLS", ["EURUSD"]),
+            patch(
+                "scripts.run_portfolio._router", MagicMock(**{"route.return_value": []})
+            ),
+            patch("scripts.run_portfolio._breaker", MagicMock()),
+            patch(
+                "scripts.run_portfolio._portmgr",
+                MagicMock(**{"any_loss_limit_hit.return_value": False}),
+            ),
+            patch("scripts.run_portfolio._shadow", MagicMock()),
+            patch("scripts.run_portfolio._jdb", MagicMock()),
+            patch("scripts.run_portfolio.reset_daily", _fake_reset),
         ):
             from scripts.run_portfolio import _tick
+
             asyncio.run(
-                _tick("shadow", _FakeConnector(), _FakeExecutor(),
-                      _FakeManager(), MagicMock(),
-                      {"last_reset": "2026-06-23"})
+                _tick(
+                    "shadow",
+                    _FakeConnector(),
+                    _FakeExecutor(),
+                    _FakeManager(),
+                    MagicMock(),
+                    {"last_reset": "2026-06-23"},
+                )
             )
 
         assert reset_called
@@ -431,6 +488,7 @@ class TestLiveBlocked:
 
     def test_live_mode_blocked(self):
         from scripts.run_portfolio import main
+
         with patch("sys.argv", ["run_portfolio.py", "--mode", "live"]):
             with pytest.raises(SystemExit) as exc:
                 main()
@@ -441,14 +499,20 @@ class TestStrategyMapFromConfig:
     """_STRATEGY_MAP falls back to hardcoded defaults when yaml unavailable."""
 
     def test_fallback_map_has_all_five_strategies(self):
-        import importlib
         with patch("builtins.open", side_effect=FileNotFoundError):
             # Re-evaluate the _load_strategy_config call
             from scripts import run_portfolio as rp
-            cfg = rp._load_strategy_config()
+
+            _cfg = rp._load_strategy_config()
         # No yaml → empty dict; fallback map defined in module already
         # Just verify the hardcoded fallback names are all present
-        expected = {"ST-A2", "LondonBreakout", "NYMomentum", "AdaptiveSMC", "VWAPBreakout"}
+        expected = {
+            "ST-A2",
+            "LondonBreakout",
+            "NYMomentum",
+            "AdaptiveSMC",
+            "VWAPBreakout",
+        }
         # The fallback is the `or {...}` clause — test by checking module-level dict
         # which uses the yaml if available; just check it has ≥ the 5 core strategies
         # (may already be loaded from actual config)

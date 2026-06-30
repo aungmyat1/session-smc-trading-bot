@@ -39,7 +39,9 @@ class FilesystemArtifactStore:
                 raise RuntimeError(f"content-address collision at {destination}")
             return StoredArtifact(hexdigest, destination, size)
 
-        with NamedTemporaryFile(dir=destination.parent, prefix=".artifact-", delete=False) as temporary:
+        with NamedTemporaryFile(
+            dir=destination.parent, prefix=".artifact-", delete=False
+        ) as temporary:
             temp_path = Path(temporary.name)
             with source_path.open("rb") as source_handle:
                 shutil.copyfileobj(source_handle, temporary)
@@ -53,7 +55,10 @@ class FilesystemArtifactStore:
         return StoredArtifact(hexdigest, destination, size)
 
     def verify(self, artifact: StoredArtifact) -> bool:
-        if not artifact.path.is_file() or artifact.path.stat().st_size != artifact.size_bytes:
+        if (
+            not artifact.path.is_file()
+            or artifact.path.stat().st_size != artifact.size_bytes
+        ):
             return False
         digest = hashlib.sha256(artifact.path.read_bytes()).hexdigest()
         return digest == artifact.sha256

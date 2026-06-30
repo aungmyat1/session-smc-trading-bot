@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import json
 from pathlib import Path
-import re
 
 import pandas as pd
 
@@ -53,39 +53,55 @@ class LayeredResearchStore:
 
         saved: list[Path] = []
         for (year, month), partition in out.groupby(["year", "month"], sort=True):
-            dest = (
-                self.root
-                .joinpath(*parts)
-                .joinpath(f"year={int(year):04d}", f"month={int(month):02d}", "part-000.parquet")
+            dest = self.root.joinpath(*parts).joinpath(
+                f"year={int(year):04d}", f"month={int(month):02d}", "part-000.parquet"
             )
             dest.parent.mkdir(parents=True, exist_ok=True)
             partition.drop(columns=["year", "month"]).to_parquet(dest, index=False)
             saved.append(dest)
         return saved
 
-    def write_outputs(self, outputs: dict[str, pd.DataFrame], symbol: str, timeframe: str) -> dict[str, list[Path]]:
+    def write_outputs(
+        self, outputs: dict[str, pd.DataFrame], symbol: str, timeframe: str
+    ) -> dict[str, list[Path]]:
         timeframe_key = timeframe.lower()
         saved: dict[str, list[Path]] = {}
 
         candles = outputs["candles"].copy()
         sessions = outputs["sessions"].copy()
         if not sessions.empty:
-            sessions["timestamp"] = pd.to_datetime(sessions["timestamp"], utc=True, errors="coerce")
-            candles = candles.merge(sessions[["timestamp", "session"]], on="timestamp", how="left")
+            sessions["timestamp"] = pd.to_datetime(
+                sessions["timestamp"], utc=True, errors="coerce"
+            )
+            candles = candles.merge(
+                sessions[["timestamp", "session"]], on="timestamp", how="left"
+            )
         candles["symbol"] = symbol
         candles["timeframe"] = timeframe.upper()
-        candles["timestamp_utc"] = pd.to_datetime(candles["timestamp"], utc=True, errors="coerce")
+        candles["timestamp_utc"] = pd.to_datetime(
+            candles["timestamp"], utc=True, errors="coerce"
+        )
         candles["tick_volume"] = candles["volume"]
         candles["real_volume"] = candles["volume"]
-        candles["spread_mean"] = candles["spread"] if "spread" in candles.columns else 0.0
-        candles["spread_max"] = candles["spread"] if "spread" in candles.columns else 0.0
-        saved["market"] = self.save_partitioned(candles, "market", timeframe_key, symbol)
+        candles["spread_mean"] = (
+            candles["spread"] if "spread" in candles.columns else 0.0
+        )
+        candles["spread_max"] = (
+            candles["spread"] if "spread" in candles.columns else 0.0
+        )
+        saved["market"] = self.save_partitioned(
+            candles, "market", timeframe_key, symbol
+        )
 
         sessions["symbol"] = symbol
         session_paths: list[Path] = []
         if not sessions.empty and "session" in sessions.columns:
             for session_name, partition in sessions.groupby("session", sort=True):
-                session_paths.extend(self.save_partitioned(partition, "sessions", str(session_name), symbol))
+                session_paths.extend(
+                    self.save_partitioned(
+                        partition, "sessions", str(session_name), symbol
+                    )
+                )
         saved["sessions"] = session_paths
 
         swings = outputs["swings"].copy()
@@ -96,15 +112,25 @@ class LayeredResearchStore:
         structure = outputs["structure"].copy()
         if not structure.empty:
             structure["symbol"] = symbol
-        saved["structure"] = self.save_partitioned(structure, "structure", "trend", symbol)
+        saved["structure"] = self.save_partitioned(
+            structure, "structure", "trend", symbol
+        )
         saved["bos"] = self.save_partitioned(
-            structure[structure["structure"] == "BOS"].copy() if not structure.empty else structure,
+            (
+                structure[structure["structure"] == "BOS"].copy()
+                if not structure.empty
+                else structure
+            ),
             "structure",
             "bos",
             symbol,
         )
         saved["choch"] = self.save_partitioned(
-            structure[structure["structure"] == "CHOCH"].copy() if not structure.empty else structure,
+            (
+                structure[structure["structure"] == "CHOCH"].copy()
+                if not structure.empty
+                else structure
+            ),
             "structure",
             "choch",
             symbol,
@@ -113,7 +139,9 @@ class LayeredResearchStore:
         liquidity = outputs["liquidity"].copy()
         if not liquidity.empty:
             liquidity["symbol"] = symbol
-        saved["liquidity"] = self.save_partitioned(liquidity, "liquidity", "liquidity_sweeps", symbol)
+        saved["liquidity"] = self.save_partitioned(
+            liquidity, "liquidity", "liquidity_sweeps", symbol
+        )
 
         fvg = outputs["fvg"].copy()
         if not fvg.empty:
@@ -123,7 +151,9 @@ class LayeredResearchStore:
         order_blocks = outputs["order_blocks"].copy()
         if not order_blocks.empty:
             order_blocks["symbol"] = symbol
-        saved["order_blocks"] = self.save_partitioned(order_blocks, "orderflow", "order_blocks", symbol)
+        saved["order_blocks"] = self.save_partitioned(
+            order_blocks, "orderflow", "order_blocks", symbol
+        )
 
         signals = outputs["signals"].copy()
         strategy_paths: list[Path] = []
@@ -144,12 +174,16 @@ class LayeredResearchStore:
         trades = outputs["trades"].copy()
         if not trades.empty:
             trades["symbol"] = symbol
-        saved["trades"] = self.save_partitioned(trades, "labels", "trades", symbol, timestamp_col="entry_time")
+        saved["trades"] = self.save_partitioned(
+            trades, "labels", "trades", symbol, timestamp_col="entry_time"
+        )
 
         self.write_manifest(symbol, timeframe, saved)
         return saved
 
-    def write_manifest(self, symbol: str, timeframe: str, saved: dict[str, list[Path]]) -> Path:
+    def write_manifest(
+        self, symbol: str, timeframe: str, saved: dict[str, list[Path]]
+    ) -> Path:
         manifest_path = self.root / "metadata" / "layers_manifest.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -157,7 +191,10 @@ class LayeredResearchStore:
             "symbol": symbol,
             "timeframe": timeframe.upper(),
             "layers": [
-                {"name": name, "paths": [str(path.relative_to(self.root)) for path in paths]}
+                {
+                    "name": name,
+                    "paths": [str(path.relative_to(self.root)) for path in paths],
+                }
                 for name, paths in sorted(saved.items())
             ],
         }

@@ -22,19 +22,19 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
 _RESULTS = _ROOT / "docs" / "BACKTEST_RESULTS.md"
-_OUT     = _ROOT / "docs" / "E6_COMPARISON_REPORT.md"
+_OUT = _ROOT / "docs" / "E6_COMPARISON_REPORT.md"
 
 # ── Locked baseline (PRE_E6_BASELINE.md | run 20260621T100458-183aaa) ─────────
 
 BASELINE = {
-    "run_id":      "20260621T100458-183aaa",
-    "trades":      169,
-    "win_rate":    32.0,    # %
-    "gross_pf":    1.299,
-    "net_pf_std":  1.151,
-    "net_pf_2x":   1.025,
-    "expectancy":  0.108,   # avg R per trade
-    "max_dd":      18.72,   # R
+    "run_id": "20260621T100458-183aaa",
+    "trades": 169,
+    "win_rate": 32.0,  # %
+    "gross_pf": 1.299,
+    "net_pf_std": 1.151,
+    "net_pf_2x": 1.025,
+    "expectancy": 0.108,  # avg R per trade
+    "max_dd": 18.72,  # R
 }
 
 # All run IDs that are known non-E6 runs (placeholder cost runs)
@@ -49,20 +49,20 @@ BASELINE_RUN_IDS = {
 # Metric is IMPROVED if delta > threshold, DEGRADED if delta < -threshold, else UNCHANGED
 # For max_dd: direction is inverted (lower = better)
 THRESHOLDS = {
-    "trades":     0,      # must match exactly
-    "win_rate":   0.5,    # pp
-    "gross_pf":   0.005,
+    "trades": 0,  # must match exactly
+    "win_rate": 0.5,  # pp
+    "gross_pf": 0.005,
     "net_pf_std": 0.005,
-    "net_pf_2x":  0.005,
+    "net_pf_2x": 0.005,
     "expectancy": 0.005,
-    "max_dd":     0.2,    # R
+    "max_dd": 0.2,  # R
 }
 
 
 def _classify(key, baseline_val, e6_val):
     """Return (delta, direction) where direction is IMPROVED / UNCHANGED / DEGRADED."""
     delta = e6_val - baseline_val
-    thr   = THRESHOLDS[key]
+    thr = THRESHOLDS[key]
 
     if key == "max_dd":
         # lower DD is better
@@ -75,7 +75,7 @@ def _classify(key, baseline_val, e6_val):
     if key == "trades":
         if delta == 0:
             return delta, "UNCHANGED"
-        return delta, "⚠ CHANGED"      # should never change
+        return delta, "⚠ CHANGED"  # should never change
 
     if delta > thr:
         return delta, "IMPROVED"
@@ -108,13 +108,13 @@ def _parse_results(text):
         try:
             if float(cells[0]) == 5.0:
                 rr5 = {
-                    "trades":     int(cells[1]),
-                    "win_rate":   float(cells[2].rstrip("%")),
+                    "trades": int(cells[1]),
+                    "win_rate": float(cells[2].rstrip("%")),
                     "expectancy": float(cells[3]),
-                    "gross_pf":   float(cells[4]),
+                    "gross_pf": float(cells[4]),
                     "net_pf_std": float(cells[5]),
-                    "net_pf_2x":  float(cells[6]),
-                    "max_dd":     float(cells[7]),
+                    "net_pf_2x": float(cells[6]),
+                    "max_dd": float(cells[7]),
                 }
                 break
         except (ValueError, IndexError):
@@ -128,7 +128,7 @@ def main():
         print(f"[ERROR] {_RESULTS} not found. Run the backtest first.")
         raise SystemExit(1)
 
-    text   = _RESULTS.read_text(encoding="utf-8")
+    text = _RESULTS.read_text(encoding="utf-8")
     run_id, e6 = _parse_results(text)
 
     if run_id is None:
@@ -151,34 +151,59 @@ def main():
     # ── Classify each metric ──────────────────────────────────────────────────
 
     metrics = [
-        ("Trade count",   "trades",     BASELINE["trades"],     e6["trades"],     "",   "{:.0f}"),
-        ("Win rate",      "win_rate",   BASELINE["win_rate"],   e6["win_rate"],   "%",  "{:.1f}"),
-        ("Gross PF",      "gross_pf",   BASELINE["gross_pf"],   e6["gross_pf"],   "",   "{:.3f}"),
-        ("Net PF (std)",  "net_pf_std", BASELINE["net_pf_std"], e6["net_pf_std"], "",   "{:.3f}"),
-        ("Net PF (2×)",   "net_pf_2x",  BASELINE["net_pf_2x"],  e6["net_pf_2x"],  "",   "{:.3f}"),
-        ("Expectancy",    "expectancy", BASELINE["expectancy"], e6["expectancy"], "R",  "{:.3f}"),
-        ("Max DD",        "max_dd",     BASELINE["max_dd"],     e6["max_dd"],     "R",  "{:.2f}"),
+        ("Trade count", "trades", BASELINE["trades"], e6["trades"], "", "{:.0f}"),
+        ("Win rate", "win_rate", BASELINE["win_rate"], e6["win_rate"], "%", "{:.1f}"),
+        ("Gross PF", "gross_pf", BASELINE["gross_pf"], e6["gross_pf"], "", "{:.3f}"),
+        (
+            "Net PF (std)",
+            "net_pf_std",
+            BASELINE["net_pf_std"],
+            e6["net_pf_std"],
+            "",
+            "{:.3f}",
+        ),
+        (
+            "Net PF (2×)",
+            "net_pf_2x",
+            BASELINE["net_pf_2x"],
+            e6["net_pf_2x"],
+            "",
+            "{:.3f}",
+        ),
+        (
+            "Expectancy",
+            "expectancy",
+            BASELINE["expectancy"],
+            e6["expectancy"],
+            "R",
+            "{:.3f}",
+        ),
+        ("Max DD", "max_dd", BASELINE["max_dd"], e6["max_dd"], "R", "{:.2f}"),
     ]
 
     rows = []
     for label, key, b_val, e_val, unit, fmt in metrics:
         delta, direction = _classify(key, b_val, e_val)
-        rows.append({
-            "label":     label,
-            "key":       key,
-            "baseline":  fmt.format(b_val) + unit,
-            "e6":        fmt.format(e_val) + unit,
-            "delta":     f"{delta:+.3f}{unit}",
-            "direction": direction,
-        })
+        rows.append(
+            {
+                "label": label,
+                "key": key,
+                "baseline": fmt.format(b_val) + unit,
+                "e6": fmt.format(e_val) + unit,
+                "delta": f"{delta:+.3f}{unit}",
+                "direction": direction,
+            }
+        )
 
     # ── Overall verdict ───────────────────────────────────────────────────────
-    pf_2x_e6  = e6["net_pf_2x"]
+    pf_2x_e6 = e6["net_pf_2x"]
     if pf_2x_e6 >= 1.05:
         overall = "✅ PASS — PF_2x ≥ 1.05, comfortable margin. Proceed to E1–E4."
         verdict_code = "PASS"
     elif pf_2x_e6 >= 1.00:
-        overall = "⚠️  REVIEW — PF_2x 1.00–1.05, thin margin. Proceed with GBPUSD monitoring."
+        overall = (
+            "⚠️  REVIEW — PF_2x 1.00–1.05, thin margin. Proceed with GBPUSD monitoring."
+        )
         verdict_code = "REVIEW"
     else:
         overall = "❌ REJECT — PF_2x < 1.00. Strategy does not survive measured costs."
@@ -193,7 +218,9 @@ def main():
     print(f"\n  {'Metric':<18} {'Baseline':>10} {'E6':>10} {'Delta':>10}  Direction")
     print(f"  {'-'*62}")
     for r in rows:
-        print(f"  {r['label']:<18} {r['baseline']:>10} {r['e6']:>10} {r['delta']:>10}  {r['direction']}")
+        print(
+            f"  {r['label']:<18} {r['baseline']:>10} {r['e6']:>10} {r['delta']:>10}  {r['direction']}"
+        )
     print(f"\n  Overall: {overall}")
 
     # ── Write E6_COMPARISON_REPORT.md ─────────────────────────────────────────
@@ -249,8 +276,8 @@ def main():
     ]
     tc_row = next(r for r in rows if r["key"] == "trades")
     wr_row = next(r for r in rows if r["key"] == "win_rate")
-    tc_ok  = "✅ OK" if tc_row["direction"] == "UNCHANGED" else "❌ FAIL — investigate"
-    wr_ok  = "✅ OK" if wr_row["direction"] in ("UNCHANGED", "IMPROVED") else "⚠️  CHECK"
+    tc_ok = "✅ OK" if tc_row["direction"] == "UNCHANGED" else "❌ FAIL — investigate"
+    wr_ok = "✅ OK" if wr_row["direction"] in ("UNCHANGED", "IMPROVED") else "⚠️  CHECK"
     lines += [
         f"| Trade count unchanged | 169 | {e6['trades']} | {tc_ok} |",
         f"| Win rate stable       | 32.0% | {e6['win_rate']:.1f}% | {wr_ok} |",

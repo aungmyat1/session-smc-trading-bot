@@ -36,14 +36,12 @@ class ST_A2Adapter(BaseStrategy):
         """
         try:
             from strategy.session_liquidity.session_strategy import (
-                run_strategy,
-                DEFAULT_CONFIG,
-            )
+                DEFAULT_CONFIG, run_strategy)
         except ImportError:
             return None
 
-        m15    = data.get("m15", [])
-        h4     = data.get("h4", [])
+        m15 = data.get("m15", [])
+        h4 = data.get("h4", [])
         symbol = data.get("symbol", "")
         config = data.get("config", DEFAULT_CONFIG)
 
@@ -66,13 +64,13 @@ class ST_A2Adapter(BaseStrategy):
             entry_price=float(raw.entry),
             stop_loss=float(raw.stop_loss),
             take_profit=float(raw.take_profit),
-            risk_percent=0.30,          # validated tier-1: 0.30% per strategy_portfolio.yaml
+            risk_percent=0.30,  # validated tier-1: 0.30% per strategy_portfolio.yaml
             confidence=1.0,
             metadata={
-                "session":      raw.session,
-                "risk_pips":    float(getattr(raw, "risk_pips", 0)),
-                "reward_pips":  float(getattr(raw, "reward_pips", 0)),
-                "rr":           float(getattr(raw, "rr", 0)),
-                "reason":       getattr(raw, "reason", ""),
+                "session": raw.session,
+                "risk_pips": float(getattr(raw, "risk_pips", 0)),
+                "reward_pips": float(getattr(raw, "reward_pips", 0)),
+                "rr": float(getattr(raw, "rr", 0)),
+                "reason": getattr(raw, "reason", ""),
             },
         )

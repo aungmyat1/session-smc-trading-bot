@@ -29,10 +29,10 @@ import unittest
 from dataclasses import fields
 from datetime import date, datetime, timezone
 
+from strategy.session_liquidity.displacement_detector import DisplacementResult
 from strategy.session_liquidity.entry_engine import Signal, build_signal
 from strategy.session_liquidity.session_builder import AsianRange
 from strategy.session_liquidity.sweep_detector import SweepResult
-from strategy.session_liquidity.displacement_detector import DisplacementResult
 
 _UTC = timezone.utc
 
@@ -47,7 +47,7 @@ _ASIAN = AsianRange(trade_date=date(2024, 1, 15), high=1.0800, low=1.0700)
 _SWEEP_LONG = SweepResult(
     detected=True,
     side="long",
-    sweep_price=1.0682,    # wick low that pierced below asian_low
+    sweep_price=1.0682,  # wick low that pierced below asian_low
     reason="bullish_sweep",
 )
 
@@ -55,7 +55,7 @@ _SWEEP_LONG = SweepResult(
 _SWEEP_SHORT = SweepResult(
     detected=True,
     side="short",
-    sweep_price=1.0818,    # wick high that pierced above asian_high
+    sweep_price=1.0818,  # wick high that pierced above asian_high
     reason="bearish_sweep",
 )
 
@@ -87,35 +87,41 @@ _DISP_NONE = DisplacementResult(
 )
 
 _CANDLE_LONG = {
-    "time":  "2024-01-15T07:45:00Z",
-    "open":  1.0715,
-    "high":  1.0755,
-    "low":   1.0710,
-    "close": 1.0750,    # entry for long
+    "time": "2024-01-15T07:45:00Z",
+    "open": 1.0715,
+    "high": 1.0755,
+    "low": 1.0710,
+    "close": 1.0750,  # entry for long
 }
 
 _CANDLE_SHORT = {
-    "time":  "2024-01-15T08:00:00Z",
-    "open":  1.0790,
-    "high":  1.0795,
-    "low":   1.0755,
-    "close": 1.0760,    # entry for short
+    "time": "2024-01-15T08:00:00Z",
+    "open": 1.0790,
+    "high": 1.0795,
+    "low": 1.0755,
+    "close": 1.0760,  # entry for short
 }
 
-_RR  = 3.0
-_BUF = 2.0   # pips
+_RR = 3.0
+_BUF = 2.0  # pips
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 1 — Valid long signal
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestValidLongSignal(unittest.TestCase):
 
     def setUp(self):
         self.sig = build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, "london", _RR, _BUF,
+            _CANDLE_LONG,
+            _SWEEP_LONG,
+            _DISP_LONG,
+            _ASIAN,
+            "london",
+            _RR,
+            _BUF,
         )
 
     def test_returns_signal(self):
@@ -153,12 +159,18 @@ class TestValidLongSignal(unittest.TestCase):
 # Category 2 — Valid short signal
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestValidShortSignal(unittest.TestCase):
 
     def setUp(self):
         self.sig = build_signal(
-            _CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT,
-            _ASIAN, "new_york", _RR, _BUF,
+            _CANDLE_SHORT,
+            _SWEEP_SHORT,
+            _DISP_SHORT,
+            _ASIAN,
+            "new_york",
+            _RR,
+            _BUF,
         )
 
     def test_returns_signal(self):
@@ -189,70 +201,128 @@ class TestValidShortSignal(unittest.TestCase):
 # Category 3 — Invalid sweep
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidSweep(unittest.TestCase):
 
     def _sweep_none_detected(self):
-        return SweepResult(detected=False, side=None, sweep_price=None, reason="no_breach")
+        return SweepResult(
+            detected=False, side=None, sweep_price=None, reason="no_breach"
+        )
 
     def test_sweep_not_detected_returns_none(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, self._sweep_none_detected(), _DISP_LONG,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                self._sweep_none_detected(),
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_none_sweep_returns_none(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, None, _DISP_LONG,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                None,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_bias_mismatch_sweep_returns_none(self):
-        s = SweepResult(detected=False, side=None, sweep_price=None, reason="bias_mismatch")
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, s, _DISP_LONG,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        s = SweepResult(
+            detected=False, side=None, sweep_price=None, reason="bias_mismatch"
+        )
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                s,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 4 — Invalid displacement
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidDisplacement(unittest.TestCase):
 
     def test_displacement_not_detected_returns_none(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_NONE,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_NONE,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_none_displacement_returns_none(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, None,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                None,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_atr_unavailable_displacement_returns_none(self):
         d = DisplacementResult(
-            detected=False, side=None, body_size=0.002,
-            atr=None, close_position=None, reason="atr_unavailable",
+            detected=False,
+            side=None,
+            body_size=0.002,
+            atr=None,
+            close_position=None,
+            reason="atr_unavailable",
         )
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, d,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                d,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 5 — Invalid session
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidSession(unittest.TestCase):
 
     def _call(self, session):
         return build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, session, _RR, _BUF,
+            _CANDLE_LONG,
+            _SWEEP_LONG,
+            _DISP_LONG,
+            _ASIAN,
+            session,
+            _RR,
+            _BUF,
         )
 
     def test_asian_session_rejected(self):
@@ -278,24 +348,44 @@ class TestInvalidSession(unittest.TestCase):
 # Category 6 — Invalid RR
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidRR(unittest.TestCase):
 
     def test_rr_zero_rejected(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, "london", 0.0, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                0.0,
+                _BUF,
+            )
+        )
 
     def test_rr_negative_rejected(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, "london", -1.0, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                -1.0,
+                _BUF,
+            )
+        )
 
     def test_rr_fractional_accepted(self):
         sig = build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, "london", 1.5, _BUF,
+            _CANDLE_LONG,
+            _SWEEP_LONG,
+            _DISP_LONG,
+            _ASIAN,
+            "london",
+            1.5,
+            _BUF,
         )
         self.assertIsNotNone(sig)
         self.assertEqual(sig.rr, 1.5)
@@ -305,19 +395,28 @@ class TestInvalidRR(unittest.TestCase):
 # Category 7 — Invalid risk (degenerate geometry)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidRisk(unittest.TestCase):
 
     def test_long_entry_below_sl_rejected(self):
         # entry 1.0680 < sl = 1.0682 - 0.0002 = 1.0680 → risk = 1.0680 - 1.0680 = 0
         candle = {**_CANDLE_LONG, "close": 1.0680}
-        sweep = SweepResult(detected=True, side="long", sweep_price=1.0682, reason="bullish_sweep")
-        self.assertIsNone(build_signal(candle, sweep, _DISP_LONG, _ASIAN, "london", _RR, _BUF))
+        sweep = SweepResult(
+            detected=True, side="long", sweep_price=1.0682, reason="bullish_sweep"
+        )
+        self.assertIsNone(
+            build_signal(candle, sweep, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        )
 
     def test_short_entry_above_sl_rejected(self):
         # entry 1.0822 > sl = 1.0818 + 0.0002 = 1.0820 → risk = 1.0820 - 1.0822 < 0
         candle = {**_CANDLE_SHORT, "close": 1.0822}
-        sweep = SweepResult(detected=True, side="short", sweep_price=1.0818, reason="bearish_sweep")
-        self.assertIsNone(build_signal(candle, sweep, _DISP_SHORT, _ASIAN, "london", _RR, _BUF))
+        sweep = SweepResult(
+            detected=True, side="short", sweep_price=1.0818, reason="bearish_sweep"
+        )
+        self.assertIsNone(
+            build_signal(candle, sweep, _DISP_SHORT, _ASIAN, "london", _RR, _BUF)
+        )
 
     def test_long_entry_exactly_at_sl_rejected(self):
         # entry exactly at sl → risk = 0
@@ -325,103 +424,162 @@ class TestInvalidRisk(unittest.TestCase):
         sweep_price = 1.0682
         sl = sweep_price - buf * 0.0001
         candle = {**_CANDLE_LONG, "close": sl}
-        sweep = SweepResult(detected=True, side="long", sweep_price=sweep_price, reason="bullish_sweep")
-        self.assertIsNone(build_signal(candle, sweep, _DISP_LONG, _ASIAN, "london", _RR, buf))
+        sweep = SweepResult(
+            detected=True, side="long", sweep_price=sweep_price, reason="bullish_sweep"
+        )
+        self.assertIsNone(
+            build_signal(candle, sweep, _DISP_LONG, _ASIAN, "london", _RR, buf)
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 8 — Invalid asian range
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestInvalidAsianRange(unittest.TestCase):
 
     def test_none_asian_range_rejected(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            None, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                None,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_high_equals_low_rejected(self):
         flat = AsianRange(trade_date=date(2024, 1, 15), high=1.0750, low=1.0750)
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            flat, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                flat,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_high_below_low_rejected(self):
         inverted = AsianRange(trade_date=date(2024, 1, 15), high=1.0700, low=1.0800)
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            inverted, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                inverted,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_valid_asian_range_accepted(self):
-        self.assertIsNotNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG,
-            _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNotNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 9 — SL buffer applied correctly
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSLBuffer(unittest.TestCase):
 
     def test_long_sl_is_sweep_minus_buffer(self):
         buf = 3.0
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, buf)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, buf
+        )
         self.assertIsNotNone(sig)
         expected = _SWEEP_LONG.sweep_price - buf * 0.0001
         self.assertAlmostEqual(sig.stop_loss, expected, places=6)
 
     def test_short_sl_is_sweep_plus_buffer(self):
         buf = 3.0
-        sig = build_signal(_CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "london", _RR, buf)
+        sig = build_signal(
+            _CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "london", _RR, buf
+        )
         self.assertIsNotNone(sig)
         expected = _SWEEP_SHORT.sweep_price + buf * 0.0001
         self.assertAlmostEqual(sig.stop_loss, expected, places=6)
 
     def test_zero_buffer_accepted(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, 0.0)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, 0.0
+        )
         self.assertIsNotNone(sig)
         self.assertAlmostEqual(sig.stop_loss, _SWEEP_LONG.sweep_price, places=6)
 
     def test_negative_buffer_rejected(self):
-        self.assertIsNone(build_signal(
-            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, -1.0,
-        ))
+        self.assertIsNone(
+            build_signal(
+                _CANDLE_LONG,
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                -1.0,
+            )
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 10 — TP calculation
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestTPCalculation(unittest.TestCase):
 
     def test_long_tp_equals_entry_plus_risk_times_rr(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         sl_dist = sig.entry - sig.stop_loss
         expected_tp = sig.entry + sl_dist * _RR
         self.assertAlmostEqual(sig.take_profit, expected_tp, places=6)
 
     def test_short_tp_equals_entry_minus_risk_times_rr(self):
-        sig = build_signal(_CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "new_york", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "new_york", _RR, _BUF
+        )
         sl_dist = sig.stop_loss - sig.entry
         expected_tp = sig.entry - sl_dist * _RR
         self.assertAlmostEqual(sig.take_profit, expected_tp, places=6)
 
     def test_reward_pips_equals_risk_pips_times_rr(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertAlmostEqual(sig.reward_pips, sig.risk_pips * _RR, places=4)
 
     def test_rr2_tp(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", 2.0, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", 2.0, _BUF
+        )
         sl_dist = sig.entry - sig.stop_loss
         self.assertAlmostEqual(sig.take_profit, sig.entry + sl_dist * 2.0, places=6)
 
     def test_rr5_tp(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", 5.0, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", 5.0, _BUF
+        )
         sl_dist = sig.entry - sig.stop_loss
         self.assertAlmostEqual(sig.take_profit, sig.entry + sl_dist * 5.0, places=6)
 
@@ -430,30 +588,51 @@ class TestTPCalculation(unittest.TestCase):
 # Category 11 — Signal dataclass fields match execution contract
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSignalDataclass(unittest.TestCase):
 
     def test_all_required_fields_present(self):
         expected = {
-            "side", "entry", "stop_loss", "take_profit",
-            "risk_pips", "reward_pips", "rr",
-            "session", "timestamp", "reason",
+            "side",
+            "entry",
+            "stop_loss",
+            "take_profit",
+            "risk_pips",
+            "reward_pips",
+            "rr",
+            "session",
+            "timestamp",
+            "reason",
         }
         actual = {f.name for f in fields(Signal)}
         self.assertEqual(actual, expected)
 
     def test_execution_contract_fields_populated(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
-        for attr in ("side", "entry", "stop_loss", "take_profit", "reason", "session", "timestamp"):
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
+        for attr in (
+            "side",
+            "entry",
+            "stop_loss",
+            "take_profit",
+            "reason",
+            "session",
+            "timestamp",
+        ):
             self.assertIsNotNone(getattr(sig, attr), msg=f"{attr} should not be None")
 
     def test_timestamp_is_utc_aware(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIsNotNone(sig.timestamp.tzinfo)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 12 — Timestamp from candle 'time' string
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestTimestamp(unittest.TestCase):
 
@@ -483,69 +662,108 @@ class TestTimestamp(unittest.TestCase):
 # Category 14 — Missing candle 'close' key
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestMalformedCandle(unittest.TestCase):
 
     def test_missing_close_returns_none(self):
         bad = {k: v for k, v in _CANDLE_LONG.items() if k != "close"}
-        self.assertIsNone(build_signal(bad, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF))
+        self.assertIsNone(
+            build_signal(bad, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        )
 
     def test_none_close_returns_none(self):
-        self.assertIsNone(build_signal(
-            {**_CANDLE_LONG, "close": None},
-            _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                {**_CANDLE_LONG, "close": None},
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_string_close_returns_none(self):
-        self.assertIsNone(build_signal(
-            {**_CANDLE_LONG, "close": "N/A"},
-            _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF,
-        ))
+        self.assertIsNone(
+            build_signal(
+                {**_CANDLE_LONG, "close": "N/A"},
+                _SWEEP_LONG,
+                _DISP_LONG,
+                _ASIAN,
+                "london",
+                _RR,
+                _BUF,
+            )
+        )
 
     def test_none_candle_returns_none(self):
-        self.assertIsNone(build_signal(None, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF))
+        self.assertIsNone(
+            build_signal(None, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 18/19 — Risk direction
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRiskDirection(unittest.TestCase):
 
     def test_long_risk_is_entry_minus_sl(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertGreater(sig.entry, sig.stop_loss)
-        self.assertAlmostEqual(sig.risk_pips, (sig.entry - sig.stop_loss) / 0.0001, places=4)
+        self.assertAlmostEqual(
+            sig.risk_pips, (sig.entry - sig.stop_loss) / 0.0001, places=4
+        )
 
     def test_short_risk_is_sl_minus_entry(self):
-        sig = build_signal(_CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "new_york", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "new_york", _RR, _BUF
+        )
         self.assertGreater(sig.stop_loss, sig.entry)
-        self.assertAlmostEqual(sig.risk_pips, (sig.stop_loss - sig.entry) / 0.0001, places=4)
+        self.assertAlmostEqual(
+            sig.risk_pips, (sig.stop_loss - sig.entry) / 0.0001, places=4
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Category 20 — Reason string
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestReasonString(unittest.TestCase):
 
     def test_long_reason_contains_long(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIn("long", sig.reason)
 
     def test_short_reason_contains_short(self):
-        sig = build_signal(_CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_SHORT, _SWEEP_SHORT, _DISP_SHORT, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIn("short", sig.reason)
 
     def test_reason_contains_sweep_price(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIn(f"{_SWEEP_LONG.sweep_price:.5f}", sig.reason)
 
     def test_reason_contains_entry(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIn(f"{sig.entry:.5f}", sig.reason)
 
     def test_reason_contains_rr(self):
-        sig = build_signal(_CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF)
+        sig = build_signal(
+            _CANDLE_LONG, _SWEEP_LONG, _DISP_LONG, _ASIAN, "london", _RR, _BUF
+        )
         self.assertIn(str(_RR), sig.reason)
 
 

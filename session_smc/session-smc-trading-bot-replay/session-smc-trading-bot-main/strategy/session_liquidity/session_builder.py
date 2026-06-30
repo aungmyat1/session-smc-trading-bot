@@ -8,17 +8,41 @@ fully-auto V2 runbook more closely.
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Iterable, Mapping, Any
+from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
 _EST = ZoneInfo("America/New_York")
 _UTC = timezone.utc
 
 SESSION_WINDOWS_V2 = {
-    "asian":   {"start_h": 0,  "end_h": 8,  "label": "Asian",    "range_thr": 0.50, "trend_thr": 0.70},
-    "london":  {"start_h": 7,  "end_h": 12, "label": "London",   "range_thr": 0.55, "trend_thr": 0.75},
-    "overlap": {"start_h": 12, "end_h": 15, "label": "Overlap",  "range_thr": 0.60, "trend_thr": 0.80},
-    "newyork": {"start_h": 12, "end_h": 17, "label": "NewYork",  "range_thr": 0.55, "trend_thr": 0.75},
+    "asian": {
+        "start_h": 0,
+        "end_h": 8,
+        "label": "Asian",
+        "range_thr": 0.50,
+        "trend_thr": 0.70,
+    },
+    "london": {
+        "start_h": 7,
+        "end_h": 12,
+        "label": "London",
+        "range_thr": 0.55,
+        "trend_thr": 0.75,
+    },
+    "overlap": {
+        "start_h": 12,
+        "end_h": 15,
+        "label": "Overlap",
+        "range_thr": 0.60,
+        "trend_thr": 0.80,
+    },
+    "newyork": {
+        "start_h": 12,
+        "end_h": 17,
+        "label": "NewYork",
+        "range_thr": 0.55,
+        "trend_thr": 0.75,
+    },
 }
 
 _SESSION_PRIORITY = ("overlap", "newyork", "london", "asian")
@@ -26,7 +50,7 @@ _SESSION_PRIORITY = ("overlap", "newyork", "london", "asian")
 
 @dataclass
 class AsianRange:
-    trade_date: date   # EST calendar date this range feeds into
+    trade_date: date  # EST calendar date this range feeds into
     high: float
     low: float
 
@@ -97,7 +121,9 @@ def _atr(records: list[dict], period: int = 14) -> float:
     return round(atr, 6)
 
 
-def active_sessions(dt_utc: datetime, session_windows: dict[str, dict] | None = None) -> list[str]:
+def active_sessions(
+    dt_utc: datetime, session_windows: dict[str, dict] | None = None
+) -> list[str]:
     """Return all V2 sessions active at the given UTC datetime."""
     windows = session_windows or SESSION_WINDOWS_V2
     hour = _parse_utc(dt_utc).hour
@@ -110,7 +136,9 @@ def active_sessions(dt_utc: datetime, session_windows: dict[str, dict] | None = 
     return active
 
 
-def classify_session(dt_utc: datetime, session_windows: dict[str, dict] | None = None) -> "str | None":
+def classify_session(
+    dt_utc: datetime, session_windows: dict[str, dict] | None = None
+) -> "str | None":
     """
     Classify a UTC datetime into a V2 session label.
 
@@ -144,7 +172,11 @@ def build_session_box(df_1h: Any, start_h: int, end_h: int) -> dict:
     ratio = round(box_range / atr, 4) if atr else None
 
     name = next(
-        (n for n, cfg in SESSION_WINDOWS_V2.items() if cfg["start_h"] == start_h and cfg["end_h"] == end_h),
+        (
+            n
+            for n, cfg in SESSION_WINDOWS_V2.items()
+            if cfg["start_h"] == start_h and cfg["end_h"] == end_h
+        ),
         "custom",
     )
     return {

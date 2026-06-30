@@ -65,7 +65,9 @@ class StrategyAdapterRegistry:
     def __init__(self) -> None:
         self._cache: dict[str, AdapterEntry] = {}
 
-    def resolve(self, strategy: str, manifest: dict[str, Any] | None = None) -> AdapterEntry:
+    def resolve(
+        self, strategy: str, manifest: dict[str, Any] | None = None
+    ) -> AdapterEntry:
         """Resolve a strategy name to its adapter entry.
 
         Args:
@@ -127,13 +129,21 @@ class StrategyAdapterRegistry:
     def _load(self, key: str) -> AdapterEntry:
         qualified = self._ADAPTER_MAP.get(key)
         if qualified is None:
-            return AdapterEntry(key=key, adapter_class=None, error=f"No adapter registered for key {key!r}")
+            return AdapterEntry(
+                key=key,
+                adapter_class=None,
+                error=f"No adapter registered for key {key!r}",
+            )
         module_path, class_name = qualified.rsplit(".", 1)
         try:
             module = importlib.import_module(module_path)
             cls = getattr(module, class_name)
             if not (isinstance(cls, type) and issubclass(cls, BaseStrategy)):
-                return AdapterEntry(key=key, adapter_class=None, error=f"{qualified} is not a BaseStrategy subclass")
+                return AdapterEntry(
+                    key=key,
+                    adapter_class=None,
+                    error=f"{qualified} is not a BaseStrategy subclass",
+                )
             return AdapterEntry(key=key, adapter_class=cls)
         except Exception as exc:
             return AdapterEntry(key=key, adapter_class=None, error=str(exc))

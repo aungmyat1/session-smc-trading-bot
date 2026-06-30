@@ -4,11 +4,13 @@ __test__ = False
 
 from typing import Any
 
-from execution_validation.common import CheckResult
 from execution_simulator.execution.risk_engine import RiskEngine
+from execution_validation.common import CheckResult
 
 
-def assess_broker_rules(samples: list[dict[str, Any]], engine: RiskEngine) -> CheckResult:
+def assess_broker_rules(
+    samples: list[dict[str, Any]], engine: RiskEngine
+) -> CheckResult:
     passed = 0
     details: list[dict[str, Any]] = []
     for sample in samples:
@@ -23,7 +25,13 @@ def assess_broker_rules(samples: list[dict[str, Any]], engine: RiskEngine) -> Ch
             same_symbol_positions=int(sample.get("same_symbol_positions", 0)),
             account_balance=float(sample.get("account_balance", 0.0)),
         )
-        details.append({"symbol": sample["symbol"], "allowed": result.allowed, "reason": result.reason})
+        details.append(
+            {
+                "symbol": sample["symbol"],
+                "allowed": result.allowed,
+                "reason": result.reason,
+            }
+        )
         if result.allowed == bool(sample.get("expected_allowed", True)):
             passed += 1
 
@@ -36,4 +44,3 @@ def assess_broker_rules(samples: list[dict[str, Any]], engine: RiskEngine) -> Ch
         details={"cases": details, "total": total, "passed": passed},
         message=f"Broker rules accuracy {accuracy:.1%}",
     )
-

@@ -14,34 +14,34 @@ Does NOT know about SMC, breakout rules, indicators, or broker details.
 from __future__ import annotations
 
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 
 from core.signal import Signal
 
 # Risk tiers — risk_pct applied per trade (% of account)
 RISK_TIERS: dict[str, float] = {
-    "tier1": 0.30,   # validated: ST-A2
-    "tier2": 0.20,   # conditionally validated: LondonBreakout, NYMomentum
-    "tier3": 0.10,   # unvalidated / shadow: new strategies
+    "tier1": 0.30,  # validated: ST-A2
+    "tier2": 0.20,  # conditionally validated: LondonBreakout, NYMomentum
+    "tier3": 0.10,  # unvalidated / shadow: new strategies
 }
 
 _STRATEGY_TIER: dict[str, str] = {
-    "ST-A2":          "tier1",
+    "ST-A2": "tier1",
     "LondonBreakout": "tier2",
-    "NYMomentum":     "tier2",
-    "AdaptiveSMC":    "tier3",
+    "NYMomentum": "tier2",
+    "AdaptiveSMC": "tier3",
     "VWAPMeanReversion": "tier3",
-    "VWAPBreakout":   "tier3",
+    "VWAPBreakout": "tier3",
 }
 
 _DEFAULT_CONFIG = {
     "portfolio": {
-        "max_trades_per_day":    8,
-        "max_open_positions":    3,
-        "daily_loss_limit_pct":  2.0,
+        "max_trades_per_day": 8,
+        "max_open_positions": 3,
+        "daily_loss_limit_pct": 2.0,
         "weekly_loss_limit_pct": 5.0,
-        "monthly_loss_limit_pct":8.0,
-        "min_confidence":        0.6,
+        "monthly_loss_limit_pct": 8.0,
+        "min_confidence": 0.6,
     },
     "correlation_groups": [["EURUSD", "GBPUSD"]],
     "strategies": {},
@@ -50,17 +50,17 @@ _DEFAULT_CONFIG = {
 
 class PortfolioManager:
     def __init__(self, config: dict | None = None) -> None:
-        self._cfg      = config or _DEFAULT_CONFIG
-        self._pcfg     = self._cfg.get("portfolio", _DEFAULT_CONFIG["portfolio"])
+        self._cfg = config or _DEFAULT_CONFIG
+        self._pcfg = self._cfg.get("portfolio", _DEFAULT_CONFIG["portfolio"])
         self._strat_cfg: dict = self._cfg.get("strategies", {})
         self._corr_groups: list[list[str]] = self._cfg.get("correlation_groups", [])
 
-        self._trades_today:    int       = 0
-        self._open_symbols:    set[str]  = set()
-        self._last_reset:      str       = ""
-        self._daily_pnl_pct:   float     = 0.0
-        self._weekly_pnl_pct:  float     = 0.0
-        self._monthly_pnl_pct: float     = 0.0
+        self._trades_today: int = 0
+        self._open_symbols: set[str] = set()
+        self._last_reset: str = ""
+        self._daily_pnl_pct: float = 0.0
+        self._weekly_pnl_pct: float = 0.0
+        self._monthly_pnl_pct: float = 0.0
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -85,28 +85,28 @@ class PortfolioManager:
         filtered = [s for s in filtered if s.confidence >= min_conf]
 
         # 5. Daily trade cap
-        cap     = self._pcfg.get("max_trades_per_day", 8)
-        slots   = cap - self._trades_today
-        filtered = filtered[:max(0, slots)]
+        cap = self._pcfg.get("max_trades_per_day", 8)
+        slots = cap - self._trades_today
+        filtered = filtered[: max(0, slots)]
 
         # 6. Open positions cap
-        pos_cap   = self._pcfg.get("max_open_positions", 3)
+        pos_cap = self._pcfg.get("max_open_positions", 3)
         pos_slots = pos_cap - len(self._open_symbols)
-        filtered  = filtered[:max(0, pos_slots)]
+        filtered = filtered[: max(0, pos_slots)]
 
         # 7. Rank by confidence desc
         return sorted(filtered, key=lambda s: s.confidence, reverse=True)
 
     def record_trade(self, signal: Signal) -> None:
         """Call after an order is placed to track state."""
-        self._trades_today  += 1
+        self._trades_today += 1
         self._open_symbols.add(signal.symbol)
 
     def record_close(self, symbol: str, pnl_pct: float = 0.0) -> None:
         """Call when a position closes."""
         self._open_symbols.discard(symbol)
-        self._daily_pnl_pct   += pnl_pct
-        self._weekly_pnl_pct  += pnl_pct
+        self._daily_pnl_pct += pnl_pct
+        self._weekly_pnl_pct += pnl_pct
         self._monthly_pnl_pct += pnl_pct
 
     def get_risk_pct(self, strategy_name: str) -> float:
@@ -127,18 +127,22 @@ class PortfolioManager:
         return self._monthly_pnl_pct <= -limit
 
     def any_loss_limit_hit(self) -> bool:
-        return self.is_daily_loss_hit() or self.is_weekly_loss_hit() or self.is_monthly_loss_hit()
+        return (
+            self.is_daily_loss_hit()
+            or self.is_weekly_loss_hit()
+            or self.is_monthly_loss_hit()
+        )
 
     def stats(self) -> dict:
         return {
-            "trades_today":       self._trades_today,
-            "open_symbols":       sorted(self._open_symbols),
-            "daily_pnl_pct":      round(self._daily_pnl_pct * 100, 3),
-            "weekly_pnl_pct":     round(self._weekly_pnl_pct * 100, 3),
-            "monthly_pnl_pct":    round(self._monthly_pnl_pct * 100, 3),
-            "loss_limit_hit":     self.is_daily_loss_hit(),
-            "weekly_limit_hit":   self.is_weekly_loss_hit(),
-            "monthly_limit_hit":  self.is_monthly_loss_hit(),
+            "trades_today": self._trades_today,
+            "open_symbols": sorted(self._open_symbols),
+            "daily_pnl_pct": round(self._daily_pnl_pct * 100, 3),
+            "weekly_pnl_pct": round(self._weekly_pnl_pct * 100, 3),
+            "monthly_pnl_pct": round(self._monthly_pnl_pct * 100, 3),
+            "loss_limit_hit": self.is_daily_loss_hit(),
+            "weekly_limit_hit": self.is_weekly_loss_hit(),
+            "monthly_limit_hit": self.is_monthly_loss_hit(),
         }
 
     # ── Internal ───────────────────────────────────────────────────────────────

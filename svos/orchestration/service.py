@@ -4,10 +4,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
-from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
+from core.strategy_registry import (get_strategy_manifest,
+                                    list_catalog_strategies)
 from svos.governance.service import GovernanceService
 from svos.lifecycle.manager import StrategyLifecycleManager
 from svos.registry.service import StrategyRegistryService
@@ -22,14 +23,20 @@ _POLICY_VERSION = "svos-v1"
 _PG_NO_EVIDENCE_SOURCES = frozenset({"DRAFT", "REFINEMENT", "REVALIDATION"})
 
 
-def _build_pg_backends(url: str, lifecycle: StrategyLifecycleManager) -> tuple[PostgresControlPlane, PostgresEvidenceRepository]:
+def _build_pg_backends(
+    url: str, lifecycle: StrategyLifecycleManager
+) -> tuple[PostgresControlPlane, PostgresEvidenceRepository]:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
     from db.control_plane import PostgresControlPlane
     from db.evidence_repository import PostgresEvidenceRepository
+
     engine = create_engine(url, pool_pre_ping=True)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
-    return PostgresControlPlane(sessions, lifecycle=lifecycle), PostgresEvidenceRepository(sessions)
+    return PostgresControlPlane(
+        sessions, lifecycle=lifecycle
+    ), PostgresEvidenceRepository(sessions)
 
 
 class SVOSPlatform:
@@ -48,12 +55,20 @@ class SVOSPlatform:
         pg_evidence_repo: PostgresEvidenceRepository | None = None,
     ) -> None:
         self.root = Path(root)
-        self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
+        self.catalog_path = (
+            Path(catalog_path)
+            if catalog_path is not None
+            else self.root / "config" / "strategy_catalog.yaml"
+        )
         _lifecycle = lifecycle or StrategyLifecycleManager()
         self.lifecycle = _lifecycle
-        self.registry = registry or StrategyRegistryService(root=self.root, catalog_path=self.catalog_path, lifecycle=_lifecycle)
+        self.registry = registry or StrategyRegistryService(
+            root=self.root, catalog_path=self.catalog_path, lifecycle=_lifecycle
+        )
         self.reports = reports or StandardizedReportService(self.root)
-        self.governance = governance or GovernanceService(root=self.root, registry=self.registry, lifecycle=_lifecycle)
+        self.governance = governance or GovernanceService(
+            root=self.root, registry=self.registry, lifecycle=_lifecycle
+        )
 
         # PG backends: use injected values; auto-detect from DATABASE_URL only when neither is given.
         # Asyncpg (async) URLs are skipped — this layer requires a synchronous driver.
@@ -61,7 +76,9 @@ class SVOSPlatform:
             _url = os.getenv("DATABASE_URL", "")
             if _url and "asyncpg" not in _url:
                 try:
-                    pg_control_plane, pg_evidence_repo = _build_pg_backends(_url, _lifecycle)
+                    pg_control_plane, pg_evidence_repo = _build_pg_backends(
+                        _url, _lifecycle
+                    )
                 except Exception:
                     pass  # unreachable DB or missing driver — fall back to JSONL
         self.pg_control_plane: PostgresControlPlane | None = pg_control_plane
@@ -83,6 +100,7 @@ class SVOSPlatform:
 
     def _bootstrap_pg(self) -> dict[str, Any]:
         from sqlalchemy import select
+
         from db.models import StageState, StrategyEntity, StrategyVersion
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]
@@ -92,7 +110,9 @@ class SVOSPlatform:
             manifest = dict(get_strategy_manifest(name, self.catalog_path) or {})
             stage = self.lifecycle.infer_stage(manifest).value
             version = str(manifest.get("version", "0.0.0"))
-            spec_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+            spec_hash = hashlib.sha256(
+                json.dumps(manifest, sort_keys=True).encode()
+            ).hexdigest()
 
             with sf() as session:
                 with session.begin():
@@ -294,13 +314,17 @@ class SVOSPlatform:
             "to_stage": to_stage,
             "actor": actor,
             "reason": reason,
-            "metadata": {"governance_decision_id": str(result.decision_id), **(metadata or {})},
+            "metadata": {
+                "governance_decision_id": str(result.decision_id),
+                **(metadata or {}),
+            },
         }
 
     # ── helpers ────────────────────────────────────────────────────────────
 
     def _pg_current_state(self, strategy: str) -> tuple[Any, Any]:
         from sqlalchemy import select
+
         from db.models import StageState, StrategyEntity
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]
@@ -329,6 +353,7 @@ class SVOSPlatform:
         if stage in _PG_NO_EVIDENCE_SOURCES:
             return ()
         from sqlalchemy import select
+
         from db.models import ArtifactBinding
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]
@@ -343,7 +368,7 @@ class SVOSPlatform:
                     ArtifactBinding.invalidated_at.is_(None),
                 )
             ).all()
-            return tuple(b.id for b in bindings)
+            return tuple(cast(UUID, b.id) for b in bindings)
 
     # ── approval ───────────────────────────────────────────────────────────
 

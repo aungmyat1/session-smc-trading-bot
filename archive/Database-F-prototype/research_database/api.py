@@ -3,9 +3,11 @@ research_database/api.py
 High-level research database API (save/query functions).
 """
 
-from sqlalchemy.orm import Session
-from .models import Trade, ReplayRun, SmcEvent, StrategyMetric
 from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from .models import ReplayRun, SmcEvent, StrategyMetric, Trade
 
 
 def save_trade(db: Session, trade_data: dict):
@@ -41,4 +43,6 @@ def get_strategy_metrics(db: Session, run_id: str):
 
 def compare_strategies(db: Session, strategy_ids: list):
     """Compare multiple strategies."""
-    return db.query(StrategyMetric).filter(StrategyMetric.strategy.in_(strategy_ids)).all()
+    return (
+        db.query(StrategyMetric).filter(StrategyMetric.strategy.in_(strategy_ids)).all()
+    )

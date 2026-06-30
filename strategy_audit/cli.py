@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +26,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--payload", help="JSON payload with candles/trades/metrics")
     parser.add_argument("--module", help="Run a specific module", default="")
     parser.add_argument("--full", action="store_true", help="Run the full audit stack")
-    parser.add_argument("--report", choices=["json", "markdown", "html", "pdf"], default="json")
+    parser.add_argument(
+        "--report", choices=["json", "markdown", "html", "pdf"], default="json"
+    )
     parser.add_argument("--outdir", default="reports/strategy_audit")
     args = parser.parse_args(argv)
 
@@ -53,11 +54,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True, default=str))
     else:
         write_reports(report, Path(args.outdir) / args.strategy)
-        ext = {"markdown": "audit_report.md", "html": "audit_report.html", "pdf": "audit_report.pdf"}[args.report]
+        ext = {
+            "markdown": "audit_report.md",
+            "html": "audit_report.html",
+            "pdf": "audit_report.pdf",
+        }[args.report]
         print(str(Path(args.outdir) / args.strategy / ext))
     return 0 if report.deployment_status not in {"Rejected", "Research"} else 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

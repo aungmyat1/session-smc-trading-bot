@@ -28,15 +28,19 @@ def label_sessions(frame: pd.DataFrame, pair: str | None = None) -> pd.DataFrame
     if pair_value is None and "pair" in df.columns and not df["pair"].empty:
         pair_value = df["pair"].iloc[0]
 
-    out = pd.DataFrame({
-        "timestamp": df["timestamp"],
-        "pair": pair_value,
-        "session": df["timestamp"].map(_label),
-    })
+    out = pd.DataFrame(
+        {
+            "timestamp": df["timestamp"],
+            "pair": pair_value,
+            "session": df["timestamp"].map(_label),
+        }
+    )
     return out.reset_index(drop=True)
 
 
-def save_sessions(frame: pd.DataFrame, path: str | Path, pair: str | None = None) -> Path:
+def save_sessions(
+    frame: pd.DataFrame, path: str | Path, pair: str | None = None
+) -> Path:
     out = label_sessions(frame, pair=pair)
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)

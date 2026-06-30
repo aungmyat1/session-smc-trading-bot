@@ -141,7 +141,9 @@ def write_symbol(symbol: str) -> dict:
         if df.empty:
             continue
         normalized = normalize_frame(df)
-        table = pa.Table.from_pandas(normalized, schema=TICK_SCHEMA, preserve_index=False)
+        table = pa.Table.from_pandas(
+            normalized, schema=TICK_SCHEMA, preserve_index=False
+        )
         if writer is None:
             writer = pq.ParquetWriter(out_path, TICK_SCHEMA, compression="snappy")
         writer.write_table(table)
@@ -170,8 +172,12 @@ def write_symbol(symbol: str) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Normalize Dukascopy ticks into a unified schema")
-    parser.add_argument("--symbols", nargs="+", help="Symbols to process; defaults to all raw symbols")
+    parser = argparse.ArgumentParser(
+        description="Normalize Dukascopy ticks into a unified schema"
+    )
+    parser.add_argument(
+        "--symbols", nargs="+", help="Symbols to process; defaults to all raw symbols"
+    )
     args = parser.parse_args()
 
     ensure_layout()

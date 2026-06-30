@@ -17,7 +17,7 @@ _UTC = timezone.utc
 
 @dataclass
 class AsianRange:
-    trade_date: date   # EST calendar date this range feeds into
+    trade_date: date  # EST calendar date this range feeds into
     high: float
     low: float
 
@@ -28,6 +28,7 @@ class AsianRange:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _parse_utc(t) -> datetime:
     """Parse ISO string or datetime to UTC-aware datetime."""
@@ -41,6 +42,7 @@ def _to_est(dt_utc: datetime) -> datetime:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def build_asian_range(candles_m15: list[dict], trade_date: date) -> "AsianRange | None":
     """

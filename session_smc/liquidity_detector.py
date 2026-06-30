@@ -5,7 +5,9 @@ All functions operate on list[dict] candles (time, open, high, low, close).
 The pip size (0.0001) is hard-coded for EURUSD / GBPUSD.  If additional pairs
 with different pip sizes are added, pass pip_size as a parameter.
 """
+
 from __future__ import annotations
+
 from typing import Optional
 
 from .structure_detector import atr as compute_atr
@@ -15,6 +17,7 @@ PIP: float = 0.0001  # 1 pip for 5-digit EURUSD / GBPUSD
 
 
 # ── Session range ─────────────────────────────────────────────────────────────
+
 
 def build_session_range(
     candles: list[Candle],
@@ -52,6 +55,7 @@ def build_session_range(
 
 # ── Session classification ────────────────────────────────────────────────────
 
+
 def classify_session(
     candles: list[Candle],
     session_range: dict,
@@ -81,6 +85,7 @@ def classify_session(
 
 
 # ── Sweep detection ──────────────────────────────────────────────────────────
+
 
 def detect_sweep(
     candles: list[Candle],

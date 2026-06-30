@@ -1,39 +1,46 @@
 """Tests for bot/engine/regime_detector.py"""
 
-import pytest
-from adaptive.engine.regime_detector import detect_regime, _compute_atr, _compute_adx
+from adaptive.engine.regime_detector import (_compute_adx, _compute_atr,
+                                             detect_regime)
 
 
-def _make_candles(n: int, high_offset: float = 0.002, low_offset: float = 0.002) -> list[dict]:
+def _make_candles(
+    n: int, high_offset: float = 0.002, low_offset: float = 0.002
+) -> list[dict]:
     """Generate synthetic OHLCV candles centred around 1.1000."""
     base = 1.1000
     candles = []
     for i in range(n):
         close = base + i * 0.0001
-        candles.append({
-            "open":  close - 0.0005,
-            "high":  close + high_offset,
-            "low":   close - low_offset,
-            "close": close,
-            "volume": 1000,
-        })
+        candles.append(
+            {
+                "open": close - 0.0005,
+                "high": close + high_offset,
+                "low": close - low_offset,
+                "close": close,
+                "volume": 1000,
+            }
+        )
     return candles
 
 
 def _make_ranging_candles(n: int = 60) -> list[dict]:
     """Oscillating candles — low ADX, normal ATR."""
     import math
+
     candles = []
     base = 1.1000
     for i in range(n):
         close = base + 0.0005 * math.sin(i * 0.3)
-        candles.append({
-            "open":  close - 0.0003,
-            "high":  close + 0.0015,
-            "low":   close - 0.0015,
-            "close": close,
-            "volume": 1000,
-        })
+        candles.append(
+            {
+                "open": close - 0.0003,
+                "high": close + 0.0015,
+                "low": close - 0.0015,
+                "close": close,
+                "volume": 1000,
+            }
+        )
     return candles
 
 
@@ -52,7 +59,15 @@ class TestDetectRegime:
     def test_result_has_required_keys(self):
         candles = _make_candles(60)
         result = detect_regime(candles, spread_pips=0.5)
-        for key in ("regime", "confidence", "adx", "plus_di", "minus_di", "atr_pct", "atr_expanding"):
+        for key in (
+            "regime",
+            "confidence",
+            "adx",
+            "plus_di",
+            "minus_di",
+            "atr_pct",
+            "atr_expanding",
+        ):
             assert key in result, f"Missing key: {key}"
 
     def test_regime_is_valid_value(self):
@@ -75,8 +90,15 @@ class TestDetectRegime:
         candles = []
         for i in range(60):
             close = 1.1 + i * 0.0005
-            candles.append({"open": close - 0.0002, "high": close + 0.0003,
-                             "low": close - 0.0003, "close": close, "volume": 1000})
+            candles.append(
+                {
+                    "open": close - 0.0002,
+                    "high": close + 0.0003,
+                    "low": close - 0.0003,
+                    "close": close,
+                    "volume": 1000,
+                }
+            )
         result = detect_regime(candles, spread_pips=0.5)
         assert result["regime"] in {"TRENDING", "BREAKOUT", "UNSAFE"}
 

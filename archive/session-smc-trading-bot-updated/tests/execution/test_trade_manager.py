@@ -1,31 +1,57 @@
 """Tests for execution/trade_manager.py (mocked executor — no broker)"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from execution.trade_manager import TradeManager, _MAGIC
+
+import pytest
+
+from execution.trade_manager import _MAGIC, TradeManager
 
 
 def _make_manager(simulated=True):
     executor = MagicMock()
-    executor.place_order   = AsyncMock(return_value={"order_id": "SIM-001", "simulated": simulated})
+    executor.place_order = AsyncMock(
+        return_value={"order_id": "SIM-001", "simulated": simulated}
+    )
     executor.close_position = AsyncMock(return_value=True)
     executor.modify_position = AsyncMock(return_value=True)
-    executor.get_positions  = AsyncMock(return_value=[
-        {"id": "POS-1", "symbol": "EURUSD", "direction": "buy",
-         "lots": 0.02, "entry": 1.1000, "sl": 1.0950, "tp": 1.1150,
-         "profit": 12.5, "magic": _MAGIC},
-        {"id": "POS-2", "symbol": "GBPUSD", "direction": "sell",
-         "lots": 0.01, "entry": 1.2700, "sl": 1.2750, "tp": 1.2600,
-         "profit": -5.0, "magic": 99999},   # different magic — should be filtered
-    ])
+    executor.get_positions = AsyncMock(
+        return_value=[
+            {
+                "id": "POS-1",
+                "symbol": "EURUSD",
+                "direction": "buy",
+                "lots": 0.02,
+                "entry": 1.1000,
+                "sl": 1.0950,
+                "tp": 1.1150,
+                "profit": 12.5,
+                "magic": _MAGIC,
+            },
+            {
+                "id": "POS-2",
+                "symbol": "GBPUSD",
+                "direction": "sell",
+                "lots": 0.01,
+                "entry": 1.2700,
+                "sl": 1.2750,
+                "tp": 1.2600,
+                "profit": -5.0,
+                "magic": 99999,
+            },  # different magic — should be filtered
+        ]
+    )
     return TradeManager(executor), executor
 
 
 def _signal_ns(side="long"):
     from types import SimpleNamespace
+
     return SimpleNamespace(
-        pair="EURUSD", side=side,
-        entry=1.1000, stop_loss=1.0950, take_profit=1.1150,
+        pair="EURUSD",
+        side=side,
+        entry=1.1000,
+        stop_loss=1.0950,
+        take_profit=1.1150,
     )
 
 

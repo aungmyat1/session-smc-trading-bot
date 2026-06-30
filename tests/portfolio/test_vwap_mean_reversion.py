@@ -4,18 +4,23 @@ from __future__ import annotations
 
 import pytest
 
-from strategies.adapters.vwap_adapter import (
-    VWAPBreakoutAdapter,
-    VWAPMeanReversionAdapter,
-)
+from strategies.adapters.vwap_adapter import (VWAPBreakoutAdapter,
+                                              VWAPMeanReversionAdapter)
 
 
 def _ts(hour: int, minute: int = 0) -> str:
     return f"2026-06-24T{hour:02d}:{minute:02d}:00+00:00"
 
 
-def _candle(hour: int, minute: int, open_: float, high: float, low: float, close: float,
-            volume: int = 1000) -> dict:
+def _candle(
+    hour: int,
+    minute: int,
+    open_: float,
+    high: float,
+    low: float,
+    close: float,
+    volume: int = 1000,
+) -> dict:
     return {
         "time": _ts(hour, minute),
         "open": open_,

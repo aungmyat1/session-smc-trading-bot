@@ -16,14 +16,13 @@ Public API:
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timezone
 
 from execution.vantage_demo_executor import VantageDemoExecutor
 
 _log = logging.getLogger("strategy_demo.trade_manager")
 
-_MAGIC = 21099   # shared demo magic number
+_MAGIC = 21099  # shared demo magic number
 
 
 class TradeManager:
@@ -37,10 +36,10 @@ class TradeManager:
         signal must have: symbol/pair, side/direction, entry, stop_loss/sl, take_profit/tp
         Returns order result dict.
         """
-        symbol    = getattr(signal, "pair", None) or signal.get("symbol", "")
+        symbol = getattr(signal, "pair", None) or signal.get("symbol", "")
         direction = getattr(signal, "side", None) or signal.get("direction", "")
-        sl        = getattr(signal, "stop_loss", None) or signal.get("stop_loss", 0.0)
-        tp        = getattr(signal, "take_profit", None) or signal.get("take_profit", 0.0)
+        sl = getattr(signal, "stop_loss", None) or signal.get("stop_loss", 0.0)
+        tp = getattr(signal, "take_profit", None) or signal.get("take_profit", 0.0)
 
         # Normalise direction
         direction = direction.lower()
@@ -49,16 +48,18 @@ class TradeManager:
         elif direction in ("short",):
             direction = "sell"
 
-        _log.info("Opening %s %s %.4f lots SL=%.5f TP=%.5f", direction, symbol, lots, sl, tp)
+        _log.info(
+            "Opening %s %s %.4f lots SL=%.5f TP=%.5f", direction, symbol, lots, sl, tp
+        )
         strategy_name = getattr(signal, "strategy_name", "") or "strategy-demo"
         result = await self._ex.place_order(
-            symbol    = symbol,
-            direction = direction,
-            lots      = lots,
-            sl        = sl,
-            tp        = tp,
-            magic     = _MAGIC,
-            comment   = strategy_name[:31],
+            symbol=symbol,
+            direction=direction,
+            lots=lots,
+            sl=sl,
+            tp=tp,
+            magic=_MAGIC,
+            comment=strategy_name[:31],
         )
         result["opened_at"] = datetime.now(timezone.utc).isoformat()
         return result

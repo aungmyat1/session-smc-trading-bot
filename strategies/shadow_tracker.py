@@ -15,7 +15,6 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from core.signal import Signal
 
@@ -33,20 +32,20 @@ class ShadowTracker:
         Record signal without executing. Always returns None to execution layer.
         """
         record = {
-            "type":          "SHADOW_SIGNAL",
-            "timestamp":     datetime.now(timezone.utc).isoformat(),
+            "type": "SHADOW_SIGNAL",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "strategy_name": signal.strategy_name,
-            "symbol":        signal.symbol,
-            "action":        signal.action,
-            "entry_price":   signal.entry_price,
-            "stop_loss":     signal.stop_loss,
-            "take_profit":   signal.take_profit,
-            "confidence":    signal.confidence,
-            "risk_percent":  signal.risk_percent,
-            "session":       signal.session,
-            "reason":        reason,
-            "metadata":      signal.metadata,
-            "executed":      False,
+            "symbol": signal.symbol,
+            "action": signal.action,
+            "entry_price": signal.entry_price,
+            "stop_loss": signal.stop_loss,
+            "take_profit": signal.take_profit,
+            "confidence": signal.confidence,
+            "risk_percent": signal.risk_percent,
+            "session": signal.session,
+            "reason": reason,
+            "metadata": signal.metadata,
+            "executed": False,
         }
         try:
             with self._path.open("a") as fh:
@@ -76,5 +75,5 @@ class ShadowTracker:
             by_strategy[name] = by_strategy.get(name, 0) + 1
         return {
             "total_shadow_signals": len(records),
-            "by_strategy":          by_strategy,
+            "by_strategy": by_strategy,
         }

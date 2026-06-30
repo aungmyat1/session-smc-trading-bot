@@ -1,0 +1,424 @@
+---
+# SMC Strategy Validation Matrix
+# Version: 1.0
+# Generated: 2026-06-30
+# Purpose: Define validation rules for Smart Money Concept (SMC) Forex strategies
+#          across all qualification phases (Phase 0–5).
+
+schema_version: "1.0"
+description: >
+  Comprehensive validation rule matrix for SMC-based Forex trading strategies.
+  Each rule is evaluated during Phase 0 (Strategy Audit) and enforced during
+  Phase 2 (Historical Replay) and Phase 3 (Backtesting).
+
+categories:
+
+  # ── MARKET STRUCTURE ─────────────────────────────────────────────────────
+
+  - category: market_structure
+    description: Rules governing Break of Structure (BOS), Change of Character (CHoCH), and trend identification.
+    rules:
+
+      - rule_id: MS-001
+        name: bos_definition_complete
+        description: >
+          BOS (Break of Structure) must be defined with a clear swing high/low reference,
+          confirmation candle close requirement, and minimum pip distance.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: Spec states "BOS confirmed on candle close above/below swing high/low, minimum 5 pip displacement"
+          example: "BOS Long: close above most recent swing high with ≥5 pip margin"
+        fail_scenario:
+          description: Spec says "price breaks structure" without defining swing reference, close requirement, or distance
+          example: "Enter when BOS occurs"
+        edge_scenario:
+          description: BOS defined but confirmation timeframe not specified
+          note: Treat as FIX — auditor must request clarification
+
+      - rule_id: MS-002
+        name: choch_distinct_from_bos
+        description: >
+          CHoCH (Change of Character) must be explicitly distinguished from BOS.
+          CHoCH signals trend reversal; BOS confirms continuation.
+        validation_method: spec_logic_review
+        pass_scenario:
+          description: Spec defines CHoCH as first BOS against trend after liquidity sweep
+          example: "CHoCH = BOS counter-trend after stop sweep; BOS = continuation of established trend"
+        fail_scenario:
+          description: CHoCH and BOS used interchangeably in the spec
+          example: "Enter on BOS/CHoCH in direction of bias"
+        edge_scenario:
+          description: Strategy uses BOS only — CHoCH not applicable
+          note: PASS if CHoCH role is explicitly excluded with rationale
+
+      - rule_id: MS-003
+        name: trend_bias_defined
+        description: >
+          Higher-timeframe (HTF) trend bias must be defined with a specific timeframe
+          (e.g., H4 or Daily) and the structural condition that defines bias direction.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "H4 trend is bullish when H4 creates HH-HL sequence; trade only longs on M15"
+          example: "H4 bias: last two swings form HH-HL = bullish, HH-LH = range/neutral"
+        fail_scenario:
+          description: "Trade with the trend" without defining what constitutes trend on which timeframe
+          example: "Use HTF context for direction"
+        edge_scenario:
+          description: Bias defined on multiple timeframes with conflicting conditions
+          note: FIX — must specify priority resolution rule
+
+      - rule_id: MS-004
+        name: swing_identification_rules
+        description: >
+          Swing highs and lows used for structure analysis must have a defined
+          lookback period or candle-count rule to prevent subjectivity.
+        validation_method: replay_signal_consistency_check
+        pass_scenario:
+          description: Swing identified by n=3 left/right candles rule or ATR-based threshold
+          example: "Swing high: highest candle with 3 lower candles on each side"
+        fail_scenario:
+          description: Swings identified visually or by "significant" levels with no rule
+          example: "Mark obvious swing points on the chart"
+        edge_scenario:
+          description: Different swing rules for entry vs bias — must be documented separately
+
+  # ── LIQUIDITY ──────────────────────────────────────────────────────────────
+
+  - category: liquidity
+    description: Rules governing sweep identification, stop hunt detection, and equal high/low levels.
+    rules:
+
+      - rule_id: LQ-001
+        name: sweep_definition_complete
+        description: >
+          A liquidity sweep must be defined with: (1) what level constitutes liquidity
+          (equal highs/lows, swing high/low, session high/low), (2) minimum wick
+          extension distance, (3) close-back requirement (or lack thereof).
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "Sweep = price wicks ≥3 pips beyond equal highs/lows and closes back within range within same candle"
+          example: "M15 candle wick extends ≥3 pip beyond EQH/EQL, candle closes back below/above"
+        fail_scenario:
+          description: "Enter after a sweep" without wick distance, level definition, or close-back rule
+          example: "Look for liquidity grabs at key levels"
+        edge_scenario:
+          description: Close-back required on M15 but allowed on M5 — must specify per timeframe
+
+      - rule_id: LQ-002
+        name: equal_highs_lows_criteria
+        description: >
+          Equal highs (EQH) and equal lows (EQL) must have a tolerance band defined
+          in pips or ATR multiples to prevent over-identification.
+        validation_method: replay_signal_consistency_check
+        pass_scenario:
+          description: "EQH/EQL: two or more swing highs/lows within 3 pip tolerance over last 20 candles"
+          example: "EQH tolerance = 3 pips; lookback = 20 M15 candles"
+        fail_scenario:
+          description: "Equal highs are when price touches the same level twice" with no tolerance
+          example: "Mark where price hit twice"
+        edge_scenario:
+          description: Tolerance defined in pips only — should also define max time between touches
+
+      - rule_id: LQ-003
+        name: stop_hunt_vs_sweep_distinction
+        description: >
+          If strategy distinguishes between stop hunts and sweeps, the distinction
+          must be measurable in the price data (e.g., depth, time, volume).
+        validation_method: spec_logic_review
+        pass_scenario:
+          description: Stop hunt = wick beyond level within session; sweep = full candle close beyond
+          example: "Stop hunt: wick only. Sweep: if candle closes beyond, invalidate setup"
+        fail_scenario:
+          description: "Sweep and stop hunt mean the same thing" used without consistent definition
+          example: "Enter on sweep/stop hunt"
+        edge_scenario:
+          description: Strategy does not distinguish — explicitly state they are treated identically. PASS.
+
+      - rule_id: LQ-004
+        name: session_liquidity_pools_defined
+        description: >
+          If strategy uses session highs/lows as liquidity pools, the session boundaries
+          must be defined in UTC with DST handling.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "London session high = highest price from 07:00–08:00 UTC; adjusts for DST per IANA schedule"
+          example: "Asian range: 00:00–07:00 UTC; London IB: 07:00–08:00 UTC"
+        fail_scenario:
+          description: "Use London session high" without UTC times or DST specification
+          example: "Trade off London open high/low"
+        edge_scenario:
+          description: Session defined in broker local time — FIX to convert to UTC
+
+  # ── PRICE DELIVERY ─────────────────────────────────────────────────────────
+
+  - category: price_delivery
+    description: Rules for Fair Value Gaps (FVG), Order Blocks (OB), premium/discount zones, and mitigation.
+    rules:
+
+      - rule_id: PD-001
+        name: fvg_definition_complete
+        description: >
+          Fair Value Gap must be defined with: (1) candle pattern (3-candle gap),
+          (2) minimum gap size in pips or ATR multiple, (3) whether partial vs full
+          fill is required for mitigation.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "FVG: gap between candle[0].high and candle[2].low (bullish) ≥5 pip; mitigated when price enters gap ≥50%"
+          example: "Bullish FVG: C1.high < C3.low, gap ≥5 pip. Mitigated: price touches 50% level"
+        fail_scenario:
+          description: "Trade from FVGs" without gap size, direction rule, or mitigation definition
+          example: "Look for imbalances and trade from them"
+        edge_scenario:
+          description: FVG on multiple timeframes — must specify which timeframe's FVG takes priority
+
+      - rule_id: PD-002
+        name: order_block_criteria_defined
+        description: >
+          Order Block must define: (1) which candle(s) constitute the OB (last opposing
+          candle before impulsive move), (2) OB zone boundaries (high/low or body),
+          (3) validity period (time or candle count), (4) mitigation rule.
+        validation_method: replay_signal_consistency_check
+        pass_scenario:
+          description: "Bullish OB: last bearish candle before bullish BOS; zone = candle high to low; valid for 48H; mitigated on re-entry"
+          example: "OB high = candle high, OB low = candle low or open (whichever lower)"
+        fail_scenario:
+          description: "Trade from order blocks at key levels" without boundary or validity rules
+          example: "Mark OBs where institutions would have ordered"
+        edge_scenario:
+          description: OB formed by multiple candles — spec must define which candle defines the zone
+
+      - rule_id: PD-003
+        name: premium_discount_defined
+        description: >
+          Premium and discount zones must be defined relative to a specific range
+          (e.g., swing high to swing low) with the threshold percentage or Fibonacci level.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "Discount: below 50% of H4 swing range; Premium: above 50%. Only buy in discount, sell in premium."
+          example: "50% level of current H4 range; below = discount, above = premium"
+        fail_scenario:
+          description: "Only enter from discount zones" without defining the range or threshold
+          example: "Buy low, sell high in premium/discount"
+        edge_scenario:
+          description: Uses Fibonacci levels (e.g., 61.8%) instead of 50% — must state the exact level
+
+      - rule_id: PD-004
+        name: mitigation_invalidation_rules
+        description: >
+          Mitigation of OBs and FVGs must specify whether a mitigated zone is
+          invalidated (cannot be used again) or remains valid.
+        validation_method: spec_logic_review
+        pass_scenario:
+          description: "OB is invalidated after price fully trades through it (below OB low for bullish OB)"
+          example: "Bullish OB invalid when M15 candle closes below OB low"
+        fail_scenario:
+          description: No mention of what happens to an OB/FVG after price interacts with it
+          example: "Enter at OB and FVG confluence"
+        edge_scenario:
+          description: OB partially hit — must define partial mitigation threshold
+
+  # ── SESSION LOGIC ──────────────────────────────────────────────────────────
+
+  - category: session_logic
+    description: Rules governing London/NY sessions, kill zones, and invalid trading hours.
+    rules:
+
+      - rule_id: SL-001
+        name: kill_zones_defined_in_utc
+        description: >
+          All kill zones and session windows must be specified in UTC with explicit
+          start/end times and DST handling documented.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "London Kill Zone: 07:00–09:00 UTC (winter), 06:00–08:00 UTC (summer DST)"
+          example: "NY Kill Zone: 12:00–14:00 UTC; London: 07:00–10:00 UTC"
+        fail_scenario:
+          description: "Trade during London open" without UTC times
+          example: "Enter during London or New York sessions"
+        edge_scenario:
+          description: Spec uses EST/EDT without UTC conversion — FIX required
+
+      - rule_id: SL-002
+        name: invalid_hours_defined
+        description: >
+          Trading must specify hours when no new trades are entered: Asian session
+          (low-liquidity), news windows, Friday rollover, Sunday open.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "No trades: 00:00–06:59 UTC (Asian), ±30 min around Tier-1 NFP/CPI news, after 20:00 UTC Friday"
+          example: "No trades outside 07:00–17:00 UTC; no trades 30 min before/after high-impact news"
+        fail_scenario:
+          description: No restriction on when trades can be entered
+          example: "Trade any time a setup appears"
+        edge_scenario:
+          description: News filter defined but news calendar source not specified — must document data source
+
+      - rule_id: SL-003
+        name: session_range_calculation_defined
+        description: >
+          If strategy uses session ranges (e.g., Initial Balance), the exact
+          calculation method must be specified: candle-based, tick-based, OHLC.
+        validation_method: replay_signal_consistency_check
+        pass_scenario:
+          description: "London IB High = max(high) of M15 candles from 07:00–08:00 UTC inclusive"
+          example: "Asian range = H1 OHLC from 00:00–07:00 UTC; first and last candles included"
+        fail_scenario:
+          description: "Use the London session range" without specifying candle type or boundary inclusion
+          example: "Mark the London session high and low"
+        edge_scenario:
+          description: Strategy uses M5 for range but M15 for signals — must specify each separately
+
+      - rule_id: SL-004
+        name: session_continuation_vs_reversal_specified
+        description: >
+          Strategy must state whether it is a continuation strategy (trades in
+          direction of session move) or reversal strategy (fades session extreme).
+        validation_method: spec_logic_review
+        pass_scenario:
+          description: "After London sweep of Asian range, trade reversal in NY session targeting Asian midpoint"
+          example: "Reversal: fade London sweep. Continuation: follow London BOS into NY"
+        fail_scenario:
+          description: "Trade in the direction of the market" without specifying relative to session structure
+          example: "Follow price action signals during session"
+        edge_scenario:
+          description: Strategy does both depending on pre-conditions — each condition must be exhaustively specified
+
+  # ── RISK MANAGEMENT ────────────────────────────────────────────────────────
+
+  - category: risk_management
+    description: Rules governing position sizing, maximum risk, SL placement, TP targets, and daily loss limits.
+    rules:
+
+      - rule_id: RM-001
+        name: position_sizing_formula_defined
+        description: >
+          Position size calculation must be defined as a formula referencing account
+          balance, risk percentage, stop-loss distance, and instrument point value.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "Lots = (Account * RiskPct) / (SL_pips * pip_value_per_lot); RiskPct = 1.0%"
+          example: "1% risk per trade; SL in pips used to back-calculate lot size"
+        fail_scenario:
+          description: "Risk 1% per trade" without specifying how lots are calculated from the SL distance
+          example: "Risk 1% on each trade"
+        edge_scenario:
+          description: Fixed lot size specified — must document minimum account size and max drawdown implications
+
+      - rule_id: RM-002
+        name: stop_loss_placement_defined
+        description: >
+          Stop-loss must be placed at a structurally significant level with a defined
+          buffer in pips (not just "below the OB").
+        validation_method: replay_signal_consistency_check
+        pass_scenario:
+          description: "SL = 2 pips below bullish OB low; minimum SL = 8 pips, maximum SL = 25 pips"
+          example: "SL = OB low - 2 pips buffer; skip trade if SL > 25 pips"
+        fail_scenario:
+          description: "SL below the order block" without buffer or min/max constraints
+          example: "Place SL at structure"
+        edge_scenario:
+          description: SL defined relative to candle wick — must specify which candle and which part of the wick
+
+      - rule_id: RM-003
+        name: take_profit_target_defined
+        description: >
+          Take-profit target must be defined as a specific R-multiple, price level,
+          or structural target (next liquidity pool). Partial TP rules must be specified.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "TP1 = 1:1 R (50% close); TP2 = next swing high / session high; trail remainder"
+          example: "Single TP at 2R; or TP1 = 1R (move SL to BE), TP2 = 3R"
+        fail_scenario:
+          description: "Take profit at the next resistance" without R-multiple or specific level calculation
+          example: "Exit at logical target"
+        edge_scenario:
+          description: TP defined as next liquidity pool — must specify calculation method for replays
+
+      - rule_id: RM-004
+        name: daily_loss_limit_defined
+        description: >
+          A daily maximum loss limit must be specified in percentage of account or
+          R-multiples, with the rule for what happens when hit (stop trading, close all).
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "Daily loss limit: 3% of account or 3R; when hit, close all positions and stop trading until next session"
+          example: "Max daily loss = 3R; auto-halt trading for remainder of UTC trading day"
+        fail_scenario:
+          description: No daily loss limit defined
+          example: "No daily limit; trust the setups"
+        edge_scenario:
+          description: Loss limit defined for week but not day — must specify both or justify omission
+
+      - rule_id: RM-005
+        name: max_concurrent_positions_defined
+        description: >
+          Maximum number of concurrent open positions per symbol and in total must
+          be specified. Per SVOS §0 rule 7: one position per symbol.
+        validation_method: spec_completeness_check
+        pass_scenario:
+          description: "Maximum 1 open position per symbol at any time; maximum 2 total (one EURUSD, one GBPUSD)"
+          example: "One position per pair; no pyramiding"
+        fail_scenario:
+          description: No mention of position limits or concurrency rules
+          example: "Enter trades as setups appear"
+        edge_scenario:
+          description: Scaled entries mentioned — must define as separate lots under one position or reject
+
+      - rule_id: RM-006
+        name: minimum_rr_ratio_defined
+        description: >
+          Minimum required Risk:Reward ratio must be specified. Trades with RR below
+          threshold must be skipped.
+        validation_method: backtest_gate_check
+        pass_scenario:
+          description: "Minimum RR = 1:2; skip trade if TP distance / SL distance < 2"
+          example: "1:2 minimum; if TP1 at 1R, only take trade if TP2 at ≥3R exists"
+        fail_scenario:
+          description: "Take high probability setups" without a minimum RR floor
+          example: "Enter when setup is clear regardless of RR"
+        edge_scenario:
+          description: RR defined as "at least 1:1" — must justify against fee-adjusted profitability requirement
+
+      - rule_id: RM-007
+        name: spread_cost_acknowledged
+        description: >
+          Strategy must acknowledge spread and commission costs and define minimum
+          expected net profit factor at standard AND 2x spread stress.
+          Per SVOS §0: EURUSD ~0.8–1.2 pip RT, GBPUSD ~1.2–1.8 pip RT.
+        validation_method: backtest_gate_check
+        pass_scenario:
+          description: "Expected PF ≥ 1.25 at standard spread; ≥ 1.0 at 2x spread stress on ≥50 trades"
+          example: "Standard: EURUSD 1.0 pip RT applied; 2x stress: 2.0 pip RT applied"
+        fail_scenario:
+          description: Backtest results quoted gross without fees; 2x spread test not documented
+          example: "PF = 2.3 (gross)"
+        edge_scenario:
+          description: Strategy only tested at standard spread — 2x stress required before Phase 3 PASS
+
+validation_gates:
+  phase_0_audit:
+    required_rule_categories:
+      - market_structure
+      - liquidity
+      - price_delivery
+      - session_logic
+      - risk_management
+    minimum_pass_rate: 1.0
+    critical_rules:
+      - MS-001
+      - LQ-001
+      - RM-001
+      - RM-002
+      - RM-007
+
+  phase_3_backtest:
+    required_evidence:
+      - rule_id: RM-007
+        metric: net_profit_factor_standard
+        threshold: "> 1.0"
+      - rule_id: RM-007
+        metric: net_profit_factor_2x_stress
+        threshold: "> 1.0"
+      - rule_id: RM-006
+        metric: trade_count
+        threshold: ">= 50"

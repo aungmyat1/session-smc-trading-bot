@@ -7,12 +7,21 @@ import scripts.health_check as health_check
 
 def test_postgres_backend_is_critical_when_unavailable(monkeypatch):
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
-    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 3)
+    monkeypatch.setattr(
+        health_check, "_record_db_probe_result", lambda endpoint_key, ok: 3
+    )
 
     def _refuse(*args, **kwargs):
         raise ConnectionRefusedError(111, "Connection refused")
 
-    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (False, "ConnectionRefusedError: [Errno 111] Connection refused"))
+    monkeypatch.setattr(
+        health_check,
+        "_probe_socket",
+        lambda host, port: (
+            False,
+            "ConnectionRefusedError: [Errno 111] Connection refused",
+        ),
+    )
 
     result = health_check.check_research_db("postgres")
 
@@ -38,7 +47,11 @@ def test_disabled_backend_skips_db_probe(monkeypatch):
 def test_duckdb_mode_does_not_probe_localhost(monkeypatch):
     monkeypatch.delenv("DB_BACKEND", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setattr(health_check, "_load_yaml", lambda _path: {"analytics": {"duckdb_path": "research.db"}})
+    monkeypatch.setattr(
+        health_check,
+        "_load_yaml",
+        lambda _path: {"analytics": {"duckdb_path": "research.db"}},
+    )
 
     def _should_not_be_called(*args, **kwargs):
         raise AssertionError("socket.create_connection should not run for DuckDB mode")
@@ -53,10 +66,18 @@ def test_duckdb_mode_does_not_probe_localhost(monkeypatch):
 
 def test_database_url_postgres_takes_precedence_over_duckdb_config(monkeypatch):
     monkeypatch.delenv("DB_BACKEND", raising=False)
-    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@db.example:5432/research")
-    monkeypatch.setattr(health_check, "_load_yaml", lambda _path: {"analytics": {"duckdb_path": "research.db"}})
+    monkeypatch.setenv(
+        "DATABASE_URL", "postgresql://user:pass@db.example:5432/research"
+    )
+    monkeypatch.setattr(
+        health_check,
+        "_load_yaml",
+        lambda _path: {"analytics": {"duckdb_path": "research.db"}},
+    )
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
-    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (True, "reachable"))
+    monkeypatch.setattr(
+        health_check, "_probe_socket", lambda host, port: (True, "reachable")
+    )
 
     backend, meta = health_check._infer_db_backend()
 
@@ -81,8 +102,17 @@ def test_missing_db_config_fails_closed(monkeypatch):
 
 def test_postgres_backend_warns_before_failure_threshold(monkeypatch):
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "active")
-    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 1)
-    monkeypatch.setattr(health_check, "_probe_socket", lambda host, port: (False, "ConnectionRefusedError: [Errno 111] Connection refused"))
+    monkeypatch.setattr(
+        health_check, "_record_db_probe_result", lambda endpoint_key, ok: 1
+    )
+    monkeypatch.setattr(
+        health_check,
+        "_probe_socket",
+        lambda host, port: (
+            False,
+            "ConnectionRefusedError: [Errno 111] Connection refused",
+        ),
+    )
 
     result = health_check.check_research_db("postgres")
 
@@ -95,7 +125,9 @@ def test_localhost_in_container_warns_if_fallback_host_is_reachable(monkeypatch)
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@127.0.0.1:5432/research")
     monkeypatch.setattr(health_check, "_postgres_service_status", lambda: "unknown")
     monkeypatch.setattr(health_check, "_in_container_runtime", lambda: True)
-    monkeypatch.setattr(health_check, "_record_db_probe_result", lambda endpoint_key, ok: 0)
+    monkeypatch.setattr(
+        health_check, "_record_db_probe_result", lambda endpoint_key, ok: 0
+    )
 
     def _probe(host, port):
         if host == "127.0.0.1":
@@ -148,7 +180,9 @@ def test_recovery_check_warns_when_no_artifacts(tmp_path, monkeypatch):
 
 
 def test_emergency_stop_blocks_risk_engine(tmp_path, monkeypatch):
-    monkeypatch.setattr(health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setattr(
+        health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json"
+    )
     (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
     (tmp_path / "reports" / "control_state.json").write_text(
         '{"emergency_stop":{"active":true,"reason":"operator halt"}}',
@@ -162,7 +196,9 @@ def test_emergency_stop_blocks_risk_engine(tmp_path, monkeypatch):
 
 
 def test_emergency_stop_blocks_execution(tmp_path, monkeypatch):
-    monkeypatch.setattr(health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setattr(
+        health_check, "_CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json"
+    )
     (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
     (tmp_path / "reports" / "control_state.json").write_text(
         '{"emergency_stop":{"active":true,"reason":"operator halt"}}',

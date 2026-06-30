@@ -84,7 +84,9 @@ async def test_send_error_suppresses_same_error_family_with_different_details():
     sent: list[tuple[str | None, str | None]] = []
 
     async def _capture(text, parse_mode=None, alert_category=None, suppress_key=None):
-        if alert_category and real._should_suppress(alert_category, text, parse_mode, suppress_key=suppress_key):
+        if alert_category and real._should_suppress(
+            alert_category, text, parse_mode, suppress_key=suppress_key
+        ):
             return
         sent.append((alert_category, suppress_key))
 

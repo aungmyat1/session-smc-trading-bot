@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 ValidationStatus = Literal["PASS", "FAIL", "PARTIAL", "WARN"]
-ReadinessStatus = Literal["READY_FOR_REPLAY", "REQUIRES_REVISION", "INCOMPLETE", "REJECTED"]
+ReadinessStatus = Literal[
+    "READY_FOR_REPLAY", "REQUIRES_REVISION", "INCOMPLETE", "REJECTED"
+]
 
 
 def utc_now() -> str:
@@ -93,7 +95,9 @@ class StrategyDocument:
     @classmethod
     def from_file(cls, path: str | Path) -> "StrategyDocument":
         file_path = Path(path)
-        return cls.from_text(file_path.read_text(encoding="utf-8"), source_path=str(file_path))
+        return cls.from_text(
+            file_path.read_text(encoding="utf-8"), source_path=str(file_path)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

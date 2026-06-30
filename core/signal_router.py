@@ -38,8 +38,8 @@ class SignalRouter:
         Validate, resolve conflicts, deduplicate, and rank signals.
         Returns approved list sorted by confidence desc.
         """
-        now      = datetime.now(timezone.utc)
-        valid    = []
+        now = datetime.now(timezone.utc)
+        valid = []
         rejected = []
 
         for sig in signals:
@@ -82,14 +82,26 @@ class SignalRouter:
         # SL/TP geometry
         if sig.action == "BUY":
             if not (sig.stop_loss < sig.entry_price):
-                return False, f"BUY: sl={sig.stop_loss} must be < entry={sig.entry_price}"
+                return (
+                    False,
+                    f"BUY: sl={sig.stop_loss} must be < entry={sig.entry_price}",
+                )
             if not (sig.take_profit > sig.entry_price):
-                return False, f"BUY: tp={sig.take_profit} must be > entry={sig.entry_price}"
+                return (
+                    False,
+                    f"BUY: tp={sig.take_profit} must be > entry={sig.entry_price}",
+                )
         else:  # SELL
             if not (sig.stop_loss > sig.entry_price):
-                return False, f"SELL: sl={sig.stop_loss} must be > entry={sig.entry_price}"
+                return (
+                    False,
+                    f"SELL: sl={sig.stop_loss} must be > entry={sig.entry_price}",
+                )
             if not (sig.take_profit < sig.entry_price):
-                return False, f"SELL: tp={sig.take_profit} must be < entry={sig.entry_price}"
+                return (
+                    False,
+                    f"SELL: tp={sig.take_profit} must be < entry={sig.entry_price}",
+                )
 
         return True, ""
 
@@ -107,7 +119,9 @@ class SignalRouter:
 
             # BUY and SELL both present → conflict → reject all for this symbol
             if "BUY" in actions and "SELL" in actions:
-                _log.info("CONFLICT on %s: BUY+SELL both present → rejecting all", symbol)
+                _log.info(
+                    "CONFLICT on %s: BUY+SELL both present → rejecting all", symbol
+                )
                 continue
 
             # Same direction → keep highest confidence only

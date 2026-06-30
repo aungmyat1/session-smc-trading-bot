@@ -3,10 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from svos.lifecycle.manager import LifecycleTransitionError, StrategyLifecycleManager, StrategyStage
+from svos.lifecycle.manager import (LifecycleTransitionError,
+                                    StrategyLifecycleManager, StrategyStage)
 from svos.registry.service import StrategyRegistryService
 from svos.shared.models import ApprovalRecord, GateDecision, TransitionRecord
-from svos.shared.support import append_jsonl, now_iso, read_jsonl, stable_manifest_hash
+from svos.shared.support import (append_jsonl, now_iso, read_jsonl,
+                                 stable_manifest_hash)
 
 
 class GovernanceGateError(LifecycleTransitionError):
@@ -110,16 +112,21 @@ class GovernanceService:
                 if self._same_stage(item.get("stage"), source)
                 and str(item.get("status", "")).upper() == "PASS"
                 and item.get("artifact_hash")
-                and item.get("metadata", {}).get("current_version_id") == current.current_version_id
+                and item.get("metadata", {}).get("current_version_id")
+                == current.current_version_id
             ]
             if not qualifying:
                 blockers.append(
                     f"No PASS evidence with an artifact hash exists for {source.value} and strategy version {current.latest_version}."
                 )
 
-        approval = self._matching_approval(strategy, source, target, current.current_version_id)
+        approval = self._matching_approval(
+            strategy, source, target, current.current_version_id
+        )
         if target in _APPROVAL_REQUIRED_TARGETS and approval is None:
-            blockers.append(f"An explicit approval is required before entering {target.value}.")
+            blockers.append(
+                f"An explicit approval is required before entering {target.value}."
+            )
 
         decided_at = now_iso()
         payload = {
@@ -157,7 +164,9 @@ class GovernanceService:
         reason: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> TransitionRecord:
-        decision = self.evaluate_transition(strategy, to_stage=to_stage, actor=actor, reason=reason)
+        decision = self.evaluate_transition(
+            strategy, to_stage=to_stage, actor=actor, reason=reason
+        )
         if not decision.allowed:
             raise GovernanceGateError("; ".join(decision.blockers))
         return self.registry.transition(

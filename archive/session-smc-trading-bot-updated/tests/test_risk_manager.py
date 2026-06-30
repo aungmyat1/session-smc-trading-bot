@@ -8,8 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from execution.risk_manager import RiskManager, STATE_FILE
-
+from execution.risk_manager import STATE_FILE, RiskManager
 
 BASE_CONFIG = {
     "risk": {
@@ -39,6 +38,7 @@ def make_rm() -> RiskManager:
 
 
 # ── Lot sizing ────────────────────────────────────────────────────────────────
+
 
 class TestLotSizing:
     def test_basic(self):
@@ -73,6 +73,7 @@ class TestLotSizing:
 
 
 # ── Position guards ───────────────────────────────────────────────────────────
+
 
 class FakePosition:
     def __init__(self, symbol):
@@ -109,6 +110,7 @@ class TestPositionGuards:
 
 # ── Circuit breakers ──────────────────────────────────────────────────────────
 
+
 class TestCircuitBreakers:
     def test_clean_start(self):
         rm = make_rm()
@@ -136,7 +138,7 @@ class TestCircuitBreakers:
         rm = make_rm()
         rm.record_trade_result(-0.5)
         rm.record_trade_result(-0.5)
-        rm.record_trade_result(2.0)   # win resets streak
+        rm.record_trade_result(2.0)  # win resets streak
         assert rm.state.consecutive_losses == 0
         cb = rm.check_circuit_breakers()
         assert not cb.halted

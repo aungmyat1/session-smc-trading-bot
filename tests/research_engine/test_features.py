@@ -77,4 +77,3 @@ def test_structure_and_order_blocks():
     assert {"HH", "HL", "BOS", "CHOCH"} & set(structure["structure"])
     order_blocks = detect_order_blocks(candles, structure, pair="EURUSD")
     assert isinstance(order_blocks, pd.DataFrame)
-

@@ -4,19 +4,22 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from execution_events import ExecutionEvent
-from execution_validation import ExecutionValidationSuite, load_validation_rules
-from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
+from execution_simulator.broker.virtual_broker import (VirtualBroker,
+                                                       VirtualBrokerConfig)
 from execution_simulator.replay_engine.event_stream import MarketEvent
+from execution_validation import (ExecutionValidationSuite,
+                                  load_validation_rules)
 from models.order import Order
-
 
 UTC = timezone.utc
 
 
-def _tick(offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD") -> MarketEvent:
+def _tick(
+    offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD"
+) -> MarketEvent:
     return MarketEvent(
-        timestamp=datetime(2026, 6, 27, 9, 30, tzinfo=UTC) + timedelta(minutes=offset_minutes),
+        timestamp=datetime(2026, 6, 27, 9, 30, tzinfo=UTC)
+        + timedelta(minutes=offset_minutes),
         symbol=symbol,
         bid=bid,
         ask=ask,

@@ -15,35 +15,24 @@ Run:
     python -m pipeline.pipeline_03_replay_engine --all --strategy ST-A2
     python -m pipeline.pipeline_03_replay_engine --all --stress --strategy ST-A2
 """
+
 from __future__ import annotations
 
 import argparse
-import uuid
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Callable, Optional
 
 import polars as pl
 
-from .config import (
-    DATA_DIR,
-    FEATURES_DIR,
-    PHASE0_MIN_NET_PF,
-    PHASE0_MIN_TRADES,
-    PIP,
-    SESSIONS,
-    SIGNAL_CONFIG,
-    SPREAD_STANDARD,
-    SPREAD_STRESS_2X,
-    SYMBOLS,
-    SpreadConfig,
-    SessionWindow,
-)
+from .config import (DATA_DIR, FEATURES_DIR, PHASE0_MIN_NET_PF,
+                     PHASE0_MIN_TRADES, PIP, SESSIONS, SIGNAL_CONFIG,
+                     SPREAD_STANDARD, SPREAD_STRESS_2X, SYMBOLS, SpreadConfig)
 
 _UTC = timezone.utc
 
 
 # ── Signal dispatch ───────────────────────────────────────────────────────────
+
 
 def _stub_signal(**_kwargs: Any) -> None:
     """Placeholder for strategies without a registered signal generator."""
@@ -59,6 +48,7 @@ def _get_signal_func(strategy_id: str) -> Callable[..., Any]:
     """
     if strategy_id == "ST-A2":
         from session_smc.confirmation_entry import generate_signal_A
+
         return generate_signal_A
     return _stub_signal
 
@@ -85,6 +75,7 @@ def _trade_feature_flags(strategy_id: str) -> dict[str, bool]:
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def _load_tf(symbol: str, tf: str) -> Optional[pl.DataFrame]:
     """Load a timeframe Parquet, normalise timestamp column, return UTC-aware."""
@@ -116,14 +107,15 @@ def _slice_before(df: pl.DataFrame, ts: datetime) -> pl.DataFrame:
     return df.filter(pl.col("timestamp") < ts)
 
 
-def _slice_window(df: pl.DataFrame, t_open: datetime, t_close: datetime) -> pl.DataFrame:
+def _slice_window(
+    df: pl.DataFrame, t_open: datetime, t_close: datetime
+) -> pl.DataFrame:
     """Bars inside [t_open, t_close)."""
-    return df.filter(
-        (pl.col("timestamp") >= t_open) & (pl.col("timestamp") < t_close)
-    )
+    return df.filter((pl.col("timestamp") >= t_open) & (pl.col("timestamp") < t_close))
 
 
 # ── Trade outcome simulation ──────────────────────────────────────────────────
+
 
 def _simulate_outcome(
     signal: Any,
@@ -141,19 +133,19 @@ def _simulate_outcome(
 
     Costs deducted once as cost_in_r = total_cost_pips / sl_pips.
     """
-    direction = signal.direction   # 'long' | 'short'
-    entry     = signal.entry
-    sl        = signal.sl
-    tp1       = signal.tp1
-    tp2       = signal.tp2
-    sl_pips   = signal.sl_pips
+    direction = signal.direction  # 'long' | 'short'
+    entry = signal.entry
+    sl = signal.sl
+    tp1 = signal.tp1
+    tp2 = signal.tp2
+    sl_pips = signal.sl_pips
 
     cost_in_r = spread_cfg.total_cost_pips / sl_pips if sl_pips > 0 else 0.0
 
     partial_closed = False  # True once TP1 hit
-    sl_at_be       = False  # True once SL moved to breakeven
-    gross_r        = 0.0
-    exit_reason    = "DATA_END"
+    sl_at_be = False  # True once SL moved to breakeven
+    gross_r = 0.0
+    exit_reason = "DATA_END"
     exit_time: Optional[datetime] = None
 
     # Skip the entry bar itself (index 0) — we entered at its close
@@ -164,7 +156,7 @@ def _simulate_outcome(
         if bar_time.tzinfo is None:
             bar_time = bar_time.replace(tzinfo=_UTC)
 
-        h  = float(bar["high"])
+        h = float(bar["high"])
         lo = float(bar["low"])
 
         # Session end: close remainder at bar open before any level check
@@ -176,7 +168,7 @@ def _simulate_outcome(
                 exit_r_raw = (entry - exit_price) / (sl_pips * PIP)
             gross_r = (0.75 * 4.0 + 0.25 * exit_r_raw) if partial_closed else exit_r_raw
             exit_reason = "SESSION_END"
-            exit_time   = bar_time
+            exit_time = bar_time
             break
 
         current_sl = entry if sl_at_be else sl
@@ -185,43 +177,43 @@ def _simulate_outcome(
             # Pessimistic bar: assume SL can be hit before TP within same bar
             if lo <= current_sl:
                 if sl_at_be:
-                    gross_r     = 0.75 * 4.0 + 0.25 * 0.0  # runner exits at BE
+                    gross_r = 0.75 * 4.0 + 0.25 * 0.0  # runner exits at BE
                     exit_reason = "TP1_THEN_BE"
                 else:
-                    gross_r     = -1.0
+                    gross_r = -1.0
                     exit_reason = "SL_HIT"
                 exit_time = bar_time
                 break
 
             if not partial_closed and h >= tp1:
                 partial_closed = True
-                sl_at_be       = True
+                sl_at_be = True
 
             if partial_closed and h >= tp2:
-                gross_r     = 0.75 * 4.0 + 0.25 * 5.0
+                gross_r = 0.75 * 4.0 + 0.25 * 5.0
                 exit_reason = "TP2_HIT"
-                exit_time   = bar_time
+                exit_time = bar_time
                 break
 
         else:  # short
             if h >= current_sl:
                 if sl_at_be:
-                    gross_r     = 0.75 * 4.0 + 0.25 * 0.0
+                    gross_r = 0.75 * 4.0 + 0.25 * 0.0
                     exit_reason = "TP1_THEN_BE"
                 else:
-                    gross_r     = -1.0
+                    gross_r = -1.0
                     exit_reason = "SL_HIT"
                 exit_time = bar_time
                 break
 
             if not partial_closed and lo <= tp1:
                 partial_closed = True
-                sl_at_be       = True
+                sl_at_be = True
 
             if partial_closed and lo <= tp2:
-                gross_r     = 0.75 * 4.0 + 0.25 * 5.0
+                gross_r = 0.75 * 4.0 + 0.25 * 5.0
                 exit_reason = "TP2_HIT"
-                exit_time   = bar_time
+                exit_time = bar_time
                 break
 
     if exit_time is None and m1_from_entry:
@@ -232,22 +224,23 @@ def _simulate_outcome(
             raw_r = (exit_price - entry) / (sl_pips * PIP)
         else:
             raw_r = (entry - exit_price) / (sl_pips * PIP)
-        gross_r    = (0.75 * 4.0 + 0.25 * raw_r) if partial_closed else raw_r
-        exit_time  = last["time"]
+        gross_r = (0.75 * 4.0 + 0.25 * raw_r) if partial_closed else raw_r
+        exit_time = last["time"]
 
     net_r = gross_r - cost_in_r
 
     return {
-        "gross_r":     round(gross_r, 4),
-        "net_r":       round(net_r, 4),
-        "cost_in_r":   round(cost_in_r, 4),
+        "gross_r": round(gross_r, 4),
+        "net_r": round(net_r, 4),
+        "cost_in_r": round(cost_in_r, 4),
         "exit_reason": exit_reason,
-        "exit_time":   exit_time,
-        "tp1_hit":     partial_closed,
+        "exit_time": exit_time,
+        "tp1_hit": partial_closed,
     }
 
 
 # ── Per-symbol replay ─────────────────────────────────────────────────────────
+
 
 def replay_symbol(
     symbol: str,
@@ -261,17 +254,19 @@ def replay_symbol(
     Iterate day-by-day, session-by-session and run the strategy signal generator.
     Returns a list of trade dicts ready for PostgreSQL insertion.
     """
-    df_h4  = _load_tf(symbol, "H4")
-    df_h1  = _load_tf(symbol, "H1")
+    df_h4 = _load_tf(symbol, "H4")
+    df_h1 = _load_tf(symbol, "H1")
     df_m15 = _load_tf(symbol, "M15")
-    df_m1  = _load_tf(symbol, "M1")
+    df_m1 = _load_tf(symbol, "M1")
 
     if df_h4 is None or df_h1 is None or df_m15 is None:
         print(f"  [{symbol}] Missing required timeframe data (need H4, H1, M15)")
         return []
 
     if df_m1 is None:
-        print(f"  [{symbol}] No M1 data — using M15 for outcome simulation (less precise)")
+        print(
+            f"  [{symbol}] No M1 data — using M15 for outcome simulation (less precise)"
+        )
         df_m1 = df_m15
 
     signal_func = _get_signal_func(strategy_id)
@@ -279,18 +274,18 @@ def replay_symbol(
 
     trades: list[dict] = []
     current = start
-    delta   = timedelta(days=1)
+    delta = timedelta(days=1)
 
     while current <= end:
         d_start = datetime(current.year, current.month, current.day, tzinfo=_UTC)
 
         for sess in SESSIONS:
-            t_open  = d_start.replace(hour=sess.open_utc)
+            t_open = d_start.replace(hour=sess.open_utc)
             t_close = d_start.replace(hour=sess.close_utc)
 
             # Candles known BEFORE session open (no lookahead into session)
-            h4_pre  = _df_to_candles(_slice_before(df_h4,  t_open))
-            h1_pre  = _df_to_candles(_slice_before(df_h1,  t_open))
+            h4_pre = _df_to_candles(_slice_before(df_h4, t_open))
+            h1_pre = _df_to_candles(_slice_before(df_h1, t_open))
 
             if len(h4_pre) < 20 or len(h1_pre) < 20:
                 continue  # not enough history for bias
@@ -325,33 +320,35 @@ def replay_symbol(
 
             outcome = _simulate_outcome(signal, m1_from_entry, spread_cfg, t_close)
 
-            trades.append({
-                "trade_id":       f"{run_id}-{symbol}-{entry_time.isoformat()}",
-                "run_id":         run_id,
-                "symbol":         symbol,
-                "session":        sess.name,
-                "direction":      signal.direction,
-                "setup_type":     signal.setup_type,
-                "entry_time":     entry_time,
-                "exit_time":      outcome["exit_time"],
-                "entry_price":    signal.entry,
-                "stop_price":     signal.sl,
-                "tp1_price":      signal.tp1,
-                "tp2_price":      signal.tp2,
-                "sl_pips":        signal.sl_pips,
-                "risk_reward":    signal.rr,
-                "spread_cost_pips": spread_cfg.total_cost_pips,
-                "cost_in_r":      outcome["cost_in_r"],
-                "gross_result_r": outcome["gross_r"],
-                "net_result_r":   outcome["net_r"],
-                "exit_reason":    outcome["exit_reason"],
-                "tp1_hit":        outcome["tp1_hit"],
-                "session_high":   signal.session_range["high"],
-                "session_low":    signal.session_range["low"],
-                "session_range_pips": signal.session_range["range_pips"],
-                # SMC feature flags derived per strategy
-                **feature_flags,
-            })
+            trades.append(
+                {
+                    "trade_id": f"{run_id}-{symbol}-{entry_time.isoformat()}",
+                    "run_id": run_id,
+                    "symbol": symbol,
+                    "session": sess.name,
+                    "direction": signal.direction,
+                    "setup_type": signal.setup_type,
+                    "entry_time": entry_time,
+                    "exit_time": outcome["exit_time"],
+                    "entry_price": signal.entry,
+                    "stop_price": signal.sl,
+                    "tp1_price": signal.tp1,
+                    "tp2_price": signal.tp2,
+                    "sl_pips": signal.sl_pips,
+                    "risk_reward": signal.rr,
+                    "spread_cost_pips": spread_cfg.total_cost_pips,
+                    "cost_in_r": outcome["cost_in_r"],
+                    "gross_result_r": outcome["gross_r"],
+                    "net_result_r": outcome["net_r"],
+                    "exit_reason": outcome["exit_reason"],
+                    "tp1_hit": outcome["tp1_hit"],
+                    "session_high": signal.session_range["high"],
+                    "session_low": signal.session_range["low"],
+                    "session_range_pips": signal.session_range["range_pips"],
+                    # SMC feature flags derived per strategy
+                    **feature_flags,
+                }
+            )
 
         current += delta
 
@@ -360,54 +357,68 @@ def replay_symbol(
 
 # ── Gate evaluation ───────────────────────────────────────────────────────────
 
+
 def evaluate_gate(trades: list[dict], label: str) -> dict:
     """Compute PF and gate verdict for a trade set."""
     if not trades:
         return {
-            "label": label, "n": 0, "win_rate": 0.0, "net_pf": 0.0,
-            "avg_net_r": 0.0, "total_net_r": 0.0,
-            "pass": False, "reason": "no trades",
+            "label": label,
+            "n": 0,
+            "win_rate": 0.0,
+            "net_pf": 0.0,
+            "avg_net_r": 0.0,
+            "total_net_r": 0.0,
+            "pass": False,
+            "reason": "no trades",
         }
 
     net_rs = [t["net_result_r"] for t in trades]
-    wins   = [r for r in net_rs if r > 0]
+    wins = [r for r in net_rs if r > 0]
     losses = [r for r in net_rs if r <= 0]
 
     gross_profit = sum(wins)
-    gross_loss   = abs(sum(losses))
-    pf           = gross_profit / gross_loss if gross_loss > 0 else 0.0
-    n            = len(trades)
+    gross_loss = abs(sum(losses))
+    pf = gross_profit / gross_loss if gross_loss > 0 else 0.0
+    n = len(trades)
 
     passed = n >= PHASE0_MIN_TRADES and pf > PHASE0_MIN_NET_PF
 
     return {
-        "label":        label,
-        "n":            n,
-        "win_rate":     round(len(wins) / n * 100, 2),
-        "net_pf":       round(pf, 3),
-        "avg_net_r":    round(sum(net_rs) / n, 4),
-        "total_net_r":  round(sum(net_rs), 2),
-        "pass":         passed,
-        "reason":       "PASS" if passed else f"n={n} (need {PHASE0_MIN_TRADES}), PF={pf:.3f} (need {PHASE0_MIN_NET_PF})",
+        "label": label,
+        "n": n,
+        "win_rate": round(len(wins) / n * 100, 2),
+        "net_pf": round(pf, 3),
+        "avg_net_r": round(sum(net_rs) / n, 4),
+        "total_net_r": round(sum(net_rs), 2),
+        "pass": passed,
+        "reason": (
+            "PASS"
+            if passed
+            else f"n={n} (need {PHASE0_MIN_TRADES}), PF={pf:.3f} (need {PHASE0_MIN_NET_PF})"
+        ),
     }
 
 
 # ── CLI entry ─────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase-0 Replay Engine")
     parser.add_argument("--strategy", default="ST-A2", help="Strategy ID")
     parser.add_argument("--symbol", choices=SYMBOLS, help="Single symbol")
-    parser.add_argument("--all",    action="store_true")
-    parser.add_argument("--start",  default="2020-01-01")
-    parser.add_argument("--end",    default="2025-01-01")
-    parser.add_argument("--stress", action="store_true",
-                        help="Run both standard and 2x spread scenarios")
+    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--start", default="2020-01-01")
+    parser.add_argument("--end", default="2025-01-01")
+    parser.add_argument(
+        "--stress",
+        action="store_true",
+        help="Run both standard and 2x spread scenarios",
+    )
     args = parser.parse_args()
 
     targets = SYMBOLS if (args.all or not args.symbol) else [args.symbol]
-    start   = date.fromisoformat(args.start)
-    end     = date.fromisoformat(args.end)
+    start = date.fromisoformat(args.start)
+    end = date.fromisoformat(args.end)
     strategy_id = args.strategy
 
     scenarios: list[tuple[str, dict]] = [("standard", SPREAD_STANDARD)]
@@ -427,20 +438,24 @@ def main() -> None:
         for sym in targets:
             run_id = f"{strategy_id}-{sym}-{scenario_name}-{start}-{end}"
             print(f"\n{sym}  run_id={run_id}")
-            trades = replay_symbol(sym, start, end, spread_map[sym], run_id, strategy_id=strategy_id)
-            gate   = evaluate_gate(trades, f"{sym}/{scenario_name}")
+            trades = replay_symbol(
+                sym, start, end, spread_map[sym], run_id, strategy_id=strategy_id
+            )
+            gate = evaluate_gate(trades, f"{sym}/{scenario_name}")
             print(
                 f"  n={gate['n']}  win_rate={gate['win_rate']}%  "
                 f"net_PF={gate['net_pf']}  avg_R={gate['avg_net_r']}  "
                 f"→ {'✅ PASS' if gate['pass'] else '❌ FAIL'}  ({gate['reason']})"
             )
-            all_results.append({
-                "run_id":    run_id,
-                "symbol":    sym,
-                "scenario":  scenario_name,
-                "trades":    trades,
-                "gate":      gate,
-            })
+            all_results.append(
+                {
+                    "run_id": run_id,
+                    "symbol": sym,
+                    "scenario": scenario_name,
+                    "trades": trades,
+                    "gate": gate,
+                }
+            )
 
     # Save to Parquet for 04_write_db.py to consume
     FEATURES_DIR.mkdir(parents=True, exist_ok=True)

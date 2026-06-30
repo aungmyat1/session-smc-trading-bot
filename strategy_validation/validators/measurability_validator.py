@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import (StrategyDocument, ValidationFinding,
+                      ValidationRecommendation, ValidationStatus,
+                      ValidatorResult)
 from ..module_base import BaseValidator
 
 
 class MeasurabilityValidator(BaseValidator):
     name = "Measurability Validation"
 
-    _COMPARATOR_RE = re.compile(r"(>=|<=|==|>|<|\bbetween\b|\bat least\b|\bwithin\b|\bmaximum\b|\bminimum\b|\bexactly\b|\d)")
+    _COMPARATOR_RE = re.compile(
+        r"(>=|<=|==|>|<|\bbetween\b|\bat least\b|\bwithin\b|\bmaximum\b|\bminimum\b|\bexactly\b|\d)"
+    )
 
     def _candidate_rules(self, document: StrategyDocument) -> list[str]:
         rules: list[str] = []
@@ -21,14 +25,33 @@ class MeasurabilityValidator(BaseValidator):
         ):
             section = document.sections.get(key, "")
             if section:
-                rules.extend([line.strip() for line in section.splitlines() if line.strip()])
-        for field_name in ("entry_rules", "exit_rules", "risk_model", "stop_loss", "take_profit"):
+                rules.extend(
+                    [line.strip() for line in section.splitlines() if line.strip()]
+                )
+        for field_name in (
+            "entry_rules",
+            "exit_rules",
+            "risk_model",
+            "stop_loss",
+            "take_profit",
+        ):
             value = str(document.extracted_fields.get(field_name, "")).strip()
             if value:
-                rules.extend([line.strip() for line in value.splitlines() if line.strip()])
+                rules.extend(
+                    [line.strip() for line in value.splitlines() if line.strip()]
+                )
         for key, value in document.key_values.items():
             normalized = key.strip().lower()
-            if normalized in {"entry rules", "confirmation", "confirmation rules", "exit rules", "risk model", "stop loss", "take profit", "filters"}:
+            if normalized in {
+                "entry rules",
+                "confirmation",
+                "confirmation rules",
+                "exit rules",
+                "risk model",
+                "stop loss",
+                "take profit",
+                "filters",
+            }:
                 rules.append(str(value).strip())
         rules.extend(document.list_items)
         return [rule for rule in rules if len(rule.split()) >= 3]
@@ -68,7 +91,11 @@ class MeasurabilityValidator(BaseValidator):
 
         total = len(measurable) + len(non_measurable)
         score = 0.0 if total == 0 else round((len(measurable) / total) * 100.0, 2)
-        status = "PASS" if total and not non_measurable else "PARTIAL" if score >= 60 else "FAIL"
+        status: ValidationStatus = (
+            "PASS"
+            if total and not non_measurable
+            else "PARTIAL" if score >= 60 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

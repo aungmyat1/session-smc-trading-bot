@@ -1,11 +1,13 @@
 """Tests for session_smc/structure_detector.py"""
+
 import math
-import pytest
-from session_smc.structure_detector import atr, htf_bias, detect_choch, detect_bos, detect_displacement
+
+from session_smc.structure_detector import (atr, detect_bos, detect_choch,
+                                            detect_displacement, htf_bias)
 
 
-def c(o, h, l, cl):
-    return {"open": o, "high": h, "low": l, "close": cl, "time": "T"}
+def c(o, h, lo, cl):
+    return {"open": o, "high": h, "low": lo, "close": cl, "time": "T"}
 
 
 def flat(price, n=20):
@@ -14,6 +16,7 @@ def flat(price, n=20):
 
 
 # ── ATR ───────────────────────────────────────────────────────────────────────
+
 
 class TestATR:
     def test_too_short_all_nan(self):
@@ -51,19 +54,20 @@ class TestATR:
 
 # ── HTF Bias ─────────────────────────────────────────────────────────────────
 
+
 class TestHTFBias:
     def _bullish(self):
         # HH at idx 1(2) and idx 3(3); HL at idx 2(0.5) and idx 4(0.7) with n=1
         # Trailing bar at idx 5 gives idx 4 a right neighbor so swing_lows confirms it
         highs = [1, 2, 1, 3, 1, 4]
-        lows  = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
-        return [c(l, h, l, h) for h, l in zip(highs, lows)]
+        lows = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
+        return [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
 
     def _bearish(self):
         # LH: peaks 5→4→3 (idx 1,3,5); LL: valleys 1.5→1.0 (idx 2,4) with n=1
         highs = [1.0, 5.0, 2.0, 4.0, 1.5, 3.0, 1.0]
-        lows  = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
-        return [c(l, h, l, h) for h, l in zip(highs, lows)]
+        lows = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
+        return [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
 
     def test_both_bullish_returns_bullish(self):
         assert htf_bias(self._bullish(), self._bullish(), 1) == "bullish"
@@ -85,6 +89,7 @@ class TestHTFBias:
 
 
 # ── CHoCH ────────────────────────────────────────────────────────────────────
+
 
 class TestDetectCHoCH:
     def _make_candles(self):
@@ -114,8 +119,15 @@ class TestDetectCHoCH:
 
     def test_bearish_choch_fires(self):
         # Build falling candles
-        candles = [c(1.0 - i * 0.01, 1.0 - i * 0.01 + 0.005, 1.0 - i * 0.01 - 0.005, 1.0 - i * 0.01 - 0.003)
-                   for i in range(12)]
+        candles = [
+            c(
+                1.0 - i * 0.01,
+                1.0 - i * 0.01 + 0.005,
+                1.0 - i * 0.01 - 0.005,
+                1.0 - i * 0.01 - 0.003,
+            )
+            for i in range(12)
+        ]
         result = detect_choch(candles, sweep_idx=5, direction="bearish", lookback=3)
         if result:
             # close should be below reference (min low in window)
@@ -136,21 +148,26 @@ class TestDetectCHoCH:
 
 # ── BOS ───────────────────────────────────────────────────────────────────────
 
+
 class TestDetectBOS:
     def test_bullish_bos_fires(self):
         # Swing level = 1.05, bars after idx 3 with close > 1.05
-        candles = [c(1.0, 1.04, 0.99, 1.0)] * 3 + \
-                  [c(1.0, 1.04, 0.99, 1.0)] + \
-                  [c(1.0, 1.10, 0.99, 1.06)]  # bar 4 close > 1.05
+        candles = (
+            [c(1.0, 1.04, 0.99, 1.0)] * 3
+            + [c(1.0, 1.04, 0.99, 1.0)]
+            + [c(1.0, 1.10, 0.99, 1.06)]
+        )  # bar 4 close > 1.05
         result = detect_bos(candles, after_idx=3, direction="bullish", swing_level=1.05)
         assert result is not None
         assert result["index"] == 4
         assert result["level"] == 1.05
 
     def test_bearish_bos_fires(self):
-        candles = [c(1.1, 1.1, 1.06, 1.1)] * 3 + \
-                  [c(1.1, 1.1, 1.06, 1.1)] + \
-                  [c(1.1, 1.1, 0.99, 0.98)]  # bar 4 close < 1.05
+        candles = (
+            [c(1.1, 1.1, 1.06, 1.1)] * 3
+            + [c(1.1, 1.1, 1.06, 1.1)]
+            + [c(1.1, 1.1, 0.99, 0.98)]
+        )  # bar 4 close < 1.05
         result = detect_bos(candles, after_idx=3, direction="bearish", swing_level=1.05)
         assert result is not None
         assert result["index"] == 4
@@ -167,6 +184,7 @@ class TestDetectBOS:
 
 # ── Displacement ──────────────────────────────────────────────────────────────
 
+
 class TestDetectDisplacement:
     def _atr_const(self, value, n):
         """Artificial ATR list: all `value` except NaN before period 14."""
@@ -175,9 +193,11 @@ class TestDetectDisplacement:
     def test_bullish_displacement_found(self):
         # Big bullish candle at index 16, range = 10, atr = 5 → passes 1.5× check
         n = 20
-        candles = [c(1.0, 1.01, 0.99, 1.0)] * 16 + \
-                  [c(1.0, 1.10, 0.99, 1.09)] + \
-                  [c(1.0, 1.01, 0.99, 1.0)] * 3
+        candles = (
+            [c(1.0, 1.01, 0.99, 1.0)] * 16
+            + [c(1.0, 1.10, 0.99, 1.09)]
+            + [c(1.0, 1.01, 0.99, 1.0)] * 3
+        )
         atr_v = self._atr_const(0.05, n)  # ATR = 0.05 → threshold 0.075 < range 0.11
         result = detect_displacement(candles, 14, 18, "bullish", atr_v, 1.5)
         assert result is not None
@@ -192,17 +212,21 @@ class TestDetectDisplacement:
     def test_wrong_direction_body_skipped(self):
         # Big BEARISH candle → should not count for 'bullish'
         n = 20
-        candles = [c(1.0, 1.01, 0.99, 1.0)] * 14 + \
-                  [c(1.09, 1.10, 0.99, 1.0)] + \
-                  [c(1.0, 1.01, 0.99, 1.0)] * 5  # bearish body
+        candles = (
+            [c(1.0, 1.01, 0.99, 1.0)] * 14
+            + [c(1.09, 1.10, 0.99, 1.0)]
+            + [c(1.0, 1.01, 0.99, 1.0)] * 5
+        )  # bearish body
         atr_v = self._atr_const(0.05, n)
         assert detect_displacement(candles, 14, 18, "bullish", atr_v, 1.5) is None
 
     def test_bearish_displacement_found(self):
         n = 20
-        candles = [c(1.1, 1.1, 1.09, 1.1)] * 15 + \
-                  [c(1.1, 1.1, 0.99, 1.0)] + \
-                  [c(1.0, 1.01, 0.99, 1.0)] * 4  # bearish: open > close
+        candles = (
+            [c(1.1, 1.1, 1.09, 1.1)] * 15
+            + [c(1.1, 1.1, 0.99, 1.0)]
+            + [c(1.0, 1.01, 0.99, 1.0)] * 4
+        )  # bearish: open > close
         atr_v = self._atr_const(0.05, n)
         result = detect_displacement(candles, 14, 18, "bearish", atr_v, 1.5)
         assert result is not None and result["index"] == 15

@@ -1,4 +1,5 @@
 """Quality Agent — orchestrates code quality, security and architecture gates."""
+
 from __future__ import annotations
 
 import logging
@@ -60,11 +61,13 @@ class QualityAgent:
 
     def run(self) -> QualityAgentResult:
         """Execute all quality stages and return a consolidated result."""
+        from agents.quality.validators.architecture import \
+            ArchitectureValidator
         from agents.quality.validators.code_quality import CodeQualityValidator
-        from agents.quality.validators.security import SecurityValidator
-        from agents.quality.validators.architecture import ArchitectureValidator
         from agents.quality.validators.dependency import DependencyValidator
-        from agents.quality.validators.documentation import DocumentationValidator
+        from agents.quality.validators.documentation import \
+            DocumentationValidator
+        from agents.quality.validators.security import SecurityValidator
 
         stages: list[tuple[str, Any]] = [
             ("code_quality", CodeQualityValidator(self._root, self._cfg)),
@@ -84,10 +87,21 @@ class QualityAgent:
                 result: StageResult = validator.validate()
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Quality stage %s raised unexpectedly", name)
-                result = StageResult(name=name, status=Status.FAIL, score=0.0, errors=[f"Unhandled: {exc}"])
+                result = StageResult(
+                    name=name,
+                    status=Status.FAIL,
+                    score=0.0,
+                    errors=[f"Unhandled: {exc}"],
+                )
             result.duration_seconds = time.monotonic() - st
             results[name] = result
-            logger.info("  %s → %s (%.1f, %.2fs)", name, result.status.value, result.score, result.duration_seconds)
+            logger.info(
+                "  %s → %s (%.1f, %.2fs)",
+                name,
+                result.status.value,
+                result.score,
+                result.duration_seconds,
+            )
             if self._fail_fast and result.status == Status.FAIL:
                 logger.warning("fail_fast=true — halting after %s", name)
                 break

@@ -14,11 +14,46 @@ from scripts import spread_status
 
 def _write_spread_csv(path: Path) -> None:
     rows = [
-        {"time_utc": "2026-06-24T06:00:00+00:00", "symbol": "EURUSD", "session": "london", "hour": "6", "minute": "0", "spread_pips": "1.20"},
-        {"time_utc": "2026-06-24T06:00:30+00:00", "symbol": "GBPUSD", "session": "london", "hour": "6", "minute": "0", "spread_pips": "1.50"},
-        {"time_utc": "2026-06-24T11:00:00+00:00", "symbol": "EURUSD", "session": "new_york", "hour": "11", "minute": "0", "spread_pips": "1.30"},
-        {"time_utc": "2026-06-24T11:00:30+00:00", "symbol": "GBPUSD", "session": "new_york", "hour": "11", "minute": "0", "spread_pips": "1.70"},
-        {"time_utc": "2026-06-24T03:00:00+00:00", "symbol": "EURUSD", "session": "off", "hour": "3", "minute": "0", "spread_pips": "0.90"},
+        {
+            "time_utc": "2026-06-24T06:00:00+00:00",
+            "symbol": "EURUSD",
+            "session": "london",
+            "hour": "6",
+            "minute": "0",
+            "spread_pips": "1.20",
+        },
+        {
+            "time_utc": "2026-06-24T06:00:30+00:00",
+            "symbol": "GBPUSD",
+            "session": "london",
+            "hour": "6",
+            "minute": "0",
+            "spread_pips": "1.50",
+        },
+        {
+            "time_utc": "2026-06-24T11:00:00+00:00",
+            "symbol": "EURUSD",
+            "session": "new_york",
+            "hour": "11",
+            "minute": "0",
+            "spread_pips": "1.30",
+        },
+        {
+            "time_utc": "2026-06-24T11:00:30+00:00",
+            "symbol": "GBPUSD",
+            "session": "new_york",
+            "hour": "11",
+            "minute": "0",
+            "spread_pips": "1.70",
+        },
+        {
+            "time_utc": "2026-06-24T03:00:00+00:00",
+            "symbol": "EURUSD",
+            "session": "off",
+            "hour": "3",
+            "minute": "0",
+            "spread_pips": "0.90",
+        },
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=rows[0].keys())
@@ -48,8 +83,22 @@ def test_phase2_gate_failure_and_pass(tmp_path, monkeypatch, capsys):
     for day in range(5):
         rows.extend(
             [
-                {"time_utc": f"2026-06-{24 + day:02d}T06:00:00+00:00", "symbol": "EURUSD", "session": "london", "hour": "6", "minute": "0", "spread_pips": "1.20"},
-                {"time_utc": f"2026-06-{24 + day:02d}T11:00:00+00:00", "symbol": "GBPUSD", "session": "new_york", "hour": "11", "minute": "0", "spread_pips": "1.70"},
+                {
+                    "time_utc": f"2026-06-{24 + day:02d}T06:00:00+00:00",
+                    "symbol": "EURUSD",
+                    "session": "london",
+                    "hour": "6",
+                    "minute": "0",
+                    "spread_pips": "1.20",
+                },
+                {
+                    "time_utc": f"2026-06-{24 + day:02d}T11:00:00+00:00",
+                    "symbol": "GBPUSD",
+                    "session": "new_york",
+                    "hour": "11",
+                    "minute": "0",
+                    "spread_pips": "1.70",
+                },
             ]
         )
     with csv_path.open("w", newline="", encoding="utf-8") as handle:
@@ -86,7 +135,9 @@ def test_build_cost_model_and_export_updates_costs(tmp_path, monkeypatch):
 
     monkeypatch.setattr(bcm, "SRC", csv_path)
     monkeypatch.setattr(bcm, "OUT", model_path)
-    model = bcm.build_model(list(csv.DictReader(csv_path.open(newline="", encoding="utf-8"))))
+    model = bcm.build_model(
+        list(csv.DictReader(csv_path.open(newline="", encoding="utf-8")))
+    )
     assert model["row_count"] == 5
     model_path.write_text(json.dumps(model), encoding="utf-8")
 

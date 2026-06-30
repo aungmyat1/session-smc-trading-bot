@@ -28,6 +28,7 @@ RPC_TIMEOUT_S: int = 30
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AccountInfo:
     balance: float
@@ -50,7 +51,7 @@ class SymbolPrice:
 class BrokerPosition:
     position_id: str
     symbol: str
-    direction: str   # 'long' | 'short'
+    direction: str  # 'long' | 'short'
     volume: float
     open_price: float
     sl: float
@@ -72,6 +73,7 @@ class OrderResult:
 
 
 # ── Client ────────────────────────────────────────────────────────────────────
+
 
 class MetaAPIClient:
     """
@@ -125,7 +127,9 @@ class MetaAPIClient:
             )
 
         self._api = MetaApi(self._token)
-        self._account = await self._api.metatrader_account_api.get_account(self._account_id)
+        self._account = await self._api.metatrader_account_api.get_account(
+            self._account_id
+        )
 
         if self._account.state not in ("DEPLOYING", "DEPLOYED"):
             logger.info("Deploying MetaAPI account…")
@@ -139,7 +143,9 @@ class MetaAPIClient:
         await self._connection.wait_synchronized(60)
 
         self._connected = True
-        logger.info("MetaAPI connected (account=%s  live=%s)", self._account_id, LIVE_TRADING)
+        logger.info(
+            "MetaAPI connected (account=%s  live=%s)", self._account_id, LIVE_TRADING
+        )
 
     async def disconnect(self) -> None:
         self._connected = False
@@ -204,7 +210,9 @@ class MetaAPIClient:
         bid = float(raw.get("bid", 0.0))
         ask = float(raw.get("ask", 0.0))
         spread_pips = round((ask - bid) / 0.0001, 2)
-        return SymbolPrice(bid=bid, ask=ask, spread_pips=spread_pips, time=raw.get("time", ""))
+        return SymbolPrice(
+            bid=bid, ask=ask, spread_pips=spread_pips, time=raw.get("time", "")
+        )
 
     async def check_spread(self, symbol: str) -> tuple[bool, float]:
         """
@@ -222,7 +230,9 @@ class MetaAPIClient:
             if not ok:
                 logger.warning(
                     "Spread too wide for %s: %.1f > %.1f pip",
-                    symbol, price.spread_pips, max_spread,
+                    symbol,
+                    price.spread_pips,
+                    max_spread,
                 )
             return ok, price.spread_pips
         except Exception as e:
@@ -247,9 +257,15 @@ class MetaAPIClient:
             return []
         end_time = end_time or datetime.now(timezone.utc)
         try:
-            raw = await self._rpc(self._connection.get_historical_candles(symbol, timeframe, end_time, count))
+            raw = await self._rpc(
+                self._connection.get_historical_candles(
+                    symbol, timeframe, end_time, count
+                )
+            )
         except AttributeError:
-            raw = await self._rpc(self._connection.get_candles(symbol, timeframe, end_time, count))
+            raw = await self._rpc(
+                self._connection.get_candles(symbol, timeframe, end_time, count)
+            )
         return [
             {
                 "time": c.get("time"),
@@ -262,7 +278,9 @@ class MetaAPIClient:
             for c in (raw or [])
         ]
 
-    async def get_open_positions(self, magic: "int | None" = None) -> list[BrokerPosition]:
+    async def get_open_positions(
+        self, magic: "int | None" = None
+    ) -> list[BrokerPosition]:
         """
         Fetch open positions, optionally filtered by magic number.
         Returns [] if not connected.
@@ -271,20 +289,24 @@ class MetaAPIClient:
             return []
         raw_list = await self._rpc(self._connection.get_positions())
         result: list[BrokerPosition] = []
-        for p in (raw_list or []):
+        for p in raw_list or []:
             if magic is not None and p.get("magic") != magic:
                 continue
-            result.append(BrokerPosition(
-                position_id=p.get("id", ""),
-                symbol=p.get("symbol", ""),
-                direction="long" if p.get("type") == "POSITION_TYPE_BUY" else "short",
-                volume=p.get("volume", 0.0),
-                open_price=p.get("openPrice", 0.0),
-                sl=p.get("stopLoss", 0.0),
-                tp=p.get("takeProfit", 0.0),
-                profit=p.get("profit", 0.0),
-                magic=p.get("magic", 0),
-            ))
+            result.append(
+                BrokerPosition(
+                    position_id=p.get("id", ""),
+                    symbol=p.get("symbol", ""),
+                    direction=(
+                        "long" if p.get("type") == "POSITION_TYPE_BUY" else "short"
+                    ),
+                    volume=p.get("volume", 0.0),
+                    open_price=p.get("openPrice", 0.0),
+                    sl=p.get("stopLoss", 0.0),
+                    tp=p.get("takeProfit", 0.0),
+                    profit=p.get("profit", 0.0),
+                    magic=p.get("magic", 0),
+                )
+            )
         return result
 
     # ── Order execution ───────────────────────────────────────────────────────
@@ -308,7 +330,11 @@ class MetaAPIClient:
         if not LIVE_TRADING:
             logger.info(
                 "[DRY RUN] Would place %s %s vol=%.2f sl=%.5f tp=%.5f",
-                direction.upper(), symbol, volume, sl, tp,
+                direction.upper(),
+                symbol,
+                volume,
+                sl,
+                tp,
             )
             return OrderResult(
                 order_id="DRY_RUN",
@@ -326,15 +352,22 @@ class MetaAPIClient:
 
         opts = {"magic": magic, "comment": comment}
         if direction == "long":
-            result = await self._rpc(self._connection.create_market_buy_order(symbol, volume, sl, tp, opts))
+            result = await self._rpc(
+                self._connection.create_market_buy_order(symbol, volume, sl, tp, opts)
+            )
         else:
-            result = await self._rpc(self._connection.create_market_sell_order(symbol, volume, sl, tp, opts))
+            result = await self._rpc(
+                self._connection.create_market_sell_order(symbol, volume, sl, tp, opts)
+            )
 
         order_id = str(result.get("orderId", result.get("id", "unknown")))
         entry = float(result.get("openPrice", 0.0))
         logger.info(
             "Order placed: %s %s id=%s entry=%.5f",
-            direction.upper(), symbol, order_id, entry,
+            direction.upper(),
+            symbol,
+            order_id,
+            entry,
         )
         return OrderResult(
             order_id=order_id,

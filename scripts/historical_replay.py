@@ -8,23 +8,22 @@ This is the deterministic execution check:
 
 It does not answer profitability. Use the backtest scripts for that.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-from datetime import date as date_cls, datetime, timedelta
-from pathlib import Path
 import sys
+from datetime import date as date_cls
+from datetime import datetime, timedelta
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.replay_parquet import load_h4, load_m15
-from simulator.historical_replay import (
-    render_report,
-    report_to_dict,
-    run_historical_replay,
-)
+from scripts.replay_parquet import load_h4, load_m15  # noqa: E402
+from simulator.historical_replay import (render_report,  # noqa: E402
+                                         report_to_dict, run_historical_replay)
 
 
 def _parse_date(value: str | None) -> date_cls | None:
@@ -66,7 +65,7 @@ def main() -> None:
     args = parser.parse_args()
 
     start_date = _parse_date(args.start)
-    end_date = _parse_date(args.end)
+    _end_date = _parse_date(args.end)
     warmup_start = (
         (start_date - timedelta(days=args.warmup_days)).isoformat()
         if start_date

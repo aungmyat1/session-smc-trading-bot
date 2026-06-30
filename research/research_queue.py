@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from string import Template
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from string import Template
 from typing import Any, Optional
 
 import yaml
@@ -94,7 +94,9 @@ def load_research_queue(path: Path | str | None = None) -> list[ResearchJob]:
                 )
             )
         strategy = str(item.get("strategy", "")).strip()
-        job_id = str(item.get("job_id") or item.get("id") or f"{strategy or 'job'}-{index}")
+        job_id = str(
+            item.get("job_id") or item.get("id") or f"{strategy or 'job'}-{index}"
+        )
         jobs.append(
             ResearchJob(
                 job_id=job_id,
@@ -120,7 +122,10 @@ def _write_json(path: Path, data: Any) -> None:
 
 
 def _expand_command(command: list[str], env: dict[str, str]) -> list[str]:
-    return [Template(part).safe_substitute(env) if isinstance(part, str) else str(part) for part in command]
+    return [
+        Template(part).safe_substitute(env) if isinstance(part, str) else str(part)
+        for part in command
+    ]
 
 
 def _run_command(
@@ -212,7 +217,9 @@ def run_research_job(
         result.status = "failed"
         result.finished_at = datetime.now(timezone.utc).isoformat()
         result.steps.append(
-            StepResult(name="catalog", skipped=True, message="strategy not found in catalog")
+            StepResult(
+                name="catalog", skipped=True, message="strategy not found in catalog"
+            )
         )
         report_path = job_dir / "report.md"
         result.report_path = str(report_path)
@@ -225,7 +232,9 @@ def run_research_job(
         stderr_path = job_dir / f"{step.name}.stderr.log"
         if step.name == "report":
             result.steps.append(
-                StepResult(name=step.name, skipped=True, message="report generated inline")
+                StepResult(
+                    name=step.name, skipped=True, message="report generated inline"
+                )
             )
             continue
         if step.blocked:
@@ -246,7 +255,12 @@ def run_research_job(
             break
         if dry_run:
             result.steps.append(
-                StepResult(name=step.name, skipped=True, command=step.command, message="dry run")
+                StepResult(
+                    name=step.name,
+                    skipped=True,
+                    command=step.command,
+                    message="dry run",
+                )
             )
             continue
         rc = _run_command(

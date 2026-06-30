@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Entry point for the Production Approval Agent."""
+
 import sys
 from pathlib import Path
 
@@ -7,11 +8,12 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-import argparse
-import logging
+import argparse  # noqa: E402
+import logging  # noqa: E402
 
-from agents.approval.agent import ApprovalAgent, ReleaseStatus, load_config
-from agents.approval.report import ApprovalReport
+from agents.approval.agent import (ApprovalAgent, ReleaseStatus,  # noqa: E402
+                                   load_config)
+from agents.approval.report import ApprovalReport  # noqa: E402
 
 
 def run(argv: list[str] | None = None) -> int:

@@ -29,6 +29,7 @@ The prior client wrote daily equity to analytics.daily_equity.
 The correct table is research.daily_equity (as declared in schema_v2.sql
 and the ORM).  This is corrected here.
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,6 +57,7 @@ def _make_session_factory(url: str | None) -> Any:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         from sqlalchemy.pool import QueuePool
+
         engine = create_engine(
             url,
             poolclass=QueuePool,
@@ -88,7 +90,9 @@ class ResearchDB:
         if self._available:
             log.info("ResearchDB ready (SQLAlchemy)")
         else:
-            log.warning("ResearchDB unavailable: DATABASE_URL not configured or unreachable")
+            log.warning(
+                "ResearchDB unavailable: DATABASE_URL not configured or unreachable"
+            )
 
     # ── internal session context ──────────────────────────────────────────
 
@@ -113,8 +117,15 @@ class ResearchDB:
         finally:
             session.close()
 
-    def _ensure_strategy(self, session: Session, *, name: str, version: str,
-                         description: str = "", status: str = "active") -> int | None:
+    def _ensure_strategy(
+        self,
+        session: Session,
+        *,
+        name: str,
+        version: str,
+        description: str = "",
+        status: str = "active",
+    ) -> int | None:
         lineage = build_lineage_metadata(
             source="research_db.client",
             strategy=name,
@@ -131,13 +142,20 @@ class ResearchDB:
                     status = EXCLUDED.status
                 RETURNING id
             """),
-            {"name": name, "version": version, "description": description,
-             "lineage": __import__("json").dumps(lineage), "status": status},
+            {
+                "name": name,
+                "version": version,
+                "description": description,
+                "lineage": __import__("json").dumps(lineage),
+                "status": status,
+            },
         ).fetchone()
         if row:
             return row[0]
         row = session.execute(
-            text("SELECT id FROM research.strategies WHERE strategy_name = :n AND version = :v"),
+            text(
+                "SELECT id FROM research.strategies WHERE strategy_name = :n AND version = :v"
+            ),
             {"n": name, "v": version},
         ).fetchone()
         return row[0] if row else None
@@ -175,12 +193,12 @@ class ResearchDB:
                         data_source = EXCLUDED.data_source
                 """),
                 {
-                    "run_id":      run_id,
+                    "run_id": run_id,
                     "strategy_id": strategy_id,
-                    "symbol":      run.get("symbol", "EURUSD"),
-                    "start_date":  run.get("start_date"),
-                    "end_date":    run.get("end_date"),
-                    "scenario":    run.get("scenario", "standard"),
+                    "symbol": run.get("symbol", "EURUSD"),
+                    "start_date": run.get("start_date"),
+                    "end_date": run.get("end_date"),
+                    "scenario": run.get("scenario", "standard"),
                     "data_source": run.get("data_source", "csv"),
                 },
             )
@@ -198,8 +216,8 @@ class ResearchDB:
                     WHERE run_id = :run_id
                 """),
                 {
-                    "run_id":      run_id,
-                    "scenario":    metrics.get("scenario"),
+                    "run_id": run_id,
+                    "scenario": metrics.get("scenario"),
                     "data_source": metrics.get("data_source"),
                 },
             )
@@ -221,16 +239,18 @@ class ResearchDB:
             trade_id = (
                 trade.get("trade_id")
                 or f"{trade.get('run_id', 'run')}_{trade.get('symbol', 'SYM')}"
-                   f"_{trade.get('entry_time', datetime.now(timezone.utc).isoformat())}"
-                   f"_{uuid.uuid4().hex[:8]}"
+                f"_{trade.get('entry_time', datetime.now(timezone.utc).isoformat())}"
+                f"_{uuid.uuid4().hex[:8]}"
             )
             spread_cost = trade.get("spread_cost_pips", trade.get("spread_pip", 0.0))
-            cost_in_r   = trade.get("cost_in_r")
+            cost_in_r = trade.get("cost_in_r")
             if cost_in_r is None:
-                sl_pips   = float(trade.get("sl_pips") or 0.0)
+                sl_pips = float(trade.get("sl_pips") or 0.0)
                 cost_in_r = float(spread_cost or 0.0) / sl_pips if sl_pips > 0 else 0.0
-            gross_r = trade.get("gross_result_r", trade.get("gross_r", trade.get("result_r", 0.0)))
-            net_r   = trade.get("net_result_r", trade.get("result_r", 0.0))
+            gross_r = trade.get(
+                "gross_result_r", trade.get("gross_r", trade.get("result_r", 0.0))
+            )
+            net_r = trade.get("net_result_r", trade.get("result_r", 0.0))
             tp1_hit = trade.get("tp1_hit")
             if tp1_hit is None:
                 tp1_hit = bool(
@@ -261,29 +281,29 @@ class ResearchDB:
                     RETURNING id
                 """),
                 {
-                    "trade_id":          trade_id,
-                    "run_id":            trade.get("run_id"),
-                    "strategy_id":       strategy_id,
-                    "symbol":            trade.get("symbol"),
-                    "session":           trade.get("session"),
-                    "direction":         trade.get("direction"),
-                    "setup_type":        trade.get("setup_type", "A"),
-                    "entry_time":        trade.get("entry_time"),
-                    "exit_time":         trade.get("exit_time"),
-                    "entry_price":       trade.get("entry_price"),
-                    "stop_price":        trade.get("stop_price", trade.get("stop_loss")),
-                    "take_profit":       trade.get("take_profit"),
-                    "tp2_price":         trade.get("tp2_price"),
-                    "sl_pips":           trade.get("sl_pips"),
-                    "risk_reward":       trade.get("risk_reward", trade.get("rr")),
-                    "spread_cost_pips":  spread_cost,
-                    "cost_in_r":         cost_in_r,
-                    "gross_result_r":    gross_r,
-                    "net_result_r":      net_r,
-                    "exit_reason":       trade.get("exit_reason"),
-                    "tp1_hit":           tp1_hit,
-                    "session_high":      trade.get("session_high"),
-                    "session_low":       trade.get("session_low"),
+                    "trade_id": trade_id,
+                    "run_id": trade.get("run_id"),
+                    "strategy_id": strategy_id,
+                    "symbol": trade.get("symbol"),
+                    "session": trade.get("session"),
+                    "direction": trade.get("direction"),
+                    "setup_type": trade.get("setup_type", "A"),
+                    "entry_time": trade.get("entry_time"),
+                    "exit_time": trade.get("exit_time"),
+                    "entry_price": trade.get("entry_price"),
+                    "stop_price": trade.get("stop_price", trade.get("stop_loss")),
+                    "take_profit": trade.get("take_profit"),
+                    "tp2_price": trade.get("tp2_price"),
+                    "sl_pips": trade.get("sl_pips"),
+                    "risk_reward": trade.get("risk_reward", trade.get("rr")),
+                    "spread_cost_pips": spread_cost,
+                    "cost_in_r": cost_in_r,
+                    "gross_result_r": gross_r,
+                    "net_result_r": net_r,
+                    "exit_reason": trade.get("exit_reason"),
+                    "tp1_hit": tp1_hit,
+                    "session_high": trade.get("session_high"),
+                    "session_low": trade.get("session_low"),
                     "session_range_pips": trade.get("session_range_pips"),
                 },
             ).fetchone()
@@ -293,30 +313,45 @@ class ResearchDB:
 
     def save_smc_event(self, event: dict) -> int:
         import json
-        _skip = {"run_id", "symbol", "event_type", "timeframe", "event_time",
-                 "direction", "price_level", "price_high", "price_low",
-                 "htf_bias", "session", "detail", "lineage"}
+
+        _skip = {
+            "run_id",
+            "symbol",
+            "event_type",
+            "timeframe",
+            "event_time",
+            "direction",
+            "price_level",
+            "price_high",
+            "price_low",
+            "htf_bias",
+            "session",
+            "detail",
+            "lineage",
+        }
         extra = {k: v for k, v in event.items() if k not in _skip}
         event_price = event.get(
             "event_price",
             event.get("price_level", event.get("price_high", event.get("price_low"))),
         )
-        metadata_payload = json.dumps({
-            "run_id":     event.get("run_id"),
-            "direction":  event.get("direction"),
-            "price_high": event.get("price_high"),
-            "price_low":  event.get("price_low"),
-            "htf_bias":   event.get("htf_bias"),
-            "session":    event.get("session"),
-            "detail":     event.get("detail"),
-            **extra,
-            "lineage": build_lineage_metadata(
-                source="research_db.client",
-                strategy=str(event.get("strategy", "unknown")),
-                strategy_version=str(event.get("strategy_version", "unknown")),
-                artifact="smc_event",
-            ),
-        })
+        metadata_payload = json.dumps(
+            {
+                "run_id": event.get("run_id"),
+                "direction": event.get("direction"),
+                "price_high": event.get("price_high"),
+                "price_low": event.get("price_low"),
+                "htf_bias": event.get("htf_bias"),
+                "session": event.get("session"),
+                "detail": event.get("detail"),
+                **extra,
+                "lineage": build_lineage_metadata(
+                    source="research_db.client",
+                    strategy=str(event.get("strategy", "unknown")),
+                    strategy_version=str(event.get("strategy_version", "unknown")),
+                    artifact="smc_event",
+                ),
+            }
+        )
         with self._session() as session:
             if session is None:
                 return 0
@@ -331,13 +366,13 @@ class ResearchDB:
                     RETURNING id
                 """),
                 {
-                    "symbol":         event.get("symbol"),
-                    "timeframe":      event.get("timeframe"),
-                    "timestamp":      event.get("timestamp") or event.get("event_time"),
-                    "event_type":     event.get("event_type"),
-                    "event_price":    event_price,
+                    "symbol": event.get("symbol"),
+                    "timeframe": event.get("timeframe"),
+                    "timestamp": event.get("timestamp") or event.get("event_time"),
+                    "event_type": event.get("event_type"),
+                    "event_price": event_price,
                     "strength_score": event.get("strength_score"),
-                    "metadata_json":  metadata_payload,
+                    "metadata_json": metadata_payload,
                 },
             ).fetchone()
             return row[0] if row else 0
@@ -359,8 +394,8 @@ class ResearchDB:
                         drawdown = EXCLUDED.drawdown
                 """),
                 {
-                    "run_id":  row.get("run_id"),
-                    "date":    row.get("date", row.get("trade_date")),
+                    "run_id": row.get("run_id"),
+                    "date": row.get("date", row.get("trade_date")),
                     "daily_r": row.get("daily_r", row.get("daily_return_r")),
                     "equity_r": row.get("equity_r", row.get("cumulative_r")),
                     "drawdown": row.get("drawdown"),
@@ -371,9 +406,17 @@ class ResearchDB:
 
     def save_strategy_metrics(self, metrics: dict) -> None:
         total = int(metrics.get("total_trades", metrics.get("trade_count", 0)) or 0)
-        wr    = float(metrics.get("win_rate", 0.0) or 0.0)
-        wins  = int(metrics.get("wins", metrics.get("winning_trades", round(total * wr / 100.0))) or 0)
-        losses = int(metrics.get("losses", metrics.get("losing_trades", max(total - wins, 0))) or 0)
+        wr = float(metrics.get("win_rate", 0.0) or 0.0)
+        wins = int(
+            metrics.get(
+                "wins", metrics.get("winning_trades", round(total * wr / 100.0))
+            )
+            or 0
+        )
+        losses = int(
+            metrics.get("losses", metrics.get("losing_trades", max(total - wins, 0)))
+            or 0
+        )
         with self._session() as session:
             if session is None:
                 return
@@ -389,18 +432,18 @@ class ResearchDB:
                          :max_drawdown, :net_r)
                 """),
                 {
-                    "run_id":         metrics.get("run_id"),
-                    "strategy":       metrics.get("strategy", "ST-A2"),
-                    "total_trades":   total,
+                    "run_id": metrics.get("run_id"),
+                    "strategy": metrics.get("strategy", "ST-A2"),
+                    "total_trades": total,
                     "winning_trades": wins,
-                    "losing_trades":  losses,
-                    "win_rate":       wr,
-                    "profit_factor":  metrics.get("profit_factor", 0.0),
-                    "expectancy":     metrics.get("expectancy", metrics.get("avg_r", 0.0)),
-                    "average_win":    metrics.get("average_win", 0.0),
-                    "average_loss":   metrics.get("average_loss", 0.0),
-                    "max_drawdown":   metrics.get("max_drawdown", 0.0),
-                    "net_r":          metrics.get("net_r", metrics.get("total_r", 0.0)),
+                    "losing_trades": losses,
+                    "win_rate": wr,
+                    "profit_factor": metrics.get("profit_factor", 0.0),
+                    "expectancy": metrics.get("expectancy", metrics.get("avg_r", 0.0)),
+                    "average_win": metrics.get("average_win", 0.0),
+                    "average_loss": metrics.get("average_loss", 0.0),
+                    "max_drawdown": metrics.get("max_drawdown", 0.0),
+                    "net_r": metrics.get("net_r", metrics.get("total_r", 0.0)),
                 },
             )
 
@@ -410,20 +453,30 @@ class ResearchDB:
         with self._session() as session:
             if session is None:
                 return None
-            row = session.execute(
-                text("SELECT * FROM research.replay_runs WHERE run_id = :rid"),
-                {"rid": run_id},
-            ).mappings().fetchone()
+            row = (
+                session.execute(
+                    text("SELECT * FROM research.replay_runs WHERE run_id = :rid"),
+                    {"rid": run_id},
+                )
+                .mappings()
+                .fetchone()
+            )
             return dict(row) if row else None
 
     def get_trades_for_run(self, run_id: str) -> list[dict]:
         with self._session() as session:
             if session is None:
                 return []
-            rows = session.execute(
-                text("SELECT * FROM research.trades WHERE run_id = :rid ORDER BY entry_time"),
-                {"rid": run_id},
-            ).mappings().fetchall()
+            rows = (
+                session.execute(
+                    text(
+                        "SELECT * FROM research.trades WHERE run_id = :rid ORDER BY entry_time"
+                    ),
+                    {"rid": run_id},
+                )
+                .mappings()
+                .fetchall()
+            )
             return [dict(r) for r in rows]
 
     # ── lifecycle ─────────────────────────────────────────────────────────

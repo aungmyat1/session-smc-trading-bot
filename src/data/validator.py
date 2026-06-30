@@ -13,7 +13,9 @@ class ValidationReport:
     stats: dict[str, int] = field(default_factory=dict)
 
 
-def validate_candles(frame: pd.DataFrame, expected_freq: str = "1min") -> ValidationReport:
+def validate_candles(
+    frame: pd.DataFrame, expected_freq: str = "1min"
+) -> ValidationReport:
     """Validate timezone, OHLC integrity, duplicate timestamps, and gaps."""
     errors: list[str] = []
     warnings: list[str] = []
@@ -68,4 +70,6 @@ def validate_candles(frame: pd.DataFrame, expected_freq: str = "1min") -> Valida
     stats["rows"] = int(len(df))
     stats["duplicates"] = dup_count
     stats["invalid_ohlc"] = bad_count
-    return ValidationReport(ok=not errors, errors=errors, warnings=warnings, stats=stats)
+    return ValidationReport(
+        ok=not errors, errors=errors, warnings=warnings, stats=stats
+    )

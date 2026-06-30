@@ -35,6 +35,7 @@ class SweepResult:
                       'no_breach' | 'close_outside_range' | 'bias_mismatch' |
                       'invalid_candle' when not detected.
     """
+
     detected: bool
     side: "str | None"
     sweep_price: "float | None"
@@ -75,7 +76,7 @@ def detect_sweep(
 
     # ── 2. Check strict price breach ─────────────────────────────────────────
     # Touch only (low == asian_low or high == asian_high) is NOT a breach.
-    bullish_breach = low < asian_low    # wick pierced below Asian low
+    bullish_breach = low < asian_low  # wick pierced below Asian low
     bearish_breach = high > asian_high  # wick pierced above Asian high
 
     if not bullish_breach and not bearish_breach:
@@ -93,7 +94,10 @@ def detect_sweep(
         if close <= asian_low:
             # Closed below or at the swept level — no reversal, still in loss zone
             return SweepResult(
-                detected=False, side=None, sweep_price=None, reason="close_outside_range"
+                detected=False,
+                side=None,
+                sweep_price=None,
+                reason="close_outside_range",
             )
         return SweepResult(
             detected=True, side="long", sweep_price=low, reason="bullish_sweep"
@@ -108,7 +112,10 @@ def detect_sweep(
         if close >= asian_high:
             # Closed above or at the swept level — no reversal
             return SweepResult(
-                detected=False, side=None, sweep_price=None, reason="close_outside_range"
+                detected=False,
+                side=None,
+                sweep_price=None,
+                reason="close_outside_range",
             )
         return SweepResult(
             detected=True, side="short", sweep_price=high, reason="bearish_sweep"

@@ -39,14 +39,18 @@ _ALLOWED: dict[StrategyStage, set[StrategyStage]] = {
     current: ({_ORDER[index + 1]} if index < len(_ORDER) - 1 else set())
     for index, current in enumerate(_ORDER)
 }
-_ALLOWED[StrategyStage.REVALIDATION].update({StrategyStage.HISTORICAL_REPLAY, StrategyStage.RETIRED})
+_ALLOWED[StrategyStage.REVALIDATION].update(
+    {StrategyStage.HISTORICAL_REPLAY, StrategyStage.RETIRED}
+)
 # Explicit research failure loops. These are corrective transitions, not
 # promotions, and keep failed strategies away from execution stages.
 _ALLOWED[StrategyStage.REFINEMENT].add(StrategyStage.AUDIT)
 _ALLOWED[StrategyStage.HISTORICAL_REPLAY].add(StrategyStage.REFINEMENT)
 _ALLOWED[StrategyStage.STATISTICAL_VALIDATION].add(StrategyStage.REFINEMENT)
 _ALLOWED[StrategyStage.ROBUSTNESS_VALIDATION].add(StrategyStage.REFINEMENT)
-_ALLOWED[StrategyStage.VIRTUAL_DEMO].update({StrategyStage.REFINEMENT, StrategyStage.HISTORICAL_REPLAY})
+_ALLOWED[StrategyStage.VIRTUAL_DEMO].update(
+    {StrategyStage.REFINEMENT, StrategyStage.HISTORICAL_REPLAY}
+)
 # Production Approval is record-only during platform construction. It exists in
 # the vocabulary but cannot be entered by the lifecycle authority.
 _ALLOWED[StrategyStage.VIRTUAL_DEMO].discard(StrategyStage.PRODUCTION_APPROVAL)
@@ -72,7 +76,10 @@ class StrategyLifecycleManager:
 
     def allowed_transitions(self, stage: str | StrategyStage) -> list[str]:
         current = self.normalize_stage(stage)
-        return [item.value for item in sorted(_ALLOWED.get(current, set()), key=_ORDER.index)]
+        return [
+            item.value
+            for item in sorted(_ALLOWED.get(current, set()), key=_ORDER.index)
+        ]
 
     def normalize_stage(self, stage: str | StrategyStage) -> StrategyStage:
         if isinstance(stage, StrategyStage):
@@ -81,7 +88,9 @@ class StrategyLifecycleManager:
         try:
             return StrategyStage(value)
         except ValueError as exc:
-            raise LifecycleTransitionError(f"Unknown lifecycle stage: {stage!r}") from exc
+            raise LifecycleTransitionError(
+                f"Unknown lifecycle stage: {stage!r}"
+            ) from exc
 
     def infer_stage(self, manifest: dict[str, object] | None = None) -> StrategyStage:
         manifest = manifest or {}
@@ -91,7 +100,9 @@ class StrategyLifecycleManager:
         legacy = str(manifest.get("status", "draft")).strip().lower()
         return _LEGACY_STAGE_MAP.get(legacy, StrategyStage.DRAFT)
 
-    def validate_transition(self, from_stage: str | StrategyStage, to_stage: str | StrategyStage) -> None:
+    def validate_transition(
+        self, from_stage: str | StrategyStage, to_stage: str | StrategyStage
+    ) -> None:
         current = self.normalize_stage(from_stage)
         target = self.normalize_stage(to_stage)
         if target not in _ALLOWED.get(current, set()):

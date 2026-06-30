@@ -14,6 +14,7 @@ Exit code:
   0 = ready (all gates met)
   1 = not ready
 """
+
 import csv
 import sys
 from collections import defaultdict
@@ -54,12 +55,18 @@ def main() -> int:
 
     print(f"Phase 2 Completion Check — {now.strftime('%Y-%m-%d %H:%M UTC')}")
     print()
-    print(f"  London sessions:  {london_days}/{MIN_LONDON_SESSIONS}  "
-          f"{'PASS' if gate_london else 'FAIL'}")
-    print(f"  NY sessions:      {ny_days}/{MIN_NY_SESSIONS}  "
-          f"{'PASS' if gate_ny else 'FAIL'}")
-    print(f"  Total rows:       {total:,}/{MIN_ROWS:,}  "
-          f"{'PASS' if gate_rows else 'FAIL'}")
+    print(
+        f"  London sessions:  {london_days}/{MIN_LONDON_SESSIONS}  "
+        f"{'PASS' if gate_london else 'FAIL'}"
+    )
+    print(
+        f"  NY sessions:      {ny_days}/{MIN_NY_SESSIONS}  "
+        f"{'PASS' if gate_ny else 'FAIL'}"
+    )
+    print(
+        f"  Total rows:       {total:,}/{MIN_ROWS:,}  "
+        f"{'PASS' if gate_rows else 'FAIL'}"
+    )
     print()
 
     if all_pass:
@@ -75,7 +82,9 @@ def main() -> int:
     else:
         remaining = []
         if not gate_london:
-            remaining.append(f"{MIN_LONDON_SESSIONS - london_days} more London session(s)")
+            remaining.append(
+                f"{MIN_LONDON_SESSIONS - london_days} more London session(s)"
+            )
         if not gate_ny:
             remaining.append(f"{MIN_NY_SESSIONS - ny_days} more NY session(s)")
         if not gate_rows:

@@ -3,7 +3,7 @@ edge_score.py
 Calculates the single most important metric: Edge Score
 """
 
-from .metrics_engine import load_trades, edge_score
+from .metrics_engine import edge_score, load_trades
 
 
 def run_edge_score():

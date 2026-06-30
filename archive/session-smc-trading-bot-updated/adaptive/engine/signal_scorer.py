@@ -22,12 +22,12 @@ _MAX_SPREAD: dict[str, float] = {
 }
 
 # Volatility: ATR% ceiling — too volatile is also penalised
-_MAX_ATR_PCT = 0.008   # 0.8% of price
-_MIN_ATR_PCT = 0.001   # 0.1% of price
+_MAX_ATR_PCT = 0.008  # 0.8% of price
+_MIN_ATR_PCT = 0.001  # 0.1% of price
 
 # Active session windows (UTC hour, inclusive)
 _SESSION_WINDOWS: dict[str, tuple[int, int]] = {
-    "london":   (6, 9),
+    "london": (6, 9),
     "new_york": (11, 15),
 }
 
@@ -37,8 +37,9 @@ def _htf_bias_aligned(signal: AdaptiveSignal, context: dict) -> bool:
     bias = context.get("htf_bias", "").upper()
     if not bias or bias == "NEUTRAL":
         return False
-    return (signal.direction == "LONG" and bias == "BULLISH") or \
-           (signal.direction == "SHORT" and bias == "BEARISH")
+    return (signal.direction == "LONG" and bias == "BULLISH") or (
+        signal.direction == "SHORT" and bias == "BEARISH"
+    )
 
 
 def _has_liquidity_event(signal: AdaptiveSignal) -> bool:
@@ -72,6 +73,7 @@ def _news_clear(context: dict) -> bool:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def score_signal(signal: AdaptiveSignal, context: dict) -> dict:
     """
     Score a strategy signal against objective criteria.
@@ -93,17 +95,17 @@ def score_signal(signal: AdaptiveSignal, context: dict) -> dict:
         }
     """
     spread_pips = float(context.get("spread_pips", 999.0))
-    atr_pct     = float(context.get("atr_pct", 0.0))
-    utc_hour    = int(context.get("utc_hour", 0))
+    atr_pct = float(context.get("atr_pct", 0.0))
+    utc_hour = int(context.get("utc_hour", 0))
 
     breakdown: dict[str, int] = {
-        "htf_bias_aligned":       0,
-        "liquidity_event":        0,
+        "htf_bias_aligned": 0,
+        "liquidity_event": 0,
         "structure_confirmation": 0,
-        "active_session":         0,
-        "spread_acceptable":      0,
-        "volatility_acceptable":  0,
-        "news_clear":             0,
+        "active_session": 0,
+        "spread_acceptable": 0,
+        "volatility_acceptable": 0,
+        "news_clear": 0,
     }
 
     if _htf_bias_aligned(signal, context):
@@ -127,11 +129,11 @@ def score_signal(signal: AdaptiveSignal, context: dict) -> dict:
     if _news_clear(context):
         breakdown["news_clear"] = 1
 
-    score    = sum(breakdown.values())
+    score = sum(breakdown.values())
     approved = score >= MIN_SCORE
 
     return {
-        "score":     score,
-        "approved":  approved,
+        "score": score,
+        "approved": approved,
         "breakdown": breakdown,
     }

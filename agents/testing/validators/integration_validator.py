@@ -1,4 +1,5 @@
 """Integration test validator — validates the complete trading pipeline."""
+
 from __future__ import annotations
 
 import logging
@@ -7,7 +8,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +58,15 @@ class IntegrationValidator:
         xml_path = report_dir / "integration-test-results.xml"
 
         cmd = [
-            "python", "-m", "pytest",
+            "python",
+            "-m",
+            "pytest",
             *[str(d) for d in test_dirs],
             f"--junit-xml={xml_path}",
             "--no-cov",
-            "-q", "--tb=short", "--no-header",
+            "-q",
+            "--tb=short",
+            "--no-header",
         ]
         logger.debug("Integration cmd: %s", " ".join(cmd))
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
@@ -83,7 +88,9 @@ class IntegrationValidator:
                 unique.append(p)
         return unique
 
-    def _parse(self, proc: subprocess.CompletedProcess[str], xml_path: Path) -> StageResult:
+    def _parse(
+        self, proc: subprocess.CompletedProcess[str], xml_path: Path
+    ) -> StageResult:
         errors: list[str] = []
         warnings: list[str] = []
         details: dict[str, Any] = {"pipeline_stages": PIPELINE_STAGES}
@@ -94,7 +101,11 @@ class IntegrationValidator:
         if xml_path.exists():
             try:
                 root_el = ET.parse(xml_path).getroot()
-                suite = root_el if root_el.tag == "testsuite" else (root_el.find("testsuite") or root_el)
+                suite = (
+                    root_el
+                    if root_el.tag == "testsuite"
+                    else (root_el.find("testsuite") or root_el)
+                )
                 total = int(suite.get("tests", 0))
                 n_failed = int(suite.get("failures", 0))
                 n_errors = int(suite.get("errors", 0))
@@ -110,7 +121,9 @@ class IntegrationValidator:
                             stage_coverage[stage] = True
                     failure = tc.find("failure")
                     if failure is not None:
-                        errors.append(f"FAIL {tc.get('classname', '')}.{tc.get('name', '')}: {failure.get('message', '')[:120]}")
+                        errors.append(
+                            f"FAIL {tc.get('classname', '')}.{tc.get('name', '')}: {failure.get('message', '')[:120]}"
+                        )
             except ET.ParseError as exc:
                 warnings.append(f"JUnit XML parse error: {exc}")
         elif proc.returncode not in (0, 1, 2):
@@ -118,7 +131,9 @@ class IntegrationValidator:
 
         uncovered = [s for s, found in stage_coverage.items() if not found]
         if uncovered:
-            warnings.append(f"Pipeline stages without dedicated tests: {', '.join(uncovered)}")
+            warnings.append(
+                f"Pipeline stages without dedicated tests: {', '.join(uncovered)}"
+            )
 
         details.update(
             {
@@ -133,7 +148,9 @@ class IntegrationValidator:
 
         n_total = n_passed + n_failed + n_errors
         pass_rate = (n_passed / n_total * 100.0) if n_total > 0 else 100.0
-        coverage_pct = ((len(PIPELINE_STAGES) - len(uncovered)) / len(PIPELINE_STAGES)) * 100.0
+        coverage_pct = (
+            (len(PIPELINE_STAGES) - len(uncovered)) / len(PIPELINE_STAGES)
+        ) * 100.0
         score = round(pass_rate * 0.8 + coverage_pct * 0.2, 1)
         failed = n_failed > 0 or n_errors > 0
 

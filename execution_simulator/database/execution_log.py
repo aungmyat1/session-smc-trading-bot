@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import sqlite3
-from dataclasses import asdict, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,7 +9,9 @@ from typing import Any
 class ExecutionLog:
     """SQLite-backed execution audit for replay runs."""
 
-    def __init__(self, path: str | Path = "execution_validation/execution_validation.sqlite3") -> None:
+    def __init__(
+        self, path: str | Path = "execution_validation/execution_validation.sqlite3"
+    ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()
@@ -23,8 +23,7 @@ class ExecutionLog:
 
     def _init_schema(self) -> None:
         with self._conn() as conn:
-            conn.executescript(
-                """
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS orders (
                     order_id TEXT PRIMARY KEY,
                     timestamp TEXT NOT NULL,
@@ -75,8 +74,7 @@ class ExecutionLog:
                     latency_ms INTEGER,
                     verdict TEXT
                 );
-                """
-            )
+                """)
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -223,7 +221,16 @@ class ExecutionLog:
     def summary(self) -> dict[str, int]:
         with self._conn() as conn:
             orders = conn.execute("SELECT COUNT(*) AS n FROM orders").fetchone()["n"]
-            positions = conn.execute("SELECT COUNT(*) AS n FROM positions").fetchone()["n"]
+            positions = conn.execute("SELECT COUNT(*) AS n FROM positions").fetchone()[
+                "n"
+            ]
             fills = conn.execute("SELECT COUNT(*) AS n FROM fills").fetchone()["n"]
-            comparisons = conn.execute("SELECT COUNT(*) AS n FROM signal_comparison").fetchone()["n"]
-        return {"orders": orders, "positions": positions, "fills": fills, "signal_comparison": comparisons}
+            comparisons = conn.execute(
+                "SELECT COUNT(*) AS n FROM signal_comparison"
+            ).fetchone()["n"]
+        return {
+            "orders": orders,
+            "positions": positions,
+            "fills": fills,
+            "signal_comparison": comparisons,
+        }

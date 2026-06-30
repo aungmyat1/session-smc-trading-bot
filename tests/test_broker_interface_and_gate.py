@@ -6,7 +6,8 @@ import pytest
 
 from core.broker_interface import BrokerInterface
 from execution_gate import ExecutionGate, ExecutionGateConfig
-from execution_simulator import EventStream, MarketEvent, MarketFeed, VirtualBroker
+from execution_simulator import (EventStream, MarketEvent, MarketFeed,
+                                 VirtualBroker)
 from execution_simulator.broker.virtual_broker import VirtualBrokerConfig
 from execution_simulator.execution.risk_engine import RiskEngine
 from models.order import Order

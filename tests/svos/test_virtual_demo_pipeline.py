@@ -13,8 +13,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from svos.application.audit import AuditIntegrationService
 from svos.application.backtest import BacktestIntegrationService
 from svos.application.intake import IntakeService
@@ -22,7 +20,6 @@ from svos.application.replay import ReplayIntegrationService
 from svos.application.robustness import RobustnessIntegrationService
 from svos.application.virtual_demo import VirtualDemoIntegrationService
 from svos.orchestration import SVOSPlatform
-
 
 # ── catalog / spec ────────────────────────────────────────────────────────────
 
@@ -70,7 +67,7 @@ _SIGNALS = [
     for i in range(20)
 ]
 
-_TOO_FEW_SIGNALS = _SIGNALS[:3]   # < minimum 5 → guaranteed FAIL
+_TOO_FEW_SIGNALS = _SIGNALS[:3]  # < minimum 5 → guaranteed FAIL
 
 
 def _setup(tmp_path: Path) -> tuple[Path, SVOSPlatform]:
@@ -115,6 +112,7 @@ def _advance_to_robustness(platform: SVOSPlatform) -> None:
 # Basic PASS path
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_virtual_demo_pass_with_sufficient_signals(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_robustness(platform)
@@ -158,11 +156,14 @@ def test_virtual_demo_report_has_markdown_companion(tmp_path):
 # FAIL paths
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_virtual_demo_fail_with_too_few_signals(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_robustness(platform)
 
-    result = VirtualDemoIntegrationService(platform).run("LONDON-DEMO", _TOO_FEW_SIGNALS)
+    result = VirtualDemoIntegrationService(platform).run(
+        "LONDON-DEMO", _TOO_FEW_SIGNALS
+    )
 
     assert result.status == "FAIL"
     assert not result.passed
@@ -174,7 +175,9 @@ def test_virtual_demo_fail_produces_report_artifact(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_robustness(platform)
 
-    result = VirtualDemoIntegrationService(platform).run("LONDON-DEMO", _TOO_FEW_SIGNALS)
+    result = VirtualDemoIntegrationService(platform).run(
+        "LONDON-DEMO", _TOO_FEW_SIGNALS
+    )
     assert Path(result.report_artifact).exists()
     report = json.loads(Path(result.report_artifact).read_text())
     assert report["status"] == "FAIL"
@@ -183,6 +186,7 @@ def test_virtual_demo_fail_produces_report_artifact(tmp_path):
 # ═══════════════════════════════════════════════════════════════════════════
 # Evidence and lifecycle
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_virtual_demo_produces_evidence_record(tmp_path):
     _, platform = _setup(tmp_path)
@@ -211,6 +215,7 @@ def test_virtual_demo_evidence_has_signal_count(tmp_path):
 # ═══════════════════════════════════════════════════════════════════════════
 # Result object
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_virtual_demo_result_to_dict(tmp_path):
     _, platform = _setup(tmp_path)
@@ -247,6 +252,7 @@ def test_virtual_demo_summary_contains_virtual_pf(tmp_path):
 # Full pipeline: all 5 research stages + virtual demo
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_full_six_stage_pipeline_produces_all_evidence(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_robustness(platform)
@@ -256,8 +262,12 @@ def test_full_six_stage_pipeline_produces_all_evidence(tmp_path):
     evidence = platform.registry.evidence("LONDON-DEMO")
     stages = {e["stage"] for e in evidence}
     for expected in (
-        "INTAKE", "AUDIT", "HISTORICAL_REPLAY",
-        "STATISTICAL_VALIDATION", "ROBUSTNESS_VALIDATION", "VIRTUAL_DEMO",
+        "INTAKE",
+        "AUDIT",
+        "HISTORICAL_REPLAY",
+        "STATISTICAL_VALIDATION",
+        "ROBUSTNESS_VALIDATION",
+        "VIRTUAL_DEMO",
     ):
         assert expected in stages, f"Missing evidence for {expected}"
 

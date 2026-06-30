@@ -56,9 +56,15 @@ class LegacyCatalogImporter:
                 for name, raw_manifest in strategies.items():
                     manifest = raw_manifest if isinstance(raw_manifest, dict) else {}
                     slug = str(name).strip()
-                    entity = session.scalar(select(StrategyEntity).where(StrategyEntity.slug == slug))
+                    entity = session.scalar(
+                        select(StrategyEntity).where(StrategyEntity.slug == slug)
+                    )
                     if entity is None:
-                        entity = StrategyEntity(name=slug, slug=slug, owner=str(manifest.get("owner", "")) or None)
+                        entity = StrategyEntity(
+                            name=slug,
+                            slug=slug,
+                            owner=str(manifest.get("owner", "")) or None,
+                        )
                         session.add(entity)
                         session.flush()
                     version_label = str(manifest.get("version", "0.0.0"))
@@ -69,18 +75,24 @@ class LegacyCatalogImporter:
                         )
                     )
                     if version is None:
-                        canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+                        canonical = json.dumps(
+                            manifest, sort_keys=True, separators=(",", ":")
+                        )
                         version = StrategyVersion(
                             strategy_id=entity.id,
                             version=version_label,
-                            spec_hash=hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+                            spec_hash=hashlib.sha256(
+                                canonical.encode("utf-8")
+                            ).hexdigest(),
                             rules_json=manifest,
                             notes="LEGACY_IMPORTED — cannot satisfy qualification gates",
                             created_by=actor,
                         )
                         session.add(version)
                         session.flush()
-                    state = session.scalar(select(StageState).where(StageState.strategy_id == entity.id))
+                    state = session.scalar(
+                        select(StageState).where(StageState.strategy_id == entity.id)
+                    )
                     if state is None:
                         session.add(
                             StageState(
@@ -93,7 +105,9 @@ class LegacyCatalogImporter:
                         )
                     imported += 1
 
-                timestamp = datetime.fromtimestamp(source.stat().st_mtime, tz=timezone.utc)
+                timestamp = datetime.fromtimestamp(
+                    source.stat().st_mtime, tz=timezone.utc
+                )
                 session.add(
                     LegacyImport(
                         source_path=str(source.resolve()),

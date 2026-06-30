@@ -37,41 +37,41 @@ sys.path.insert(0, str(_ROOT))
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(_ROOT / ".env")
 except ImportError:
     pass
 
 # ── Strategy plugin layer ─────────────────────────────────────────────────────
-from core.strategy_registry import register_strategy, get_strategy
+from core.strategy_registry import get_strategy, register_strategy
 from strategies.adapters.st_a2_adapter import ST2Adapter
 
 _st2 = ST2Adapter()
 register_strategy(_st2)
 
-# ── Portfolio control layer ───────────────────────────────────────────────────
-from core.signal_router import SignalRouter
 from core.circuit_breaker import CircuitBreaker
 from core.portfolio_manager import PortfolioManager
+# ── Portfolio control layer ───────────────────────────────────────────────────
+from core.signal_router import SignalRouter
 from strategies.shadow_tracker import ShadowTracker
 
-_router  = SignalRouter()
+_router = SignalRouter()
 _breaker = CircuitBreaker()
 _portmgr = PortfolioManager()
-_shadow  = ShadowTracker()
+_shadow = ShadowTracker()
 
 # ── Trade journal (SQLite) ────────────────────────────────────────────────────
 from core.trade_journal_db import TradeJournalDB
 
 _journal_db = TradeJournalDB()
 
+from execution.demo_risk_manager import (calculate_lots, check_limits,
+                                         new_state, record_result, reset_daily)
 # ── Demo execution stack ──────────────────────────────────────────────────────
-from execution.mt5_connector       import MT5Connector
+from execution.mt5_connector import MT5Connector
+from execution.trade_journal import DemoTradeJournal
+from execution.trade_manager import TradeManager
 from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager        import TradeManager
-from execution.demo_risk_manager    import (
-    calculate_lots, new_state, check_limits, record_result, reset_daily,
-)
-from execution.trade_journal        import DemoTradeJournal
 
 logging.basicConfig(
     level=logging.INFO,
@@ -86,24 +86,25 @@ for _noisy in ("engineio", "socketio", "engineio.client", "socketio.client", "ht
 _log = logging.getLogger("st_a2.runner")
 
 # Per config/demo.yaml — EURUSD + XAUUSD in Phase 1 demo
-PAIRS    = ["EURUSD", "XAUUSD"]
-INTERVAL = 60   # seconds
+PAIRS = ["EURUSD", "XAUUSD"]
+INTERVAL = 60  # seconds
 MAX_SPREAD_PIPS: dict[str, float] = {"EURUSD": 1.5, "GBPUSD": 2.0, "XAUUSD": 3.0}
 _MAX_FETCH_FAILURES = 3
 
 
 async def _tick(
-    mode:       str,
-    connector:  MT5Connector,
-    executor:   VantageDemoExecutor,
-    manager:    TradeManager,
-    journal:    DemoTradeJournal,
+    mode: str,
+    connector: MT5Connector,
+    executor: VantageDemoExecutor,
+    manager: TradeManager,
+    journal: DemoTradeJournal,
     risk_state: dict,
 ) -> dict:
     """One scan cycle. Returns updated risk_state."""
 
     # Daily reset
     from datetime import date
+
     today = date.today().isoformat()
     if risk_state.get("last_reset", "")[:10] != today:
         risk_state = reset_daily(risk_state)
@@ -121,14 +122,16 @@ async def _tick(
     for symbol in PAIRS:
         try:
             m15 = await executor.get_candles(symbol, "M15", 200)
-            h4  = await executor.get_candles(symbol, "H4",  100)
-            px  = await executor.get_price(symbol)
+            h4 = await executor.get_candles(symbol, "H4", 100)
+            px = await executor.get_price(symbol)
             fetch_fails = 0
         except Exception as exc:
             _log.warning("Data fetch error %s: %s", symbol, exc)
             fetch_fails += 1
             if fetch_fails >= _MAX_FETCH_FAILURES:
-                _log.warning("Consecutive fetch failures=%d — reconnecting", fetch_fails)
+                _log.warning(
+                    "Consecutive fetch failures=%d — reconnecting", fetch_fails
+                )
                 try:
                     await connector.reconnect()
                     fetch_fails = 0
@@ -146,10 +149,16 @@ async def _tick(
             _log.debug("Insufficient bars %s", symbol)
             continue
 
-        _log.info("TICK %s  bars=%d  spread=%.1fpip  price=%.5f",
-                  symbol, len(m15), spread, px["bid"])
-        ready.append({"symbol": symbol, "m15": m15, "h4": h4,
-                      "spread": spread, "px": px})
+        _log.info(
+            "TICK %s  bars=%d  spread=%.1fpip  price=%.5f",
+            symbol,
+            len(m15),
+            spread,
+            px["bid"],
+        )
+        ready.append(
+            {"symbol": symbol, "m15": m15, "h4": h4, "spread": spread, "px": px}
+        )
 
     risk_state["_fetch_fails"] = fetch_fails
 
@@ -188,12 +197,19 @@ async def _tick(
     for sig in routed:
         ok, reason = _breaker.check(sig.strategy_name)
         if not ok:
-            _log.info("CircuitBreaker blocked %s/%s: %s",
-                      sig.strategy_name, sig.symbol, reason)
-            _journal_db.record_signal(sig, router_result="PASS",
-                                      breaker_result=f"BLOCKED: {reason}",
-                                      portfolio_result="SKIPPED",
-                                      execution_result="SKIPPED")
+            _log.info(
+                "CircuitBreaker blocked %s/%s: %s",
+                sig.strategy_name,
+                sig.symbol,
+                reason,
+            )
+            _journal_db.record_signal(
+                sig,
+                router_result="PASS",
+                breaker_result=f"BLOCKED: {reason}",
+                portfolio_result="SKIPPED",
+                execution_result="SKIPPED",
+            )
         else:
             cb_approved.append(sig)
 
@@ -204,10 +220,13 @@ async def _tick(
     pm_approved = _portmgr.evaluate(cb_approved)
     for sig in cb_approved:
         if sig not in pm_approved:
-            _journal_db.record_signal(sig, router_result="PASS",
-                                      breaker_result="PASS",
-                                      portfolio_result="BLOCKED",
-                                      execution_result="SKIPPED")
+            _journal_db.record_signal(
+                sig,
+                router_result="PASS",
+                breaker_result="PASS",
+                portfolio_result="BLOCKED",
+                execution_result="SKIPPED",
+            )
 
     if not pm_approved:
         _log.info("PortfolioManager blocked all signals. %s", _portmgr.stats())
@@ -217,7 +236,7 @@ async def _tick(
     spread_by_symbol = {item["symbol"]: item["spread"] for item in ready}
 
     try:
-        acct    = await executor.get_account_info()
+        acct = await executor.get_account_info()
         balance = acct["balance"]
     except Exception:
         balance = 0.0
@@ -226,21 +245,31 @@ async def _tick(
         limit = check_limits(risk_state)
         if not limit["approved"]:
             _log.info("SKIP %s — %s", signal.symbol, limit["reason"])
-            _journal_db.record_signal(signal, router_result="PASS",
-                                      breaker_result="PASS",
-                                      portfolio_result="PASS",
-                                      execution_result=f"BLOCKED: {limit['reason']}")
+            _journal_db.record_signal(
+                signal,
+                router_result="PASS",
+                breaker_result="PASS",
+                portfolio_result="PASS",
+                execution_result=f"BLOCKED: {limit['reason']}",
+            )
             continue
 
         sl_pips = abs(signal.metadata.get("risk_pips", 10))
-        lots    = calculate_lots(balance, sl_pips, signal.symbol)
-        spread  = spread_by_symbol.get(signal.symbol, 0.0)
+        lots = calculate_lots(balance, sl_pips, signal.symbol)
+        spread = spread_by_symbol.get(signal.symbol, 0.0)
 
         _log.info(
             "SIGNAL [%s] %s %s %s entry=%.5f SL=%.5f TP=%.5f spread=%.1f lots=%.2f conf=%.2f",
-            mode.upper(), signal.symbol, signal.action, signal.session,
-            signal.entry_price, signal.stop_loss, signal.take_profit,
-            spread, lots, signal.confidence,
+            mode.upper(),
+            signal.symbol,
+            signal.action,
+            signal.session,
+            signal.entry_price,
+            signal.stop_loss,
+            signal.take_profit,
+            spread,
+            lots,
+            signal.confidence,
         )
 
         _breaker.record_signal(signal.strategy_name)
@@ -248,12 +277,17 @@ async def _tick(
         if mode == "shadow":
             # Shadow mode: log signal, no broker order
             _shadow.track(signal, reason="shadow_mode")
-            _journal_db.record_signal(signal, router_result="PASS",
-                                      breaker_result="PASS",
-                                      portfolio_result="PASS",
-                                      execution_result="SHADOW",
-                                      position_size=lots)
-            journal.log_open(signal, {"order_id": "SHADOW", "simulated": True}, lots, spread)
+            _journal_db.record_signal(
+                signal,
+                router_result="PASS",
+                breaker_result="PASS",
+                portfolio_result="PASS",
+                execution_result="SHADOW",
+                position_size=lots,
+            )
+            journal.log_open(
+                signal, {"order_id": "SHADOW", "simulated": True}, lots, spread
+            )
             _portmgr.record_trade(signal)
             _log.info("SHADOW — signal recorded, no order sent.")
             continue
@@ -273,14 +307,19 @@ async def _tick(
             )
             _portmgr.record_trade(signal)
             risk_state["open_positions"] = risk_state.get("open_positions", 0) + 1
-            _log.info("Order placed: %s (journal_id=%s)", order.get("order_id"), trade_id)
+            _log.info(
+                "Order placed: %s (journal_id=%s)", order.get("order_id"), trade_id
+            )
         except Exception as exc:
             _log.error("Order placement failed %s: %s", signal.symbol, exc)
-            _journal_db.record_signal(signal, router_result="PASS",
-                                      breaker_result="PASS",
-                                      portfolio_result="PASS",
-                                      execution_result=f"ERROR: {exc}",
-                                      position_size=lots)
+            _journal_db.record_signal(
+                signal,
+                router_result="PASS",
+                breaker_result="PASS",
+                portfolio_result="PASS",
+                execution_result=f"ERROR: {exc}",
+                position_size=lots,
+            )
 
     return risk_state
 
@@ -295,9 +334,9 @@ async def run(mode: str, interval: int) -> None:
         _log.error("Connection failed: %s", exc)
         return
 
-    executor   = VantageDemoExecutor(connector)
-    manager    = TradeManager(executor)
-    journal    = DemoTradeJournal()
+    executor = VantageDemoExecutor(connector)
+    manager = TradeManager(executor)
+    journal = DemoTradeJournal()
     risk_state = new_state()
 
     try:
@@ -319,16 +358,19 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="ST-A2 Vantage runner")
     parser.add_argument(
-        "--mode", choices=["shadow", "demo", "live"],
+        "--mode",
+        choices=["shadow", "demo", "live"],
         default=env_mode,
         help="shadow=no orders, demo=Vantage demo orders, live=BLOCKED",
     )
     parser.add_argument("--interval", type=int, default=INTERVAL)
     # Legacy flags for backwards compat
-    parser.add_argument("--dry-run", action="store_true", default=False,
-                        help="Alias for --mode shadow")
-    parser.add_argument("--live",    action="store_true", default=False,
-                        help="Alias for --mode demo")
+    parser.add_argument(
+        "--dry-run", action="store_true", default=False, help="Alias for --mode shadow"
+    )
+    parser.add_argument(
+        "--live", action="store_true", default=False, help="Alias for --mode demo"
+    )
     args = parser.parse_args()
 
     mode = args.mode

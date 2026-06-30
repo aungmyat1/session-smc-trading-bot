@@ -1,12 +1,14 @@
 """Tests for execution/position_sizer.py — lot sizing from risk model."""
 
 import math
+
 import pytest
 
-from execution.position_sizer import calculate_lots, SizingResult, _MIN_SL_PIPS, _MAX_SL_PIPS
-
+from execution.position_sizer import (_MAX_SL_PIPS, _MIN_SL_PIPS, SizingResult,
+                                      calculate_lots)
 
 # ── Category 1: Standard calculation ─────────────────────────────────────────
+
 
 class TestStandardCalculation:
     def test_standard_eurusd(self):
@@ -40,6 +42,7 @@ class TestStandardCalculation:
 
 # ── Category 2: Floor and clamping ───────────────────────────────────────────
 
+
 class TestFloorAndClamping:
     def test_floors_not_rounds(self):
         # equity=1000, risk=1%, sl=9pip, pv=10 → 1000×0.01/(9×10)=1/9=0.111…
@@ -52,8 +55,9 @@ class TestFloorAndClamping:
 
     def test_minimum_lot_clamped(self):
         # Very high sl_pips → tiny raw_lots → clamped to min_lot
-        r = calculate_lots(equity=100.0, sl_pips=40.0, symbol="EURUSD", risk_pct=1.0,
-                           min_lot=0.01)
+        r = calculate_lots(
+            equity=100.0, sl_pips=40.0, symbol="EURUSD", risk_pct=1.0, min_lot=0.01
+        )
         # 100×0.01/(40×10)=1/400=0.0025 → floor=0.00 → clamped to 0.01
         assert r.valid is True
         assert r.lots == 0.01
@@ -61,8 +65,9 @@ class TestFloorAndClamping:
 
     def test_maximum_lot_clamped(self):
         # Very low sl_pips + high equity → lots above max
-        r = calculate_lots(equity=1_000_000.0, sl_pips=5.0, symbol="EURUSD",
-                           risk_pct=1.0, max_lot=10.0)
+        r = calculate_lots(
+            equity=1_000_000.0, sl_pips=5.0, symbol="EURUSD", risk_pct=1.0, max_lot=10.0
+        )
         assert r.valid is True
         assert r.lots == 10.0
         assert r.clamped is True
@@ -75,6 +80,7 @@ class TestFloorAndClamping:
 
 
 # ── Category 3: SL range validation ──────────────────────────────────────────
+
 
 class TestSLRangeValidation:
     def test_sl_below_minimum_rejected(self):
@@ -109,10 +115,13 @@ class TestSLRangeValidation:
 
 # ── Category 4: Custom pip value override ────────────────────────────────────
 
+
 class TestCustomPipValue:
     def test_custom_pip_value_used(self):
         # pip_value_per_lot=5 → 1000×0.01/(10×5)=10/50=0.20
-        r = calculate_lots(equity=1000.0, sl_pips=10.0, symbol="EXOTIC", pip_value_per_lot=5.0)
+        r = calculate_lots(
+            equity=1000.0, sl_pips=10.0, symbol="EXOTIC", pip_value_per_lot=5.0
+        )
         assert r.valid is True
         assert r.pip_value == 5.0
         assert r.lots == pytest.approx(0.20)

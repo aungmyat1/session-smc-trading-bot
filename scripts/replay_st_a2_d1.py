@@ -20,27 +20,26 @@ Usage:
     python3 scripts/replay_st_a2_d1.py --symbols EURUSD --start 2026-01-01
     python3 scripts/replay_st_a2_d1.py --out-csv docs/d1_trial_trades.csv
 """
+
 from __future__ import annotations
 
 import argparse
 import csv
 import sys
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from strategy.session_liquidity.session_builder import (
-    build_asian_range,
-    classify_session,
-)
+from session_smc.daily_context import apply_d1_gates, build_d1_context
 from strategy.session_liquidity.bias_filter import htf_bias
-from strategy.session_liquidity.sweep_detector import detect_sweep
-from strategy.session_liquidity.displacement_detector import detect_displacement, wilder_atr
+from strategy.session_liquidity.displacement_detector import (
+    detect_displacement, wilder_atr)
 from strategy.session_liquidity.entry_engine import build_signal
-
-from session_smc.daily_context import build_d1_context, apply_d1_gates
+from strategy.session_liquidity.session_builder import (build_asian_range,
+                                                        classify_session)
+from strategy.session_liquidity.sweep_detector import detect_sweep
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,7 +47,7 @@ PIP = 0.0001
 _UTC = timezone.utc
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "historical"
-OUT_DIR  = Path(__file__).parent.parent / "docs"
+OUT_DIR = Path(__file__).parent.parent / "docs"
 
 COSTS = {
     "EURUSD": {"standard": 1.4, "stress2x": 2.8},
@@ -58,12 +57,12 @@ COSTS = {
 # ── ST-A2 execution parameters (matches ST-A2 Phase-0 defaults) ───────────────
 
 ST_A2_EXEC = {
-    "rr":                 3.0,
-    "sl_buffer_pips":     2.0,
-    "displacement_mult":  1.2,
-    "atr_period":         14,
+    "rr": 3.0,
+    "sl_buffer_pips": 2.0,
+    "displacement_mult": 1.2,
+    "atr_period": 14,
     "sweep_timeout_bars": 4,
-    "min_sl_pips":        5.0,
+    "min_sl_pips": 5.0,
     "min_range_pips": {"EURUSD": 15.0, "GBPUSD": 20.0},
 }
 
@@ -73,35 +72,36 @@ VARIANTS: dict[str, dict] = {
     "BASELINE": {
         **ST_A2_EXEC,
         "d1_context_enabled": False,
-        "d1_bias_filter":     False,
+        "d1_bias_filter": False,
         "d1_location_filter": False,
-        "d1_poi_filter":      False,   # always off (future trial)
+        "d1_poi_filter": False,  # always off (future trial)
     },
     "D1_BIAS": {
         **ST_A2_EXEC,
         "d1_context_enabled": True,
-        "d1_bias_filter":     True,
+        "d1_bias_filter": True,
         "d1_location_filter": False,
-        "d1_poi_filter":      False,
+        "d1_poi_filter": False,
     },
     "D1_LOCATION": {
         **ST_A2_EXEC,
         "d1_context_enabled": True,
-        "d1_bias_filter":     False,
+        "d1_bias_filter": False,
         "d1_location_filter": True,
-        "d1_poi_filter":      False,
+        "d1_poi_filter": False,
     },
     "D1_ALL": {
         **ST_A2_EXEC,
         "d1_context_enabled": True,
-        "d1_bias_filter":     True,
+        "d1_bias_filter": True,
         "d1_location_filter": True,
-        "d1_poi_filter":      False,
+        "d1_poi_filter": False,
     },
 }
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def load_csv(path: Path) -> list[dict]:
     if not path.exists():
@@ -109,13 +109,15 @@ def load_csv(path: Path) -> list[dict]:
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            rows.append({
-                "time":  row["time"],
-                "open":  float(row["open"]),
-                "high":  float(row["high"]),
-                "low":   float(row["low"]),
-                "close": float(row["close"]),
-            })
+            rows.append(
+                {
+                    "time": row["time"],
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                }
+            )
     return rows
 
 
@@ -130,6 +132,7 @@ def _utc(t) -> datetime:
 
 
 # ── Trade container ───────────────────────────────────────────────────────────
+
 
 @dataclass
 class Trade:
@@ -154,6 +157,7 @@ class Trade:
 
 # ── Trade simulation ──────────────────────────────────────────────────────────
 
+
 def simulate_trade(
     sig,
     day_bars: list[tuple[dict, str]],
@@ -168,14 +172,19 @@ def simulate_trade(
 
     entry_price = sig.entry
     cost_std = COSTS.get(symbol, {}).get("standard", 1.4)
-    cost_2x  = COSTS.get(symbol, {}).get("stress2x", 2.8)
+    cost_2x = COSTS.get(symbol, {}).get("stress2x", 2.8)
     entry_time = day_bars[entry_bar_idx][0]["time"]
 
     t = Trade(
-        variant=variant, symbol=symbol, session=session,
-        direction=sig.side, entry=entry_price,
-        sl=sig.stop_loss, tp1=sig.take_profit,
-        sl_pips=sig.risk_pips, entry_time=entry_time,
+        variant=variant,
+        symbol=symbol,
+        session=session,
+        direction=sig.side,
+        entry=entry_price,
+        sl=sig.stop_loss,
+        tp1=sig.take_profit,
+        sl_pips=sig.risk_pips,
+        entry_time=entry_time,
         d1_bias=getattr(d1_ctx, "daily_bias", ""),
         d1_location=getattr(d1_ctx, "daily_location", ""),
     )
@@ -186,40 +195,66 @@ def simulate_trade(
         bar, _ = day_bars[j]
         if is_long:
             if bar["low"] <= sig.stop_loss:
-                t.exit_price, t.exit_reason, t.exit_time = sig.stop_loss, "SL", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.stop_loss,
+                    "SL",
+                    bar["time"],
+                )
                 break
             if bar["high"] >= sig.take_profit:
-                t.exit_price, t.exit_reason, t.exit_time = sig.take_profit, "TP1", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.take_profit,
+                    "TP1",
+                    bar["time"],
+                )
                 break
         else:
             if bar["high"] >= sig.stop_loss:
-                t.exit_price, t.exit_reason, t.exit_time = sig.stop_loss, "SL", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.stop_loss,
+                    "SL",
+                    bar["time"],
+                )
                 break
             if bar["low"] <= sig.take_profit:
-                t.exit_price, t.exit_reason, t.exit_time = sig.take_profit, "TP1", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.take_profit,
+                    "TP1",
+                    bar["time"],
+                )
                 break
     else:
         last = day_bars[-1][0]
-        t.exit_price, t.exit_reason, t.exit_time = last["close"], "SESSION_END", last["time"]
+        t.exit_price, t.exit_reason, t.exit_time = (
+            last["close"],
+            "SESSION_END",
+            last["time"],
+        )
 
     if not t.exit_time:
         last = day_bars[-1][0]
-        t.exit_price, t.exit_reason, t.exit_time = last["close"], "SESSION_END", last["time"]
+        t.exit_price, t.exit_reason, t.exit_time = (
+            last["close"],
+            "SESSION_END",
+            last["time"],
+        )
 
     if sig.risk_pips <= 0:
         return None
 
     gross_pips = (
-        (t.exit_price - entry_price) / PIP if is_long
+        (t.exit_price - entry_price) / PIP
+        if is_long
         else (entry_price - t.exit_price) / PIP
     )
-    t.gross_r   = gross_pips / sig.risk_pips
+    t.gross_r = gross_pips / sig.risk_pips
     t.net_r_std = t.gross_r - cost_std / sig.risk_pips
-    t.net_r_2x  = t.gross_r - cost_2x  / sig.risk_pips
+    t.net_r_2x = t.gross_r - cost_2x / sig.risk_pips
     return t
 
 
 # ── Core walk-forward ─────────────────────────────────────────────────────────
+
 
 def run_variant(
     variant_name: str,
@@ -230,9 +265,9 @@ def run_variant(
 ) -> list[Trade]:
     """Walk-forward replay for one variant over filtered M15 data."""
     sorted_m15 = sorted(candles_m15, key=lambda c: c["time"])
-    sorted_4h  = sorted(candles_4h,  key=lambda c: c["time"])
+    sorted_4h = sorted(candles_4h, key=lambda c: c["time"])
 
-    atrs    = wilder_atr(sorted_m15, cfg["atr_period"])
+    atrs = wilder_atr(sorted_m15, cfg["atr_period"])
     atr_map = {c["time"]: a for c, a in zip(sorted_m15, atrs)}
 
     min_range = cfg["min_range_pips"].get(symbol, 15.0)
@@ -243,7 +278,7 @@ def run_variant(
     kz_by_date: dict[date, list] = {}
     for c in sorted_m15:
         dt = _utc(c["time"])
-        s  = classify_session(dt)
+        s = classify_session(dt)
         if s is not None:
             kz_by_date.setdefault(dt.date(), []).append((c, s))
 
@@ -287,12 +322,13 @@ def run_variant(
                 # ── D1 Gate B: location check at each sweep-candidate bar ─────
                 if d1_on and d1_ctx is not None:
                     ok, _ = apply_d1_gates(
-                        d1_ctx, bias,
+                        d1_ctx,
+                        bias,
                         session_open_price=float(candle["open"]),
                         cfg={
-                            "d1_bias_filter":     cfg.get("d1_bias_filter", False),
+                            "d1_bias_filter": cfg.get("d1_bias_filter", False),
                             "d1_location_filter": cfg.get("d1_location_filter", False),
-                            "d1_poi_filter":      False,
+                            "d1_poi_filter": False,
                         },
                     )
                     if not ok:
@@ -319,9 +355,13 @@ def run_variant(
 
                 if disp.detected:
                     sig = build_signal(
-                        candle, pending["sweep"], disp,
-                        asian, session,
-                        cfg["rr"], cfg["sl_buffer_pips"],
+                        candle,
+                        pending["sweep"],
+                        disp,
+                        asian,
+                        session,
+                        cfg["rr"],
+                        cfg["sl_buffer_pips"],
                     )
                     pending = None
 
@@ -333,14 +373,19 @@ def run_variant(
                     # D1 Gate A (structure gate) is best evaluated at the sweep
                     # bar level where bias is known. Apply here as final check
                     # if not already applied at bar-level above.
-                    if d1_on and d1_ctx is not None and cfg.get("d1_bias_filter", False):
+                    if (
+                        d1_on
+                        and d1_ctx is not None
+                        and cfg.get("d1_bias_filter", False)
+                    ):
                         ok, _ = apply_d1_gates(
-                            d1_ctx, bias,
+                            d1_ctx,
+                            bias,
                             session_open_price=float(candle["open"]),
                             cfg={
-                                "d1_bias_filter":     True,
+                                "d1_bias_filter": True,
                                 "d1_location_filter": False,
-                                "d1_poi_filter":      False,
+                                "d1_poi_filter": False,
                             },
                         )
                         if not ok:
@@ -358,14 +403,22 @@ def run_variant(
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 def metrics(trades: list[Trade], r_field: str) -> dict:
     if not trades:
-        return {"n": 0, "pf": 0.0, "wr": 0.0, "avg_r": 0.0, "max_dd": 0.0, "total_r": 0.0}
-    vals   = [getattr(t, r_field) for t in trades]
-    wins   = sum(1 for v in vals if v > 0)
-    g_win  = sum(v for v in vals if v > 0)
+        return {
+            "n": 0,
+            "pf": 0.0,
+            "wr": 0.0,
+            "avg_r": 0.0,
+            "max_dd": 0.0,
+            "total_r": 0.0,
+        }
+    vals = [getattr(t, r_field) for t in trades]
+    wins = sum(1 for v in vals if v > 0)
+    g_win = sum(v for v in vals if v > 0)
     g_loss = abs(sum(v for v in vals if v <= 0))
-    pf     = g_win / g_loss if g_loss > 0 else float("inf")
+    pf = g_win / g_loss if g_loss > 0 else float("inf")
     eq = peak = max_dd = 0.0
     for v in vals:
         eq += v
@@ -398,17 +451,21 @@ def monthly_breakdown(trades: list[Trade], r_field: str) -> None:
         wins = sum(1 for v in vals if v > 0)
         g_w = sum(v for v in vals if v > 0)
         g_l = abs(sum(v for v in vals if v <= 0))
-        pf  = g_w / g_l if g_l > 0 else float("inf")
-        wr  = wins / len(vals) * 100
+        pf = g_w / g_l if g_l > 0 else float("inf")
+        wr = wins / len(vals) * 100
         avg = sum(vals) / len(vals)
-        eq = peak = dd = mx = 0.0
+        eq = peak = mx = 0.0
         for v in vals:
             eq += v
-            if eq > peak: peak = eq
+            if eq > peak:
+                peak = eq
             d = peak - eq
-            if d > mx: mx = d
+            if d > mx:
+                mx = d
         pf_s = f"{pf:.3f}" if pf != float("inf") else "∞"
-        print(f"  {month:<10} {len(vals):>4} {pf_s:>7} {wr:>5.1f}% {avg:>7.3f} {mx:>7.2f}")
+        print(
+            f"  {month:<10} {len(vals):>4} {pf_s:>7} {wr:>5.1f}% {avg:>7.3f} {mx:>7.2f}"
+        )
 
 
 def print_report(variant: str, symbol: str, trades: list[Trade]) -> None:
@@ -431,11 +488,12 @@ def print_report(variant: str, symbol: str, trades: list[Trade]) -> None:
 
 # ── Comparison table ──────────────────────────────────────────────────────────
 
+
 def comparison_table(results: dict[str, list[Trade]]) -> None:
     """Print a side-by-side comparison of all variants."""
     baseline = results.get("BASELINE", [])
     base_std = metrics(baseline, "net_r_std")
-    base_2x  = metrics(baseline, "net_r_2x")
+    base_2x = metrics(baseline, "net_r_2x")
 
     print(f"\n{'═'*72}")
     print("  COMPARISON — All Variants vs BASELINE")
@@ -450,8 +508,8 @@ def comparison_table(results: dict[str, list[Trade]]) -> None:
         s2x = metrics(trades, "net_r_2x")
         n = std["n"]
         filtered_pct = round((base_n - n) / base_n * 100, 1) if base_n > 0 else 0.0
-        pf_s   = f"{std['pf']:.3f}" if std["pf"] != float("inf") else "∞"
-        pf2_s  = f"{s2x['pf']:.3f}" if s2x["pf"] != float("inf") else "∞"
+        pf_s = f"{std['pf']:.3f}" if std["pf"] != float("inf") else "∞"
+        pf2_s = f"{s2x['pf']:.3f}" if s2x["pf"] != float("inf") else "∞"
         arrow = ""
         if vname != "BASELINE" and base_2x["pf"] > 0 and s2x["pf"] > 0:
             arrow = " ↑" if s2x["pf"] > base_2x["pf"] else " ↓"
@@ -465,9 +523,9 @@ def comparison_table(results: dict[str, list[Trade]]) -> None:
     if base_n > 0:
         d1_all = results.get("D1_ALL", [])
         d1_std = metrics(d1_all, "net_r_std")
-        d1_2x  = metrics(d1_all, "net_r_2x")
+        d1_2x = metrics(d1_all, "net_r_2x")
         filtered = base_n - d1_std["n"]
-        pct      = round(filtered / base_n * 100, 1)
+        pct = round(filtered / base_n * 100, 1)
         print(f"  D1_ALL vs BASELINE: removed {filtered}/{base_n} signals ({pct}%)")
         if d1_2x["pf"] > base_2x["pf"]:
             print(f"  PF_2x: {base_2x['pf']:.3f} → {d1_2x['pf']:.3f}  ↑ IMPROVED")
@@ -480,35 +538,54 @@ def comparison_table(results: dict[str, list[Trade]]) -> None:
 
 # ── CSV export ────────────────────────────────────────────────────────────────
 
+
 def save_csv(trades: list[Trade], path: Path) -> None:
     fields = [
-        "variant", "symbol", "session", "direction", "entry_time",
-        "entry", "sl", "tp1", "sl_pips",
-        "exit_time", "exit_price", "exit_reason",
-        "gross_r", "net_r_std", "net_r_2x",
-        "d1_bias", "d1_location",
+        "variant",
+        "symbol",
+        "session",
+        "direction",
+        "entry_time",
+        "entry",
+        "sl",
+        "tp1",
+        "sl_pips",
+        "exit_time",
+        "exit_price",
+        "exit_reason",
+        "gross_r",
+        "net_r_std",
+        "net_r_2x",
+        "d1_bias",
+        "d1_location",
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         for t in trades:
-            w.writerow({
-                k: (round(getattr(t, k), 4) if isinstance(getattr(t, k), float)
-                    else getattr(t, k))
-                for k in fields
-            })
+            w.writerow(
+                {
+                    k: (
+                        round(getattr(t, k), 4)
+                        if isinstance(getattr(t, k), float)
+                        else getattr(t, k)
+                    )
+                    for k in fields
+                }
+            )
     print(f"  Trade log → {path.relative_to(path.parent.parent)}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     p = argparse.ArgumentParser(
         description="TRIAL_ST_A2_D1_001 — ST-A2 vs D1 context A/B replay"
     )
     p.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    p.add_argument("--start",   default="2026-05-01")
-    p.add_argument("--end",     default="2026-06-30")
+    p.add_argument("--start", default="2026-05-01")
+    p.add_argument("--end", default="2026-06-30")
     p.add_argument("--out-csv", default=str(OUT_DIR / "st_a2_d1_trades.csv"))
     p.add_argument("--variants", nargs="+", default=list(VARIANTS.keys()))
     args = p.parse_args()
@@ -524,26 +601,30 @@ def main() -> None:
     all_results: dict[str, list[Trade]] = {v: [] for v in args.variants}
 
     for sym in args.symbols:
-        instr    = sym[:3] + "_" + sym[3:]
+        instr = sym[:3] + "_" + sym[3:]
         m15_path = DATA_DIR / f"{instr}_M15.csv"
-        h4_path  = DATA_DIR / f"{instr}_H4.csv"
+        h4_path = DATA_DIR / f"{instr}_H4.csv"
 
         if not m15_path.exists() or not h4_path.exists():
-            print(f"\n[{sym}] Missing data files. Run: python3 scripts/fetch_data.py --symbols {sym}")
+            print(
+                f"\n[{sym}] Missing data files. Run: python3 scripts/fetch_data.py --symbols {sym}"
+            )
             continue
 
         print(f"\n[{sym}] Loading data ...")
         c_m15_all = load_csv(m15_path)
-        c_m15     = filter_range(c_m15_all, args.start, args.end)
-        c_h4      = load_csv(h4_path)
+        c_m15 = filter_range(c_m15_all, args.start, args.end)
+        c_h4 = load_csv(h4_path)
 
         if not c_m15:
             print(f"[{sym}] No M15 data in period {args.start}–{args.end}. Skipping.")
             continue
 
         actual_end = max(c["time"][:10] for c in c_m15)
-        print(f"[{sym}] M15 in period: {len(c_m15)} bars  "
-              f"({c_m15[0]['time'][:10]} → {actual_end})")
+        print(
+            f"[{sym}] M15 in period: {len(c_m15)} bars  "
+            f"({c_m15[0]['time'][:10]} → {actual_end})"
+        )
         print(f"[{sym}] H4 (full, for warm-up): {len(c_h4)} bars")
 
         print()
@@ -554,7 +635,7 @@ def main() -> None:
             all_results[vname].extend(trades)
             std = metrics(trades, "net_r_std")
             s2x = metrics(trades, "net_r_2x")
-            pf_s  = f"{std['pf']:.3f}" if std["pf"] != float("inf") else "∞"
+            pf_s = f"{std['pf']:.3f}" if std["pf"] != float("inf") else "∞"
             pf2_s = f"{s2x['pf']:.3f}" if s2x["pf"] != float("inf") else "∞"
             print(f"n={std['n']}  PF_std={pf_s}  PF_2x={pf2_s}  WR={std['wr']}%")
 
@@ -575,7 +656,7 @@ def main() -> None:
 
     # ── Gate summary ───────────────────────────────────────────────────────────
     baseline_2x = metrics(all_results.get("BASELINE", []), "net_r_2x")
-    d1_all_2x   = metrics(all_results.get("D1_ALL", []),   "net_r_2x")
+    d1_all_2x = metrics(all_results.get("D1_ALL", []), "net_r_2x")
 
     print("  GATE SUMMARY (D1_ALL vs BASELINE at PF_2x > 1.0 threshold)")
     print(f"  BASELINE PF_2x = {baseline_2x['pf']:.3f}  (n={baseline_2x['n']})")

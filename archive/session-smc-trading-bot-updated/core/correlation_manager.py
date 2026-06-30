@@ -39,7 +39,7 @@ class CorrelationManager:
         self,
         symbol: str,
         action: str,
-        open_positions: dict[str, str],   # {symbol: action} of currently open trades
+        open_positions: dict[str, str],  # {symbol: action} of currently open trades
     ) -> tuple[bool, str]:
         """
         Returns (blocked, reason).
@@ -61,8 +61,10 @@ class CorrelationManager:
                 if open_sym not in members:
                     continue
                 if open_action == action:
-                    reason = (f"{symbol} {action} blocked — {open_sym} {open_action} "
-                              f"already open in {grp} group")
+                    reason = (
+                        f"{symbol} {action} blocked — {open_sym} {open_action} "
+                        f"already open in {grp} group"
+                    )
                     _log.debug(reason)
                     return True, reason
 
@@ -70,7 +72,7 @@ class CorrelationManager:
 
     def filter_signals(
         self,
-        signals: list,           # list[Signal]
+        signals: list,  # list[Signal]
         open_positions: dict[str, str],
     ) -> list:
         """Remove correlated signals from a candidate list (modifies order)."""

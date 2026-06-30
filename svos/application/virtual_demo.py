@@ -26,9 +26,8 @@ from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import VirtualDemoReportBuilder
 from svos.shared.support import now_iso
 
-
-_DRIFT_THRESHOLD = 0.10   # 10% PnL drift triggers FAIL
-_MIN_SIGNALS = 5          # fewer than 5 signals = inconclusive → FAIL
+_DRIFT_THRESHOLD = 0.10  # 10% PnL drift triggers FAIL
+_MIN_SIGNALS = 5  # fewer than 5 signals = inconclusive → FAIL
 
 
 @dataclass(slots=True)
@@ -45,7 +44,7 @@ class DriftCheck:
 @dataclass(slots=True)
 class VirtualDemoResult:
     strategy: str
-    status: str                  # PASS | FAIL
+    status: str  # PASS | FAIL
     version_id: str
     signal_count: int
     filled_count: int
@@ -185,26 +184,30 @@ class VirtualDemoIntegrationService:
         checks: list[DriftCheck] = []
 
         if len(signals) < _MIN_SIGNALS:
-            checks.append(DriftCheck(
+            checks.append(
+                DriftCheck(
+                    name="minimum_signals",
+                    passed=False,
+                    expected=float(_MIN_SIGNALS),
+                    actual=float(len(signals)),
+                    delta_pct=0.0,
+                    severity="ERROR",
+                    message=f"Need ≥{_MIN_SIGNALS} signals for a meaningful virtual demo; got {len(signals)}",
+                )
+            )
+            return checks, {"filled_count": 0, "virtual_pf": 0.0, "status": "FAIL"}
+
+        checks.append(
+            DriftCheck(
                 name="minimum_signals",
-                passed=False,
+                passed=True,
                 expected=float(_MIN_SIGNALS),
                 actual=float(len(signals)),
                 delta_pct=0.0,
                 severity="ERROR",
-                message=f"Need ≥{_MIN_SIGNALS} signals for a meaningful virtual demo; got {len(signals)}",
-            ))
-            return checks, {"filled_count": 0, "virtual_pf": 0.0, "status": "FAIL"}
-
-        checks.append(DriftCheck(
-            name="minimum_signals",
-            passed=True,
-            expected=float(_MIN_SIGNALS),
-            actual=float(len(signals)),
-            delta_pct=0.0,
-            severity="ERROR",
-            message="",
-        ))
+                message="",
+            )
+        )
 
         try:
             filled_count, virtual_pf, gross_profit, gross_loss = self._execute_ticks(
@@ -216,39 +219,53 @@ class VirtualDemoIntegrationService:
                 initial_balance=initial_balance,
             )
         except Exception as exc:  # pragma: no cover
-            checks.append(DriftCheck(
-                name="simulation_error",
-                passed=False,
-                expected=0.0,
-                actual=0.0,
-                delta_pct=0.0,
-                severity="ERROR",
-                message=f"Simulation raised: {exc}",
-            ))
+            checks.append(
+                DriftCheck(
+                    name="simulation_error",
+                    passed=False,
+                    expected=0.0,
+                    actual=0.0,
+                    delta_pct=0.0,
+                    severity="ERROR",
+                    message=f"Simulation raised: {exc}",
+                )
+            )
             return checks, {"filled_count": 0, "virtual_pf": 0.0, "error": str(exc)}
 
         fill_rate = filled_count / max(len(signals), 1)
-        checks.append(DriftCheck(
-            name="fill_rate",
-            passed=fill_rate >= 0.80,
-            expected=0.80,
-            actual=round(fill_rate, 4),
-            delta_pct=round((fill_rate - 0.80) * 100, 2),
-            severity="ERROR",
-            message="" if fill_rate >= 0.80 else f"Only {fill_rate:.0%} of signals filled — possible execution gap",
-        ))
+        checks.append(
+            DriftCheck(
+                name="fill_rate",
+                passed=fill_rate >= 0.80,
+                expected=0.80,
+                actual=round(fill_rate, 4),
+                delta_pct=round((fill_rate - 0.80) * 100, 2),
+                severity="ERROR",
+                message=(
+                    ""
+                    if fill_rate >= 0.80
+                    else f"Only {fill_rate:.0%} of signals filled — possible execution gap"
+                ),
+            )
+        )
 
         if expected_pf is not None and expected_pf > 0:
             drift = abs(virtual_pf - expected_pf) / expected_pf
-            checks.append(DriftCheck(
-                name="pf_drift",
-                passed=drift <= _DRIFT_THRESHOLD,
-                expected=round(expected_pf, 4),
-                actual=round(virtual_pf, 4),
-                delta_pct=round(drift * 100, 2),
-                severity="ERROR",
-                message="" if drift <= _DRIFT_THRESHOLD else f"PF drift {drift:.1%} exceeds {_DRIFT_THRESHOLD:.0%} threshold",
-            ))
+            checks.append(
+                DriftCheck(
+                    name="pf_drift",
+                    passed=drift <= _DRIFT_THRESHOLD,
+                    expected=round(expected_pf, 4),
+                    actual=round(virtual_pf, 4),
+                    delta_pct=round(drift * 100, 2),
+                    severity="ERROR",
+                    message=(
+                        ""
+                        if drift <= _DRIFT_THRESHOLD
+                        else f"PF drift {drift:.1%} exceeds {_DRIFT_THRESHOLD:.0%} threshold"
+                    ),
+                )
+            )
 
         summary: dict[str, Any] = {
             "signal_count": len(signals),
@@ -273,28 +290,34 @@ class VirtualDemoIntegrationService:
             )
             entry = float(sig.get("entry_price") or sig.get("entry") or 0.0)
             spread = point_size  # one-pip synthetic spread
-            tp = float(sig.get("take_profit") or sig.get("tp") or entry + 20 * point_size)
+            tp = float(
+                sig.get("take_profit") or sig.get("tp") or entry + 20 * point_size
+            )
             sl = float(sig.get("stop_loss") or sig.get("sl") or entry - 10 * point_size)
             result_r = float(sig.get("result_r") or sig.get("pnl_r") or 1.0)
 
             # Entry tick
-            ticks.append({
-                "timestamp": base_ts.isoformat(),
-                "symbol": symbol,
-                "bid": round(entry - spread / 2, 6),
-                "ask": round(entry + spread / 2, 6),
-                "volume": 1.0,
-            })
+            ticks.append(
+                {
+                    "timestamp": base_ts.isoformat(),
+                    "symbol": symbol,
+                    "bid": round(entry - spread / 2, 6),
+                    "ask": round(entry + spread / 2, 6),
+                    "volume": 1.0,
+                }
+            )
             # Exit tick — price moves to TP or SL based on result_r sign
             exit_price = tp if result_r > 0 else sl
             exit_ts = base_ts + timedelta(hours=2)
-            ticks.append({
-                "timestamp": exit_ts.isoformat(),
-                "symbol": symbol,
-                "bid": round(exit_price - spread / 2, 6),
-                "ask": round(exit_price + spread / 2, 6),
-                "volume": 1.0,
-            })
+            ticks.append(
+                {
+                    "timestamp": exit_ts.isoformat(),
+                    "symbol": symbol,
+                    "bid": round(exit_price - spread / 2, 6),
+                    "ask": round(exit_price + spread / 2, 6),
+                    "volume": 1.0,
+                }
+            )
         return ticks
 
     def _execute_ticks(
@@ -319,7 +342,8 @@ class VirtualDemoIntegrationService:
         lot_size: float,
         initial_balance: float,
     ) -> tuple[int, float, float, float]:
-        from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
+        from execution_simulator.broker.virtual_broker import (
+            VirtualBroker, VirtualBrokerConfig)
         from execution_simulator.replay_engine.event_stream import MarketEvent
 
         config = VirtualBrokerConfig(
@@ -338,7 +362,9 @@ class VirtualDemoIntegrationService:
         for idx, sig in enumerate(signals):
             entry = float(sig.get("entry_price") or sig.get("entry") or 0.0)
             sl = float(sig.get("stop_loss") or sig.get("sl") or entry - 10 * point_size)
-            tp = float(sig.get("take_profit") or sig.get("tp") or entry + 20 * point_size)
+            tp = float(
+                sig.get("take_profit") or sig.get("tp") or entry + 20 * point_size
+            )
             result_r = float(sig.get("result_r") or sig.get("pnl_r") or 1.0)
             direction = str(sig.get("side") or sig.get("direction") or "long").lower()
             spread = point_size
@@ -385,7 +411,11 @@ class VirtualDemoIntegrationService:
             else:
                 gross_loss += abs(result_r)
 
-        virtual_pf = gross_profit / gross_loss if gross_loss > 0 else (float("inf") if gross_profit > 0 else 0.0)
+        virtual_pf = (
+            gross_profit / gross_loss
+            if gross_loss > 0
+            else (float("inf") if gross_profit > 0 else 0.0)
+        )
         return filled_count, virtual_pf, gross_profit, gross_loss
 
     @staticmethod
@@ -399,16 +429,31 @@ class VirtualDemoIntegrationService:
         except (ValueError, TypeError):
             return None
 
-    def _drive_lifecycle(self, strategy: str, status: str, actor: str, current: Any) -> None:
+    def _drive_lifecycle(
+        self, strategy: str, status: str, actor: str, current: Any
+    ) -> None:
         current_stage = str(current.current_stage)
         if status == "PASS" and current_stage == "ROBUSTNESS_VALIDATION":
-            target, reason = "VIRTUAL_DEMO", "Virtual demo passed — execution layer validated"
-        elif status == "FAIL" and current_stage in ("ROBUSTNESS_VALIDATION", "VIRTUAL_DEMO"):
-            target, reason = "REFINEMENT", "Virtual demo failed — execution drift or fill gaps"
+            target, reason = (
+                "VIRTUAL_DEMO",
+                "Virtual demo passed — execution layer validated",
+            )
+        elif status == "FAIL" and current_stage in (
+            "ROBUSTNESS_VALIDATION",
+            "VIRTUAL_DEMO",
+        ):
+            target, reason = (
+                "REFINEMENT",
+                "Virtual demo failed — execution drift or fill gaps",
+            )
         else:
             return
         try:
-            self._platform.audited_transition(strategy, to_stage=target, actor=actor, reason=reason)
+            self._platform.audited_transition(
+                strategy, to_stage=target, actor=actor, reason=reason
+            )
         except Exception as exc:
-            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(exc):
+            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(
+                exc
+            ):
                 raise

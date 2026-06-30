@@ -5,6 +5,7 @@ Creates a unified, searchable signal table from all SMC features.
 """
 
 from pathlib import Path
+
 import polars as pl
 
 FEATURES_DIR = Path("features")
@@ -13,11 +14,13 @@ SIGNALS_DIR.mkdir(exist_ok=True)
 
 SYMBOLS = ["EURUSD", "GBPUSD", "XAUUSD"]
 
+
 def load_feature(file_name: str) -> pl.DataFrame:
     path = FEATURES_DIR / file_name
     if path.exists():
         return pl.read_parquet(path)
     return pl.DataFrame()
+
 
 def build_signal_database(symbol: str) -> pl.DataFrame:
     print(f"Building signals for {symbol}...")
@@ -38,22 +41,25 @@ def build_signal_database(symbol: str) -> pl.DataFrame:
     df = sessions.clone()
 
     # Add session column (combine London + NY)
-    df = df.with_columns([
-        pl.when(
-            (pl.col("session_london").is_not_null()) & (pl.col("session_ny").is_not_null())
-        ).then(pl.lit("Both"))
-        .when(pl.col("session_london").is_not_null()).then(pl.lit("London"))
-        .when(pl.col("session_ny").is_not_null()).then(pl.lit("NewYork"))
-        .otherwise(pl.lit("None")).alias("session")
-    ]).drop(["session_london", "session_ny"])
+    df = df.with_columns(
+        [
+            pl.when(
+                (pl.col("session_london").is_not_null())
+                & (pl.col("session_ny").is_not_null())
+            )
+            .then(pl.lit("Both"))
+            .when(pl.col("session_london").is_not_null())
+            .then(pl.lit("London"))
+            .when(pl.col("session_ny").is_not_null())
+            .then(pl.lit("NewYork"))
+            .otherwise(pl.lit("None"))
+            .alias("session")
+        ]
+    ).drop(["session_london", "session_ny"])
 
     # Join Market Structure
     if not structure.is_empty():
-        df = df.join(
-            structure.select(["time", "structure"]),
-            on="time",
-            how="left"
-        )
+        df = df.join(structure.select(["time", "structure"]), on="time", how="left")
 
     # Join Liquidity Sweeps
     if not liquidity.is_empty():
@@ -77,30 +83,31 @@ def build_signal_database(symbol: str) -> pl.DataFrame:
         df = df.with_columns(pl.lit(False).alias("has_fvg"))
 
     # Fill nulls
-    df = df.with_columns([
-        pl.col("structure").fill_null("None"),
-        pl.col("sweep").fill_null("None"),
-        pl.col("has_ob").fill_null(False),
-        pl.col("has_fvg").fill_null(False),
-    ])
+    df = df.with_columns(
+        [
+            pl.col("structure").fill_null("None"),
+            pl.col("sweep").fill_null("None"),
+            pl.col("has_ob").fill_null(False),
+            pl.col("has_fvg").fill_null(False),
+        ]
+    )
 
     # Create direction from structure
-    df = df.with_columns([
-        pl.when(pl.col("structure").str.contains("BULL")).then(pl.lit("LONG"))
-        .when(pl.col("structure").str.contains("BEAR")).then(pl.lit("SHORT"))
-        .otherwise(pl.lit(None)).alias("direction")
-    ])
+    df = df.with_columns(
+        [
+            pl.when(pl.col("structure").str.contains("BULL"))
+            .then(pl.lit("LONG"))
+            .when(pl.col("structure").str.contains("BEAR"))
+            .then(pl.lit("SHORT"))
+            .otherwise(pl.lit(None))
+            .alias("direction")
+        ]
+    )
 
     # Final clean columns
-    df = df.select([
-        "time",
-        "session",
-        "structure",
-        "sweep",
-        "has_ob",
-        "has_fvg",
-        "direction"
-    ])
+    df = df.select(
+        ["time", "session", "structure", "sweep", "has_ob", "has_fvg", "direction"]
+    )
 
     # Add pair
     df = df.with_columns(pl.lit(symbol).alias("pair"))
@@ -111,13 +118,23 @@ def build_signal_database(symbol: str) -> pl.DataFrame:
     )
 
     # Reorder columns nicely
-    df = df.select([
-        "signal_id", "pair", "time", "session",
-        "structure", "sweep", "has_ob", "has_fvg", "direction"
-    ])
+    df = df.select(
+        [
+            "signal_id",
+            "pair",
+            "time",
+            "session",
+            "structure",
+            "sweep",
+            "has_ob",
+            "has_fvg",
+            "direction",
+        ]
+    )
 
     print(f"  Generated {len(df):,} potential signals")
     return df
+
 
 def main():
     print("=" * 60)
@@ -145,6 +162,7 @@ def main():
     print(f"\n✅ Signal database saved → {output_path}")
     print(f"   Total signals: {len(final_df):,}")
     print(f"   Columns: {final_df.columns}")
+
 
 if __name__ == "__main__":
     main()

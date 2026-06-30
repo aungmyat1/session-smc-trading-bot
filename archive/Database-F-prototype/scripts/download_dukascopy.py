@@ -11,14 +11,16 @@ Usage examples:
 """
 
 import argparse
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+
 import pandas as pd
-import shutil
 
 OUTPUT_DIR = Path("data/raw_ticks")
 PROCESSED_DIR = Path("data/processed")
+
 
 def check_dukascopy_node():
     """Check if dukascopy-node is available."""
@@ -26,13 +28,15 @@ def check_dukascopy_node():
         print("❌ Node.js / npx not found. Please install Node.js first.")
         return False
     try:
-        subprocess.run(["npx", "dukascopy-node", "--version"], 
-                       capture_output=True, check=True)
+        subprocess.run(
+            ["npx", "dukascopy-node", "--version"], capture_output=True, check=True
+        )
         return True
     except:
         print("Installing dukascopy-node...")
         subprocess.run(["npm", "install", "-g", "dukascopy-node"], check=True)
         return True
+
 
 def download_pair(pair: str, start: str, end: str):
     """Download tick data using dukascopy-node."""
@@ -43,13 +47,20 @@ def download_pair(pair: str, start: str, end: str):
     output_path.mkdir(parents=True, exist_ok=True)
 
     cmd = [
-        "npx", "dukascopy-node",
-        "-i", pair,
-        "-from", start,
-        "-to", end,
-        "-t", "tick",
-        "-f", "csv",
-        "-folder", str(output_path)
+        "npx",
+        "dukascopy-node",
+        "-i",
+        pair,
+        "-from",
+        start,
+        "-to",
+        end,
+        "-t",
+        "tick",
+        "-f",
+        "csv",
+        "-folder",
+        str(output_path),
     ]
 
     print(f"Downloading {pair} tick data ({start} → {end})...")
@@ -60,6 +71,7 @@ def download_pair(pair: str, start: str, end: str):
     except subprocess.CalledProcessError as e:
         print(f"  ❌ Failed to download {pair}: {e}")
         return False
+
 
 def convert_to_parquet(pair: str):
     """Convert downloaded CSV files to one compressed Parquet file."""
@@ -90,6 +102,7 @@ def convert_to_parquet(pair: str):
         full_df.to_parquet(output_file, compression="zstd", index=False)
         print(f"  ✅ Saved {len(full_df):,} ticks → {output_file}")
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--pair", help="Trading pair (e.g. EURUSD)")
@@ -114,6 +127,7 @@ def main():
             convert_to_parquet(pair)
 
     print("\n✅ Dukascopy download pipeline complete.")
+
 
 if __name__ == "__main__":
     main()

@@ -14,13 +14,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from svos.application.intake import IntakeService
 from svos.application.audit import AuditIntegrationService
+from svos.application.intake import IntakeService
 from svos.application.run_manifest import RunManifestBuilder
 from svos.orchestration import SVOSPlatform
-
 
 # ── fixtures ──────────────────────────────────────────────────────────────
 
@@ -74,6 +71,7 @@ def _setup(tmp_path: Path) -> tuple[Path, SVOSPlatform]:
 
 # ── run manifest ──────────────────────────────────────────────────────────
 
+
 def test_run_manifest_builder_creates_persisted_file(tmp_path):
     builder = RunManifestBuilder(tmp_path)
     manifest = builder.build(service="test", strategy="LONDON-SWEEP")
@@ -81,7 +79,14 @@ def test_run_manifest_builder_creates_persisted_file(tmp_path):
     assert manifest.service == "test"
     assert manifest.strategy == "LONDON-SWEEP"
     assert manifest.engine_version == "svos-v1"
-    manifest_file = tmp_path / "data" / "svos" / "manifests" / "LONDON-SWEEP" / f"{manifest.manifest_id}.json"
+    manifest_file = (
+        tmp_path
+        / "data"
+        / "svos"
+        / "manifests"
+        / "LONDON-SWEEP"
+        / f"{manifest.manifest_id}.json"
+    )
     assert manifest_file.exists()
     loaded = json.loads(manifest_file.read_text())
     assert loaded["manifest_id"] == manifest.manifest_id
@@ -96,6 +101,7 @@ def test_run_manifest_reproducible_flag(tmp_path):
 
 
 # ── intake ────────────────────────────────────────────────────────────────
+
 
 def test_intake_pass_with_good_spec(tmp_path):
     _, platform = _setup(tmp_path)
@@ -117,7 +123,7 @@ def test_intake_pass_with_good_spec(tmp_path):
 def test_intake_produces_evidence_record(tmp_path):
     _, platform = _setup(tmp_path)
     svc = IntakeService(platform)
-    result = svc.run("LONDON-SWEEP", _GOOD_SPEC, actor="test-runner")
+    _result = svc.run("LONDON-SWEEP", _GOOD_SPEC, actor="test-runner")
 
     evidence = platform.registry.evidence("LONDON-SWEEP")
     assert len(evidence) >= 1
@@ -161,7 +167,7 @@ def test_intake_report_has_markdown_companion(tmp_path):
 def test_intake_run_manifest_persisted(tmp_path):
     _, platform = _setup(tmp_path)
     svc = IntakeService(platform)
-    result = svc.run("LONDON-SWEEP", _GOOD_SPEC)
+    _result = svc.run("LONDON-SWEEP", _GOOD_SPEC)
     manifests_dir = tmp_path / "data" / "svos" / "manifests" / "LONDON-SWEEP"
     assert manifests_dir.exists()
     files = list(manifests_dir.glob("*.json"))
@@ -173,10 +179,13 @@ def test_intake_idempotent_on_unchanged_spec(tmp_path):
     svc = IntakeService(platform)
     r1 = svc.run("LONDON-SWEEP", _GOOD_SPEC)
     r2 = svc.run("LONDON-SWEEP", _GOOD_SPEC)
-    assert r1.version_id == r2.version_id, "Unchanged spec should produce the same version"
+    assert (
+        r1.version_id == r2.version_id
+    ), "Unchanged spec should produce the same version"
 
 
 # ── audit ─────────────────────────────────────────────────────────────────
+
 
 def test_audit_pass_with_good_spec(tmp_path):
     _, platform = _setup(tmp_path)
@@ -227,6 +236,7 @@ def test_audit_report_has_markdown_companion(tmp_path):
 
 
 # ── end-to-end pipeline ───────────────────────────────────────────────────
+
 
 def test_e2e_intake_then_audit_produces_lifecycle_history(tmp_path):
     _, platform = _setup(tmp_path)

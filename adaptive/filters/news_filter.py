@@ -26,7 +26,7 @@ class NewsFilter:
     """
 
     def __init__(self) -> None:
-        self._live = False          # flip to True when real feed is wired
+        self._live = False  # flip to True when real feed is wired
         self._blocked_symbols: set[str] = set()
 
     def is_safe(self, symbol: str) -> dict:
@@ -41,7 +41,11 @@ class NewsFilter:
             }
         """
         if not self._live:
-            return {"safe_to_trade": True, "source": "stub", "reason": "news_filter_stub"}
+            return {
+                "safe_to_trade": True,
+                "source": "stub",
+                "reason": "news_filter_stub",
+            }
 
         # Live path (not yet active)
         events = self._fetch_live_events(symbol)

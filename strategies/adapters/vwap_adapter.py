@@ -60,8 +60,7 @@ def _parse_time(value) -> datetime | None:
 
 def _calc_vwap(candles: list[dict]) -> float:
     total_pv = sum(
-        ((c["high"] + c["low"] + c["close"]) / 3) * c.get("volume", 1)
-        for c in candles
+        ((c["high"] + c["low"] + c["close"]) / 3) * c.get("volume", 1) for c in candles
     )
     total_v = sum(c.get("volume", 1) for c in candles)
     return total_pv / total_v if total_v else 0.0
@@ -76,7 +75,9 @@ def _calc_atr(candles: list[dict]) -> float:
     for candle in candles[1:]:
         high = candle["high"]
         low = candle["low"]
-        true_ranges.append(max(high - low, abs(high - prev_close), abs(low - prev_close)))
+        true_ranges.append(
+            max(high - low, abs(high - prev_close), abs(low - prev_close))
+        )
         prev_close = candle["close"]
 
     return sum(true_ranges) / len(true_ranges) if true_ranges else 0.0
@@ -133,7 +134,7 @@ def _mean_reversion_signal(
     prev_close = prev["close"]
 
     lookback = min(5, len(session_bars) - 1)
-    prior_window = session_bars[-(lookback + 1):-1]
+    prior_window = session_bars[-(lookback + 1) : -1]
     rolling_high = max(c["high"] for c in prior_window)
     rolling_low = min(c["low"] for c in prior_window)
     sweep_buffer = max(pip * sweep_buffer_mult, atr * 0.1)
@@ -240,7 +241,11 @@ class VWAPMeanReversionAdapter(BaseStrategy):
         for candle in reversed(m15):
             latest_ts = _parse_time(candle.get("time"))
             if latest_ts is not None:
-                latest_ts_str = candle.get("time") if isinstance(candle.get("time"), str) else latest_ts.astimezone(timezone.utc).isoformat()
+                latest_ts_str = (
+                    candle.get("time")
+                    if isinstance(candle.get("time"), str)
+                    else latest_ts.astimezone(timezone.utc).isoformat()
+                )
                 break
 
         if latest_ts is None:
@@ -255,13 +260,17 @@ class VWAPMeanReversionAdapter(BaseStrategy):
         if len(session_bars) < int(params["min_session_bars"]):
             return None
 
-        signal = _mean_reversion_signal(session_bars, symbol, session, latest_ts_str, params)
+        signal = _mean_reversion_signal(
+            session_bars, symbol, session, latest_ts_str, params
+        )
         if signal is not None:
             return signal
 
         # Fallback: if session-scoped bars are thin, use the trailing window.
-        trailing = m15[-max(int(params["min_session_bars"]), 12):]
-        trailing_session = _mean_reversion_signal(trailing, symbol, session, latest_ts_str, params)
+        trailing = m15[-max(int(params["min_session_bars"]), 12) :]
+        trailing_session = _mean_reversion_signal(
+            trailing, symbol, session, latest_ts_str, params
+        )
         return trailing_session
 
 

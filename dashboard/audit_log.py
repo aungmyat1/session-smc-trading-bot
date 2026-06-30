@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_LOG_PATH = ROOT / "logs" / "dashboard_audit.jsonl"
 
 
-def write_audit_log(action: str, *, status: str, detail: dict[str, Any] | None = None) -> dict[str, Any]:
+def write_audit_log(
+    action: str, *, status: str, detail: dict[str, Any] | None = None
+) -> dict[str, Any]:
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "action": action,

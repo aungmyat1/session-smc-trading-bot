@@ -60,7 +60,9 @@ class ClarificationQuestionEngine:
             deduped.append(item)
         return deduped
 
-    def _from_recommendations(self, recommendations: list[ValidationRecommendation]) -> list[ClarificationQuestion]:
+    def _from_recommendations(
+        self, recommendations: list[ValidationRecommendation]
+    ) -> list[ClarificationQuestion]:
         questions: list[ClarificationQuestion] = []
         for item in recommendations:
             prompt = item.message.strip().rstrip(".")
@@ -89,7 +91,12 @@ class ClarificationQuestionEngine:
         return questions
 
     def _bos_question(self, text: str) -> list[ClarificationQuestion]:
-        if "bos" not in text or "close beyond" in text or "close >" in text or "close <" in text:
+        if (
+            "bos" not in text
+            or "close beyond" in text
+            or "close >" in text
+            or "close <" in text
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -97,9 +104,19 @@ class ClarificationQuestionEngine:
                 prompt="Should BOS require a candle close beyond the reference level?",
                 context="BOS appears in the rulebook without an explicit break condition.",
                 options=[
-                    ClarificationOption("Close beyond level (Recommended)", "Most reproducible institutional definition.", "close_beyond"),
-                    ClarificationOption("Wick through level", "More permissive and more subjective.", "wick_through"),
-                    ClarificationOption("Either close or wick", "Least deterministic option.", "either"),
+                    ClarificationOption(
+                        "Close beyond level (Recommended)",
+                        "Most reproducible institutional definition.",
+                        "close_beyond",
+                    ),
+                    ClarificationOption(
+                        "Wick through level",
+                        "More permissive and more subjective.",
+                        "wick_through",
+                    ),
+                    ClarificationOption(
+                        "Either close or wick", "Least deterministic option.", "either"
+                    ),
                 ],
                 recommended_answer="Close beyond level",
                 proposed_revision="BOS is valid only when a candle closes beyond the reference swing level.",
@@ -108,7 +125,10 @@ class ClarificationQuestionEngine:
         ]
 
     def _choch_question(self, text: str) -> list[ClarificationQuestion]:
-        if "choch" not in text or any(token in text for token in ("within ", "next candle", "first candle", "within 3 candles")):
+        if "choch" not in text or any(
+            token in text
+            for token in ("within ", "next candle", "first candle", "within 3 candles")
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -116,9 +136,19 @@ class ClarificationQuestionEngine:
                 prompt="How long after the sweep does CHOCH remain valid?",
                 context="CHOCH is mentioned without a timing window.",
                 options=[
-                    ClarificationOption("Within 3 candles (Recommended)", "Short confirmation window keeps setup deterministic.", "3_candles"),
-                    ClarificationOption("Within 5 candles", "Allows slower reversals.", "5_candles"),
-                    ClarificationOption("Until session ends", "Broadest but least strict.", "session_end"),
+                    ClarificationOption(
+                        "Within 3 candles (Recommended)",
+                        "Short confirmation window keeps setup deterministic.",
+                        "3_candles",
+                    ),
+                    ClarificationOption(
+                        "Within 5 candles", "Allows slower reversals.", "5_candles"
+                    ),
+                    ClarificationOption(
+                        "Until session ends",
+                        "Broadest but least strict.",
+                        "session_end",
+                    ),
                 ],
                 recommended_answer="Within 3 candles",
                 proposed_revision="CHOCH must occur within 3 candles after the sweep or the setup is cancelled.",
@@ -127,7 +157,10 @@ class ClarificationQuestionEngine:
         ]
 
     def _fvg_question(self, text: str) -> list[ClarificationQuestion]:
-        if "fvg" not in text or any(token in text for token in ("until mitigated", "5 candles", "valid after", "three-candle")):
+        if "fvg" not in text or any(
+            token in text
+            for token in ("until mitigated", "5 candles", "valid after", "three-candle")
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -135,9 +168,19 @@ class ClarificationQuestionEngine:
                 prompt="How long does an FVG remain valid for entry confirmation?",
                 context="FVG is present without a validity window.",
                 options=[
-                    ClarificationOption("Until mitigated (Recommended)", "Common institutional definition.", "until_mitigated"),
-                    ClarificationOption("Maximum 5 candles", "Adds a time-based expiry.", "5_candles"),
-                    ClarificationOption("Same session only", "Expires at session boundary.", "same_session"),
+                    ClarificationOption(
+                        "Until mitigated (Recommended)",
+                        "Common institutional definition.",
+                        "until_mitigated",
+                    ),
+                    ClarificationOption(
+                        "Maximum 5 candles", "Adds a time-based expiry.", "5_candles"
+                    ),
+                    ClarificationOption(
+                        "Same session only",
+                        "Expires at session boundary.",
+                        "same_session",
+                    ),
                 ],
                 recommended_answer="Until mitigated",
                 proposed_revision="The FVG remains valid until mitigated or until the session ends, whichever comes first.",
@@ -146,7 +189,15 @@ class ClarificationQuestionEngine:
         ]
 
     def _order_block_question(self, text: str) -> list[ClarificationQuestion]:
-        if "order block" not in text or any(token in text for token in ("last bullish candle", "last bearish candle", "engulfing", "mitigation")):
+        if "order block" not in text or any(
+            token in text
+            for token in (
+                "last bullish candle",
+                "last bearish candle",
+                "engulfing",
+                "mitigation",
+            )
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -154,9 +205,19 @@ class ClarificationQuestionEngine:
                 prompt="Which candle defines the order block used by the setup?",
                 context="Order block is referenced without a deterministic candle-selection rule.",
                 options=[
-                    ClarificationOption("Last opposing candle before displacement (Recommended)", "Most codable default.", "last_opposing"),
-                    ClarificationOption("Engulfing candle only", "Stricter but narrower.", "engulfing"),
-                    ClarificationOption("Highest-volume candle", "Requires volume dependency.", "highest_volume"),
+                    ClarificationOption(
+                        "Last opposing candle before displacement (Recommended)",
+                        "Most codable default.",
+                        "last_opposing",
+                    ),
+                    ClarificationOption(
+                        "Engulfing candle only", "Stricter but narrower.", "engulfing"
+                    ),
+                    ClarificationOption(
+                        "Highest-volume candle",
+                        "Requires volume dependency.",
+                        "highest_volume",
+                    ),
                 ],
                 recommended_answer="Last opposing candle before displacement",
                 proposed_revision="Define the order block as the last opposing candle before the displacement leg that breaks structure.",
@@ -165,7 +226,15 @@ class ClarificationQuestionEngine:
         ]
 
     def _sweep_timeout_question(self, text: str) -> list[ClarificationQuestion]:
-        if "sweep" not in text or any(token in text for token in ("timeout", "within 3 candles", "within 4 bars", "cancel the setup")):
+        if "sweep" not in text or any(
+            token in text
+            for token in (
+                "timeout",
+                "within 3 candles",
+                "within 4 bars",
+                "cancel the setup",
+            )
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -173,9 +242,19 @@ class ClarificationQuestionEngine:
                 prompt="How many candles after a sweep may the setup remain active?",
                 context="Sweep logic exists without an expiry window.",
                 options=[
-                    ClarificationOption("3 candles (Recommended)", "Short and replay-friendly.", "3_candles"),
-                    ClarificationOption("5 candles", "Allows slower confirmation.", "5_candles"),
-                    ClarificationOption("Until session change", "Expires only at session boundary.", "session_change"),
+                    ClarificationOption(
+                        "3 candles (Recommended)",
+                        "Short and replay-friendly.",
+                        "3_candles",
+                    ),
+                    ClarificationOption(
+                        "5 candles", "Allows slower confirmation.", "5_candles"
+                    ),
+                    ClarificationOption(
+                        "Until session change",
+                        "Expires only at session boundary.",
+                        "session_change",
+                    ),
                 ],
                 recommended_answer="3 candles",
                 proposed_revision="If confirmation does not occur within 3 candles after the sweep, cancel the setup.",
@@ -184,7 +263,9 @@ class ClarificationQuestionEngine:
         ]
 
     def _cancellation_question(self, text: str) -> list[ClarificationQuestion]:
-        if any(token in text for token in ("cancel", "invalidation", "invalid", "reject")):
+        if any(
+            token in text for token in ("cancel", "invalidation", "invalid", "reject")
+        ):
             return []
         return [
             ClarificationQuestion(
@@ -192,9 +273,21 @@ class ClarificationQuestionEngine:
                 prompt="What exact condition cancels the setup before entry?",
                 context="The specification lacks explicit cancellation logic.",
                 options=[
-                    ClarificationOption("Cancel on timeout or opposite close (Recommended)", "Most operationally safe default.", "timeout_or_opposite_close"),
-                    ClarificationOption("Cancel only on session change", "Looser setup persistence.", "session_change"),
-                    ClarificationOption("Cancel only on opposite structure break", "Structure-only invalidation.", "opposite_break"),
+                    ClarificationOption(
+                        "Cancel on timeout or opposite close (Recommended)",
+                        "Most operationally safe default.",
+                        "timeout_or_opposite_close",
+                    ),
+                    ClarificationOption(
+                        "Cancel only on session change",
+                        "Looser setup persistence.",
+                        "session_change",
+                    ),
+                    ClarificationOption(
+                        "Cancel only on opposite structure break",
+                        "Structure-only invalidation.",
+                        "opposite_break",
+                    ),
                 ],
                 recommended_answer="Cancel on timeout or opposite close",
                 proposed_revision="Cancel the setup if confirmation times out or if price closes back through the invalidation level before entry.",

@@ -13,4 +13,3 @@ class OrderValidator:
 
     def validate(self, *args, **kwargs) -> RiskResult:
         return self.risk_engine.validate_order(*args, **kwargs)
-

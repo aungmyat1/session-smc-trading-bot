@@ -12,15 +12,17 @@ import asyncio
 import inspect
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 from core.broker_interface import BrokerInterface
 
 logger = logging.getLogger(__name__)
 
 try:
-    from metaapi_cloud_sdk.clients.timeout_exception import TimeoutException as MetaAPITimeoutException
+    from metaapi_cloud_sdk.clients.timeout_exception import \
+        TimeoutException as MetaAPITimeoutException
 except Exception:  # pragma: no cover - SDK may not be installed in tests
     MetaAPITimeoutException = None
 
@@ -45,6 +47,7 @@ def _is_metaapi_timeout(exc: Exception) -> bool:
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class AccountInfo:
     balance: float
@@ -67,7 +70,7 @@ class SymbolPrice:
 class BrokerPosition:
     position_id: str
     symbol: str
-    direction: str   # 'long' | 'short'
+    direction: str  # 'long' | 'short'
     volume: float
     open_price: float
     sl: float
@@ -90,6 +93,7 @@ class OrderResult:
 
 # ── Client ────────────────────────────────────────────────────────────────────
 
+
 class MetaAPIClient(BrokerInterface):
     """
     Wraps MetaAPI RPC connection. All broker calls flow through here.
@@ -105,9 +109,9 @@ class MetaAPIClient(BrokerInterface):
     def __init__(self, token: str, account_id: str) -> None:
         self._token = token
         self._account_id = account_id
-        self._api = None
-        self._account = None
-        self._connection = None
+        self._api: Any = None
+        self._account: Any = None
+        self._connection: Any = None
         self._connected: bool = False
 
     # ── RPC wrapper ───────────────────────────────────────────────────────────
@@ -142,7 +146,8 @@ class MetaAPIClient(BrokerInterface):
                 raise
             logger.error(
                 "MetaAPI %s timeout after %.0fs — marking disconnected",
-                action, timeout_s,
+                action,
+                timeout_s,
             )
             self._connected = False
             raise asyncio.TimeoutError(str(exc)) from exc
@@ -170,13 +175,19 @@ class MetaAPIClient(BrokerInterface):
 
         if self._account.state not in ("DEPLOYING", "DEPLOYED"):
             logger.info("Deploying MetaAPI account…")
-            await self._await_metaapi(self._account.deploy(), timeout_s=90.0, action="deploy")
+            await self._await_metaapi(
+                self._account.deploy(), timeout_s=90.0, action="deploy"
+            )
 
         logger.info("Waiting for broker connection…")
-        await self._await_metaapi(self._account.wait_connected(), timeout_s=90.0, action="wait_connected")
+        await self._await_metaapi(
+            self._account.wait_connected(), timeout_s=90.0, action="wait_connected"
+        )
 
         self._connection = self._account.get_rpc_connection()
-        await self._await_metaapi(self._connection.connect(), timeout_s=90.0, action="connect")
+        await self._await_metaapi(
+            self._connection.connect(), timeout_s=90.0, action="connect"
+        )
         await self._await_metaapi(
             self._connection.wait_synchronized(60),
             timeout_s=90.0,
@@ -184,7 +195,9 @@ class MetaAPIClient(BrokerInterface):
         )
 
         self._connected = True
-        logger.info("MetaAPI connected (account=%s  live=%s)", self._account_id, LIVE_TRADING)
+        logger.info(
+            "MetaAPI connected (account=%s  live=%s)", self._account_id, LIVE_TRADING
+        )
 
     async def disconnect(self) -> None:
         self._connected = False
@@ -214,9 +227,13 @@ class MetaAPIClient(BrokerInterface):
             # rehydrate through MetaAPI.
             if self._account is None:
                 if self._connection is None:
-                    logger.error("reconnect() called but no account or connection exists")
+                    logger.error(
+                        "reconnect() called but no account or connection exists"
+                    )
                     return False
-                logger.info("MetaAPI reconnect: account object missing — reusing existing connection")
+                logger.info(
+                    "MetaAPI reconnect: account object missing — reusing existing connection"
+                )
                 await self._await_metaapi(
                     self._connection.wait_synchronized(60),
                     timeout_s=90.0,
@@ -238,9 +255,13 @@ class MetaAPIClient(BrokerInterface):
                 self._connection = None
 
             # Re-create RPC connection on existing (still valid) account object
-            await self._await_metaapi(self._account.wait_connected(), timeout_s=90.0, action="wait_connected")
+            await self._await_metaapi(
+                self._account.wait_connected(), timeout_s=90.0, action="wait_connected"
+            )
             self._connection = self._account.get_rpc_connection()
-            await self._await_metaapi(self._connection.connect(), timeout_s=90.0, action="connect")
+            await self._await_metaapi(
+                self._connection.connect(), timeout_s=90.0, action="connect"
+            )
             await self._await_metaapi(
                 self._connection.wait_synchronized(60),
                 timeout_s=90.0,
@@ -288,7 +309,9 @@ class MetaAPIClient(BrokerInterface):
         bid = float(raw.get("bid", 0.0))
         ask = float(raw.get("ask", 0.0))
         spread_pips = round((ask - bid) / 0.0001, 2)
-        return SymbolPrice(bid=bid, ask=ask, spread_pips=spread_pips, time=raw.get("time", ""))
+        return SymbolPrice(
+            bid=bid, ask=ask, spread_pips=spread_pips, time=raw.get("time", "")
+        )
 
     async def get_price(self, symbol: str) -> SymbolPrice:
         return await self.get_symbol_price(symbol)
@@ -309,7 +332,9 @@ class MetaAPIClient(BrokerInterface):
             if not ok:
                 logger.warning(
                     "Spread too wide for %s: %.1f > %.1f pip",
-                    symbol, price.spread_pips, max_spread,
+                    symbol,
+                    price.spread_pips,
+                    max_spread,
                 )
             return ok, price.spread_pips
         except Exception as e:
@@ -338,25 +363,41 @@ class MetaAPIClient(BrokerInterface):
         # connection checklist. Older SDK shapes may expose candle history on
         # the RPC connection, so keep a narrow fallback for compatibility.
         raw = None
-        if self._account is not None and hasattr(self._account, "get_historical_candles"):
+        if self._account is not None and hasattr(
+            self._account, "get_historical_candles"
+        ):
             try:
                 raw = await self._rpc(
-                    self._account.get_historical_candles(symbol, timeframe, end_time, count)
+                    self._account.get_historical_candles(
+                        symbol, timeframe, end_time, count
+                    )
                 )
             except AttributeError:
                 raw = None
 
-        if raw is None and self._connection is not None and hasattr(self._connection, "get_historical_candles"):
+        if (
+            raw is None
+            and self._connection is not None
+            and hasattr(self._connection, "get_historical_candles")
+        ):
             try:
                 raw = await self._rpc(
-                    self._connection.get_historical_candles(symbol, timeframe, end_time, count)
+                    self._connection.get_historical_candles(
+                        symbol, timeframe, end_time, count
+                    )
                 )
             except AttributeError:
                 raw = None
 
-        if raw is None and self._connection is not None and hasattr(self._connection, "get_candles"):
+        if (
+            raw is None
+            and self._connection is not None
+            and hasattr(self._connection, "get_candles")
+        ):
             try:
-                raw = await self._rpc(self._connection.get_candles(symbol, timeframe, end_time, count))
+                raw = await self._rpc(
+                    self._connection.get_candles(symbol, timeframe, end_time, count)
+                )
             except AttributeError:
                 raw = None
 
@@ -379,7 +420,9 @@ class MetaAPIClient(BrokerInterface):
             for c in (raw or [])
         ]
 
-    async def get_open_positions(self, magic: "int | None" = None) -> list[BrokerPosition]:
+    async def get_open_positions(
+        self, magic: "int | None" = None
+    ) -> list[BrokerPosition]:
         """
         Fetch open positions, optionally filtered by magic number.
         Returns [] if not connected.
@@ -388,20 +431,24 @@ class MetaAPIClient(BrokerInterface):
             return []
         raw_list = await self._rpc(self._connection.get_positions())
         result: list[BrokerPosition] = []
-        for p in (raw_list or []):
+        for p in raw_list or []:
             if magic is not None and p.get("magic") != magic:
                 continue
-            result.append(BrokerPosition(
-                position_id=p.get("id", ""),
-                symbol=p.get("symbol", ""),
-                direction="long" if p.get("type") == "POSITION_TYPE_BUY" else "short",
-                volume=p.get("volume", 0.0),
-                open_price=p.get("openPrice", 0.0),
-                sl=p.get("stopLoss", 0.0),
-                tp=p.get("takeProfit", 0.0),
-                profit=p.get("profit", 0.0),
-                magic=p.get("magic", 0),
-            ))
+            result.append(
+                BrokerPosition(
+                    position_id=p.get("id", ""),
+                    symbol=p.get("symbol", ""),
+                    direction=(
+                        "long" if p.get("type") == "POSITION_TYPE_BUY" else "short"
+                    ),
+                    volume=p.get("volume", 0.0),
+                    open_price=p.get("openPrice", 0.0),
+                    sl=p.get("stopLoss", 0.0),
+                    tp=p.get("takeProfit", 0.0),
+                    profit=p.get("profit", 0.0),
+                    magic=p.get("magic", 0),
+                )
+            )
         return result
 
     async def get_positions(self) -> list[BrokerPosition]:
@@ -428,7 +475,11 @@ class MetaAPIClient(BrokerInterface):
         if not LIVE_TRADING:
             logger.info(
                 "[DRY RUN] Would place %s %s vol=%.2f sl=%.5f tp=%.5f",
-                direction.upper(), symbol, volume, sl, tp,
+                direction.upper(),
+                symbol,
+                volume,
+                sl,
+                tp,
             )
             return OrderResult(
                 order_id="DRY_RUN",
@@ -446,15 +497,22 @@ class MetaAPIClient(BrokerInterface):
 
         opts = {"magic": magic, "comment": comment}
         if direction == "long":
-            result = await self._rpc(self._connection.create_market_buy_order(symbol, volume, sl, tp, opts))
+            result = await self._rpc(
+                self._connection.create_market_buy_order(symbol, volume, sl, tp, opts)
+            )
         else:
-            result = await self._rpc(self._connection.create_market_sell_order(symbol, volume, sl, tp, opts))
+            result = await self._rpc(
+                self._connection.create_market_sell_order(symbol, volume, sl, tp, opts)
+            )
 
         order_id = str(result.get("orderId", result.get("id", "unknown")))
         entry = float(result.get("openPrice", 0.0))
         logger.info(
             "Order placed: %s %s id=%s entry=%.5f",
-            direction.upper(), symbol, order_id, entry,
+            direction.upper(),
+            symbol,
+            order_id,
+            entry,
         )
         return OrderResult(
             order_id=order_id,
@@ -487,12 +545,16 @@ class MetaAPIClient(BrokerInterface):
             comment=str(getattr(order, "comment", "")),
         )
 
-    async def modify_order(self, order_id: str, sl: float | None = None, tp: float | None = None) -> bool:
+    async def modify_order(
+        self, order_id: str, sl: float | None = None, tp: float | None = None
+    ) -> bool:
         if not self._connected or self._connection is None:
             return False
         target = None
         for position in await self.get_open_positions():
-            if position.position_id == order_id or position.position_id.endswith(order_id):
+            if position.position_id == order_id or position.position_id.endswith(
+                order_id
+            ):
                 target = position
                 break
         if target is None or not hasattr(self._connection, "modify_position"):
@@ -512,7 +574,9 @@ class MetaAPIClient(BrokerInterface):
             return False
         target = None
         for position in await self.get_open_positions():
-            if position.position_id == order_id or position.position_id.endswith(order_id):
+            if position.position_id == order_id or position.position_id.endswith(
+                order_id
+            ):
                 target = position
                 break
         if target is None:
@@ -528,9 +592,9 @@ class MetaAPIClient(BrokerInterface):
     async def place_limit_order(
         self,
         symbol: str,
-        direction: str,   # "long" | "short"
+        direction: str,  # "long" | "short"
         volume: float,
-        price: float,     # limit price
+        price: float,  # limit price
         sl: float,
         tp: float,
         magic: int,
@@ -540,29 +604,54 @@ class MetaAPIClient(BrokerInterface):
         if not LIVE_TRADING:
             logger.info(
                 "[DRY RUN] Would place LIMIT %s %s vol=%.2f price=%.5f sl=%.5f tp=%.5f",
-                direction.upper(), symbol, volume, price, sl, tp,
+                direction.upper(),
+                symbol,
+                volume,
+                price,
+                sl,
+                tp,
             )
             return OrderResult(
                 order_id="DRY_RUN_LIMIT",
-                symbol=symbol, direction=direction,
-                volume=volume, entry_price=price, sl=sl, tp=tp, dry_run=True,
+                symbol=symbol,
+                direction=direction,
+                volume=volume,
+                entry_price=price,
+                sl=sl,
+                tp=tp,
+                dry_run=True,
             )
         if not self._connected:
             raise RuntimeError("Not connected — cannot place limit order")
         opts = {"magic": magic, "comment": comment}
         if direction == "long":
             result = await self._rpc(
-                self._connection.create_limit_buy_order(symbol, volume, price, sl, tp, opts)
+                self._connection.create_limit_buy_order(
+                    symbol, volume, price, sl, tp, opts
+                )
             )
         else:
             result = await self._rpc(
-                self._connection.create_limit_sell_order(symbol, volume, price, sl, tp, opts)
+                self._connection.create_limit_sell_order(
+                    symbol, volume, price, sl, tp, opts
+                )
             )
         order_id = str(result.get("orderId", result.get("id", "unknown")))
-        logger.info("Limit order placed: %s %s id=%s price=%.5f", direction, symbol, order_id, price)
+        logger.info(
+            "Limit order placed: %s %s id=%s price=%.5f",
+            direction,
+            symbol,
+            order_id,
+            price,
+        )
         return OrderResult(
-            order_id=order_id, symbol=symbol, direction=direction,
-            volume=volume, entry_price=price, sl=sl, tp=tp,
+            order_id=order_id,
+            symbol=symbol,
+            direction=direction,
+            volume=volume,
+            entry_price=price,
+            sl=sl,
+            tp=tp,
         )
 
     async def cancel_order(self, order_id: str) -> bool:

@@ -4,11 +4,15 @@ __test__ = False
 
 from typing import Any
 
-from execution_validation.common import CheckResult
 from execution_simulator.broker.virtual_broker import VirtualBroker
+from execution_validation.common import CheckResult
 
 
-def assess_recovery(snapshot: dict, expected_open_positions: int, expected_risk_state: dict[str, Any] | None = None) -> CheckResult:
+def assess_recovery(
+    snapshot: dict,
+    expected_open_positions: int,
+    expected_risk_state: dict[str, Any] | None = None,
+) -> CheckResult:
     restored = VirtualBroker.restore_state(snapshot)
     open_positions = restored._positions.open_positions()
     passed = len(open_positions) == expected_open_positions

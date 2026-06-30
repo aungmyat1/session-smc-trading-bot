@@ -1,8 +1,9 @@
 """Tests: correlation manager blocking."""
 
+from datetime import datetime, timezone
+
 from core.correlation_manager import CorrelationManager
 from core.signal import Signal
-from datetime import datetime, timezone
 
 
 def _sig(symbol="EURUSD", action="BUY") -> Signal:

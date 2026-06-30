@@ -15,7 +15,9 @@ class MarketEvent:
 
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
-            object.__setattr__(self, "timestamp", self.timestamp.replace(tzinfo=timezone.utc))
+            object.__setattr__(
+                self, "timestamp", self.timestamp.replace(tzinfo=timezone.utc)
+            )
 
 
 class EventStream:
@@ -26,7 +28,9 @@ class EventStream:
         self._index = 0
 
     @classmethod
-    def from_records(cls, rows: Iterable[dict], symbol: str | None = None) -> "EventStream":
+    def from_records(
+        cls, rows: Iterable[dict], symbol: str | None = None
+    ) -> "EventStream":
         events = []
         for row in rows:
             ts = row.get("timestamp") or row.get("timestamp_utc") or row.get("time")
@@ -68,4 +72,3 @@ class EventStream:
             if event is None:
                 return
             yield event
-

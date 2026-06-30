@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
-from execution.metaapi_client import OrderResult
 from execution_simulator.replay_engine.event_stream import MarketEvent
 
 
@@ -31,7 +30,11 @@ class FillEngine:
     ) -> None:
         self.latency_ms = latency_ms
         self.slippage_points = slippage_points
-        self.point_size_by_symbol = point_size_by_symbol or {"EURUSD": 0.0001, "GBPUSD": 0.0001, "XAUUSD": 0.01}
+        self.point_size_by_symbol = point_size_by_symbol or {
+            "EURUSD": 0.0001,
+            "GBPUSD": 0.0001,
+            "XAUUSD": 0.01,
+        }
 
     def fill_order(
         self,
@@ -59,4 +62,3 @@ class FillEngine:
             latency_ms=self.latency_ms,
             filled_at=filled_at,
         )
-

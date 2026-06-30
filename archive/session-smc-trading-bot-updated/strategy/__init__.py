@@ -25,18 +25,18 @@ from typing import Optional
 @dataclass
 class Signal:
     symbol: str
-    direction: str          # 'long' | 'short'
+    direction: str  # 'long' | 'short'
     entry: float
     sl: float
     tp1: float
     tp2: float
-    setup_type: str         # 'A' | 'B' | 'C'
+    setup_type: str  # 'A' | 'B' | 'C'
     session: str
 
 
 def generate_signal(
     symbol: str,
-    candles: dict,          # {'4h': [...], '1h': [...], '15m': [...]}
+    candles: dict,  # {'4h': [...], '1h': [...], '15m': [...]}
     session: str,
 ) -> Optional[Signal]:
     """

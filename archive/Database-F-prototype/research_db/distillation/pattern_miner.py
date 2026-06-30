@@ -3,8 +3,9 @@ pattern_miner.py
 Discovers statistical patterns in winning vs losing trades.
 """
 
-import polars as pl
 from pathlib import Path
+
+import polars as pl
 
 TRADES_PATH = Path("research_db/trades/trades.parquet")
 
@@ -31,12 +32,14 @@ def mine_patterns(df: pl.DataFrame) -> pl.DataFrame:
     """Compute win rate, loss rate and expectancy per feature combination."""
     patterns = (
         df.group_by(["sweep", "has_ob", "has_fvg", "session", "direction"])
-        .agg([
-            pl.count().alias("trades"),
-            pl.col("result_r").mean().alias("avg_r"),
-            ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
-            ((pl.col("result_r") <= 0).mean() * 100).alias("loss_rate"),
-        ])
+        .agg(
+            [
+                pl.count().alias("trades"),
+                pl.col("result_r").mean().alias("avg_r"),
+                ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
+                ((pl.col("result_r") <= 0).mean() * 100).alias("loss_rate"),
+            ]
+        )
         .with_columns(
             (pl.col("avg_r") * (pl.col("win_rate") / 100)).alias("expectancy")
         )

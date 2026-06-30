@@ -44,33 +44,43 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from replay.engine   import ReplayEngine, ReplayConfig
-from replay.metrics  import gate_check, print_summary
-from replay.exporter import export_csv, export_report, export_smoke_test
+from replay.engine import ReplayConfig, ReplayEngine  # noqa: E402
+from replay.exporter import (export_csv, export_report,  # noqa: E402
+                             export_smoke_test)
+from replay.metrics import gate_check, print_summary  # noqa: E402
 
 # Default date range — 3 years back from today
-_DEFAULT_END   = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-_DEFAULT_START = (datetime.now(timezone.utc) - timedelta(days=365 * 3)).strftime("%Y-%m-%d")
+_DEFAULT_END = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+_DEFAULT_START = (datetime.now(timezone.utc) - timedelta(days=365 * 3)).strftime(
+    "%Y-%m-%d"
+)
 
-_ALL_STRATEGIES = ["ST-A2", "LondonBreakout", "NYMomentum", "AdaptiveSMC", "VWAPBreakout"]
+_ALL_STRATEGIES = [
+    "ST-A2",
+    "LondonBreakout",
+    "NYMomentum",
+    "AdaptiveSMC",
+    "VWAPBreakout",
+]
 _DEFAULT_SYMBOLS = ["EURUSD", "GBPUSD"]
 
 # ── Preflight check ───────────────────────────────────────────────────────────
+
 
 def preflight(symbols: list[str], data_dir: Path) -> bool:
     """Check that required data files exist before running the full replay."""
     ok = True
     print("\n[Preflight] Checking data files ...")
     for sym in symbols:
-        sym_key  = sym[:3] + "_" + sym[3:]
+        sym_key = sym[:3] + "_" + sym[3:]
         m15_path = data_dir / f"{sym_key}_M15.csv"
-        h4_path  = data_dir / f"{sym_key}_H4.csv"
+        h4_path = data_dir / f"{sym_key}_H4.csv"
 
         if not m15_path.exists():
             print(f"  ❌ Missing: {m15_path.name}")
@@ -98,6 +108,7 @@ def preflight(symbols: list[str], data_dir: Path) -> bool:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     p = argparse.ArgumentParser(
         description="Historical replay for all 5 strategies",
@@ -109,28 +120,46 @@ def main() -> None:
             "  python3 scripts/run_replay.py --symbols EURUSD --smoke-only\n"
         ),
     )
-    p.add_argument("--symbols",    nargs="+", default=_DEFAULT_SYMBOLS,
-                   help=f"Symbols to replay. Default: {_DEFAULT_SYMBOLS}")
-    p.add_argument("--start",      default=_DEFAULT_START,
-                   help=f"Start date YYYY-MM-DD. Default: {_DEFAULT_START}")
-    p.add_argument("--end",        default=_DEFAULT_END,
-                   help=f"End date YYYY-MM-DD. Default: {_DEFAULT_END}")
-    p.add_argument("--strategies", nargs="+", default=_ALL_STRATEGIES,
-                   choices=_ALL_STRATEGIES, metavar="NAME",
-                   help=f"Strategies to include. Default: all 5")
-    p.add_argument("--smoke-only", action="store_true",
-                   help="Run smoke test only (signal counts, no full metrics)")
-    p.add_argument("--no-preflight", action="store_true",
-                   help="Skip data file existence check")
-    p.add_argument("--data-dir", default=None,
-                   help="Override data directory path")
+    p.add_argument(
+        "--symbols",
+        nargs="+",
+        default=_DEFAULT_SYMBOLS,
+        help=f"Symbols to replay. Default: {_DEFAULT_SYMBOLS}",
+    )
+    p.add_argument(
+        "--start",
+        default=_DEFAULT_START,
+        help=f"Start date YYYY-MM-DD. Default: {_DEFAULT_START}",
+    )
+    p.add_argument(
+        "--end",
+        default=_DEFAULT_END,
+        help=f"End date YYYY-MM-DD. Default: {_DEFAULT_END}",
+    )
+    p.add_argument(
+        "--strategies",
+        nargs="+",
+        default=_ALL_STRATEGIES,
+        choices=_ALL_STRATEGIES,
+        metavar="NAME",
+        help="Strategies to include. Default: all 5",
+    )
+    p.add_argument(
+        "--smoke-only",
+        action="store_true",
+        help="Run smoke test only (signal counts, no full metrics)",
+    )
+    p.add_argument(
+        "--no-preflight", action="store_true", help="Skip data file existence check"
+    )
+    p.add_argument("--data-dir", default=None, help="Override data directory path")
 
     args = p.parse_args()
 
     data_dir = Path(args.data_dir) if args.data_dir else (_ROOT / "data" / "historical")
 
     print(f"\n{'='*60}")
-    print(f"  Historical Replay — Pre-Demo Validation")
+    print("  Historical Replay — Pre-Demo Validation")
     print(f"  Period   : {args.start} → {args.end}")
     print(f"  Symbols  : {args.symbols}")
     print(f"  Strategies: {args.strategies}")
@@ -145,11 +174,11 @@ def main() -> None:
 
     # ── Build config and run engine ───────────────────────────────────────────
     cfg = ReplayConfig(
-        symbols    = args.symbols,
-        start      = args.start,
-        end        = args.end,
-        data_dir   = data_dir,
-        strategies = args.strategies,
+        symbols=args.symbols,
+        start=args.start,
+        end=args.end,
+        data_dir=data_dir,
+        strategies=args.strategies,
     )
 
     engine = ReplayEngine(cfg)
@@ -197,12 +226,12 @@ def main() -> None:
 
     # ── Export outputs ────────────────────────────────────────────────────────
     print("[Exporting results ...]")
-    csv_path    = export_csv(result)
+    csv_path = export_csv(result)
     report_path = export_report(result, gate)
 
     # ── Final verdict ─────────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print(f"  OUTPUT FILES")
+    print("  OUTPUT FILES")
     print(f"  Trades  : {csv_path.relative_to(_ROOT)}")
     print(f"  Report  : {report_path.relative_to(_ROOT)}")
     print(f"  Smoke   : {smoke_path.relative_to(_ROOT)}")
@@ -221,10 +250,12 @@ def main() -> None:
         print("  Next step: connect to Vantage Demo (MetaAPI)")
         print("             python3 scripts/run_st_a2_demo.py")
     else:
-        failed = [g.strategy for g in gate.strategies if g.mode == "demo" and not g.overall]
+        failed = [
+            g.strategy for g in gate.strategies if g.mode == "demo" and not g.overall
+        ]
         print(f"  ❌ REPLAY GATE FAIL — {', '.join(failed)}")
         print(f"     Review: {report_path.relative_to(_ROOT)}")
-        print(f"     Do NOT connect to Vantage Demo until all demo strategies pass.")
+        print("     Do NOT connect to Vantage Demo until all demo strategies pass.")
     print()
 
 

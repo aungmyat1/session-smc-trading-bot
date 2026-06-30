@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 @dataclass(slots=True)
@@ -62,4 +62,3 @@ class OrderManager:
 
     def all(self) -> list[VirtualOrder]:
         return list(self._orders.values())
-

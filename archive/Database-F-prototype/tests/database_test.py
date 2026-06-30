@@ -11,10 +11,11 @@ from pathlib import Path
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
+from datetime import date, datetime
+
 from research_database.database import SessionLocal
-from research_database.models import Trade, ReplayRun, Strategy
-from datetime import datetime, date
+from research_database.models import ReplayRun, Strategy, Trade
+from sqlalchemy import create_engine, text
 
 
 def test_connection():
@@ -42,7 +43,7 @@ def test_insert_trade():
             strategy_name="ST-A2",
             version="v1",
             description="Test strategy",
-            status="active"
+            status="active",
         )
         db.add(strategy)
         db.commit()
@@ -54,7 +55,7 @@ def test_insert_trade():
             symbol="EURUSD",
             start_date=date(2024, 6, 1),
             end_date=date(2024, 6, 30),
-            data_source="parquet"
+            data_source="parquet",
         )
         db.add(run)
         db.commit()
@@ -75,7 +76,7 @@ def test_insert_trade():
             result_r=2.4,
             profit_loss=240.0,
             exit_reason="TP_HIT",
-            session="London"
+            session="London",
         )
         db.add(trade)
         db.commit()
@@ -129,7 +130,7 @@ def main():
         test_connection(),
         test_insert_trade(),
         test_query_trades(),
-        test_replay_run()
+        test_replay_run(),
     ]
 
     print("\n" + "=" * 60)

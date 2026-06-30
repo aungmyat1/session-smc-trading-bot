@@ -11,7 +11,11 @@ Usage:
 """
 
 from __future__ import annotations
-import csv, json, os, sys
+
+import csv
+import json
+import os
+import sys
 from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -20,22 +24,22 @@ sys.path.insert(0, _HERE)
 from strategy.session_liquidity.session_strategy import run_strategy
 
 REPLAY_START = "2026-01-01"
-REPLAY_END   = "2026-06-30"
-RR           = 2.0
-MAX_BARS     = 96
+REPLAY_END = "2026-06-30"
+RR = 2.0
+MAX_BARS = 96
 
 SYMBOLS = {
     "EURUSD": {
         "m15": "data/historical/EUR_USD_M15.csv",
-        "h1":  "data/historical/EUR_USD_H1.csv",
-        "h4":  "data/historical/EUR_USD_H4.csv",
+        "h1": "data/historical/EUR_USD_H1.csv",
+        "h4": "data/historical/EUR_USD_H4.csv",
         "spread_rt_pips": 1.4,
         "pip": 0.0001,
     },
     "GBPUSD": {
         "m15": "data/historical/GBP_USD_M15.csv",
-        "h1":  "data/historical/GBP_USD_H1.csv",
-        "h4":  "data/historical/GBP_USD_H4.csv",
+        "h1": "data/historical/GBP_USD_H1.csv",
+        "h4": "data/historical/GBP_USD_H4.csv",
         "spread_rt_pips": 1.8,
         "pip": 0.0001,
     },
@@ -47,18 +51,21 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def load_csv(path: str) -> list[dict]:
     rows = []
     with open(os.path.join(_HERE, path), newline="") as fh:
         for row in csv.DictReader(fh):
-            rows.append({
-                "time":   row.get("time", row.get("datetime", "")),
-                "open":   float(row["open"]),
-                "high":   float(row["high"]),
-                "low":    float(row["low"]),
-                "close":  float(row["close"]),
-                "volume": float(row.get("volume", row.get("tick_volume", 0))),
-            })
+            rows.append(
+                {
+                    "time": row.get("time", row.get("datetime", "")),
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row.get("volume", row.get("tick_volume", 0))),
+                }
+            )
     rows.sort(key=lambda r: r["time"])
     return rows
 
@@ -75,11 +82,15 @@ def simulate_trade(entry, sl, side, rr, future_bars):
     for i, bar in enumerate(future_bars[:MAX_BARS]):
         h, lo = bar["high"], bar["low"]
         if side == "long":
-            if lo <= sl: return "loss", -1.0, sl, bar["time"], i + 1
-            if h  >= tp: return "win",   rr,  tp, bar["time"], i + 1
+            if lo <= sl:
+                return "loss", -1.0, sl, bar["time"], i + 1
+            if h >= tp:
+                return "win", rr, tp, bar["time"], i + 1
         else:
-            if h  >= sl: return "loss", -1.0, sl, bar["time"], i + 1
-            if lo <= tp: return "win",   rr,  tp, bar["time"], i + 1
+            if h >= sl:
+                return "loss", -1.0, sl, bar["time"], i + 1
+            if lo <= tp:
+                return "win", rr, tp, bar["time"], i + 1
     if future_bars:
         last = future_bars[min(MAX_BARS, len(future_bars)) - 1]
         ep = last["close"]
@@ -92,9 +103,12 @@ def session_label_est(ts: str) -> str:
     try:
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         from zoneinfo import ZoneInfo
+
         h = dt.astimezone(ZoneInfo("America/New_York")).hour
-        if 2 <= h < 5:  return "london"
-        if 7 <= h < 10: return "new_york"
+        if 2 <= h < 5:
+            return "london"
+        if 7 <= h < 10:
+            return "new_york"
     except Exception:
         pass
     return "other"
@@ -104,11 +118,11 @@ def metrics(trades: list[dict]) -> dict:
     net_rs = [t["net_r"] for t in trades]
     if not net_rs:
         return {"total": 0}
-    wins   = [r for r in net_rs if r > 0]
+    wins = [r for r in net_rs if r > 0]
     losses = [r for r in net_rs if r <= 0]
-    gain   = sum(wins)
-    loss   = abs(sum(losses))
-    pf     = gain / loss if loss else float("inf")
+    gain = sum(wins)
+    loss = abs(sum(losses))
+    pf = gain / loss if loss else float("inf")
     eq, pk, mdd = 0.0, 0.0, 0.0
     for r in net_rs:
         eq += r
@@ -120,18 +134,18 @@ def metrics(trades: list[dict]) -> dict:
         wstreak = max(wstreak, cur)
         lstreak = max(lstreak, -cur)
     return {
-        "total":        len(net_rs),
-        "wins":         len(wins),
-        "losses":       len(losses),
-        "timeouts":     sum(1 for t in trades if t["outcome"] == "timeout"),
-        "win_rate":     round(len(wins) / len(net_rs) * 100, 1),
-        "gross_wins":   round(gain, 3),
+        "total": len(net_rs),
+        "wins": len(wins),
+        "losses": len(losses),
+        "timeouts": sum(1 for t in trades if t["outcome"] == "timeout"),
+        "win_rate": round(len(wins) / len(net_rs) * 100, 1),
+        "gross_wins": round(gain, 3),
         "gross_losses": round(loss, 3),
-        "net_r":        round(sum(net_rs), 3),
-        "profit_factor":round(pf, 3),
-        "avg_r":        round(sum(net_rs) / len(net_rs), 3),
-        "max_dd_r":     round(mdd, 3),
-        "best_streak":  wstreak,
+        "net_r": round(sum(net_rs), 3),
+        "profit_factor": round(pf, 3),
+        "avg_r": round(sum(net_rs) / len(net_rs), 3),
+        "max_dd_r": round(mdd, 3),
+        "best_streak": wstreak,
         "worst_streak": lstreak,
     }
 
@@ -145,8 +159,9 @@ def monthly_breakdown(trades: list[dict]) -> dict[str, dict]:
     for m, rs in sorted(by_month.items()):
         w = [r for r in rs if r > 0]
         result[m] = {
-            "trades": len(rs), "wins": len(w),
-            "wr": round(len(w)/len(rs)*100, 1),
+            "trades": len(rs),
+            "wins": len(w),
+            "wr": round(len(w) / len(rs) * 100, 1),
             "net_r": round(sum(rs), 3),
         }
     return result
@@ -161,10 +176,11 @@ def session_breakdown(trades: list[dict]) -> dict[str, dict]:
     for s, rs in by_sess.items():
         w = [r for r in rs if r > 0]
         l = [r for r in rs if r <= 0]
-        pf = sum(w)/abs(sum(l)) if l else float("inf")
+        pf = sum(w) / abs(sum(l)) if l else float("inf")
         result[s] = {
-            "trades": len(rs), "wins": len(w),
-            "wr": round(len(w)/len(rs)*100, 1),
+            "trades": len(rs),
+            "wins": len(w),
+            "wr": round(len(w) / len(rs) * 100, 1),
             "net_r": round(sum(rs), 3),
             "pf": round(pf, 3),
         }
@@ -173,15 +189,16 @@ def session_breakdown(trades: list[dict]) -> dict[str, dict]:
 
 # ── Per-symbol replay ─────────────────────────────────────────────────────────
 
+
 def run_symbol(sym: str) -> tuple[list[dict], dict]:
     cfg = SYMBOLS[sym]
-    pip  = cfg["pip"]
+    pip = cfg["pip"]
     cost = cfg["spread_rt_pips"]
 
     m15_all = load_csv(cfg["m15"])
-    h4_all  = load_csv(cfg["h4"])
+    h4_all = load_csv(cfg["h4"])
     m15_rep = filter_range(m15_all, REPLAY_START, REPLAY_END)
-    h4_rep  = filter_range(h4_all,  "2021-01-01",  REPLAY_END)
+    h4_rep = filter_range(h4_all, "2021-01-01", REPLAY_END)
 
     raw = run_strategy(m15_rep, h4_rep, sym)
     signals = list(raw[0] if isinstance(raw, tuple) else raw)
@@ -194,7 +211,7 @@ def run_symbol(sym: str) -> tuple[list[dict], dict]:
         idx = m15_idx.get(ts)
         if idx is None:
             continue
-        future = m15_all[idx + 1: idx + 1 + MAX_BARS]
+        future = m15_all[idx + 1 : idx + 1 + MAX_BARS]
         if not future:
             continue
         sl_pips = abs(sig.entry - sig.stop_loss) / pip
@@ -202,25 +219,32 @@ def run_symbol(sym: str) -> tuple[list[dict], dict]:
             sig.entry, sig.stop_loss, sig.side, RR, future
         )
         cost_r = cost / sl_pips if sl_pips > 0 else 0.0
-        net_r  = round(gross_r - cost_r, 4)
-        trades.append({
-            "symbol":     sym,
-            "entry_time": ts,
-            "exit_time":  exit_t,
-            "side":       sig.side,
-            "session":    session_label_est(ts),
-            "entry":      round(sig.entry, 5),
-            "sl":         round(sig.stop_loss, 5),
-            "tp":         round(sig.entry + abs(sig.entry - sig.stop_loss) * RR
-                                * (1 if sig.side == "long" else -1), 5),
-            "sl_pips":    round(sl_pips, 1),
-            "exit_price": round(exit_p, 5),
-            "outcome":    outcome,
-            "gross_r":    round(gross_r, 4),
-            "cost_r":     round(cost_r, 4),
-            "net_r":      net_r,
-            "bars_held":  bars,
-        })
+        net_r = round(gross_r - cost_r, 4)
+        trades.append(
+            {
+                "symbol": sym,
+                "entry_time": ts,
+                "exit_time": exit_t,
+                "side": sig.side,
+                "session": session_label_est(ts),
+                "entry": round(sig.entry, 5),
+                "sl": round(sig.stop_loss, 5),
+                "tp": round(
+                    sig.entry
+                    + abs(sig.entry - sig.stop_loss)
+                    * RR
+                    * (1 if sig.side == "long" else -1),
+                    5,
+                ),
+                "sl_pips": round(sl_pips, 1),
+                "exit_price": round(exit_p, 5),
+                "outcome": outcome,
+                "gross_r": round(gross_r, 4),
+                "cost_r": round(cost_r, 4),
+                "net_r": net_r,
+                "bars_held": bars,
+            }
+        )
 
     m = metrics(trades)
     m["symbol"] = sym
@@ -232,6 +256,7 @@ def run_symbol(sym: str) -> tuple[list[dict], dict]:
 
 
 # ── Report writers ────────────────────────────────────────────────────────────
+
 
 def write_data_report(data_info: dict) -> None:
     lines = [
@@ -300,7 +325,9 @@ def write_symbol_report(sym: str, trades: list[dict], m: dict) -> None:
         "|-------|--------|------|-----|-------|",
     ]
     for month, ms in m["monthly"].items():
-        lines.append(f"| {month} | {ms['trades']} | {ms['wins']} | {ms['wr']}% | {ms['net_r']:+.3f}R |")
+        lines.append(
+            f"| {month} | {ms['trades']} | {ms['wins']} | {ms['wr']}% | {ms['net_r']:+.3f}R |"
+        )
     lines += [
         "",
         "## Session Breakdown (EST/EDT)",
@@ -309,7 +336,7 @@ def write_symbol_report(sym: str, trades: list[dict], m: dict) -> None:
         "|---------|--------|------|-----|-------|----|",
     ]
     for sess, ss in m["sessions"].items():
-        pf_str = f"{ss['pf']:.3f}" if ss['pf'] != float("inf") else "∞"
+        pf_str = f"{ss['pf']:.3f}" if ss["pf"] != float("inf") else "∞"
         lines.append(
             f"| {sess.capitalize()} | {ss['trades']} | {ss['wins']} | "
             f"{ss['wr']}% | {ss['net_r']:+.3f}R | {pf_str} |"
@@ -403,15 +430,17 @@ def write_trade_journal(all_trades: list[dict]) -> None:
 
 
 def write_final_verdict(pm: dict, sym_metrics: dict) -> None:
-    pf   = pm["profit_factor"]
+    pf = pm["profit_factor"]
     pf2x = round(pf * 0.8, 3)
-    gate_pf    = pf > 1.0
-    gate_pf2x  = pf2x > 1.0
+    gate_pf = pf > 1.0
+    gate_pf2x = pf2x > 1.0
     gate_count = pm["total"] >= 30
-    gate_dd    = pm["max_dd_r"] < 10.0
-    critical   = []
-    if not gate_pf:   critical.append("Profit Factor below 1.0")
-    if not gate_dd:   critical.append("Max drawdown ≥ 10R")
+    gate_dd = pm["max_dd_r"] < 10.0
+    critical = []
+    if not gate_pf:
+        critical.append("Profit Factor below 1.0")
+    if not gate_dd:
+        critical.append("Max drawdown ≥ 10R")
 
     if len(critical) == 0 and gate_pf and gate_pf2x and gate_dd:
         verdict = "PASS"
@@ -468,7 +497,9 @@ def write_final_verdict(pm: dict, sym_metrics: dict) -> None:
         "|--------|--------|----|-------|",
     ]
     for sym, m in sym_metrics.items():
-        lines.append(f"| {sym} | {m['total']} | {m['profit_factor']} | {m['net_r']:+.3f}R |")
+        lines.append(
+            f"| {sym} | {m['total']} | {m['profit_factor']} | {m['net_r']:+.3f}R |"
+        )
     lines += [
         "",
         "## XAUUSD",
@@ -507,20 +538,21 @@ def write_final_verdict(pm: dict, sym_metrics: dict) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     # ── Data info ──────────────────────────────────────────────────────────
     data_info = {}
     for sym, cfg in SYMBOLS.items():
         for tf, path in [("M15", cfg["m15"]), ("H1", cfg["h1"]), ("H4", cfg["h4"])]:
             rows = load_csv(path)
-            rep  = filter_range(rows, REPLAY_START, REPLAY_END)
-            key  = f"{sym}_{tf}"
+            rep = filter_range(rows, REPLAY_START, REPLAY_END)
+            key = f"{sym}_{tf}"
             data_info[key] = {
-                "total":   len(rows),
-                "replay":  len(rep),
-                "start":   rows[0]["time"][:10],
-                "end":     rows[-1]["time"][:10],
-                "dups":    0,
+                "total": len(rows),
+                "replay": len(rep),
+                "start": rows[0]["time"][:10],
+                "end": rows[-1]["time"][:10],
+                "dups": 0,
             }
     write_data_report(data_info)
 
@@ -537,7 +569,7 @@ def main():
     # ── Portfolio metrics ──────────────────────────────────────────────────
     all_trades.sort(key=lambda t: t["entry_time"])
     pm = metrics(all_trades)
-    pm["monthly"]  = monthly_breakdown(all_trades)
+    pm["monthly"] = monthly_breakdown(all_trades)
     pm["sessions"] = session_breakdown(all_trades)
 
     write_portfolio_report(all_trades, pm, sym_metrics)
@@ -549,16 +581,21 @@ def main():
     print(f"  PORTFOLIO REPLAY  {REPLAY_START} → {REPLAY_END}")
     print("=" * 56)
     for sym, m in sym_metrics.items():
-        print(f"  {sym}: {m['total']} trades  PF={m['profit_factor']}  "
-              f"Net={m['net_r']:+.3f}R  DD={m['max_dd_r']:.3f}R")
+        print(
+            f"  {sym}: {m['total']} trades  PF={m['profit_factor']}  "
+            f"Net={m['net_r']:+.3f}R  DD={m['max_dd_r']:.3f}R"
+        )
     print(f"  {'─'*50}")
-    print(f"  PORTFOLIO: {pm['total']} trades  PF={pm['profit_factor']}  "
-          f"Net={pm['net_r']:+.3f}R  DD={pm['max_dd_r']:.3f}R  WR={pm['win_rate']}%")
+    print(
+        f"  PORTFOLIO: {pm['total']} trades  PF={pm['profit_factor']}  "
+        f"Net={pm['net_r']:+.3f}R  DD={pm['max_dd_r']:.3f}R  WR={pm['win_rate']}%"
+    )
     print("=" * 56)
     print(f"  Reports → {OUT_DIR}/")
 
     # Copy results to the secondary docs path too
     import shutil
+
     alt_out = "/home/aungp/session-smc-trading-bot-updated/docs/replay_results"
     os.makedirs(alt_out, exist_ok=True)
     for fname in os.listdir(OUT_DIR):

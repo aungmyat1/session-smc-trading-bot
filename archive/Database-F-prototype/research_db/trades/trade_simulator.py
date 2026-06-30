@@ -5,7 +5,8 @@ Main entry point for Stage 4 — Trade Database Simulation Engine
 """
 
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
+
 import polars as pl
 
 # When run directly, import from same folder

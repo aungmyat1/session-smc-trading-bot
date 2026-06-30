@@ -50,7 +50,9 @@ def _sha256(path: Path) -> str:
 
 
 def _passphrase_file(passphrase: str, directory: Path) -> Path:
-    handle = tempfile.NamedTemporaryFile("w", dir=directory, prefix=".passphrase-", delete=False)
+    handle = tempfile.NamedTemporaryFile(
+        "w", dir=directory, prefix=".passphrase-", delete=False
+    )
     try:
         handle.write(passphrase)
         handle.flush()
@@ -69,7 +71,14 @@ def backup(database_url: str, output: Path, passphrase: str) -> Path:
         temporary = Path(temporary_dir)
         dump = temporary / "control-plane.dump"
         subprocess.run(
-            ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(dump)],
+            [
+                "pg_dump",
+                "--format=custom",
+                "--no-owner",
+                "--no-acl",
+                "--file",
+                str(dump),
+            ],
             env=_libpq_environment(database_url),
             check=True,
         )
@@ -77,8 +86,17 @@ def backup(database_url: str, output: Path, passphrase: str) -> Path:
         try:
             subprocess.run(
                 [
-                    "gpg", "--batch", "--yes", "--symmetric", "--cipher-algo", "AES256",
-                    "--passphrase-file", str(passphrase_path), "--output", str(output), str(dump),
+                    "gpg",
+                    "--batch",
+                    "--yes",
+                    "--symmetric",
+                    "--cipher-algo",
+                    "AES256",
+                    "--passphrase-file",
+                    str(passphrase_path),
+                    "--output",
+                    str(output),
+                    str(dump),
                 ],
                 check=True,
             )
@@ -98,7 +116,9 @@ def backup(database_url: str, output: Path, passphrase: str) -> Path:
     return output
 
 
-def restore(database_url: str, backup_path: Path, passphrase: str, confirm: str) -> None:
+def restore(
+    database_url: str, backup_path: Path, passphrase: str, confirm: str
+) -> None:
     if confirm != "CONFIRM-RESTORE-CONTROL-PLANE":
         raise PermissionError("restore requires CONFIRM-RESTORE-CONTROL-PLANE")
     backup_path = backup_path.resolve()
@@ -113,15 +133,30 @@ def restore(database_url: str, backup_path: Path, passphrase: str, confirm: str)
         try:
             subprocess.run(
                 [
-                    "gpg", "--batch", "--yes", "--decrypt", "--passphrase-file", str(passphrase_path),
-                    "--output", str(dump), str(backup_path),
+                    "gpg",
+                    "--batch",
+                    "--yes",
+                    "--decrypt",
+                    "--passphrase-file",
+                    str(passphrase_path),
+                    "--output",
+                    str(dump),
+                    str(backup_path),
                 ],
                 check=True,
             )
         finally:
             passphrase_path.unlink(missing_ok=True)
         subprocess.run(
-            ["pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl", "--exit-on-error", str(dump)],
+            [
+                "pg_restore",
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                "--no-acl",
+                "--exit-on-error",
+                str(dump),
+            ],
             env=_libpq_environment(database_url),
             check=True,
         )

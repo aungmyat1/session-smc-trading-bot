@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Iterable
 
 from research.lineage import build_release_metadata
 
-from .data import DataAuditModule, IntegrityAuditModule, SessionAuditModule, SpreadAuditModule, TimestampAuditModule
+from .data import IntegrityAuditModule
 from .deployment_gate import DeploymentGate
-from .execution import BrokerCompareAuditModule, ExecutionReplayAuditModule, LatencyAuditModule, SlippageAuditModule, SpreadModelAuditModule
-from .monitoring import AlertEngineAuditModule, HealthChecksAuditModule, ProductionMonitorAuditModule, StrategyDriftAuditModule
 from .models import AuditContext, AuditReport, AuditResult
-from .regime import NewsAuditModule, RegimeAuditModule, SeasonalityAuditModule, SessionRegimeAuditModule, TrendAuditModule, VolatilityAuditModule
-from .risk import CapitalAllocationAuditModule, DrawdownAuditModule, PortfolioAuditModule, RiskLimitsAuditModule, RiskMetricsAuditModule
-from .robustness import ParameterStabilityAuditModule, ScenarioTestingAuditModule, SensitivityAuditModule, StressTestAuditModule
-from .rules import ExecutionAuditModule, RuleAuditModule, SignalAuditModule
-from .statistics import BootstrapAuditModule, DistributionAuditModule, ExpectancyAuditModule, MonteCarloAuditModule, PerformanceAuditModule, WalkForwardAuditModule
-
+from .monitoring import StrategyDriftAuditModule
+from .regime import RegimeAuditModule
+from .risk import RiskMetricsAuditModule
+from .robustness import ParameterStabilityAuditModule
+from .rules import ExecutionAuditModule, RuleAuditModule
+from .statistics import (MonteCarloAuditModule, PerformanceAuditModule,
+                         WalkForwardAuditModule)
 
 DEFAULT_MODULES = [
     RuleAuditModule(),
@@ -32,7 +30,9 @@ DEFAULT_MODULES = [
 
 
 class StrategyAuditEngine:
-    def __init__(self, modules: Iterable | None = None, gate: DeploymentGate | None = None) -> None:
+    def __init__(
+        self, modules: Iterable | None = None, gate: DeploymentGate | None = None
+    ) -> None:
         self.modules = list(modules or DEFAULT_MODULES)
         self.gate = gate or DeploymentGate()
 
@@ -48,7 +48,9 @@ class StrategyAuditEngine:
                 module_results=module_results,
                 overall_status=overall_status,
                 readiness_score=readiness_score,
-                deployment_status=self._deployment_level(module_results, readiness_score),
+                deployment_status=self._deployment_level(
+                    module_results, readiness_score
+                ),
                 capital_tier=self._capital_tier(readiness_score),
                 recommended_risk_pct=self._recommended_risk_pct(readiness_score),
                 expected_pf=self._expected_pf(context, module_results),
@@ -56,7 +58,10 @@ class StrategyAuditEngine:
                 expected_monthly_dd=self._expected_monthly_dd(context, module_results),
                 confidence=self._confidence(module_results),
                 summary="",
-                risk_assessment={"max_drawdown": context.historical_metrics.get("max_drawdown"), "risk": context.notes.get("risk", {})},
+                risk_assessment={
+                    "max_drawdown": context.historical_metrics.get("max_drawdown"),
+                    "risk": context.notes.get("risk", {}),
+                },
                 failure_modes=[],
                 recommendations=[],
                 release=build_release_metadata(),
@@ -67,15 +72,22 @@ class StrategyAuditEngine:
             module_results=module_results,
             overall_status=overall_status if not gate.rationale else "FAIL",
             readiness_score=readiness_score,
-            deployment_status=gate.deployment_level if not gate.rationale else gate.status,
-            capital_tier=self._capital_tier(readiness_score if not gate.rationale else min(readiness_score, 49.9)),
+            deployment_status=(
+                gate.deployment_level if not gate.rationale else gate.status
+            ),
+            capital_tier=self._capital_tier(
+                readiness_score if not gate.rationale else min(readiness_score, 49.9)
+            ),
             recommended_risk_pct=self._recommended_risk_pct(readiness_score),
             expected_pf=self._expected_pf(context, module_results),
             expected_win_rate=self._expected_win_rate(context, module_results),
             expected_monthly_dd=self._expected_monthly_dd(context, module_results),
             confidence=self._confidence(module_results),
             summary=self._summary(module_results, readiness_score, gate.rationale),
-            risk_assessment={"max_drawdown": context.historical_metrics.get("max_drawdown"), "risk": context.notes.get("risk", {})},
+            risk_assessment={
+                "max_drawdown": context.historical_metrics.get("max_drawdown"),
+                "risk": context.notes.get("risk", {}),
+            },
             failure_modes=self._failure_modes(module_results),
             recommendations=self._recommendations(module_results, gate.rationale),
             release=build_release_metadata(),
@@ -85,7 +97,21 @@ class StrategyAuditEngine:
     def _readiness_score(self, results: list[AuditResult]) -> float:
         if not results:
             return 0.0
-        weights = [1.2 if item.name in {"rule_audit", "data_audit", "execution_audit", "risk_metrics", "strategy_drift"} else 1.0 for item in results]
+        weights = [
+            (
+                1.2
+                if item.name
+                in {
+                    "rule_audit",
+                    "data_audit",
+                    "execution_audit",
+                    "risk_metrics",
+                    "strategy_drift",
+                }
+                else 1.0
+            )
+            for item in results
+        ]
         weighted = sum(r.score * w for r, w in zip(results, weights))
         return round(weighted / sum(weights), 2)
 
@@ -96,7 +122,9 @@ class StrategyAuditEngine:
             return "PARTIAL"
         return "PASS"
 
-    def _deployment_level(self, results: list[AuditResult], readiness_score: float) -> str:
+    def _deployment_level(
+        self, results: list[AuditResult], readiness_score: float
+    ) -> str:
         if readiness_score < 50:
             return "Rejected"
         if readiness_score < 65:
@@ -129,7 +157,9 @@ class StrategyAuditEngine:
             return 0.50
         return 1.00
 
-    def _expected_pf(self, context: AuditContext, results: list[AuditResult]) -> float | None:
+    def _expected_pf(
+        self, context: AuditContext, results: list[AuditResult]
+    ) -> float | None:
         if context.historical_metrics.get("profit_factor") is not None:
             return float(context.historical_metrics["profit_factor"])
         for result in results:
@@ -137,7 +167,9 @@ class StrategyAuditEngine:
                 return float(result.metrics["profit_factor"])
         return None
 
-    def _expected_win_rate(self, context: AuditContext, results: list[AuditResult]) -> float | None:
+    def _expected_win_rate(
+        self, context: AuditContext, results: list[AuditResult]
+    ) -> float | None:
         if context.historical_metrics.get("win_rate") is not None:
             return float(context.historical_metrics["win_rate"])
         for result in results:
@@ -145,7 +177,9 @@ class StrategyAuditEngine:
                 return float(result.metrics["win_rate"])
         return None
 
-    def _expected_monthly_dd(self, context: AuditContext, results: list[AuditResult]) -> float | None:
+    def _expected_monthly_dd(
+        self, context: AuditContext, results: list[AuditResult]
+    ) -> float | None:
         if context.historical_metrics.get("max_drawdown") is not None:
             return float(context.historical_metrics["max_drawdown"])
         for result in results:
@@ -159,7 +193,9 @@ class StrategyAuditEngine:
         verified = sum(1 for r in results if r.status == "PASS")
         return round(verified / len(results) * 100.0, 2)
 
-    def _summary(self, results: list[AuditResult], readiness_score: float, rationale: list[str]) -> str:
+    def _summary(
+        self, results: list[AuditResult], readiness_score: float, rationale: list[str]
+    ) -> str:
         if rationale:
             return "Deployment rejected: " + "; ".join(rationale)
         return f"Readiness score {readiness_score:.1f}% with {sum(1 for r in results if r.status == 'PASS')} passing modules."
@@ -170,7 +206,9 @@ class StrategyAuditEngine:
             failures.extend(result.errors)
         return failures
 
-    def _recommendations(self, results: list[AuditResult], rationale: list[str]) -> list[str]:
+    def _recommendations(
+        self, results: list[AuditResult], rationale: list[str]
+    ) -> list[str]:
         recs = [item.recommendation for item in results if item.recommendation]
         recs.extend(rationale)
         return [item for item in dict.fromkeys(recs) if item]

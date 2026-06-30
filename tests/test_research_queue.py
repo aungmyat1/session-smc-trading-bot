@@ -3,7 +3,9 @@
 import json
 from pathlib import Path
 
-from research.research_queue import ResearchJob, ResearchStep, load_research_queue, run_research_job, run_research_queue
+from research.research_queue import (ResearchJob, ResearchStep,
+                                     load_research_queue, run_research_job,
+                                     run_research_queue)
 
 
 def test_load_research_queue_reads_jobs(tmp_path):
@@ -39,13 +41,18 @@ def test_run_research_job_dry_run_writes_report(tmp_path):
 
 
 def test_run_research_queue_handles_missing_file(tmp_path):
-    results = run_research_queue(path=tmp_path / "missing.yaml", output_dir=tmp_path, dry_run=True)
+    results = run_research_queue(
+        path=tmp_path / "missing.yaml", output_dir=tmp_path, dry_run=True
+    )
     assert results == []
 
 
 def test_run_research_job_executes_validation_pipeline(tmp_path):
     catalog_copy = tmp_path / "strategy_catalog.yaml"
-    catalog_copy.write_text(Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    catalog_copy.write_text(
+        Path("config/strategy_catalog.yaml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
 
     replay_payload = {
         "completed_successfully": True,
@@ -61,7 +68,13 @@ def test_run_research_job_executes_validation_pipeline(tmp_path):
                 "required_features": ["sweep", "bias"],
             }
         ],
-        "state_transitions": [["IDLE", "SETUP"], ["SETUP", "CONFIRMED"], ["CONFIRMED", "ORDER_PLACED"], ["ORDER_PLACED", "FILLED"], ["FILLED", "CLOSED"]],
+        "state_transitions": [
+            ["IDLE", "SETUP"],
+            ["SETUP", "CONFIRMED"],
+            ["CONFIRMED", "ORDER_PLACED"],
+            ["ORDER_PLACED", "FILLED"],
+            ["FILLED", "CLOSED"],
+        ],
         "required_features": ["sweep", "bias"],
         "available_features": ["sweep", "bias"],
     }

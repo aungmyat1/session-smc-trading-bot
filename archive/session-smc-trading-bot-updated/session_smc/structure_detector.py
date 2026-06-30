@@ -4,7 +4,9 @@ HTF bias, ATR, CHoCH, BOS, and displacement detection.
 All functions operate on list[dict] candles and are bar-close safe:
 no index beyond len(candles)-1 is read.
 """
+
 from __future__ import annotations
+
 from typing import Optional
 
 from .swing_detector import classify_structure, last_swing_high, last_swing_low
@@ -13,6 +15,7 @@ Candle = dict
 
 
 # ── Higher-timeframe bias ─────────────────────────────────────────────────────
+
 
 def htf_bias(
     candles_4h: list[Candle],
@@ -38,6 +41,7 @@ def htf_bias(
 
 
 # ── ATR (Wilder's) ────────────────────────────────────────────────────────────
+
 
 def atr(candles: list[Candle], period: int = 14) -> list[float]:
     """
@@ -74,6 +78,7 @@ def atr(candles: list[Candle], period: int = 14) -> list[float]:
 
 
 # ── CHoCH ────────────────────────────────────────────────────────────────────
+
 
 def detect_choch(
     candles_15m: list[Candle],
@@ -116,6 +121,7 @@ def detect_choch(
 
 # ── BOS ───────────────────────────────────────────────────────────────────────
 
+
 def detect_bos(
     candles_15m: list[Candle],
     after_idx: int,
@@ -150,6 +156,7 @@ def detect_bos(
 
 
 # ── Displacement ──────────────────────────────────────────────────────────────
+
 
 def detect_displacement(
     candles_15m: list[Candle],

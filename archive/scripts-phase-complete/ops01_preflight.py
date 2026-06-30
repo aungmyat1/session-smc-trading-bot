@@ -20,9 +20,10 @@ sys.path.insert(0, str(_ROOT))
 os.environ["LIVE_TRADING"] = "false"
 
 from dotenv import load_dotenv
+
 load_dotenv(_ROOT / ".env", override=False)
 
-from execution.metaapi_client import MetaAPIClient, LIVE_TRADING
+from execution.metaapi_client import LIVE_TRADING, MetaAPIClient
 
 _UTC = timezone.utc
 _DOCS = _ROOT / "docs"
@@ -33,7 +34,9 @@ class Check:
         self._rows: list[dict] = []
 
     def add(self, name: str, passed: bool, value: str, detail: str = "") -> bool:
-        self._rows.append({"name": name, "passed": passed, "value": value, "detail": detail})
+        self._rows.append(
+            {"name": name, "passed": passed, "value": value, "detail": detail}
+        )
         icon = "✅" if passed else "❌"
         print(f"  {icon}  {name}: {value}" + (f"  ({detail})" if detail else ""))
         return passed
@@ -63,13 +66,24 @@ async def run() -> dict:
     print("\n[1] Safety guards")
     r.add("LIVE_TRADING=false", not LIVE_TRADING, str(LIVE_TRADING))
     r.add("METAAPI_TOKEN present", bool(token), "SET" if token else "MISSING")
-    r.add("METAAPI_ACCOUNT_ID present", bool(account_id),
-          f"{account_id[:8]}…" if account_id else "MISSING")
-    r.add("METAAPI_ACCOUNT_ID is new account", account_id == "026ea073-5241-4d53-9a87-b0cb791443af",
-          account_id[:8] if account_id else "?")
+    r.add(
+        "METAAPI_ACCOUNT_ID present",
+        bool(account_id),
+        f"{account_id[:8]}…" if account_id else "MISSING",
+    )
+    r.add(
+        "METAAPI_ACCOUNT_ID is new account",
+        account_id == "026ea073-5241-4d53-9a87-b0cb791443af",
+        account_id[:8] if account_id else "?",
+    )
 
     if not token or not account_id:
-        return {"ts": ts.isoformat(), "passed": False, "checks": r.rows(), "error": "missing creds"}
+        return {
+            "ts": ts.isoformat(),
+            "passed": False,
+            "checks": r.rows(),
+            "error": "missing creds",
+        }
 
     client = MetaAPIClient(token, account_id)
     balance = equity = 0.0
@@ -85,13 +99,23 @@ async def run() -> dict:
         r.add("connect()", True, "OK")
         r.add("is_connected", client.is_connected, str(client.is_connected))
         status = client.connection_status()
-        r.add("connection_status CONNECTED", status["connected"], str(status["connected"]))
-        r.add("connection_status live_trading=false", not status["live_trading"],
-              str(status["live_trading"]))
+        r.add(
+            "connection_status CONNECTED", status["connected"], str(status["connected"])
+        )
+        r.add(
+            "connection_status live_trading=false",
+            not status["live_trading"],
+            str(status["live_trading"]),
+        )
 
         print("\n[3] Account synchronization + balance")
         info = await client.get_account_info()
-        balance, equity, currency, leverage = info.balance, info.equity, info.currency, info.leverage
+        balance, equity, currency, leverage = (
+            info.balance,
+            info.equity,
+            info.currency,
+            info.leverage,
+        )
         r.add("get_account_info()", True, "OK")
         r.add("balance > 0", balance > 0, f"{balance:,.2f} {currency}")
         r.add("equity > 0", equity > 0, f"{equity:,.2f} {currency}")
@@ -100,19 +124,30 @@ async def run() -> dict:
         print("\n[4] Open positions")
         positions = await client.get_open_positions()
         n_pos = len(positions)
-        r.add("get_open_positions()", True, f"{n_pos} position(s)",
-              "clean slate" if n_pos == 0 else "WARNING: positions already open")
+        r.add(
+            "get_open_positions()",
+            True,
+            f"{n_pos} position(s)",
+            "clean slate" if n_pos == 0 else "WARNING: positions already open",
+        )
 
         print("\n[5] Spread retrieval")
         for sym in ["EURUSD", "GBPUSD"]:
             try:
                 price = await client.get_symbol_price(sym)
                 ok, pips = await client.check_spread(sym)
-                r.add(f"{sym} price", True,
-                      f"bid={price.bid:.5f}  ask={price.ask:.5f}  spread={price.spread_pips:.1f}pip",
-                      "OK" if ok else "wide (off-hours)")
-                spread_data[sym] = {"bid": price.bid, "ask": price.ask,
-                                    "spread_pips": price.spread_pips, "ok": ok}
+                r.add(
+                    f"{sym} price",
+                    True,
+                    f"bid={price.bid:.5f}  ask={price.ask:.5f}  spread={price.spread_pips:.1f}pip",
+                    "OK" if ok else "wide (off-hours)",
+                )
+                spread_data[sym] = {
+                    "bid": price.bid,
+                    "ask": price.ask,
+                    "spread_pips": price.spread_pips,
+                    "ok": ok,
+                }
             except Exception as e:
                 r.add(f"{sym} price", False, f"FAILED: {e}")
                 spread_data[sym] = {"error": str(e)}
@@ -127,26 +162,53 @@ async def run() -> dict:
             "open_positions": n_pos,
             "last_signal_time": "none",
         }
-        required = {"timestamp", "uptime_seconds", "connection_status",
-                    "balance", "equity", "open_positions", "last_signal_time"}
-        r.add("All 7 heartbeat fields present", required <= set(hb.keys()),
-              ", ".join(sorted(hb.keys())))
+        required = {
+            "timestamp",
+            "uptime_seconds",
+            "connection_status",
+            "balance",
+            "equity",
+            "open_positions",
+            "last_signal_time",
+        }
+        r.add(
+            "All 7 heartbeat fields present",
+            required <= set(hb.keys()),
+            ", ".join(sorted(hb.keys())),
+        )
 
         print("\n[7] DRY_RUN safety")
-        order = await client.place_order("EURUSD", "long", 0.01, 1.07, 1.09, 21001, "OPS01-PREFLIGHT")
-        r.add("place_order DRY_RUN", order.dry_run and order.order_id == "DRY_RUN",
-              f"id={order.order_id}  dry_run={order.dry_run}")
+        order = await client.place_order(
+            "EURUSD", "long", 0.01, 1.07, 1.09, 21001, "OPS01-PREFLIGHT"
+        )
+        r.add(
+            "place_order DRY_RUN",
+            order.dry_run and order.order_id == "DRY_RUN",
+            f"id={order.order_id}  dry_run={order.dry_run}",
+        )
 
         result = {
-            "ts": ts.isoformat(), "passed": r.all_pass(),
-            "account_id": account_id, "balance": balance, "equity": equity,
-            "currency": currency, "leverage": leverage, "open_positions": n_pos,
-            "spread": spread_data, "heartbeat_fields": hb, "checks": r.rows(),
+            "ts": ts.isoformat(),
+            "passed": r.all_pass(),
+            "account_id": account_id,
+            "balance": balance,
+            "equity": equity,
+            "currency": currency,
+            "leverage": leverage,
+            "open_positions": n_pos,
+            "spread": spread_data,
+            "heartbeat_fields": hb,
+            "checks": r.rows(),
         }
 
     except Exception as e:
         r.add("EXCEPTION", False, f"{type(e).__name__}: {e}")
-        result = {"ts": ts.isoformat(), "passed": False, "checks": r.rows(), "error": str(e)}
+        result = {
+            "ts": ts.isoformat(),
+            "passed": False,
+            "checks": r.rows(),
+            "error": str(e),
+        }
     finally:
         try:
             await client.disconnect()
@@ -168,8 +230,11 @@ def write_report(data: dict) -> None:
     checks = data.get("checks", [])
     spread = data.get("spread", {})
 
-    verdict = "### ✅ PASS — pre-flight complete, bot ready to start" if passed \
+    verdict = (
+        "### ✅ PASS — pre-flight complete, bot ready to start"
+        if passed
         else "### ❌ FAIL — resolve blockers before starting bot"
+    )
 
     lines = [
         "# OPS01_PREFLIGHT.md",
@@ -207,7 +272,9 @@ def write_report(data: dict) -> None:
             lines.append(f"| {sym} | — | — | — | ❌ {s['error']} |")
         else:
             ok_str = "✅ OK" if s.get("ok") else "⚠️ wide (off-hours)"
-            lines.append(f"| {sym} | `{s['bid']:.5f}` | `{s['ask']:.5f}` | `{s['spread_pips']:.1f}` pip | {ok_str} |")
+            lines.append(
+                f"| {sym} | `{s['bid']:.5f}` | `{s['ask']:.5f}` | `{s['spread_pips']:.1f}` pip | {ok_str} |"
+            )
 
     lines += [
         "",

@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -36,6 +35,8 @@ def test_database_url_with_percent_encoding_is_configparser_safe() -> None:
 
 
 def test_v3_does_not_recreate_v2_tables() -> None:
-    migration = (ROOT / "db/migrations/versions/002_add_control_plane_v3.py").read_text(encoding="utf-8")
+    migration = (ROOT / "db/migrations/versions/002_add_control_plane_v3.py").read_text(
+        encoding="utf-8"
+    )
     assert 'op.create_table(\n        "candles"' not in migration
     assert 'op.create_table(\n        "optimization_results"' not in migration

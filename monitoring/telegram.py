@@ -42,7 +42,9 @@ class TelegramAlerter:
         self._chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         self._session: Optional[aiohttp.ClientSession] = None
         self._alert_base_cooldown_s = int(os.getenv("TELEGRAM_ALERT_COOLDOWN_S", "900"))
-        self._alert_max_cooldown_s = int(os.getenv("TELEGRAM_ALERT_MAX_COOLDOWN_S", "3600"))
+        self._alert_max_cooldown_s = int(
+            os.getenv("TELEGRAM_ALERT_MAX_COOLDOWN_S", "3600")
+        )
         self._alert_state: dict[str, tuple[float, int]] = {}
 
     async def start(self) -> None:
@@ -63,16 +65,26 @@ class TelegramAlerter:
         """Send Markdown-formatted message (used only by typed helpers with known-safe text)."""
         await self._post(text, parse_mode="Markdown")
 
-    def _should_suppress(self, category: str, text: str, parse_mode: "str | None", suppress_key: str | None = None) -> bool:
+    def _should_suppress(
+        self,
+        category: str,
+        text: str,
+        parse_mode: "str | None",
+        suppress_key: str | None = None,
+    ) -> bool:
         key_source = suppress_key or text
         key_raw = f"{category}:{parse_mode or 'plain'}:{key_source}"
         key = hashlib.sha256(key_raw.encode("utf-8")).hexdigest()
         now = time.monotonic()
         last_sent, repeat_count = self._alert_state.get(key, (0.0, 0))
-        cooldown = min(self._alert_max_cooldown_s, self._alert_base_cooldown_s * (2 ** repeat_count))
+        cooldown = min(
+            self._alert_max_cooldown_s, self._alert_base_cooldown_s * (2**repeat_count)
+        )
         if last_sent and (now - last_sent) < cooldown:
             remaining = int(cooldown - (now - last_sent))
-            logger.info("Telegram alert suppressed for %ss (category=%s)", remaining, category)
+            logger.info(
+                "Telegram alert suppressed for %ss (category=%s)", remaining, category
+            )
             return True
         self._alert_state[key] = (now, repeat_count + 1)
         return False
@@ -88,7 +100,9 @@ class TelegramAlerter:
             logger.debug("Telegram not configured — skipping alert")
             return
         text = _clip_text(text)
-        if alert_category and self._should_suppress(alert_category, text, parse_mode, suppress_key=suppress_key):
+        if alert_category and self._should_suppress(
+            alert_category, text, parse_mode, suppress_key=suppress_key
+        ):
             return
         if not self._session or self._session.closed:
             await self.start()
@@ -100,7 +114,9 @@ class TelegramAlerter:
             async with self._session.post(url, json=payload) as resp:
                 if resp.status != 200:
                     body = await resp.text()
-                    logger.warning("Telegram send failed %d: %s", resp.status, body[:200])
+                    logger.warning(
+                        "Telegram send failed %d: %s", resp.status, body[:200]
+                    )
         except Exception as e:
             logger.warning("Telegram send error: %s", e)
 
@@ -115,7 +131,9 @@ class TelegramAlerter:
     ) -> None:
         mode = "🟡 DEMO / DRY RUN" if not live else "🔴 LIVE"
         pairs_str = "\n".join(f"  • {p}" for p in pairs)
-        recovery_block = f"\n*Recovery:*\n{recovery_summary}" if recovery_summary else ""
+        recovery_block = (
+            f"\n*Recovery:*\n{recovery_summary}" if recovery_summary else ""
+        )
         msg = (
             f"*SMC-Forex-Bot ONLINE* {mode}\n\n"
             f"*Pairs:*\n{pairs_str}\n\n"
@@ -242,7 +260,9 @@ class TelegramAlerter:
             suppress_key=str(source).lower(),
         )
 
-    async def send_reconnect_failure(self, source: str = "MetaAPI", reason: str = "") -> None:
+    async def send_reconnect_failure(
+        self, source: str = "MetaAPI", reason: str = ""
+    ) -> None:
         suffix = f": {reason}" if reason else ""
         await self._post(
             f"[{source} reconnect] failed{suffix}",

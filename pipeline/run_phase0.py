@@ -13,10 +13,10 @@ Usage:
     python -m pipeline.run_phase0 --symbol EURUSD --start 2022-01-01 --end 2025-01-01
     python -m pipeline.run_phase0 --skip-db   # dry run, no PostgreSQL needed
 """
+
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from datetime import date
 
@@ -24,14 +24,8 @@ import polars as pl
 
 from core.strategy_registry import get_strategy_manifest
 from db.runtime import resolve_database_url
-from .config import (
-    FEATURES_DIR,
-    PHASE0_MIN_NET_PF,
-    PHASE0_MIN_TRADES,
-    SPREAD_STANDARD,
-    SPREAD_STRESS_2X,
-    SYMBOLS,
-)
+
+from .config import FEATURES_DIR, SPREAD_STANDARD, SPREAD_STRESS_2X, SYMBOLS
 from .pipeline_02_build_features import process_symbol as build_symbol_features
 from .pipeline_03_replay_engine import evaluate_gate, replay_symbol
 from .pipeline_04_write_db import write_all
@@ -39,15 +33,24 @@ from .pipeline_04_write_db import write_all
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Phase-0 Gate — full pipeline")
-    parser.add_argument("--strategy",      default="ST-A2",
-                        help="Strategy ID (must match catalog or have a registered signal function)")
-    parser.add_argument("--symbol",        choices=SYMBOLS, help="Restrict to one symbol")
-    parser.add_argument("--start",         default="2020-01-01")
-    parser.add_argument("--end",           default="2025-01-01")
-    parser.add_argument("--skip-features", action="store_true",
-                        help="Skip feature build (use cached Parquets)")
-    parser.add_argument("--skip-db",       action="store_true",
-                        help="Skip PostgreSQL write (dry-run / no DB needed)")
+    parser.add_argument(
+        "--strategy",
+        default="ST-A2",
+        help="Strategy ID (must match catalog or have a registered signal function)",
+    )
+    parser.add_argument("--symbol", choices=SYMBOLS, help="Restrict to one symbol")
+    parser.add_argument("--start", default="2020-01-01")
+    parser.add_argument("--end", default="2025-01-01")
+    parser.add_argument(
+        "--skip-features",
+        action="store_true",
+        help="Skip feature build (use cached Parquets)",
+    )
+    parser.add_argument(
+        "--skip-db",
+        action="store_true",
+        help="Skip PostgreSQL write (dry-run / no DB needed)",
+    )
     args = parser.parse_args()
 
     strategy_id = args.strategy
@@ -55,8 +58,8 @@ def main() -> None:
     strategy_version = str(manifest.get("version", "0.0.0"))
 
     targets = [args.symbol] if args.symbol else SYMBOLS
-    start   = date.fromisoformat(args.start)
-    end     = date.fromisoformat(args.end)
+    start = date.fromisoformat(args.start)
+    end = date.fromisoformat(args.end)
 
     print("=" * 60)
     print(f"Phase-0 Gate  |  {strategy_id}")
@@ -76,14 +79,16 @@ def main() -> None:
     gate_results: list[dict] = []
 
     for scenario_name, spread_map in [
-        ("standard",   SPREAD_STANDARD),
-        ("stress_2x",  SPREAD_STRESS_2X),
+        ("standard", SPREAD_STANDARD),
+        ("stress_2x", SPREAD_STRESS_2X),
     ]:
         print(f"\n  Scenario: {scenario_name}")
         for sym in targets:
             run_id = f"{strategy_id}-{sym}-{scenario_name}-{start}-{end}"
-            trades = replay_symbol(sym, start, end, spread_map[sym], run_id, strategy_id=strategy_id)
-            gate   = evaluate_gate(trades, f"{sym}/{scenario_name}")
+            trades = replay_symbol(
+                sym, start, end, spread_map[sym], run_id, strategy_id=strategy_id
+            )
+            gate = evaluate_gate(trades, f"{sym}/{scenario_name}")
             # Tag each trade with run_id (replay_symbol already does this,
             # but scenario may need re-tagging if run_id carries it)
             all_trades.extend(trades)
@@ -106,6 +111,7 @@ def main() -> None:
     if not args.skip_db and all_trades:
         print("\n[3/3] Writing to PostgreSQL...")
         from sqlalchemy import create_engine
+
         db_url = resolve_database_url()
         if not db_url:
             raise SystemExit(

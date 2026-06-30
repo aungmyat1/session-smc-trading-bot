@@ -27,7 +27,9 @@ Bearish:
   Retest      → bar.high ≥ bottom  AND  bar.close ≤ top
   Invalidated → bar.close > top
 """
+
 from __future__ import annotations
+
 from typing import Optional
 
 Candle = dict
@@ -101,17 +103,17 @@ def check_fvg_retest(
         c = candles[i]
 
         if direction == "bullish":
-            if c["low"] <= top:          # price entered the FVG zone from above
+            if c["low"] <= top:  # price entered the FVG zone from above
                 if c["close"] < bottom:  # closed through → invalidated
                     return None
-                return i                  # held above bottom → valid retest
+                return i  # held above bottom → valid retest
             # Price still above zone, keep watching
 
         else:  # bearish
-            if c["high"] >= bottom:      # price entered the FVG zone from below
-                if c["close"] > top:     # closed through → invalidated
+            if c["high"] >= bottom:  # price entered the FVG zone from below
+                if c["close"] > top:  # closed through → invalidated
                     return None
-                return i                  # held below top → valid retest
+                return i  # held below top → valid retest
             # Price still below zone, keep watching
 
     return None

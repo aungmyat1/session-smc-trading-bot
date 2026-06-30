@@ -20,15 +20,14 @@ from typing import Any
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from core.strategy_registry import (
-    get_current_strategy_name,
-    get_strategy_manifest,
-    get_strategy_spec_text,
-)
-from research.svos.payload_builder import build_svos_payload_bundle
-from research.svos.engine import SVOSRunner
-from research.validation.engine import load_validation_config
-from research.lineage import build_release_metadata
+from core.strategy_registry import (get_current_strategy_name,  # noqa: E402
+                                    get_strategy_manifest,
+                                    get_strategy_spec_text)
+from research.lineage import build_release_metadata  # noqa: E402
+from research.svos.engine import SVOSRunner  # noqa: E402
+from research.svos.payload_builder import \
+    build_svos_payload_bundle  # noqa: E402
+from research.validation.engine import load_validation_config  # noqa: E402
 
 
 def _load_json(path: str | None) -> dict[str, Any]:
@@ -40,7 +39,12 @@ def _load_json(path: str | None) -> dict[str, Any]:
     return json.loads(file_path.read_text(encoding="utf-8"))
 
 
-def _resolve_strategy_text(strategy: str, catalog_path: Path, explicit_text: str | None, explicit_file: str | None) -> str:
+def _resolve_strategy_text(
+    strategy: str,
+    catalog_path: Path,
+    explicit_text: str | None,
+    explicit_file: str | None,
+) -> str:
     if explicit_text:
         return explicit_text
     if explicit_file:
@@ -98,7 +102,11 @@ def _print_stage_update(stage, stages, promoted_stage) -> None:
     next_action = "n/a"
     if stage.status == "PASS" and stage.next_stage:
         next_action = f"proceed to {stage.next_stage}"
-    elif stage.status == "PASS" and stage.stage == "production_approval" and stage.can_promote:
+    elif (
+        stage.status == "PASS"
+        and stage.stage == "production_approval"
+        and stage.can_promote
+    ):
         next_action = "live promotion is permitted if explicitly enabled"
     elif stage.fix_instructions:
         next_action = stage.fix_instructions[0]
@@ -116,8 +124,14 @@ def _print_stage_update(stage, stages, promoted_stage) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run SVOS for the current strategy")
-    parser.add_argument("--strategy", help="Strategy to validate; defaults to current catalog strategy")
-    parser.add_argument("--catalog", default="config/strategy_catalog.yaml", help="Strategy catalog YAML")
+    parser.add_argument(
+        "--strategy", help="Strategy to validate; defaults to current catalog strategy"
+    )
+    parser.add_argument(
+        "--catalog",
+        default="config/strategy_catalog.yaml",
+        help="Strategy catalog YAML",
+    )
     parser.add_argument("--strategy-text", help="Inline strategy description")
     parser.add_argument("--strategy-file", help="Path to strategy description text")
     parser.add_argument("--replay-json", help="Replay validation JSON")
@@ -125,10 +139,16 @@ def main() -> int:
     parser.add_argument("--robustness-json", help="Robustness validation JSON")
     parser.add_argument("--virtual-demo-json", help="Virtual demo validation JSON")
     parser.add_argument("--demo-json", help="Legacy alias for --virtual-demo-json")
-    parser.add_argument("--symbol", action="append", help="Symbol(s) to auto-load when building payloads")
+    parser.add_argument(
+        "--symbol",
+        action="append",
+        help="Symbol(s) to auto-load when building payloads",
+    )
     parser.add_argument("--start", help="Start date for auto payload generation")
     parser.add_argument("--end", help="End date for auto payload generation")
-    parser.add_argument("--costs-json", help="Optional costs.json for auto-generated backtest payload")
+    parser.add_argument(
+        "--costs-json", help="Optional costs.json for auto-generated backtest payload"
+    )
     parser.add_argument(
         "--no-synthetic-demo",
         dest="allow_synthetic_demo",
@@ -157,18 +177,26 @@ def main() -> int:
         default="virtual_demo",
         help="Optional stage boundary for partial SVOS runs",
     )
-    parser.add_argument("--outdir", default="reports/current_strategy_svos", help="Output directory")
-    parser.add_argument("--config", default="config/validation.yaml", help="Validation config YAML")
+    parser.add_argument(
+        "--outdir", default="reports/current_strategy_svos", help="Output directory"
+    )
+    parser.add_argument(
+        "--config", default="config/validation.yaml", help="Validation config YAML"
+    )
     args = parser.parse_args()
 
     catalog_path = _load_catalog_path(args.catalog)
     strategy = args.strategy or get_current_strategy_name(catalog_path)
     if not strategy:
-        raise SystemExit("No current strategy is set in the catalog and no --strategy was provided.")
+        raise SystemExit(
+            "No current strategy is set in the catalog and no --strategy was provided."
+        )
     if get_strategy_manifest(strategy, catalog_path) is None:
         raise SystemExit(f"Strategy not found in catalog: {strategy}")
 
-    strategy_text = _resolve_strategy_text(strategy, catalog_path, args.strategy_text, args.strategy_file)
+    strategy_text = _resolve_strategy_text(
+        strategy, catalog_path, args.strategy_text, args.strategy_file
+    )
     if not strategy_text.strip():
         raise SystemExit(
             f"No strategy spec text available for {strategy}. Set strategy_spec_path in the catalog "
@@ -182,7 +210,9 @@ def main() -> int:
 
     payload = None
     try:
-        if not any([args.replay_json, args.backtest_json, args.robustness_json, args.demo_json]):
+        if not any(
+            [args.replay_json, args.backtest_json, args.robustness_json, args.demo_json]
+        ):
             payload_bundle = build_svos_payload_bundle(
                 strategy=strategy,
                 catalog_path=catalog_path,
@@ -203,16 +233,34 @@ def main() -> int:
         )
         result = runner.run_pipeline(
             strategy_text,
-            replay=(_load_json(args.replay_json) or payload.get("replay")) if payload else (_load_json(args.replay_json) or None),
-            backtest=(_load_json(args.backtest_json) or payload.get("backtest")) if payload else (_load_json(args.backtest_json) or None),
-            robustness=(_load_json(args.robustness_json) or payload.get("robustness")) if payload else (_load_json(args.robustness_json) or None),
+            replay=(
+                (_load_json(args.replay_json) or payload.get("replay"))
+                if payload
+                else (_load_json(args.replay_json) or None)
+            ),
+            backtest=(
+                (_load_json(args.backtest_json) or payload.get("backtest"))
+                if payload
+                else (_load_json(args.backtest_json) or None)
+            ),
+            robustness=(
+                (_load_json(args.robustness_json) or payload.get("robustness"))
+                if payload
+                else (_load_json(args.robustness_json) or None)
+            ),
             virtual_demo=(
-                _load_json(args.virtual_demo_json)
-                or _load_json(args.demo_json)
-                or payload.get("demo")
-            )
-            if payload
-            else (_load_json(args.virtual_demo_json) or _load_json(args.demo_json) or None),
+                (
+                    _load_json(args.virtual_demo_json)
+                    or _load_json(args.demo_json)
+                    or payload.get("demo")
+                )
+                if payload
+                else (
+                    _load_json(args.virtual_demo_json)
+                    or _load_json(args.demo_json)
+                    or None
+                )
+            ),
             promote=args.allow_live_promotion,
             allow_live_promotion=args.allow_live_promotion,
             stop_after=args.stop_after,

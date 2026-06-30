@@ -22,10 +22,18 @@ class SVOSOperationalAPI:
         control_state_factory: Callable[[], dict[str, Any]],
     ) -> None:
         self.root = Path(root)
-        self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
+        self.catalog_path = (
+            Path(catalog_path)
+            if catalog_path is not None
+            else self.root / "config" / "strategy_catalog.yaml"
+        )
         self.platform = SVOSPlatform(root=self.root, catalog_path=self.catalog_path)
-        self.deployment = DeploymentStatusService(root=self.root, catalog_path=self.catalog_path)
-        self.monitoring = MonitoringStatusService(root=self.root, health_snapshot_factory=health_snapshot_factory)
+        self.deployment = DeploymentStatusService(
+            root=self.root, catalog_path=self.catalog_path
+        )
+        self.monitoring = MonitoringStatusService(
+            root=self.root, health_snapshot_factory=health_snapshot_factory
+        )
         self.latest_reports_factory = latest_reports_factory
         self.control_state_factory = control_state_factory
 

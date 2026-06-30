@@ -20,7 +20,9 @@ class BrokerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def modify_order(self, order_id: str, sl: float | None = None, tp: float | None = None) -> bool:
+    async def modify_order(
+        self, order_id: str, sl: float | None = None, tp: float | None = None
+    ) -> bool:
         raise NotImplementedError
 
     @abstractmethod
@@ -30,4 +32,3 @@ class BrokerInterface(ABC):
     @abstractmethod
     async def get_positions(self) -> list[Any]:
         raise NotImplementedError
-

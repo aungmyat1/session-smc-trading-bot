@@ -21,11 +21,12 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(_ROOT / ".env")
 
 NEW_ACCOUNT_ID = "026ea073-5241-4d53-9a87-b0cb791443af"
-_TOKEN         = os.getenv("METAAPI_TOKEN", "")
-_PASSWORD      = os.getenv("VANTAGE_MT5_PASSWORD", "")
+_TOKEN = os.getenv("METAAPI_TOKEN", "")
+_PASSWORD = os.getenv("VANTAGE_MT5_PASSWORD", "")
 
 
 async def main() -> None:
@@ -75,7 +76,9 @@ async def main() -> None:
     await conn.connect()
     await conn.wait_synchronized(60)
     info = await conn.get_account_information()
-    print(f"    balance={info.get('balance')} {info.get('currency')}  equity={info.get('equity')}")
+    print(
+        f"    balance={info.get('balance')} {info.get('currency')}  equity={info.get('equity')}"
+    )
     await conn.close()
 
     print("\n" + "=" * 60)
@@ -97,7 +100,9 @@ async def main() -> None:
     elif NEW_ACCOUNT_ID in env_text:
         print(f"\n.env already has METAAPI_ACCOUNT_ID={NEW_ACCOUNT_ID}")
     else:
-        print(f"\n⚠️  Could not auto-update .env — set manually: METAAPI_ACCOUNT_ID={NEW_ACCOUNT_ID}")
+        print(
+            f"\n⚠️  Could not auto-update .env — set manually: METAAPI_ACCOUNT_ID={NEW_ACCOUNT_ID}"
+        )
 
     api.close()
     print("\nDone. Run: python3 scripts/validate_connection.py")

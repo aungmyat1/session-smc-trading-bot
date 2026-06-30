@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+
 import pandas as pd
 
 from .validator import validate_candles
@@ -57,7 +58,9 @@ def load_candles(path: str | Path) -> pd.DataFrame:
     return _standardize_frame(frame)
 
 
-def discover_raw_files(root: str | Path, symbol: str, timeframe: str = "M1") -> list[Path]:
+def discover_raw_files(
+    root: str | Path, symbol: str, timeframe: str = "M1"
+) -> list[Path]:
     """Return raw files for a symbol and timeframe under the raw data tree."""
     root_path = Path(root)
     symbol = symbol.replace("/", "").replace("_", "").upper()
@@ -74,7 +77,9 @@ def discover_raw_files(root: str | Path, symbol: str, timeframe: str = "M1") -> 
     return sorted({p.resolve() for p in matches})
 
 
-def discover_symbol_timeframe(root: str | Path, symbol: str, preferred: str = "M1") -> tuple[str, list[Path]]:
+def discover_symbol_timeframe(
+    root: str | Path, symbol: str, preferred: str = "M1"
+) -> tuple[str, list[Path]]:
     """Return the first available timeframe and matching files for a symbol."""
     candidates = [preferred, "M5", "M15", "H1", "H4"]
     for tf in candidates:
@@ -91,9 +96,13 @@ def load_symbol_history(
     validate: bool = True,
 ) -> LoadedData:
     """Load and optionally validate all raw files for one symbol."""
-    actual_timeframe, files = discover_symbol_timeframe(root, symbol, preferred=timeframe)
+    actual_timeframe, files = discover_symbol_timeframe(
+        root, symbol, preferred=timeframe
+    )
     if not files:
-        raise FileNotFoundError(f"no raw files found for {symbol} {timeframe} under {root}")
+        raise FileNotFoundError(
+            f"no raw files found for {symbol} {timeframe} under {root}"
+        )
 
     frames = [load_candles(path) for path in files]
     frame = pd.concat(frames, ignore_index=True)

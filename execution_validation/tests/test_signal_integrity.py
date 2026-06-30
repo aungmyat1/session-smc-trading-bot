@@ -2,7 +2,6 @@ from __future__ import annotations
 
 __test__ = False
 
-from dataclasses import asdict
 from typing import Any
 
 from execution_validation.common import CheckResult
@@ -20,7 +19,9 @@ def assess_signal_integrity(signals: list[Any], orders: list[Any]) -> CheckResul
     matched = 0
     mismatches: list[dict[str, Any]] = []
     order_by_signal = {
-        str(_get(order, "signal_id", _get(order, "order_id", _get(order, "id", "")))): order
+        str(
+            _get(order, "signal_id", _get(order, "order_id", _get(order, "id", "")))
+        ): order
         for order in orders
     }
 
@@ -35,11 +36,25 @@ def assess_signal_integrity(signals: list[Any], orders: list[Any]) -> CheckResul
             signal_take = _get(signal, "take_profit", _get(signal, "TP", None))
             order_take = _get(order, "take_profit", _get(order, "TP", None))
             comparisons = {
-                "symbol": str(_get(signal, "symbol", "")).upper() == str(_get(order, "symbol", "")).upper(),
-                "direction": str(_get(signal, "direction", "")).upper() == str(_get(order, "direction", "")).upper(),
-                "volume": True if signal_volume is None or order_volume is None else abs(float(signal_volume) - float(order_volume)) <= 1e-9,
-                "stop_loss": True if signal_stop is None or order_stop is None else abs(float(signal_stop) - float(order_stop)) <= 1e-9,
-                "take_profit": True if signal_take is None or order_take is None else abs(float(signal_take) - float(order_take)) <= 1e-9,
+                "symbol": str(_get(signal, "symbol", "")).upper()
+                == str(_get(order, "symbol", "")).upper(),
+                "direction": str(_get(signal, "direction", "")).upper()
+                == str(_get(order, "direction", "")).upper(),
+                "volume": (
+                    True
+                    if signal_volume is None or order_volume is None
+                    else abs(float(signal_volume) - float(order_volume)) <= 1e-9
+                ),
+                "stop_loss": (
+                    True
+                    if signal_stop is None or order_stop is None
+                    else abs(float(signal_stop) - float(order_stop)) <= 1e-9
+                ),
+                "take_profit": (
+                    True
+                    if signal_take is None or order_take is None
+                    else abs(float(signal_take) - float(order_take)) <= 1e-9
+                ),
             }
             if all(comparisons.values()):
                 matched += 1

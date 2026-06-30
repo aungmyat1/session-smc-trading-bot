@@ -24,10 +24,7 @@ import unittest
 from dataclasses import fields
 
 from strategy.session_liquidity.displacement_detector import (
-    DisplacementResult,
-    detect_displacement,
-    wilder_atr,
-)
+    DisplacementResult, detect_displacement, wilder_atr)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared test constants
@@ -37,11 +34,11 @@ from strategy.session_liquidity.displacement_detector import (
 #   high=1.0200, low=0.9900, range=0.0300
 #   ATR=0.0100  → threshold=1.2×0.01=0.0120
 _HIGH = 1.0200
-_LOW  = 0.9900
-_RANGE = _HIGH - _LOW          # 0.0300
-_ATR  = 0.0100
+_LOW = 0.9900
+_RANGE = _HIGH - _LOW  # 0.0300
+_ATR = 0.0100
 _MULT = 1.2
-_THR  = _MULT * _ATR           # 0.0120
+_THR = _MULT * _ATR  # 0.0120
 
 
 def _candle(high=_HIGH, low=_LOW, open_=None, close=None):
@@ -64,6 +61,7 @@ def _at_close_pos(pos: float, high=_HIGH, low=_LOW) -> float:
 # Wilder ATR helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _constant_candles(n: int, range_size: float = 0.10, close: float = 1.0):
     """
     n candles with identical, non-gapping structure.
@@ -75,24 +73,28 @@ def _constant_candles(n: int, range_size: float = 0.10, close: float = 1.0):
     ]
 
 
-def _step_candles(n: int, base_range: float = 0.10, spike_range: float = 0.20,
-                  spike_at: int = 15):
+def _step_candles(
+    n: int, base_range: float = 0.10, spike_range: float = 0.20, spike_at: int = 15
+):
     """n candles where bar `spike_at` has a larger range."""
     candles = []
     for i in range(n):
         r = spike_range if i == spike_at else base_range
-        candles.append({
-            "open": 1.0,
-            "high": 1.0 + r,
-            "low": 1.0,
-            "close": 1.0,
-        })
+        candles.append(
+            {
+                "open": 1.0,
+                "high": 1.0 + r,
+                "low": 1.0,
+                "close": 1.0,
+            }
+        )
     return candles
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # §A — wilder_atr tests
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestWilderATR(unittest.TestCase):
 
@@ -121,8 +123,9 @@ class TestWilderATR(unittest.TestCase):
         candles = _constant_candles(30, range_size=0.10)
         atrs = wilder_atr(candles, period=14)
         for i in range(14, 30):
-            self.assertAlmostEqual(atrs[i], 0.10, places=10,
-                                   msg=f"ATR[{i}] should be 0.10")
+            self.assertAlmostEqual(
+                atrs[i], 0.10, places=10, msg=f"ATR[{i}] should be 0.10"
+            )
 
     def test_indices_0_to_13_all_none(self):
         """All entries before seed are None."""
@@ -185,6 +188,7 @@ class TestWilderATR(unittest.TestCase):
 # §B — detect_displacement tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestBullishDisplacement(unittest.TestCase):
     """Category 1 — bullish displacement detected."""
 
@@ -210,7 +214,7 @@ class TestBullishDisplacement(unittest.TestCase):
 
     def test_close_position_recorded(self):
         r = detect_displacement(self._bullish_candle(), _ATR, "long")
-        expected_pos = (1.0190 - _LOW) / _RANGE   # (1.0190-0.9900)/0.0300 = 0.9667
+        expected_pos = (1.0190 - _LOW) / _RANGE  # (1.0190-0.9900)/0.0300 = 0.9667
         self.assertAlmostEqual(r.close_position, expected_pos, places=4)
 
     def test_atr_recorded(self):
@@ -240,7 +244,7 @@ class TestBearishDisplacement(unittest.TestCase):
     def test_body_and_position(self):
         r = detect_displacement(self._bearish_candle(), _ATR, "short")
         self.assertAlmostEqual(r.body_size, 0.0290, places=5)
-        expected_pos = (0.9910 - _LOW) / _RANGE   # 0.0333
+        expected_pos = (0.9910 - _LOW) / _RANGE  # 0.0333
         self.assertAlmostEqual(r.close_position, expected_pos, places=4)
 
 
@@ -322,8 +326,10 @@ class TestQuartileGate(unittest.TestCase):
 
     def test_bullish_body_ok_but_close_in_lower_half_rejected(self):
         """Direction=long, body passes, but close in lower 25% — rejected."""
-        close = _at_close_pos(0.10)   # close near low
-        open_ = round(close - _THR - 0.0001, 7)  # bearish body for this close (open > close?)
+        close = _at_close_pos(0.10)  # close near low
+        open_ = round(
+            close - _THR - 0.0001, 7
+        )  # bearish body for this close (open > close?)
         # Actually for close < open (bearish candle), direction=long means wrong quartile
         # close_pos=0.10 < 0.75 → rejected
         open_ = round(close + _THR + 0.0001, 7)  # open above close, body > threshold
@@ -462,7 +468,9 @@ class TestIntegrationWithATR(unittest.TestCase):
         for i in range(14):
             candle = {"open": 1.0, "high": 1.05, "low": 0.95, "close": 1.04}
             r = detect_displacement(candle, atrs[i], "long")
-            self.assertFalse(r.detected, msg=f"bar {i} should be not-detected (ATR=None)")
+            self.assertFalse(
+                r.detected, msg=f"bar {i} should be not-detected (ATR=None)"
+            )
 
     def test_bar_14_atr_available(self):
         """ATR at index 14 is valid, displacement can be detected."""

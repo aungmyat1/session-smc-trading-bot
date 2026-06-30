@@ -18,9 +18,8 @@ STRATEGY = "SVOS-SAMPLE"
 
 sys.path.insert(0, str(ROOT))
 
-from core.strategy_registry import get_strategy_manifest
-from research.svos.engine import SVOSRunner
-
+from core.strategy_registry import get_strategy_manifest  # noqa: E402
+from research.svos.engine import SVOSRunner  # noqa: E402
 
 REPORTS = (
     ("strategy_audit", "01_strategy_audit"),
@@ -85,34 +84,52 @@ def verify_report_package(report_dir: Path) -> dict[str, Any]:
 
     summary = json.loads(summary_json.read_text(encoding="utf-8"))
     if summary.get("overall_status") != "IN_PROGRESS":
-        raise AssertionError(f"SVOS sample summary has unexpected status: {summary.get('overall_status')}")
+        raise AssertionError(
+            f"SVOS sample summary has unexpected status: {summary.get('overall_status')}"
+        )
     if summary.get("latest_passed_stage") != "virtual_demo":
         raise AssertionError("SVOS sample did not reach Virtual Demo")
     if summary.get("active_blocker"):
-        raise AssertionError(f"SVOS sample unexpectedly has a blocker: {summary['active_blocker']}")
+        raise AssertionError(
+            f"SVOS sample unexpectedly has a blocker: {summary['active_blocker']}"
+        )
 
     verified: list[dict[str, Any]] = []
     for expected_stage, stem in REPORTS:
         json_path = report_dir / f"{stem}.json"
         markdown_path = report_dir / f"{stem}.md"
         if not json_path.is_file() or not markdown_path.is_file():
-            raise AssertionError(f"Missing JSON/Markdown report pair for {expected_stage}")
+            raise AssertionError(
+                f"Missing JSON/Markdown report pair for {expected_stage}"
+            )
         report = json.loads(json_path.read_text(encoding="utf-8"))
         missing = sorted(REQUIRED_REPORT_FIELDS.difference(report))
         if missing:
-            raise AssertionError(f"{expected_stage} report is missing fields: {', '.join(missing)}")
+            raise AssertionError(
+                f"{expected_stage} report is missing fields: {', '.join(missing)}"
+            )
         if report.get("stage") != expected_stage:
-            raise AssertionError(f"Unexpected stage in {json_path}: {report.get('stage')}")
-        expected_status = "NOT_RUN" if expected_stage == "production_approval" else "PASS"
+            raise AssertionError(
+                f"Unexpected stage in {json_path}: {report.get('stage')}"
+            )
+        expected_status = (
+            "NOT_RUN" if expected_stage == "production_approval" else "PASS"
+        )
         if report.get("status") != expected_status:
-            raise AssertionError(f"{expected_stage} has unexpected status: {report.get('status')}")
+            raise AssertionError(
+                f"{expected_stage} has unexpected status: {report.get('status')}"
+            )
         if expected_status == "PASS" and report.get("score") is None:
             raise AssertionError(f"{expected_stage} did not produce a diagnostic score")
         if not report.get("evidence_hashes", {}).get("strategy_spec"):
-            raise AssertionError(f"{expected_stage} did not preserve the strategy specification hash")
+            raise AssertionError(
+                f"{expected_stage} did not preserve the strategy specification hash"
+            )
         markdown = markdown_path.read_text(encoding="utf-8")
         if f"Status: **{expected_status}**" not in markdown:
-            raise AssertionError(f"Markdown decision does not match JSON for {expected_stage}")
+            raise AssertionError(
+                f"Markdown decision does not match JSON for {expected_stage}"
+            )
         verified.append(
             {
                 "stage": expected_stage,
@@ -158,7 +175,11 @@ def run_sample(output_root: Path | str) -> dict[str, Any]:
             allow_live_promotion=False,
         )
         if result.overall_status != "PASS":
-            failed = [(stage.stage, stage.status) for stage in result.stages if stage.status != "PASS"]
+            failed = [
+                (stage.stage, stage.status)
+                for stage in result.stages
+                if stage.status != "PASS"
+            ]
             raise AssertionError(f"SVOS sample pipeline failed: {failed}")
         manifest = get_strategy_manifest(STRATEGY, catalog_path) or {}
         if manifest.get("status") == "live":
@@ -181,7 +202,9 @@ def main() -> int:
     try:
         result = run_sample(args.output_dir)
     except (AssertionError, OSError, ValueError) as exc:
-        print(json.dumps({"status": "FAIL", "error": str(exc)}, indent=2), file=sys.stderr)
+        print(
+            json.dumps({"status": "FAIL", "error": str(exc)}, indent=2), file=sys.stderr
+        )
         return 1
     print(json.dumps({"status": "PASS", **result}, indent=2, sort_keys=True))
     return 0

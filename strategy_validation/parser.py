@@ -14,7 +14,14 @@ _COLON_RE = re.compile(r"^\s*([A-Za-z][A-Za-z0-9 /()%_-]{1,50})\s*:\s*(.+)$")
 _FIELD_HINTS = {
     "instrument": ("instrument", "instruments", "symbol", "symbols"),
     "market": ("market",),
-    "timeframe": ("timeframe", "timeframes", "primary tf", "signal tf", "primary tf (signal)", "htf bias tf"),
+    "timeframe": (
+        "timeframe",
+        "timeframes",
+        "primary tf",
+        "signal tf",
+        "primary tf (signal)",
+        "htf bias tf",
+    ),
     "session": ("session", "sessions", "trading session"),
     "direction": ("direction", "long / short direction", "bias"),
     "entry_rules": ("entry rules", "entry trigger", "signal chain"),
@@ -26,7 +33,11 @@ _FIELD_HINTS = {
     "news_rules": ("news rules", "news filter"),
     "max_daily_loss": ("maximum daily loss", "daily loss limit"),
     "max_drawdown": ("maximum drawdown", "max drawdown"),
-    "max_open_positions": ("maximum open positions", "one position per session", "max open positions"),
+    "max_open_positions": (
+        "maximum open positions",
+        "one position per session",
+        "max open positions",
+    ),
 }
 
 
@@ -48,7 +59,9 @@ def _extract_name(lines: list[str]) -> str:
     return "Unnamed Strategy"
 
 
-def _extract_field(key_values: dict[str, str], sections: dict[str, str], *hints: str) -> str:
+def _extract_field(
+    key_values: dict[str, str], sections: dict[str, str], *hints: str
+) -> str:
     normalized = {_normalize_key(key): value for key, value in key_values.items()}
     for hint in hints:
         if hint in normalized:
@@ -65,19 +78,40 @@ def _extract_field(key_values: dict[str, str], sections: dict[str, str], *hints:
     return ""
 
 
-def _extract_fields(key_values: dict[str, str], sections: dict[str, str]) -> dict[str, Any]:
+def _extract_fields(
+    key_values: dict[str, str], sections: dict[str, str]
+) -> dict[str, Any]:
     fields: dict[str, Any] = {}
     for field_name, hints in _FIELD_HINTS.items():
         value = _extract_field(key_values, sections, *hints)
         if value:
             fields[field_name] = value
     instruments = str(fields.get("instrument", ""))
-    if not fields.get("market") and any(pair in instruments for pair in ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD")):
+    if not fields.get("market") and any(
+        pair in instruments for pair in ("EURUSD", "GBPUSD", "USDJPY", "XAUUSD")
+    ):
         fields["market"] = "FX"
     if not fields.get("position_sizing"):
-        candidate = "\n".join(filter(None, [fields.get("risk_model", ""), sections.get("Risk Model", ""), sections.get("Kill Switch / Safety", "")]))
+        candidate = "\n".join(
+            filter(
+                None,
+                [
+                    fields.get("risk_model", ""),
+                    sections.get("Risk Model", ""),
+                    sections.get("Kill Switch / Safety", ""),
+                ],
+            )
+        )
         lowered = candidate.lower()
-        if any(token in lowered for token in ("risk per trade", "fixed fractional", "position size", "lot size")):
+        if any(
+            token in lowered
+            for token in (
+                "risk per trade",
+                "fixed fractional",
+                "position size",
+                "lot size",
+            )
+        ):
             fields["position_sizing"] = candidate.strip()
     exit_rules = str(fields.get("exit_rules", ""))
     if exit_rules:

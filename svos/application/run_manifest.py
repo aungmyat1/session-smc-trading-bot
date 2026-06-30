@@ -37,10 +37,10 @@ class RunManifest:
     git_commit: str
     git_dirty: bool
     python_version: str
-    lock_hash: str          # SHA-256 of requirements*.txt or poetry.lock
+    lock_hash: str  # SHA-256 of requirements*.txt or poetry.lock
     strategy_spec_hash: str
     dataset_id: str
-    dataset_hash: str       # SHA-256 of dataset snapshot if available
+    dataset_hash: str  # SHA-256 of dataset snapshot if available
     config_hash: str
     parameters: dict[str, Any] = field(default_factory=dict)
     engine_version: str = "svos-v1"
@@ -98,10 +98,10 @@ class RunManifestBuilder:
             manifest_id=manifest_id,
             service=service,
             strategy=strategy,
-            created_at=payload["created_at"],
+            created_at=str(payload["created_at"]),
             git_commit=git_commit,
             git_dirty=git_dirty,
-            python_version=payload["python_version"],
+            python_version=str(payload["python_version"]),
             lock_hash=lock_hash,
             strategy_spec_hash=spec_hash,
             dataset_id=dataset_id,
@@ -116,10 +116,13 @@ class RunManifestBuilder:
     def _persist(self, manifest: RunManifest) -> None:
         dest = self.manifests_root / manifest.strategy / f"{manifest.manifest_id}.json"
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(json.dumps(manifest.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+        dest.write_text(
+            json.dumps(manifest.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
+        )
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
+
 
 def _git_state(root: Path) -> tuple[str, bool]:
     try:
@@ -127,7 +130,10 @@ def _git_state(root: Path) -> tuple[str, bool]:
             ["git", "rev-parse", "HEAD"], cwd=root, stderr=subprocess.DEVNULL, text=True
         ).strip()
         dirty_out = subprocess.check_output(
-            ["git", "status", "--porcelain"], cwd=root, stderr=subprocess.DEVNULL, text=True
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            stderr=subprocess.DEVNULL,
+            text=True,
         ).strip()
         return commit, bool(dirty_out)
     except Exception:

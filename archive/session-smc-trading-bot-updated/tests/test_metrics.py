@@ -73,10 +73,10 @@ class TestTradeJournal:
         assert stats["total_r"] == pytest.approx(2.0)
 
     def test_open_trades_excluded_from_stats(self, journal):
-        _log(journal, result_r=None)   # open trade — no result yet
+        _log(journal, result_r=None)  # open trade — no result yet
         _log(journal, result_r=2.0)
         stats = journal.get_all_stats()
-        assert stats["trades"] == 1    # only the closed one counts
+        assert stats["trades"] == 1  # only the closed one counts
 
     def test_daily_stats_filters_by_date(self, journal, monkeypatch):
         import monitoring.metrics as m
@@ -84,10 +84,18 @@ class TestTradeJournal:
         # Inject a fixed "today" for get_daily_stats
         monkeypatch.setattr(
             "monitoring.metrics.datetime",
-            type("FakeDT", (), {
-                "now": staticmethod(lambda tz=None: __import__("datetime").datetime(2026, 6, 19, 12, 0, tzinfo=tz)),
-                "strptime": __import__("datetime").datetime.strptime,
-            })
+            type(
+                "FakeDT",
+                (),
+                {
+                    "now": staticmethod(
+                        lambda tz=None: __import__("datetime").datetime(
+                            2026, 6, 19, 12, 0, tzinfo=tz
+                        )
+                    ),
+                    "strptime": __import__("datetime").datetime.strptime,
+                },
+            ),
         )
         journal.log_trade("EURUSD", "long", 1.08, 1.07, 1.09, 0.5, 0.1, result_r=1.0)
 

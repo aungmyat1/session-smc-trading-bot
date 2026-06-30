@@ -33,12 +33,22 @@ class PositionManager:
 
     def __init__(self, contract_size_by_symbol: dict[str, float] | None = None) -> None:
         self._positions: dict[str, VirtualPosition] = {}
-        self.contract_size_by_symbol = contract_size_by_symbol or {"EURUSD": 100_000.0, "GBPUSD": 100_000.0, "XAUUSD": 100.0}
+        self.contract_size_by_symbol = contract_size_by_symbol or {
+            "EURUSD": 100_000.0,
+            "GBPUSD": 100_000.0,
+            "XAUUSD": 100.0,
+        }
 
     def open_position(self, position: VirtualPosition) -> None:
         self._positions[position.position_id] = position
 
-    def close_position(self, position_id: str, close_price: float, close_time: datetime, exit_reason: str) -> VirtualPosition:
+    def close_position(
+        self,
+        position_id: str,
+        close_price: float,
+        close_time: datetime,
+        exit_reason: str,
+    ) -> VirtualPosition:
         position = self._positions[position_id]
         if position.close_time is None:
             position.close_time = close_time
@@ -68,4 +78,3 @@ class PositionManager:
         if position.direction.lower() in {"short", "sell"}:
             diff = -diff
         return diff * contract_size * position.volume
-

@@ -1,4 +1,5 @@
 """Historical replay validator — validates replay metrics against acceptance thresholds."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,14 @@ class ReplayValidator:
         checks_passed = 0
         checks_total = 0
 
-        def check(field: str, actual: float | None, threshold: float, *, above: bool = True, label: str | None = None) -> None:
+        def check(
+            field: str,
+            actual: float | None,
+            threshold: float,
+            *,
+            above: bool = True,
+            label: str | None = None,
+        ) -> None:
             nonlocal checks_passed, checks_total
             checks_total += 1
             lbl = label or field
@@ -65,19 +73,44 @@ class ReplayValidator:
                 errors.append(f"{lbl}: {actual} fails {direction} {threshold}")
 
         metrics = report.get("metrics", report)  # support flat or nested structure
-        check("signal_count", metrics.get("trade_count") or metrics.get("signal_count"), self._min_trades, label="SIGNAL_COUNT")
-        check("profit_factor", metrics.get("profit_factor"), self._min_profit_factor, label="PROFIT_FACTOR")
+        check(
+            "signal_count",
+            metrics.get("trade_count") or metrics.get("signal_count"),
+            self._min_trades,
+            label="SIGNAL_COUNT",
+        )
+        check(
+            "profit_factor",
+            metrics.get("profit_factor"),
+            self._min_profit_factor,
+            label="PROFIT_FACTOR",
+        )
         check("win_rate", metrics.get("win_rate"), self._min_win_rate, label="WIN_RATE")
-        check("avg_rr", metrics.get("avg_rr") or metrics.get("average_rr"), self._min_rr, label="AVG_RR")
-        check("max_drawdown", metrics.get("max_drawdown") or metrics.get("drawdown_pct"), self._max_drawdown, above=False, label="MAX_DRAWDOWN")
+        check(
+            "avg_rr",
+            metrics.get("avg_rr") or metrics.get("average_rr"),
+            self._min_rr,
+            label="AVG_RR",
+        )
+        check(
+            "max_drawdown",
+            metrics.get("max_drawdown") or metrics.get("drawdown_pct"),
+            self._max_drawdown,
+            above=False,
+            label="MAX_DRAWDOWN",
+        )
 
         # Validate data integrity fields (not scored, just advisory).
         for integrity_field in ("missed_trades", "duplicate_trades", "invalid_fills"):
             val = metrics.get(integrity_field)
             if val is not None and val > 0:
-                warnings.append(f"{integrity_field}: {val} (non-zero — inspect replay log)")
+                warnings.append(
+                    f"{integrity_field}: {val} (non-zero — inspect replay log)"
+                )
 
-        score = round((checks_passed / checks_total * 100.0) if checks_total > 0 else 0.0, 1)
+        score = round(
+            (checks_passed / checks_total * 100.0) if checks_total > 0 else 0.0, 1
+        )
         return StageResult(
             name="historical_replay",
             status=Status.FAIL if errors else Status.PASS,
@@ -100,7 +133,9 @@ class ReplayValidator:
                 return self._load_json(p)
             if p.is_dir():
                 # Pick the newest JSON in the directory tree.
-                jsons = sorted(p.rglob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+                jsons = sorted(
+                    p.rglob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True
+                )
                 if jsons:
                     data = self._load_json(jsons[0])
                     if data:

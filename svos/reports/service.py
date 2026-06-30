@@ -13,7 +13,9 @@ class StandardizedReportService:
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root)
         self.index_path = self.root / "data" / "svos" / "reports" / "index.json"
-        self.artifacts = FilesystemArtifactStore(self.root / "data" / "svos" / "artifacts")
+        self.artifacts = FilesystemArtifactStore(
+            self.root / "data" / "svos" / "artifacts"
+        )
 
     def register_artifact(
         self,

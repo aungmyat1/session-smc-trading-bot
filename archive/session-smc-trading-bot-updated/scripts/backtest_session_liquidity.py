@@ -35,17 +35,15 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
+from research.logger import (BacktestRun, TradeRecord, generate_run_id,
+                             log_backtest_run, log_trade, new_trade_id)
 from strategy.session_liquidity.session_strategy import run_strategy
-from research.logger import (
-    BacktestRun, TradeRecord,
-    log_backtest_run, log_trade, generate_run_id, new_trade_id,
-)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 RR_VARIANTS = [2.0, 3.0, 4.0, 5.0]
-MAX_TRADE_BARS = 96        # 24 hours at M15
-_PIP = 0.0001              # both EURUSD and GBPUSD are 4-decimal pip pairs
+MAX_TRADE_BARS = 96  # 24 hours at M15
+_PIP = 0.0001  # both EURUSD and GBPUSD are 4-decimal pip pairs
 
 SPREAD_PIPS = {
     "EURUSD": {"standard": 1.4, "2x": 2.8},
@@ -59,10 +57,11 @@ CSV_FILES = {
 }
 
 PHASE0_MIN_TRADES = 100
-PHASE0_MIN_PF     = 1.0
+PHASE0_MIN_PF = 1.0
 
 
 # ── Pure simulation functions (importable for tests) ──────────────────────────
+
 
 def simulate_trade(entry, sl, side, rr, future_bars, max_bars=MAX_TRADE_BARS):
     """
@@ -126,15 +125,20 @@ def compute_metrics(net_rs):
     """
     if not net_rs:
         return {
-            "trade_count": 0, "win_count": 0, "loss_count": 0,
-            "win_rate": 0.0, "avg_r": 0.0, "net_pf": 0.0,
-            "total_net_r": 0.0, "max_dd": 0.0,
+            "trade_count": 0,
+            "win_count": 0,
+            "loss_count": 0,
+            "win_rate": 0.0,
+            "avg_r": 0.0,
+            "net_pf": 0.0,
+            "total_net_r": 0.0,
+            "max_dd": 0.0,
         }
 
-    wins   = [r for r in net_rs if r > 0]
+    wins = [r for r in net_rs if r > 0]
     losses = [r for r in net_rs if r <= 0]
 
-    gross_wins   = sum(wins)
+    gross_wins = sum(wins)
     gross_losses = abs(sum(losses))
 
     if gross_losses == 0:
@@ -146,13 +150,13 @@ def compute_metrics(net_rs):
 
     return {
         "trade_count": len(net_rs),
-        "win_count":   len(wins),
-        "loss_count":  len(losses),
-        "win_rate":    len(wins) / len(net_rs),
-        "avg_r":       sum(net_rs) / len(net_rs),
-        "net_pf":      net_pf,
+        "win_count": len(wins),
+        "loss_count": len(losses),
+        "win_rate": len(wins) / len(net_rs),
+        "avg_r": sum(net_rs) / len(net_rs),
+        "net_pf": net_pf,
         "total_net_r": sum(net_rs),
-        "max_dd":      max_drawdown(net_rs),
+        "max_dd": max_drawdown(net_rs),
     }
 
 
@@ -171,19 +175,22 @@ def max_drawdown(net_rs):
 
 # ── Data helpers ──────────────────────────────────────────────────────────────
 
+
 def load_csv(path):
     """Load OHLCV CSV into list of dicts. OHLCV values are floats; time stays string."""
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            rows.append({
-                "time":   row["time"],
-                "open":   float(row["open"]),
-                "high":   float(row["high"]),
-                "low":    float(row["low"]),
-                "close":  float(row["close"]),
-                "volume": float(row.get("volume", 0.0)),
-            })
+            rows.append(
+                {
+                    "time": row["time"],
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row.get("volume", 0.0)),
+                }
+            )
     return rows
 
 
@@ -193,6 +200,7 @@ def build_time_index(bars):
 
 
 # ── Debug event parsing ───────────────────────────────────────────────────────
+
 
 def extract_contexts(events):
     """
@@ -204,20 +212,20 @@ def extract_contexts(events):
         sweeps : dict  (date_str, session) → {time_iso, bias}
                  Uses the LAST sweep before a signal (overwrites earlier timeouts).
     """
-    asian  = {}
+    asian = {}
     sweeps = {}
 
     for ev in events:
-        date    = ev["date"]
-        etype   = ev["event"]
-        detail  = ev["detail"]
+        date = ev["date"]
+        etype = ev["event"]
+        detail = ev["detail"]
 
         if etype == "ASIAN_RANGE":
             m = re.search(r"H=([\d.]+) L=([\d.]+) range=([\d.]+)pip", detail)
             if m:
                 asian[date] = {
-                    "high":       float(m.group(1)),
-                    "low":        float(m.group(2)),
+                    "high": float(m.group(1)),
+                    "low": float(m.group(2)),
                     "range_pips": float(m.group(3)),
                 }
 
@@ -226,8 +234,8 @@ def extract_contexts(events):
             m_bias = re.search(r"bias=(\w+)", detail)
             m_time = re.search(r"\[(\d{2}:\d{2}) UTC\]", detail)
             if m_sess and m_bias:
-                session  = m_sess.group(1)
-                bias     = m_bias.group(1)
+                session = m_sess.group(1)
+                bias = m_bias.group(1)
                 bar_hhmm = m_time.group(1) if m_time else "00:00"
                 time_iso = f"{date}T{bar_hhmm}:00Z"
                 sweeps[(date, session)] = {"time_iso": time_iso, "bias": bias}
@@ -236,6 +244,7 @@ def extract_contexts(events):
 
 
 # ── Trade simulation loop ─────────────────────────────────────────────────────
+
 
 def _run_rr(signals_by_sym, bars_by_sym, time_idx_by_sym, rr):
     """
@@ -249,10 +258,10 @@ def _run_rr(signals_by_sym, bars_by_sym, time_idx_by_sym, rr):
     trades = []
 
     for sym in SYMBOLS:
-        signals  = signals_by_sym[sym]
-        bars     = bars_by_sym[sym]
+        signals = signals_by_sym[sym]
+        bars = bars_by_sym[sym]
         time_idx = time_idx_by_sym[sym]
-        std_sp   = SPREAD_PIPS[sym]["standard"]
+        std_sp = SPREAD_PIPS[sym]["standard"]
         stress_sp = SPREAD_PIPS[sym]["2x"]
 
         for sig in signals:
@@ -262,37 +271,40 @@ def _run_rr(signals_by_sym, bars_by_sym, time_idx_by_sym, rr):
                 print(f"  WARN: signal bar not found in index: {sig_time} ({sym})")
                 continue
 
-            future_bars = bars[idx + 1:]
+            future_bars = bars[idx + 1 :]
             outcome, gross_r, exit_p, exit_t, n_bars = simulate_trade(
                 sig.entry, sig.stop_loss, sig.side, rr, future_bars
             )
 
             sl_pips = abs(sig.entry - sig.stop_loss) / _PIP
-            cost_std    = spread_cost_r(std_sp,    sl_pips)
+            cost_std = spread_cost_r(std_sp, sl_pips)
             cost_stress = spread_cost_r(stress_sp, sl_pips)
 
-            trades.append({
-                "sym":          sym,
-                "sig":          sig,
-                "rr":           rr,
-                "outcome":      outcome,
-                "gross_r":      gross_r,
-                "std_net_r":    gross_r - cost_std,
-                "stress_net_r": gross_r - cost_stress,
-                "exit_price":   exit_p,
-                "exit_time":    exit_t,
-                "bars_held":    n_bars,
-                "sl_pips":      sl_pips,
-                "std_spread":   std_sp,
-                "stress_spread": stress_sp,
-                "std_cost_r":   cost_std,
-                "stress_cost_r": cost_stress,
-            })
+            trades.append(
+                {
+                    "sym": sym,
+                    "sig": sig,
+                    "rr": rr,
+                    "outcome": outcome,
+                    "gross_r": gross_r,
+                    "std_net_r": gross_r - cost_std,
+                    "stress_net_r": gross_r - cost_stress,
+                    "exit_price": exit_p,
+                    "exit_time": exit_t,
+                    "bars_held": n_bars,
+                    "sl_pips": sl_pips,
+                    "std_spread": std_sp,
+                    "stress_spread": stress_sp,
+                    "std_cost_r": cost_std,
+                    "stress_cost_r": cost_stress,
+                }
+            )
 
     return trades
 
 
 # ── Per-breakdown helpers ─────────────────────────────────────────────────────
+
 
 def _year_rows(trades, rs_key="std_net_r"):
     """Return list of (year, count, win_rate, net_pf, flag) tuples sorted by year."""
@@ -328,6 +340,7 @@ def _sym_metrics(trades, sym, rs_key):
 
 # ── Report writers ────────────────────────────────────────────────────────────
 
+
 def _pct(v):
     return f"{v * 100:.1f}%"
 
@@ -359,12 +372,12 @@ def write_results(run_id, all_rr_data, best_rr, today_utc):
         key=lambda r: (
             -all_rr_data[r]["std_metrics"]["net_pf"],
             -all_rr_data[r]["std_metrics"]["trade_count"],
-        )
+        ),
     )
 
     for rr in sorted_rrs:
-        d   = all_rr_data[rr]
-        sm  = d["std_metrics"]
+        d = all_rr_data[rr]
+        sm = d["std_metrics"]
         verdict = "**PASS**" if d["gate"] else "FAIL"
         lines.append(
             f"| {rr:.0f} | {sm['trade_count']} | {_pct(sm['win_rate'])} "
@@ -387,17 +400,20 @@ def write_results(run_id, all_rr_data, best_rr, today_utc):
         "|---|---|---|---|---|",
     ]
     for rr in RR_VARIANTS:
-        d   = all_rr_data[rr]
-        sm  = d["std_metrics"]
+        d = all_rr_data[rr]
+        sm = d["std_metrics"]
         stm = d["stress_metrics"]
-        g   = "✅ PASS" if d["gate"] else "❌ FAIL"
+        g = "✅ PASS" if d["gate"] else "❌ FAIL"
         lines.append(
             f"| {rr:.0f} | {sm['trade_count']} "
             f"| {_pf(sm['net_pf'])} | {_pf(stm['net_pf'])} | {g} |"
         )
 
-    verdict_str = "✅ PASS — demo trading unlocked (subject to Phase-1 paper trade)" \
-                  if any_pass else "❌ FAIL — strategy does not meet Phase-0 gate"
+    verdict_str = (
+        "✅ PASS — demo trading unlocked (subject to Phase-1 paper trade)"
+        if any_pass
+        else "❌ FAIL — strategy does not meet Phase-0 gate"
+    )
     lines += ["", f"### FINAL VERDICT: {verdict_str}", "", "---", ""]
 
     # Per-symbol breakdown for best (or first) RR
@@ -406,7 +422,7 @@ def write_results(run_id, all_rr_data, best_rr, today_utc):
 
     lines += [f"## Per-Symbol Breakdown (RR {ref_rr:.0f})", ""]
     for sym in SYMBOLS:
-        sm_std    = _sym_metrics(ref_trades, sym, "std_net_r")
+        sm_std = _sym_metrics(ref_trades, sym, "std_net_r")
         sm_stress = _sym_metrics(ref_trades, sym, "stress_net_r")
         lines += [
             f"### {sym}",
@@ -470,8 +486,8 @@ def write_failure_analysis(run_id, all_rr_data, today_utc):
         "|---|---|---|---|---|",
     ]
     for rr in RR_VARIANTS:
-        d   = all_rr_data[rr]
-        sm  = d["std_metrics"]
+        d = all_rr_data[rr]
+        sm = d["std_metrics"]
         stm = d["stress_metrics"]
         reasons = []
         if sm["trade_count"] < PHASE0_MIN_TRADES:
@@ -532,48 +548,51 @@ def write_failure_analysis(run_id, all_rr_data, today_utc):
 
 # ── Research CSV logging ──────────────────────────────────────────────────────
 
+
 def _log_trades(run_id, rr, trades, contexts_by_sym):
     """Append one TradeRecord per trade (std spread) to research/trades.csv."""
     for t in trades:
-        sig  = t["sig"]
-        sym  = t["sym"]
+        sig = t["sig"]
+        sym = t["sym"]
         date_str = str(sig.timestamp.date())
         ctx_asian, ctx_sweeps = contexts_by_sym[sym]
-        ar   = ctx_asian.get(date_str, {})
-        sw   = ctx_sweeps.get((date_str, sig.session), {})
+        ar = ctx_asian.get(date_str, {})
+        sw = ctx_sweeps.get((date_str, sig.session), {})
 
         exit_reason = {"win": "tp", "loss": "sl", "timeout": "timeout"}[t["outcome"]]
 
         rec = TradeRecord(
-            trade_id              = new_trade_id(),
-            run_id                = run_id,
-            timestamp_utc         = sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            symbol                = sym,
-            session               = sig.session,
-            side                  = sig.side,
-            entry                 = round(sig.entry, 5),
-            stop_loss             = round(sig.stop_loss, 5),
-            take_profit           = round(
-                sig.entry + abs(sig.entry - sig.stop_loss) * rr
-                if sig.side == "long"
-                else sig.entry - abs(sig.entry - sig.stop_loss) * rr,
+            trade_id=new_trade_id(),
+            run_id=run_id,
+            timestamp_utc=sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            symbol=sym,
+            session=sig.session,
+            side=sig.side,
+            entry=round(sig.entry, 5),
+            stop_loss=round(sig.stop_loss, 5),
+            take_profit=round(
+                (
+                    sig.entry + abs(sig.entry - sig.stop_loss) * rr
+                    if sig.side == "long"
+                    else sig.entry - abs(sig.entry - sig.stop_loss) * rr
+                ),
                 5,
             ),
-            sl_pips               = round(t["sl_pips"], 2),
-            rr                    = rr,
-            exit_price            = round(t["exit_price"], 5),
-            exit_reason           = exit_reason,
-            bars_held             = t["bars_held"],
-            gross_r               = round(t["gross_r"], 4),
-            spread_cost_r         = round(t["std_cost_r"], 4),
-            net_r                 = round(t["std_net_r"], 4),
-            asian_high            = round(ar.get("high", 0.0), 5),
-            asian_low             = round(ar.get("low", 0.0), 5),
-            asian_range_pips      = round(ar.get("range_pips", 0.0), 1),
-            htf_bias              = sw.get("bias", ""),
-            sweep_bar_time        = sw.get("time_iso", ""),
-            displacement_bar_time = sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            notes                 = f"2x_net_r={t['stress_net_r']:.4f}",
+            sl_pips=round(t["sl_pips"], 2),
+            rr=rr,
+            exit_price=round(t["exit_price"], 5),
+            exit_reason=exit_reason,
+            bars_held=t["bars_held"],
+            gross_r=round(t["gross_r"], 4),
+            spread_cost_r=round(t["std_cost_r"], 4),
+            net_r=round(t["std_net_r"], 4),
+            asian_high=round(ar.get("high", 0.0), 5),
+            asian_low=round(ar.get("low", 0.0), 5),
+            asian_range_pips=round(ar.get("range_pips", 0.0), 1),
+            htf_bias=sw.get("bias", ""),
+            sweep_bar_time=sw.get("time_iso", ""),
+            displacement_bar_time=sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            notes=f"2x_net_r={t['stress_net_r']:.4f}",
         )
         log_trade(rec)
 
@@ -582,42 +601,52 @@ def _log_runs(run_id, rr, trades, all_rr_data, gate, today_utc, data_start, data
     """Append one BacktestRun per symbol to research/backtest_runs.csv."""
     for sym in SYMBOLS:
         sym_trades = [t for t in trades if t["sym"] == sym]
-        sm_std    = _sym_metrics(sym_trades, sym, "std_net_r")
+        sm_std = _sym_metrics(sym_trades, sym, "std_net_r")
         sm_stress = _sym_metrics(sym_trades, sym, "stress_net_r")
-        sm_gross  = _sym_metrics(sym_trades, sym, "gross_r")
+        sm_gross = _sym_metrics(sym_trades, sym, "gross_r")
 
         rec = BacktestRun(
-            run_id           = run_id,
-            timestamp_utc    = today_utc,
-            strategy_id      = "SA",
-            strategy_version = "1.0.0",
-            symbol           = sym,
-            timeframe        = "M15",
-            start_date       = data_start.get(sym, ""),
-            end_date         = data_end.get(sym, ""),
-            rr               = rr,
-            spread_model     = "combined",
-            spread_pips      = SPREAD_PIPS[sym]["standard"],
-            trade_count      = sm_std["trade_count"],
-            win_count        = sm_std["win_count"],
-            loss_count       = sm_std["loss_count"],
-            gross_pf         = round(sm_gross["net_pf"], 4)
-                               if sm_gross["net_pf"] != float("inf") else 99.99,
-            net_pf_std       = round(sm_std["net_pf"], 4)
-                               if sm_std["net_pf"] != float("inf") else 99.99,
-            net_pf_2x        = round(sm_stress["net_pf"], 4)
-                               if sm_stress["net_pf"] != float("inf") else 99.99,
-            win_rate_pct     = round(sm_std["win_rate"] * 100, 1),
-            avg_r            = round(sm_std["avg_r"], 4),
-            max_dd_r         = round(sm_std["max_dd"], 4),
-            total_net_r      = round(sm_std["total_net_r"], 4),
-            gate_passed      = gate,
-            notes            = f"combined_gate={'PASS' if gate else 'FAIL'}",
+            run_id=run_id,
+            timestamp_utc=today_utc,
+            strategy_id="SA",
+            strategy_version="1.0.0",
+            symbol=sym,
+            timeframe="M15",
+            start_date=data_start.get(sym, ""),
+            end_date=data_end.get(sym, ""),
+            rr=rr,
+            spread_model="combined",
+            spread_pips=SPREAD_PIPS[sym]["standard"],
+            trade_count=sm_std["trade_count"],
+            win_count=sm_std["win_count"],
+            loss_count=sm_std["loss_count"],
+            gross_pf=(
+                round(sm_gross["net_pf"], 4)
+                if sm_gross["net_pf"] != float("inf")
+                else 99.99
+            ),
+            net_pf_std=(
+                round(sm_std["net_pf"], 4)
+                if sm_std["net_pf"] != float("inf")
+                else 99.99
+            ),
+            net_pf_2x=(
+                round(sm_stress["net_pf"], 4)
+                if sm_stress["net_pf"] != float("inf")
+                else 99.99
+            ),
+            win_rate_pct=round(sm_std["win_rate"] * 100, 1),
+            avg_r=round(sm_std["avg_r"], 4),
+            max_dd_r=round(sm_std["max_dd"], 4),
+            total_net_r=round(sm_std["total_net_r"], 4),
+            gate_passed=gate,
+            notes=f"combined_gate={'PASS' if gate else 'FAIL'}",
         )
         log_backtest_run(rec)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def _load_costs_from_json(path):
     """
@@ -643,7 +672,7 @@ def _load_costs_from_json(path):
         if sym_costs is None:
             print(f"[ERROR] Symbol '{sym}' not in profile '{profile_name}'.")
             raise SystemExit(1)
-        std_val    = sym_costs.get("standard")
+        std_val = sym_costs.get("standard")
         stress_val = sym_costs.get("stress2x")
         if std_val is None or stress_val is None:
             print(
@@ -652,14 +681,17 @@ def _load_costs_from_json(path):
             )
             raise SystemExit(1)
         SPREAD_PIPS[sym]["standard"] = float(std_val)
-        SPREAD_PIPS[sym]["2x"]       = float(stress_val)
-        print(f"    {sym}: std={SPREAD_PIPS[sym]['standard']} pip, 2x={SPREAD_PIPS[sym]['2x']} pip")
+        SPREAD_PIPS[sym]["2x"] = float(stress_val)
+        print(
+            f"    {sym}: std={SPREAD_PIPS[sym]['standard']} pip, 2x={SPREAD_PIPS[sym]['2x']} pip"
+        )
 
 
 def main():
     parser = argparse.ArgumentParser(description="SA-08 Phase-0 backtest")
     parser.add_argument(
-        "--costs-json", metavar="FILE",
+        "--costs-json",
+        metavar="FILE",
         help="Path to costs.json — overrides hardcoded SPREAD_PIPS using active_profile",
     )
     args = parser.parse_args()
@@ -668,21 +700,21 @@ def main():
         _load_costs_from_json(args.costs_json)
 
     today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    run_id    = generate_run_id()
-    data_dir  = _ROOT / "data" / "historical"
+    run_id = generate_run_id()
+    data_dir = _ROOT / "data" / "historical"
 
     print(f"\n=== SA-08 Phase-0 Backtest | run_id={run_id} ===\n")
 
     # ── Load data ──────────────────────────────────────────────────────────────
-    bars_by_sym    = {}
+    bars_by_sym = {}
     time_idx_by_sym = {}
-    h4_by_sym      = {}
-    data_start     = {}
-    data_end       = {}
+    h4_by_sym = {}
+    data_start = {}
+    data_end = {}
 
     for sym in SYMBOLS:
         m15_path = data_dir / CSV_FILES[sym]["m15"]
-        h4_path  = data_dir / CSV_FILES[sym]["h4"]
+        h4_path = data_dir / CSV_FILES[sym]["h4"]
 
         if not m15_path.exists():
             print(f"  ERROR: missing {m15_path}")
@@ -694,10 +726,10 @@ def main():
         print(f"[+] Loading {sym} M15 ...", end=" ", flush=True)
         m15_bars = load_csv(m15_path)
         m15_bars.sort(key=lambda b: b["time"])
-        bars_by_sym[sym]     = m15_bars
+        bars_by_sym[sym] = m15_bars
         time_idx_by_sym[sym] = build_time_index(m15_bars)
-        data_start[sym]      = m15_bars[0]["time"][:10]  if m15_bars else ""
-        data_end[sym]        = m15_bars[-1]["time"][:10] if m15_bars else ""
+        data_start[sym] = m15_bars[0]["time"][:10] if m15_bars else ""
+        data_end[sym] = m15_bars[-1]["time"][:10] if m15_bars else ""
         print(f"{len(m15_bars):,} bars  ({data_start[sym]} → {data_end[sym]})")
 
         print(f"[+] Loading {sym} H4  ...", end=" ", flush=True)
@@ -708,8 +740,8 @@ def main():
 
     # ── Generate signals (RR-independent; run once per symbol) ────────────────
     print("\n[+] Running strategy signal generation ...")
-    signals_by_sym   = {}
-    contexts_by_sym  = {}  # sym → (asian_dict, sweeps_dict)
+    signals_by_sym = {}
+    contexts_by_sym = {}  # sym → (asian_dict, sweeps_dict)
 
     for sym in SYMBOLS:
         print(f"    {sym} ...", end=" ", flush=True)
@@ -717,10 +749,12 @@ def main():
             bars_by_sym[sym],
             h4_by_sym[sym],
             sym,
-            config={"rr": 2.0},   # RR here only affects sig.take_profit; we recompute per variant
+            config={
+                "rr": 2.0
+            },  # RR here only affects sig.take_profit; we recompute per variant
             debug=True,
         )
-        signals_by_sym[sym]  = sigs
+        signals_by_sym[sym] = sigs
         contexts_by_sym[sym] = extract_contexts(events)
         print(f"{len(sigs)} signals")
 
@@ -735,26 +769,26 @@ def main():
         print(f"    RR={rr:.0f} ...", end=" ", flush=True)
         trades = _run_rr(signals_by_sym, bars_by_sym, time_idx_by_sym, rr)
 
-        std_rs    = [t["std_net_r"]    for t in trades]
+        std_rs = [t["std_net_r"] for t in trades]
         stress_rs = [t["stress_net_r"] for t in trades]
-        gross_rs  = [t["gross_r"]      for t in trades]
+        gross_rs = [t["gross_r"] for t in trades]
 
-        std_m    = compute_metrics(std_rs)
+        std_m = compute_metrics(std_rs)
         stress_m = compute_metrics(stress_rs)
-        gross_m  = compute_metrics(gross_rs)
+        gross_m = compute_metrics(gross_rs)
 
         gate = (
             std_m["trade_count"] >= PHASE0_MIN_TRADES
-            and std_m["net_pf"]    > PHASE0_MIN_PF
+            and std_m["net_pf"] > PHASE0_MIN_PF
             and stress_m["net_pf"] > PHASE0_MIN_PF
         )
 
         all_rr_data[rr] = {
-            "trades":         trades,
-            "std_metrics":    std_m,
+            "trades": trades,
+            "std_metrics": std_m,
             "stress_metrics": stress_m,
-            "gross_pf":       gross_m["net_pf"],
-            "gate":           gate,
+            "gross_pf": gross_m["net_pf"],
+            "gate": gate,
         }
         verdict = "PASS" if gate else "FAIL"
         print(
@@ -768,7 +802,9 @@ def main():
     if passing:
         best_rr = max(passing, key=lambda r: all_rr_data[r]["std_metrics"]["net_pf"])
     else:
-        best_rr = max(RR_VARIANTS, key=lambda r: all_rr_data[r]["std_metrics"]["net_pf"])
+        best_rr = max(
+            RR_VARIANTS, key=lambda r: all_rr_data[r]["std_metrics"]["net_pf"]
+        )
 
     # ── Write reports ─────────────────────────────────────────────────────────
     print("\n[+] Writing reports ...")
@@ -781,16 +817,24 @@ def main():
     for rr in RR_VARIANTS:
         d = all_rr_data[rr]
         _log_trades(run_id, rr, d["trades"], contexts_by_sym)
-        _log_runs(run_id, rr, d["trades"], all_rr_data, d["gate"],
-                  today_utc, data_start, data_end)
+        _log_runs(
+            run_id,
+            rr,
+            d["trades"],
+            all_rr_data,
+            d["gate"],
+            today_utc,
+            data_start,
+            data_end,
+        )
 
     # ── Final summary ─────────────────────────────────────────────────────────
     print("\n=== Phase-0 Gate Summary ===\n")
     for rr in RR_VARIANTS:
-        d  = all_rr_data[rr]
+        d = all_rr_data[rr]
         sm = d["std_metrics"]
         st = d["stress_metrics"]
-        g  = "✅ PASS" if d["gate"] else "❌ FAIL"
+        g = "✅ PASS" if d["gate"] else "❌ FAIL"
         print(
             f"  RR={rr:.0f}  trades={sm['trade_count']:3d}  "
             f"PF_std={_pf(sm['net_pf'])}  PF_2x={_pf(st['net_pf'])}  {g}"
@@ -799,7 +843,9 @@ def main():
     print()
     if any_pass:
         print(f"FINAL: ✅ PASS — best RR={best_rr:.0f}")
-        print("       Next step: Phase-1 paper trade (MetaAPI demo, 30 days, ≥50 trades)")
+        print(
+            "       Next step: Phase-1 paper trade (MetaAPI demo, 30 days, ≥50 trades)"
+        )
     else:
         print("FINAL: ❌ FAIL")
         print("       See docs/BACKTEST_FAILURE_ANALYSIS.md for root cause.")

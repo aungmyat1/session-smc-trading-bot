@@ -8,8 +8,15 @@ from src.analytics.queries import ResearchQueries
 
 def test_duckdb_queries(tmp_path):
     store = DuckDBStore(tmp_path / "research.db")
-    candles = pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T00:00:00Z"], utc=True)})
-    sessions = pd.DataFrame({"timestamp": pd.to_datetime(["2024-01-01T00:00:00Z"], utc=True), "session": ["asian"]})
+    candles = pd.DataFrame(
+        {"timestamp": pd.to_datetime(["2024-01-01T00:00:00Z"], utc=True)}
+    )
+    sessions = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(["2024-01-01T00:00:00Z"], utc=True),
+            "session": ["asian"],
+        }
+    )
     signals = pd.DataFrame(
         {
             "signal_id": ["sig-1"],
@@ -42,12 +49,14 @@ def test_duckdb_queries(tmp_path):
             "result_money": [50.0],
         }
     )
-    store.create_tables({
-        "candles": candles,
-        "sessions": sessions,
-        "signals": signals,
-        "trades": trades,
-    })
+    store.create_tables(
+        {
+            "candles": candles,
+            "sessions": sessions,
+            "signals": signals,
+            "trades": trades,
+        }
+    )
     queries = ResearchQueries(store)
     assert not queries.performance_by_pair().empty
     assert not queries.performance_by_strategy().empty

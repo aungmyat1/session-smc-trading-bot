@@ -12,21 +12,18 @@ What it answers:
 What it does NOT answer:
     - Whether the strategy is profitable. Use backtest scripts for that.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import asdict, dataclass
-from datetime import date as date_cls, datetime, timedelta, timezone
-from pathlib import Path
+from dataclasses import dataclass
+from datetime import date as date_cls
+from datetime import datetime, timezone
 from typing import Iterable
 
-from simulator.forward_test import (
-    ForwardTestSimulator,
-    ReplayEvent,
-    compare_with_backtest,
-    format_replay,
-    replay_day,
-)
+from simulator.forward_test import (ForwardTestSimulator, ReplayEvent,
+                                    compare_with_backtest, format_replay,
+                                    replay_day)
 from strategy.session_liquidity.entry_engine import Signal
 from strategy.session_liquidity.session_strategy import DEFAULT_CONFIG
 
@@ -119,7 +116,9 @@ def run_historical_replay(
     start_date = _parse_date(start)
     end_date = _parse_date(end)
 
-    m15 = sorted(_filter_by_date(candles_m15, start_date, end_date), key=lambda b: b["time"])
+    m15 = sorted(
+        _filter_by_date(candles_m15, start_date, end_date), key=lambda b: b["time"]
+    )
     h4 = sorted(candles_4h, key=lambda b: b["time"])
 
     # Sequential feed gives us the true replay signal path.
@@ -154,9 +153,7 @@ def run_historical_replay(
         if day_signals:
             # Compare against the batch signal list for this day only.
             # This keeps the audit focused on "did the bot do the right thing?".
-            day_debug_signals = [
-                ev for ev in timeline if ev.event == "SIGNAL"
-            ]
+            day_debug_signals = [ev for ev in timeline if ev.event == "SIGNAL"]
             if len(day_debug_signals) != len(day_signals):
                 day_match = False
                 day_mismatches.append(

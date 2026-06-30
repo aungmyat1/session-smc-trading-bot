@@ -17,16 +17,15 @@ Output:
 
 import argparse
 import csv
-import os
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Ensure project root on path so session_smc imports work
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from session_smc.confirmation_entry import generate_signal_A, DEFAULT_CONFIG
+from session_smc.confirmation_entry import DEFAULT_CONFIG, generate_signal_A
 
 # ── Cost model (VT Markets Standard) ─────────────────────────────────────────
 
@@ -81,6 +80,7 @@ def filter_by_date(candles: list[dict], start: str, end: str) -> list[dict]:
 
 # ── Trade representation ───────────────────────────────────────────────────────
 
+
 @dataclass
 class Trade:
     symbol: str
@@ -100,6 +100,7 @@ class Trade:
 
 
 # ── Backtest core ─────────────────────────────────────────────────────────────
+
 
 @dataclass
 class SessionResult:
@@ -122,7 +123,9 @@ def run_symbol(
 
     use_real_1h = bool(candles_1h_sorted)
 
-    def _closed_slice(sorted_bars: list[dict], before_time: str, bar_hours: int, count: int) -> list[dict]:
+    def _closed_slice(
+        sorted_bars: list[dict], before_time: str, bar_hours: int, count: int
+    ) -> list[dict]:
         """Return bars whose CLOSE time (open + bar_hours) is ≤ before_time.
 
         Prevents including a bar that is still forming at `before_time`.
@@ -130,10 +133,9 @@ def run_symbol(
         it is not complete.  cutoff = before_time - bar_hours gives 03:00Z,
         so only the 00:00Z bar (closes 04:00Z) is included.
         """
-        cutoff_dt = (
-            datetime.fromisoformat(before_time.replace("Z", "+00:00"))
-            - timedelta(hours=bar_hours)
-        )
+        cutoff_dt = datetime.fromisoformat(
+            before_time.replace("Z", "+00:00")
+        ) - timedelta(hours=bar_hours)
         cutoff = cutoff_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         result = [c for c in sorted_bars if c["time"] <= cutoff]
         return result[-count:] if result else []
@@ -169,16 +171,20 @@ def run_symbol(
             continue
 
         # 4H bias: only bars whose close time ≤ session open (H4 bar closes 4h after open)
-        candles_4h_ctx = _closed_slice(candles_4h_sorted, dt_str, bar_hours=4, count=200)
+        candles_4h_ctx = _closed_slice(
+            candles_4h_sorted, dt_str, bar_hours=4, count=200
+        )
 
         # 1H bias: real H1 data preferred; M15 proxy only if H1 not available
         if use_real_1h:
-            candles_1h_ctx = _closed_slice(candles_1h_sorted, dt_str, bar_hours=1, count=200)
+            candles_1h_ctx = _closed_slice(
+                candles_1h_sorted, dt_str, bar_hours=1, count=200
+            )
         else:
             # M15 proxy: last 200 completed M15 bars before session open
             # Fidelity note: swing detection on M15 differs from true H1 structure.
             # Fetch H1 data (fetch_data.py --granularities M15 H1 H4) for production accuracy.
-            candles_1h_ctx = candles_15m[max(0, i - 200):i]
+            candles_1h_ctx = candles_15m[max(0, i - 200) : i]
 
         if not candles_4h_ctx or not candles_1h_ctx:
             i += SESSION_BARS
@@ -194,7 +200,9 @@ def run_symbol(
         )
 
         if sig is not None:
-            trade = _simulate_trade(sig, session_candles, sig.retest_idx, symbol, session_name)
+            trade = _simulate_trade(
+                sig, session_candles, sig.retest_idx, symbol, session_name
+            )
             if trade is not None:
                 trades.append(trade)
 
@@ -204,7 +212,9 @@ def run_symbol(
     return trades
 
 
-def _simulate_trade(sig, session_candles: list[dict], entry_bar: int, symbol: str, session: str) -> "Trade | None":
+def _simulate_trade(
+    sig, session_candles: list[dict], entry_bar: int, symbol: str, session: str
+) -> "Trade | None":
     """Simulate SL/TP1/session-end exit on subsequent bars after entry."""
     if entry_bar >= len(session_candles):
         return None
@@ -297,12 +307,15 @@ def _weekday(time_str: str) -> int:
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 def compute_metrics(trades: list[Trade], r_field: str) -> dict:
     if not trades:
         return {"n": 0, "pf": 0.0, "win_rate": 0.0, "avg_r": 0.0, "max_dd": 0.0}
 
     gross_win = sum(getattr(t, r_field) for t in trades if getattr(t, r_field) > 0)
-    gross_loss = abs(sum(getattr(t, r_field) for t in trades if getattr(t, r_field) <= 0))
+    gross_loss = abs(
+        sum(getattr(t, r_field) for t in trades if getattr(t, r_field) <= 0)
+    )
     wins = sum(1 for t in trades if getattr(t, r_field) > 0)
 
     pf = gross_win / gross_loss if gross_loss > 0 else float("inf")
@@ -348,14 +361,18 @@ def yearly_breakdown(trades: list[Trade], r_field: str = "net_r_standard") -> No
     for year in sorted(by_year):
         m = compute_metrics(by_year[year], r_field)
         flag = " ⚠" if m["pf"] < 1.0 and m["n"] >= 5 else ""
-        print(f"  {year:<8} {m['n']:>5} {m['pf']:>7.3f} {m['win_rate']:>6.1f}% {m['avg_r']:>7.3f} {m['max_dd']:>7.2f}{flag}")
+        print(
+            f"  {year:<8} {m['n']:>5} {m['pf']:>7.3f} {m['win_rate']:>6.1f}% {m['avg_r']:>7.3f} {m['max_dd']:>7.2f}{flag}"
+        )
 
     print(f"  {'─' * 56}")
     print(f"  {'Session':<8} {'n':>5} {'PF':>7} {'WR%':>7} {'AvgR':>7} {'MaxDD':>7}")
     print(f"  {'─' * 56}")
     for sess in sorted(by_session):
         m = compute_metrics(by_session[sess], r_field)
-        print(f"  {sess:<8} {m['n']:>5} {m['pf']:>7.3f} {m['win_rate']:>6.1f}% {m['avg_r']:>7.3f} {m['max_dd']:>7.2f}")
+        print(
+            f"  {sess:<8} {m['n']:>5} {m['pf']:>7.3f} {m['win_rate']:>6.1f}% {m['avg_r']:>7.3f} {m['max_dd']:>7.2f}"
+        )
 
 
 def print_report(symbol: str, trades: list[Trade]) -> tuple:
@@ -386,7 +403,9 @@ def print_report(symbol: str, trades: list[Trade]) -> tuple:
     return gate_pass, std, stress
 
 
-def append_verdict_row(symbol: str, trial_id: str, std: dict, stress: dict, gate: bool) -> None:
+def append_verdict_row(
+    symbol: str, trial_id: str, std: dict, stress: dict, gate: bool
+) -> None:
     if not VERDICT_LOG.exists():
         return
     status = "PASS" if gate else "FAIL"
@@ -401,6 +420,7 @@ def append_verdict_row(symbol: str, trial_id: str, std: dict, stress: dict, gate
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main(symbols: list[str], start: str, end: str, trial_id: str) -> None:
     config = {
         **DEFAULT_CONFIG,
@@ -412,8 +432,8 @@ def main(symbols: list[str], start: str, end: str, trial_id: str) -> None:
     for symbol in symbols:
         instr = symbol[:3] + "_" + symbol[3:]  # EURUSD → EUR_USD
         path_15m = DATA_DIR / f"{instr}_M15.csv"
-        path_h1  = DATA_DIR / f"{instr}_H1.csv"
-        path_4h  = DATA_DIR / f"{instr}_H4.csv"
+        path_h1 = DATA_DIR / f"{instr}_H1.csv"
+        path_4h = DATA_DIR / f"{instr}_H4.csv"
 
         if not path_15m.exists():
             print(f"[{symbol}] M15 data not found: {path_15m}")
@@ -436,8 +456,10 @@ def main(symbols: list[str], start: str, end: str, trial_id: str) -> None:
             print(f"[{symbol}] Using real H1 data for 1H bias.")
         else:
             candles_1h = []
-            print(f"[{symbol}] H1 not found — using M15 proxy for 1H bias (lower fidelity).")
-            print(f"  To fix: python3 scripts/fetch_data.py --granularities M15 H1 H4")
+            print(
+                f"[{symbol}] H1 not found — using M15 proxy for 1H bias (lower fidelity)."
+            )
+            print("  To fix: python3 scripts/fetch_data.py --granularities M15 H1 H4")
 
         if not candles_15m:
             print(f"[{symbol}] No M15 data in range {start}–{end}")
@@ -445,7 +467,9 @@ def main(symbols: list[str], start: str, end: str, trial_id: str) -> None:
             continue
 
         h1_label = f"H1={len(candles_1h)}" if candles_1h else "H1=proxy"
-        print(f"[{symbol}] M15={len(candles_15m)} bars | {h1_label} | H4={len(candles_4h)} bars")
+        print(
+            f"[{symbol}] M15={len(candles_15m)} bars | {h1_label} | H4={len(candles_4h)} bars"
+        )
         print(f"[{symbol}] Running walk-forward …")
 
         trades = run_symbol(symbol, candles_15m, candles_4h, candles_1h, config)
@@ -468,7 +492,10 @@ if __name__ == "__main__":
     parser.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
     parser.add_argument(
         "--start",
-        default=(datetime.now(timezone.utc).replace(year=datetime.now().year - 5)).strftime("%Y-%m-%d") + "T00:00:00Z",
+        default=(
+            datetime.now(timezone.utc).replace(year=datetime.now().year - 5)
+        ).strftime("%Y-%m-%d")
+        + "T00:00:00Z",
     )
     parser.add_argument(
         "--end",

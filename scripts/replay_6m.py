@@ -19,26 +19,26 @@ Usage:
     python3 scripts/replay_6m.py --symbols EURUSD --start 2025-07-01
     python3 scripts/replay_6m.py --parquet --symbols EURUSD --start 2024-11-01 --end 2024-11-30
 """
+
 from __future__ import annotations
 
 import argparse
 import csv
 import sys
-from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from strategy.session_liquidity.session_builder import (
-    AsianRange, build_asian_range, classify_session,
-)
-from strategy.session_liquidity.bias_filter import htf_bias
-from strategy.session_liquidity.sweep_detector import detect_sweep
-from strategy.session_liquidity.displacement_detector import detect_displacement, wilder_atr
-from strategy.session_liquidity.entry_engine import build_signal
-
 from session_smc.daily_bias import build_daily_context, classify_location
+from strategy.session_liquidity.bias_filter import htf_bias
+from strategy.session_liquidity.displacement_detector import (
+    detect_displacement, wilder_atr)
+from strategy.session_liquidity.entry_engine import build_signal
+from strategy.session_liquidity.session_builder import (build_asian_range,
+                                                        classify_session)
+from strategy.session_liquidity.sweep_detector import detect_sweep
 
 # ── Cost model ────────────────────────────────────────────────────────────────
 
@@ -48,10 +48,10 @@ COSTS = {
 }
 PIP = 0.0001
 
-DATA_DIR  = Path(__file__).parent.parent / "data" / "historical"
+DATA_DIR = Path(__file__).parent.parent / "data" / "historical"
 DATA_PROC = Path(__file__).parent.parent / "data" / "processed"
-OUT_DIR   = Path(__file__).parent.parent / "docs"
-RPT_DIR   = Path(__file__).parent.parent / "reports"
+OUT_DIR = Path(__file__).parent.parent / "docs"
+RPT_DIR = Path(__file__).parent.parent / "reports"
 
 _UTC = timezone.utc
 
@@ -59,32 +59,33 @@ _UTC = timezone.utc
 # ── Config (mirrors ST-A2) ────────────────────────────────────────────────────
 
 ST_A2_CONFIG = {
-    "rr":                  3.0,
-    "sl_buffer_pips":      2.0,
-    "displacement_mult":   1.2,
-    "atr_period":          14,
-    "sweep_timeout_bars":  4,
-    "min_sl_pips":         5.0,
+    "rr": 3.0,
+    "sl_buffer_pips": 2.0,
+    "displacement_mult": 1.2,
+    "atr_period": 14,
+    "sweep_timeout_bars": 4,
+    "min_sl_pips": 5.0,
     "min_range_pips": {
         "EURUSD": 15.0,
         "GBPUSD": 20.0,
     },
     # D2 gates — toggled per variant
     "d2_structure_gate": False,
-    "d2_location_gate":  False,
-    "d2_poi_gate":       False,
-    "d2_poi_pips":       30.0,
+    "d2_location_gate": False,
+    "d2_poi_gate": False,
+    "d2_poi_pips": 30.0,
 }
 
 D2_CONFIG = {
     **ST_A2_CONFIG,
     "d2_structure_gate": True,
-    "d2_location_gate":  True,
-    "d2_poi_gate":       True,
+    "d2_location_gate": True,
+    "d2_poi_gate": True,
 }
 
 
 # ── Trade dataclass ────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Trade:
@@ -107,16 +108,17 @@ class Trade:
 
 # ── CSV helpers ───────────────────────────────────────────────────────────────
 
+
 def load_csv(path: Path) -> list[dict]:
     if not path.exists():
         return []
     with open(path) as f:
         return [
             {
-                "time":  row["time"],
-                "open":  float(row["open"]),
-                "high":  float(row["high"]),
-                "low":   float(row["low"]),
+                "time": row["time"],
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
                 "close": float(row["close"]),
             }
             for row in csv.DictReader(f)
@@ -127,7 +129,9 @@ def filter_range(candles: list[dict], start: str, end: str) -> list[dict]:
     return [c for c in candles if start <= c["time"] <= end]
 
 
-def load_parquet(symbol: str, tf: str, start: str | None = None, end: str | None = None) -> list[dict]:
+def load_parquet(
+    symbol: str, tf: str, start: str | None = None, end: str | None = None
+) -> list[dict]:
     try:
         import pandas as pd
     except ImportError:
@@ -139,8 +143,12 @@ def load_parquet(symbol: str, tf: str, start: str | None = None, end: str | None
         print(f"[{symbol}] Parquet not found: {path}")
         return []
 
-    df = pd.read_parquet(path, columns=["timestamp_utc", "open", "high", "low", "close"])
-    df["time"] = pd.to_datetime(df["timestamp_utc"], utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    df = pd.read_parquet(
+        path, columns=["timestamp_utc", "open", "high", "low", "close"]
+    )
+    df["time"] = pd.to_datetime(df["timestamp_utc"], utc=True).dt.strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     df = df.sort_values("time")
 
     if start:
@@ -161,6 +169,7 @@ def _utc(t) -> datetime:
 
 # ── Trade simulation ──────────────────────────────────────────────────────────
 
+
 def simulate_trade(
     sig,
     day_bars: list[tuple[dict, str]],
@@ -175,14 +184,19 @@ def simulate_trade(
 
     entry_price = sig.entry
     cost_std = COSTS.get(symbol, {}).get("standard", 1.4)
-    cost_2x  = COSTS.get(symbol, {}).get("stress2x", 2.8)
+    cost_2x = COSTS.get(symbol, {}).get("stress2x", 2.8)
     entry_time = day_bars[disp_bar_idx_in_day][0]["time"]
 
     t = Trade(
-        variant=variant, symbol=symbol, session=session,
-        direction=sig.side, entry=entry_price,
-        sl=sig.stop_loss, tp1=sig.take_profit,
-        sl_pips=sig.risk_pips, entry_time=entry_time,
+        variant=variant,
+        symbol=symbol,
+        session=session,
+        direction=sig.side,
+        entry=entry_price,
+        sl=sig.stop_loss,
+        tp1=sig.take_profit,
+        sl_pips=sig.risk_pips,
+        entry_time=entry_time,
     )
 
     is_long = sig.side == "long"
@@ -192,40 +206,66 @@ def simulate_trade(
 
         if is_long:
             if bar["low"] <= sig.stop_loss:
-                t.exit_price, t.exit_reason, t.exit_time = sig.stop_loss, "SL", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.stop_loss,
+                    "SL",
+                    bar["time"],
+                )
                 break
             if bar["high"] >= sig.take_profit:
-                t.exit_price, t.exit_reason, t.exit_time = sig.take_profit, "TP1", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.take_profit,
+                    "TP1",
+                    bar["time"],
+                )
                 break
         else:
             if bar["high"] >= sig.stop_loss:
-                t.exit_price, t.exit_reason, t.exit_time = sig.stop_loss, "SL", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.stop_loss,
+                    "SL",
+                    bar["time"],
+                )
                 break
             if bar["low"] <= sig.take_profit:
-                t.exit_price, t.exit_reason, t.exit_time = sig.take_profit, "TP1", bar["time"]
+                t.exit_price, t.exit_reason, t.exit_time = (
+                    sig.take_profit,
+                    "TP1",
+                    bar["time"],
+                )
                 break
     else:
         last = day_bars[-1][0]
-        t.exit_price, t.exit_reason, t.exit_time = last["close"], "SESSION_END", last["time"]
+        t.exit_price, t.exit_reason, t.exit_time = (
+            last["close"],
+            "SESSION_END",
+            last["time"],
+        )
 
     if not t.exit_time:
         last = day_bars[-1][0]
-        t.exit_price, t.exit_reason, t.exit_time = last["close"], "SESSION_END", last["time"]
+        t.exit_price, t.exit_reason, t.exit_time = (
+            last["close"],
+            "SESSION_END",
+            last["time"],
+        )
 
     if sig.risk_pips <= 0:
         return None
 
     gross_pips = (
-        (t.exit_price - entry_price) / PIP if is_long
+        (t.exit_price - entry_price) / PIP
+        if is_long
         else (entry_price - t.exit_price) / PIP
     )
-    t.gross_r   = gross_pips / sig.risk_pips
+    t.gross_r = gross_pips / sig.risk_pips
     t.net_r_std = t.gross_r - cost_std / sig.risk_pips
-    t.net_r_2x  = t.gross_r - cost_2x  / sig.risk_pips
+    t.net_r_2x = t.gross_r - cost_2x / sig.risk_pips
     return t
 
 
 # ── Core walk-forward ─────────────────────────────────────────────────────────
+
 
 def run_variant(
     variant: str,
@@ -236,22 +276,28 @@ def run_variant(
 ) -> list[Trade]:
     """Walk-forward over 6-month M15 data; apply D2 gates if enabled."""
     sorted_m15 = sorted(candles_m15, key=lambda c: c["time"])
-    sorted_4h  = sorted(candles_4h,  key=lambda c: c["time"])
+    sorted_4h = sorted(candles_4h, key=lambda c: c["time"])
 
-    atrs    = wilder_atr(sorted_m15, cfg["atr_period"])
+    atrs = wilder_atr(sorted_m15, cfg["atr_period"])
     atr_map = {c["time"]: a for c, a in zip(sorted_m15, atrs)}
 
-    min_range = float(cfg["min_range_pips"].get(symbol[:6].replace("_","").upper(), 15.0))
+    min_range = float(
+        cfg["min_range_pips"].get(symbol[:6].replace("_", "").upper(), 15.0)
+    )
 
     # Pre-group killzone bars by UTC date
     kz_by_date: dict[date, list] = {}
     for c in sorted_m15:
         dt = _utc(c["time"])
-        s  = classify_session(dt)
+        s = classify_session(dt)
         if s is not None:
             kz_by_date.setdefault(dt.date(), []).append((c, s))
 
-    d2_on = cfg.get("d2_structure_gate") or cfg.get("d2_location_gate") or cfg.get("d2_poi_gate")
+    d2_on = (
+        cfg.get("d2_structure_gate")
+        or cfg.get("d2_location_gate")
+        or cfg.get("d2_poi_gate")
+    )
 
     trades: list[Trade] = []
 
@@ -299,7 +345,9 @@ def run_variant(
             if pending is None:
                 # ── D2 Gate B — premium/discount at this candle ───────────────
                 if d2_on and d2_ctx is not None and cfg.get("d2_location_gate"):
-                    loc = classify_location(float(candle["open"]), d2_ctx["pdh"], d2_ctx["pdl"])
+                    loc = classify_location(
+                        float(candle["open"]), d2_ctx["pdh"], d2_ctx["pdl"]
+                    )
                     if bias == "bullish" and loc == "premium":
                         continue
                     if bias == "bearish" and loc == "discount":
@@ -325,13 +373,19 @@ def run_variant(
                     continue
 
                 atr_val = atr_map.get(candle["time"])
-                disp = detect_displacement(candle, atr_val, pending["sweep"].side, cfg["displacement_mult"])
+                disp = detect_displacement(
+                    candle, atr_val, pending["sweep"].side, cfg["displacement_mult"]
+                )
 
                 if disp.detected:
                     sig = build_signal(
-                        candle, pending["sweep"], disp,
-                        asian, session,
-                        cfg["rr"], cfg["sl_buffer_pips"],
+                        candle,
+                        pending["sweep"],
+                        disp,
+                        asian,
+                        session,
+                        cfg["rr"],
+                        cfg["sl_buffer_pips"],
                     )
                     pending = None
 
@@ -340,7 +394,9 @@ def run_variant(
                     if sig.risk_pips < cfg.get("min_sl_pips", 0.0):
                         continue
 
-                    trade = simulate_trade(sig, day_bars, bar_idx, symbol, session, variant)
+                    trade = simulate_trade(
+                        sig, day_bars, bar_idx, symbol, session, variant
+                    )
                     if trade is not None:
                         trades.append(trade)
                         session_traded.add(session)
@@ -350,14 +406,15 @@ def run_variant(
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 def metrics(trades: list[Trade], r_field: str) -> dict:
     if not trades:
         return {"n": 0, "pf": 0.0, "wr": 0.0, "avg_r": 0.0, "max_dd": 0.0}
-    vals   = [getattr(t, r_field) for t in trades]
-    wins   = sum(1 for v in vals if v > 0)
-    g_win  = sum(v for v in vals if v > 0)
+    vals = [getattr(t, r_field) for t in trades]
+    wins = sum(1 for v in vals if v > 0)
+    g_win = sum(v for v in vals if v > 0)
     g_loss = abs(sum(v for v in vals if v <= 0))
-    pf     = g_win / g_loss if g_loss > 0 else float("inf")
+    pf = g_win / g_loss if g_loss > 0 else float("inf")
     equity = peak = max_dd = 0.0
     for v in vals:
         equity += v
@@ -367,7 +424,8 @@ def metrics(trades: list[Trade], r_field: str) -> dict:
         if dd > max_dd:
             max_dd = dd
     return {
-        "n": len(trades), "pf": round(pf, 3),
+        "n": len(trades),
+        "pf": round(pf, 3),
         "wr": round(wins / len(trades) * 100, 1),
         "avg_r": round(sum(vals) / len(trades), 3),
         "max_dd": round(max_dd, 2),
@@ -375,6 +433,7 @@ def metrics(trades: list[Trade], r_field: str) -> dict:
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
+
 
 def monthly_breakdown(trades: list[Trade], r_field: str) -> None:
     by_month: dict[str, list[Trade]] = {}
@@ -387,8 +446,10 @@ def monthly_breakdown(trades: list[Trade], r_field: str) -> None:
     for month in sorted(by_month):
         m = metrics(by_month[month], r_field)
         flag = " ⚠" if m["pf"] < 1.0 and m["n"] >= 3 else ""
-        print(f"  {month:<10} {m['n']:>4} {m['pf']:>7.3f} {m['wr']:>5.1f}% "
-              f"{m['avg_r']:>7.3f} {m['max_dd']:>7.2f}{flag}")
+        print(
+            f"  {month:<10} {m['n']:>4} {m['pf']:>7.3f} {m['wr']:>5.1f}% "
+            f"{m['avg_r']:>7.3f} {m['max_dd']:>7.2f}{flag}"
+        )
 
 
 def print_report(variant: str, symbol: str, trades: list[Trade]) -> None:
@@ -420,9 +481,9 @@ def compare(baseline: list[Trade], combined: list[Trade]) -> None:
     print(f"\n{'═' * 64}")
     print("  COMPARISON — BASELINE (ST-A2) vs D2_COMBINED")
     print(f"{'═' * 64}")
-    b  = metrics(baseline, "net_r_std")
+    b = metrics(baseline, "net_r_std")
     b2 = metrics(baseline, "net_r_2x")
-    c  = metrics(combined, "net_r_std")
+    c = metrics(combined, "net_r_std")
     c2 = metrics(combined, "net_r_2x")
     print(f"  {'':22} {'BASELINE':>10} {'D2_COMBINED':>12}")
     print(f"  {'Trades':22} {b['n']:>10} {c['n']:>12}")
@@ -440,37 +501,63 @@ def compare(baseline: list[Trade], combined: list[Trade]) -> None:
 
 def save_csv(trades: list[Trade], path: Path) -> None:
     fields = [
-        "variant", "symbol", "session", "direction", "entry_time",
-        "entry", "sl", "tp1", "sl_pips",
-        "exit_time", "exit_price", "exit_reason",
-        "gross_r", "net_r_std", "net_r_2x",
+        "variant",
+        "symbol",
+        "session",
+        "direction",
+        "entry_time",
+        "entry",
+        "sl",
+        "tp1",
+        "sl_pips",
+        "exit_time",
+        "exit_price",
+        "exit_reason",
+        "gross_r",
+        "net_r_std",
+        "net_r_2x",
     ]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         for t in trades:
-            w.writerow({k: round(getattr(t, k), 4) if isinstance(getattr(t, k), float) else getattr(t, k) for k in fields})
+            w.writerow(
+                {
+                    k: (
+                        round(getattr(t, k), 4)
+                        if isinstance(getattr(t, k), float)
+                        else getattr(t, k)
+                    )
+                    for k in fields
+                }
+            )
     print(f"  Trade log → {path}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main() -> None:
-    p = argparse.ArgumentParser(description="6-month replay: ST-A2 baseline vs D2-combined")
+    p = argparse.ArgumentParser(
+        description="6-month replay: ST-A2 baseline vs D2-combined"
+    )
     p.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    p.add_argument("--start",   default=None)
-    p.add_argument("--end",     default=None)
-    p.add_argument("--parquet", action="store_true",
-                   help="Load from data/processed/ Parquet files instead of CSV")
+    p.add_argument("--start", default=None)
+    p.add_argument("--end", default=None)
+    p.add_argument(
+        "--parquet",
+        action="store_true",
+        help="Load from data/processed/ Parquet files instead of CSV",
+    )
     args = p.parse_args()
 
     # Set defaults based on mode
     if args.parquet:
         start = args.start or "2024-11-01"
-        end   = args.end   or "2024-11-30"
+        end = args.end or "2024-11-30"
     else:
         start = args.start or "2026-01-01T00:00:00Z"
-        end   = args.end   or "2026-06-19T23:59:59Z"
+        end = args.end or "2026-06-19T23:59:59Z"
 
     print(f"\n{'═' * 64}")
     print(f"  Mode: {'PARQUET (Dukascopy real ticks)' if args.parquet else 'CSV'}")
@@ -485,20 +572,22 @@ def main() -> None:
         if args.parquet:
             print(f"\n[{sym}] Loading Parquet …")
             c_m15 = load_parquet(sym, "M15", start, end)
-            c_h4  = load_parquet(sym, "H4")  # full H4 for bias warm-up
+            c_h4 = load_parquet(sym, "H4")  # full H4 for bias warm-up
             if not c_m15:
                 print(f"[{sym}] No M15 data for range {start}→{end}, skipping")
                 continue
         else:
-            instr    = sym[:3] + "_" + sym[3:]
+            instr = sym[:3] + "_" + sym[3:]
             m15_path = DATA_DIR / f"{instr}_M15.csv"
-            h4_path  = DATA_DIR / f"{instr}_H4.csv"
+            h4_path = DATA_DIR / f"{instr}_H4.csv"
             if not m15_path.exists() or not h4_path.exists():
-                print(f"[{sym}] Missing CSV. Run: python3 scripts/fetch_data.py --symbols {sym}")
+                print(
+                    f"[{sym}] Missing CSV. Run: python3 scripts/fetch_data.py --symbols {sym}"
+                )
                 continue
             print(f"\n[{sym}] Loading CSV …")
             c_m15 = filter_range(load_csv(m15_path), start, end)
-            c_h4  = load_csv(h4_path)
+            c_h4 = load_csv(h4_path)
 
         print(f"[{sym}] M15={len(c_m15)} bars | H4_full={len(c_h4)} bars")
 

@@ -99,7 +99,10 @@ def generate_london_breakout_signals(
         asian_high = float(asian["high"].max())
         asian_low = float(asian["low"].min())
         range_pips = (asian_high - asian_low) / pip
-        if range_pips < cfg.min_asian_range_pips or range_pips > cfg.max_asian_range_pips:
+        if (
+            range_pips < cfg.min_asian_range_pips
+            or range_pips > cfg.max_asian_range_pips
+        ):
             continue
 
         breakout_direction: str | None = None
@@ -154,7 +157,9 @@ def generate_london_breakout_signals(
                             "breakout_time": breakout_time,
                             "breakout_price": breakout_price,
                             "retest_time": ts,
-                            "confidence": round(min(0.95, 0.6 + min(0.3, range_pips / 100.0)), 2),
+                            "confidence": round(
+                                min(0.95, 0.6 + min(0.3, range_pips / 100.0)), 2
+                            ),
                         }
                     )
                     breakout_direction = None
@@ -190,13 +195,19 @@ def generate_london_breakout_signals(
                             "breakout_time": breakout_time,
                             "breakout_price": breakout_price,
                             "retest_time": ts,
-                            "confidence": round(min(0.95, 0.6 + min(0.3, range_pips / 100.0)), 2),
+                            "confidence": round(
+                                min(0.95, 0.6 + min(0.3, range_pips / 100.0)), 2
+                            ),
                         }
                     )
                     breakout_direction = None
                     break
 
-        rows.extend(day_rows[: cfg.max_signals_per_day] if cfg.max_signals_per_day > 0 else day_rows)
+        rows.extend(
+            day_rows[: cfg.max_signals_per_day]
+            if cfg.max_signals_per_day > 0
+            else day_rows
+        )
 
     out = pd.DataFrame.from_records(
         rows,
@@ -224,6 +235,8 @@ def generate_london_breakout_signals(
     out = out.sort_values(["pair", "timestamp"]).reset_index(drop=True)
     if cfg.max_signals_per_day > 0:
         out["date"] = out["timestamp"].dt.floor("D")
-        out = out.groupby(["pair", "date"], group_keys=False).head(cfg.max_signals_per_day)
+        out = out.groupby(["pair", "date"], group_keys=False).head(
+            cfg.max_signals_per_day
+        )
         out = out.drop(columns=["date"]).reset_index(drop=True)
     return out

@@ -18,14 +18,14 @@ from pathlib import Path
 
 import pytest
 
-from svos.application.adapter_dispatch import StrategyAdapterRegistry, resolve_adapter
+from svos.application.adapter_dispatch import (StrategyAdapterRegistry,
+                                               resolve_adapter)
 from svos.application.audit import AuditIntegrationService
 from svos.application.backtest import BacktestIntegrationService
 from svos.application.intake import IntakeService
 from svos.application.replay import ReplayIntegrationService
 from svos.application.robustness import RobustnessIntegrationService
 from svos.orchestration import SVOSPlatform
-
 
 # ── test fixtures ─────────────────────────────────────────────────────────
 
@@ -141,6 +141,7 @@ def _advance_to_backtest(platform: SVOSPlatform) -> None:
 # Replay tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_replay_pass_with_sufficient_trades(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_audit(platform)
@@ -191,6 +192,7 @@ def test_replay_fail_with_zero_trades(tmp_path):
 # ═══════════════════════════════════════════════════════════════════════════
 # Backtest tests
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_backtest_pass_with_qualifying_metrics(tmp_path):
     _, platform = _setup(tmp_path)
@@ -260,6 +262,7 @@ def test_backtest_produces_evidence_record(tmp_path):
 # Robustness tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_robustness_produces_all_four_components(tmp_path):
     _, platform = _setup(tmp_path)
     _advance_to_backtest(platform)
@@ -321,6 +324,7 @@ def test_robustness_fail_with_insufficient_data(tmp_path):
 # Adapter dispatch tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_adapter_registry_lists_known_adapters():
     reg = StrategyAdapterRegistry()
     available = reg.list_available()
@@ -347,7 +351,9 @@ def test_adapter_registry_unknown_key_returns_unavailable():
 
 def test_adapter_registry_resolves_via_manifest_adapter_type():
     reg = StrategyAdapterRegistry()
-    entry = reg.resolve("SOME-CATALOG-NAME", manifest={"adapter_type": "LondonBreakout"})
+    entry = reg.resolve(
+        "SOME-CATALOG-NAME", manifest={"adapter_type": "LondonBreakout"}
+    )
     assert entry.available
     assert entry.key == "LondonBreakout"
 
@@ -371,24 +377,43 @@ def test_module_level_resolve_adapter():
 # Full research pipeline: Intake → Audit → Replay → Backtest → Robustness
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_full_research_pipeline_accumulates_evidence_for_all_stages(tmp_path):
     _, platform = _setup(tmp_path)
 
     intake_r = IntakeService(platform).run("LONDON-SWEEP", _GOOD_SPEC, actor="ci")
-    audit_r = AuditIntegrationService(platform).run("LONDON-SWEEP", _GOOD_SPEC, actor="ci")
-    replay_r = ReplayIntegrationService(platform).run("LONDON-SWEEP", _TRADES_PASS, actor="ci")
-    bt_r = BacktestIntegrationService(platform).run("LONDON-SWEEP", _METRICS_PASS, actor="ci")
-    rob_r = RobustnessIntegrationService(platform).run("LONDON-SWEEP", _TRADES_PASS, actor="ci")
+    audit_r = AuditIntegrationService(platform).run(
+        "LONDON-SWEEP", _GOOD_SPEC, actor="ci"
+    )
+    replay_r = ReplayIntegrationService(platform).run(
+        "LONDON-SWEEP", _TRADES_PASS, actor="ci"
+    )
+    bt_r = BacktestIntegrationService(platform).run(
+        "LONDON-SWEEP", _METRICS_PASS, actor="ci"
+    )
+    rob_r = RobustnessIntegrationService(platform).run(
+        "LONDON-SWEEP", _TRADES_PASS, actor="ci"
+    )
 
     # All report artifacts must exist
     for result in (intake_r, audit_r, replay_r, bt_r, rob_r):
-        assert Path(result.report_artifact).exists(), f"Missing artifact: {result.report_artifact}"
+        assert Path(
+            result.report_artifact
+        ).exists(), f"Missing artifact: {result.report_artifact}"
 
     # Evidence records must cover all five stages
     evidence = platform.registry.evidence("LONDON-SWEEP")
     stages_recorded = {e["stage"] for e in evidence}
-    for expected_stage in ("INTAKE", "AUDIT", "HISTORICAL_REPLAY", "STATISTICAL_VALIDATION", "ROBUSTNESS_VALIDATION"):
-        assert expected_stage in stages_recorded, f"Missing evidence for stage {expected_stage}"
+    for expected_stage in (
+        "INTAKE",
+        "AUDIT",
+        "HISTORICAL_REPLAY",
+        "STATISTICAL_VALIDATION",
+        "ROBUSTNESS_VALIDATION",
+    ):
+        assert (
+            expected_stage in stages_recorded
+        ), f"Missing evidence for stage {expected_stage}"
 
 
 def test_full_pipeline_all_report_artifacts_have_markdown(tmp_path):

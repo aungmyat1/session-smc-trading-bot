@@ -10,9 +10,12 @@ from src.features.sessions import label_sessions
 from src.features.structure import build_structure
 from src.features.swings import detect_swings
 from src.signals.generator import SignalGenerator
-from src.signals.london_breakout import LondonBreakoutConfig, generate_london_breakout_signals
-from src.signals.ny_momentum import NYMomentumConfig, generate_ny_momentum_signals
-from src.signals.vwap_mean_reversion import VWAPMeanReversionConfig, generate_vwap_mean_reversion_signals
+from src.signals.london_breakout import (LondonBreakoutConfig,
+                                         generate_london_breakout_signals)
+from src.signals.ny_momentum import (NYMomentumConfig,
+                                     generate_ny_momentum_signals)
+from src.signals.vwap_mean_reversion import (
+    VWAPMeanReversionConfig, generate_vwap_mean_reversion_signals)
 
 
 def _candles() -> pd.DataFrame:
@@ -48,9 +51,21 @@ def test_signal_generator_produces_opportunity():
     liquidity = detect_liquidity_sweeps(candles, pair="EURUSD")
     fvg = detect_fvg(candles, pair="EURUSD")
     ob = detect_order_blocks(candles, structure, pair="EURUSD")
-    signals = SignalGenerator().generate(candles, sessions, structure, liquidity, fvg, ob)
+    signals = SignalGenerator().generate(
+        candles, sessions, structure, liquidity, fvg, ob
+    )
     assert not signals.empty
-    assert set(["signal_id", "timestamp", "pair", "session", "direction", "strategy_name", "entry_price"]).issubset(signals.columns)
+    assert set(
+        [
+            "signal_id",
+            "timestamp",
+            "pair",
+            "session",
+            "direction",
+            "strategy_name",
+            "entry_price",
+        ]
+    ).issubset(signals.columns)
 
 
 def test_trade_simulator_executes_trades():
@@ -61,10 +76,16 @@ def test_trade_simulator_executes_trades():
     liquidity = detect_liquidity_sweeps(candles, pair="EURUSD")
     fvg = detect_fvg(candles, pair="EURUSD")
     ob = detect_order_blocks(candles, structure, pair="EURUSD")
-    signals = SignalGenerator().generate(candles, sessions, structure, liquidity, fvg, ob)
-    trades = TradeSimulator(TradeSimulationConfig(rr_multiple=1.5)).simulate(candles, signals)
+    signals = SignalGenerator().generate(
+        candles, sessions, structure, liquidity, fvg, ob
+    )
+    trades = TradeSimulator(TradeSimulationConfig(rr_multiple=1.5)).simulate(
+        candles, signals
+    )
     assert not trades.empty
-    assert set(["trade_id", "signal_id", "pair", "strategy_name", "result_r", "result_money"]).issubset(trades.columns)
+    assert set(
+        ["trade_id", "signal_id", "pair", "strategy_name", "result_r", "result_money"]
+    ).issubset(trades.columns)
 
 
 def test_london_breakout_generator_produces_signal():
@@ -92,7 +113,13 @@ def test_london_breakout_generator_produces_signal():
             "spread": [1.0] * 8,
         }
     )
-    signals = generate_london_breakout_signals(candles, pair="EURUSD", config=LondonBreakoutConfig(min_asian_range_pips=5.0, max_asian_range_pips=500.0))
+    signals = generate_london_breakout_signals(
+        candles,
+        pair="EURUSD",
+        config=LondonBreakoutConfig(
+            min_asian_range_pips=5.0, max_asian_range_pips=500.0
+        ),
+    )
     assert not signals.empty
     assert signals.iloc[0]["strategy_name"] == "LondonBreakout"
 
@@ -100,7 +127,9 @@ def test_london_breakout_generator_produces_signal():
 def test_disabled_vwap_generator_returns_empty():
     candles = pd.DataFrame(
         {
-            "timestamp": pd.to_datetime(["2024-01-02T08:00:00Z", "2024-01-02T08:15:00Z"], utc=True),
+            "timestamp": pd.to_datetime(
+                ["2024-01-02T08:00:00Z", "2024-01-02T08:15:00Z"], utc=True
+            ),
             "pair": ["EURUSD", "EURUSD"],
             "open": [1.0, 1.0],
             "high": [1.01, 1.01],
@@ -135,10 +164,10 @@ def test_ny_momentum_generator_produces_signal():
                 utc=True,
             ),
             "pair": ["EURUSD"] * 8,
-                "open": [1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1060, 1.1012, 1.1010],
-                "high": [1.1008, 1.1008, 1.1009, 1.1010, 1.1008, 1.1115, 1.1014, 1.1013],
-                "low": [1.0992, 1.0993, 1.0992, 1.0994, 1.0993, 1.1058, 1.1007, 1.1005],
-                "close": [1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1110, 1.1010, 1.1011],
+            "open": [1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1060, 1.1012, 1.1010],
+            "high": [1.1008, 1.1008, 1.1009, 1.1010, 1.1008, 1.1115, 1.1014, 1.1013],
+            "low": [1.0992, 1.0993, 1.0992, 1.0994, 1.0993, 1.1058, 1.1007, 1.1005],
+            "close": [1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1110, 1.1010, 1.1011],
             "volume": [1000] * 8,
             "spread": [1.0] * 8,
         }
@@ -155,7 +184,9 @@ def test_ny_momentum_generator_produces_signal():
 def test_disabled_ny_momentum_generator_returns_empty():
     candles = pd.DataFrame(
         {
-            "timestamp": pd.to_datetime(["2024-01-02T08:00:00Z", "2024-01-02T13:00:00Z"], utc=True),
+            "timestamp": pd.to_datetime(
+                ["2024-01-02T08:00:00Z", "2024-01-02T13:00:00Z"], utc=True
+            ),
             "pair": ["EURUSD", "EURUSD"],
             "open": [1.0, 1.0],
             "high": [1.01, 1.02],
@@ -194,10 +225,62 @@ def test_vwap_mean_reversion_generator_produces_signal():
                 utc=True,
             ),
             "pair": ["EURUSD"] * 12,
-            "open": [1.1000, 1.1001, 1.1002, 1.1001, 1.1000, 1.1002, 1.1001, 1.1000, 1.1001, 1.1000, 1.0996, 1.0959],
-            "high": [1.1008, 1.1008, 1.1009, 1.1009, 1.1008, 1.1009, 1.1008, 1.1009, 1.1008, 1.1008, 1.1001, 1.0992],
-                "low": [1.0992, 1.0993, 1.0992, 1.0994, 1.0993, 1.0992, 1.0994, 1.0993, 1.0992, 1.0994, 1.0954, 1.0946],
-                "close": [1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1001, 1.1000, 1.1001, 1.0958, 1.0976],
+            "open": [
+                1.1000,
+                1.1001,
+                1.1002,
+                1.1001,
+                1.1000,
+                1.1002,
+                1.1001,
+                1.1000,
+                1.1001,
+                1.1000,
+                1.0996,
+                1.0959,
+            ],
+            "high": [
+                1.1008,
+                1.1008,
+                1.1009,
+                1.1009,
+                1.1008,
+                1.1009,
+                1.1008,
+                1.1009,
+                1.1008,
+                1.1008,
+                1.1001,
+                1.0992,
+            ],
+            "low": [
+                1.0992,
+                1.0993,
+                1.0992,
+                1.0994,
+                1.0993,
+                1.0992,
+                1.0994,
+                1.0993,
+                1.0992,
+                1.0994,
+                1.0954,
+                1.0946,
+            ],
+            "close": [
+                1.1000,
+                1.1001,
+                1.1000,
+                1.1001,
+                1.1000,
+                1.1001,
+                1.1000,
+                1.1001,
+                1.1000,
+                1.1001,
+                1.0958,
+                1.0976,
+            ],
             "volume": [1000] * 12,
             "spread": [1.0] * 12,
         }

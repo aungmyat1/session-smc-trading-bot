@@ -4,6 +4,7 @@ Defines entry, stop loss, and take profit logic.
 """
 
 from typing import Dict, Optional
+
 import polars as pl
 
 
@@ -47,7 +48,9 @@ def get_stop_loss(signal: Dict, candles: pl.DataFrame) -> Optional[float]:
     return None
 
 
-def get_take_profit(entry: float, stop: float, direction: str, rr: float = 2.0) -> float:
+def get_take_profit(
+    entry: float, stop: float, direction: str, rr: float = 2.0
+) -> float:
     """
     Fixed Risk-Reward Take Profit
     """

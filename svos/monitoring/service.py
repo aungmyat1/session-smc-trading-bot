@@ -20,12 +20,20 @@ class MonitoringStatusService:
         health = self.health_snapshot_factory()
         logs = self._recent_log_lines(limit=300)
         incidents = [
-            line for line in logs
-            if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
+            line
+            for line in logs
+            if any(
+                token in line
+                for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect")
+            )
             and not self._is_benign_runtime_line(line)
         ]
         monitoring_status = "HEALTHY"
-        if any(item.get("status") == "FAIL" for item in health.values() if isinstance(item, dict)):
+        if any(
+            item.get("status") == "FAIL"
+            for item in health.values()
+            if isinstance(item, dict)
+        ):
             monitoring_status = "ALERT"
         elif incidents:
             monitoring_status = "WATCH"
@@ -53,7 +61,11 @@ class MonitoringStatusService:
             if not path.exists():
                 continue
             try:
-                lines.extend(path.read_text(encoding="utf-8", errors="replace").splitlines()[-limit:])
+                lines.extend(
+                    path.read_text(encoding="utf-8", errors="replace").splitlines()[
+                        -limit:
+                    ]
+                )
             except Exception:
                 continue
         return lines[-limit:]

@@ -3,11 +3,8 @@
 from datetime import datetime, timezone
 
 import scripts.d2e3_journal_to_db as sync_db
-from scripts.d2e3_journal_to_db import (
-    build_daily_equity,
-    build_metrics,
-    build_trade_records,
-)
+from scripts.d2e3_journal_to_db import (build_daily_equity, build_metrics,
+                                        build_trade_records)
 
 
 def _ts(value: str) -> str:
@@ -96,7 +93,7 @@ def test_sync_journal_skips_when_database_unreachable(monkeypatch, tmp_path):
     monkeypatch.setattr(
         sync_db,
         "load_events",
-        lambda _path: [{ "_ts": datetime(2026, 6, 27, 9, 0, tzinfo=timezone.utc) }],
+        lambda _path: [{"_ts": datetime(2026, 6, 27, 9, 0, tzinfo=timezone.utc)}],
     )
     monkeypatch.setattr(
         sync_db,
@@ -127,7 +124,9 @@ def test_sync_journal_skips_when_database_unreachable(monkeypatch, tmp_path):
     monkeypatch.setattr(
         sync_db.psycopg2,
         "connect",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(sync_db.psycopg2.OperationalError("Connection refused")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            sync_db.psycopg2.OperationalError("Connection refused")
+        ),
     )
 
     result = sync_db.sync_journal(

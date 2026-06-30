@@ -1,2 +1,1 @@
 """Research-grade backtesting framework."""
-

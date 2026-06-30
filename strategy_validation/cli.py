@@ -8,9 +8,15 @@ from .pipeline.strategy_validation_pipeline import StrategyValidationPipeline
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate strategy specifications before replay.")
-    parser.add_argument("--spec", required=True, help="Path to a strategy specification markdown file")
-    parser.add_argument("--outdir", default="reports/strategy_validation", help="Output directory")
+    parser = argparse.ArgumentParser(
+        description="Validate strategy specifications before replay."
+    )
+    parser.add_argument(
+        "--spec", required=True, help="Path to a strategy specification markdown file"
+    )
+    parser.add_argument(
+        "--outdir", default="reports/strategy_validation", help="Output directory"
+    )
     args = parser.parse_args(argv)
 
     pipeline = StrategyValidationPipeline()

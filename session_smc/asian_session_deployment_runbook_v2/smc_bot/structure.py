@@ -31,4 +31,3 @@ def get_bias(df_4h: Any) -> str:
     if last < first:
         return "bearish"
     return "neutral"
-

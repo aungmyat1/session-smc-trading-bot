@@ -1,4 +1,5 @@
 """Strategy rule validator — validates every institutional SMC/ICT trading rule."""
+
 from __future__ import annotations
 
 import logging
@@ -9,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,16 @@ class StrategyValidator:
         n_fail = sum(1 for r in results if r.status == RuleStatus.FAIL)
         total = len(results)
         # WARNINGs count as half credit; hard FAILs count as zero.
-        score = round(((n_pass + n_warn * 0.5) / total * 100.0) if total > 0 else 0.0, 1)
+        score = round(
+            ((n_pass + n_warn * 0.5) / total * 100.0) if total > 0 else 0.0, 1
+        )
 
-        errors = [f"{r.rule}: {r.detail}" for r in results if r.status == RuleStatus.FAIL]
-        warnings = [f"{r.rule}: {r.detail}" for r in results if r.status == RuleStatus.WARNING]
+        errors = [
+            f"{r.rule}: {r.detail}" for r in results if r.status == RuleStatus.FAIL
+        ]
+        warnings = [
+            f"{r.rule}: {r.detail}" for r in results if r.status == RuleStatus.WARNING
+        ]
 
         # Fail only when hard FAIL rules exist or score falls below minimum.
         status = Status.FAIL if (n_fail > 0 or score < self._min_score) else Status.PASS
@@ -85,7 +92,10 @@ class StrategyValidator:
                 "passed": n_pass,
                 "warnings": n_warn,
                 "failed": n_fail,
-                "rule_results": [{"rule": r.rule, "status": r.status.value, "detail": r.detail} for r in results],
+                "rule_results": [
+                    {"rule": r.rule, "status": r.status.value, "detail": r.detail}
+                    for r in results
+                ],
             },
             errors=errors,
             warnings=warnings,
@@ -112,63 +122,114 @@ class StrategyValidator:
     # Rule groups
     # -------------------------------------------------------------------------
 
-    def _validate_sessions(self, cfg: dict[str, Any], corpus: str = "") -> list[RuleResult]:
+    def _validate_sessions(
+        self, cfg: dict[str, Any], corpus: str = ""
+    ) -> list[RuleResult]:
         results: list[RuleResult] = []
         # Accept session definition in config OR in source code.
-        sessions_key_found = (
-            any(k in cfg for k in ("sessions", "kill_zones", "session_filter", "london", "new_york"))
-            or any(kw in corpus for kw in ("session_filter", "london_session", "london", "kill_zone"))
+        sessions_key_found = any(
+            k in cfg
+            for k in ("sessions", "kill_zones", "session_filter", "london", "new_york")
+        ) or any(
+            kw in corpus
+            for kw in ("session_filter", "london_session", "london", "kill_zone")
         )
-        results.append(RuleResult(
-            "SESSION_DEFINITION",
-            RuleStatus.PASS if sessions_key_found else RuleStatus.WARNING,
-            "" if sessions_key_found else "No session definition found in config or code",
-        ))
+        results.append(
+            RuleResult(
+                "SESSION_DEFINITION",
+                RuleStatus.PASS if sessions_key_found else RuleStatus.WARNING,
+                (
+                    ""
+                    if sessions_key_found
+                    else "No session definition found in config or code"
+                ),
+            )
+        )
 
         required_sessions = {"london", "new_york", "asian"}
         for sess in required_sessions:
             defined = self._cfg_contains(cfg, sess) or sess.replace("_", "") in corpus
-            results.append(RuleResult(
-                f"SESSION_{sess.upper()}",
-                RuleStatus.PASS if defined else RuleStatus.WARNING,
-                "" if defined else f"{sess} session not found in config or code",
-            ))
+            results.append(
+                RuleResult(
+                    f"SESSION_{sess.upper()}",
+                    RuleStatus.PASS if defined else RuleStatus.WARNING,
+                    "" if defined else f"{sess} session not found in config or code",
+                )
+            )
 
-        kill_zones = self._cfg_contains(cfg, "kill_zone") or self._cfg_contains(cfg, "killzone")
-        results.append(RuleResult(
-            "KILL_ZONES",
-            RuleStatus.PASS if kill_zones else RuleStatus.WARNING,
-            "" if kill_zones else "Kill zone definition not found in config",
-        ))
+        kill_zones = self._cfg_contains(cfg, "kill_zone") or self._cfg_contains(
+            cfg, "killzone"
+        )
+        results.append(
+            RuleResult(
+                "KILL_ZONES",
+                RuleStatus.PASS if kill_zones else RuleStatus.WARNING,
+                "" if kill_zones else "Kill zone definition not found in config",
+            )
+        )
         return results
 
     def _validate_risk(self, cfg: dict[str, Any], corpus: str = "") -> list[RuleResult]:
         results: list[RuleResult] = []
 
         # Risk-reward
-        rr_val = self._extract_numeric(cfg, ["rr", "risk_reward", "reward_ratio", "min_rr"])
+        rr_val = self._extract_numeric(
+            cfg, ["rr", "risk_reward", "reward_ratio", "min_rr"]
+        )
         if rr_val is None:
-            results.append(RuleResult("RISK_REWARD", RuleStatus.WARNING, "RR not found in config"))
+            results.append(
+                RuleResult("RISK_REWARD", RuleStatus.WARNING, "RR not found in config")
+            )
         elif rr_val < self._min_rr:
-            results.append(RuleResult("RISK_REWARD", RuleStatus.FAIL, f"RR={rr_val} below minimum {self._min_rr}"))
+            results.append(
+                RuleResult(
+                    "RISK_REWARD",
+                    RuleStatus.FAIL,
+                    f"RR={rr_val} below minimum {self._min_rr}",
+                )
+            )
         else:
             results.append(RuleResult("RISK_REWARD", RuleStatus.PASS))
 
         # Max risk per trade
-        risk_pct = self._extract_numeric(cfg, ["risk_pct", "risk_percent", "max_risk", "position_risk"])
+        risk_pct = self._extract_numeric(
+            cfg, ["risk_pct", "risk_percent", "max_risk", "position_risk"]
+        )
         if risk_pct is None:
-            results.append(RuleResult("MAX_RISK_PER_TRADE", RuleStatus.WARNING, "risk_pct not found"))
+            results.append(
+                RuleResult(
+                    "MAX_RISK_PER_TRADE", RuleStatus.WARNING, "risk_pct not found"
+                )
+            )
         elif risk_pct > self._max_risk_pct:
-            results.append(RuleResult("MAX_RISK_PER_TRADE", RuleStatus.FAIL, f"risk_pct={risk_pct}% exceeds {self._max_risk_pct}%"))
+            results.append(
+                RuleResult(
+                    "MAX_RISK_PER_TRADE",
+                    RuleStatus.FAIL,
+                    f"risk_pct={risk_pct}% exceeds {self._max_risk_pct}%",
+                )
+            )
         else:
             results.append(RuleResult("MAX_RISK_PER_TRADE", RuleStatus.PASS))
 
         # Max daily loss
-        daily_loss = self._extract_numeric(cfg, ["max_daily_loss", "daily_loss_limit", "daily_drawdown"])
+        daily_loss = self._extract_numeric(
+            cfg, ["max_daily_loss", "daily_loss_limit", "daily_drawdown"]
+        )
         if daily_loss is None:
-            results.append(RuleResult("MAX_DAILY_LOSS", RuleStatus.WARNING, "max_daily_loss not found"))
+            results.append(
+                RuleResult(
+                    "MAX_DAILY_LOSS", RuleStatus.WARNING, "max_daily_loss not found"
+                )
+            )
         elif daily_loss > self._max_daily_loss_pct:
-            results.append(RuleResult("MAX_DAILY_LOSS", RuleStatus.FAIL, f"max_daily_loss={daily_loss}% exceeds {self._max_daily_loss_pct}%"))
+            results.append(
+                RuleResult(
+                    "MAX_DAILY_LOSS",
+                    RuleStatus.FAIL,
+                    f"max_daily_loss={daily_loss}% exceeds {self._max_daily_loss_pct}%",
+                )
+            )
         else:
             results.append(RuleResult("MAX_DAILY_LOSS", RuleStatus.PASS))
 
@@ -180,15 +241,19 @@ class StrategyValidator:
             or "sl_price" in corpus
             or "stoploss" in corpus
         )
-        results.append(RuleResult(
-            "STOP_LOSS_REQUIRED",
-            RuleStatus.PASS if sl_defined else RuleStatus.FAIL,
-            "" if sl_defined else "Stop-loss implementation not found — mandatory",
-        ))
+        results.append(
+            RuleResult(
+                "STOP_LOSS_REQUIRED",
+                RuleStatus.PASS if sl_defined else RuleStatus.FAIL,
+                "" if sl_defined else "Stop-loss implementation not found — mandatory",
+            )
+        )
 
         return results
 
-    def _validate_entry_conditions(self, cfg: dict[str, Any], corpus: str = "") -> list[RuleResult]:
+    def _validate_entry_conditions(
+        self, cfg: dict[str, Any], corpus: str = ""
+    ) -> list[RuleResult]:
         results: list[RuleResult] = []
         checks = [
             ("BIAS_REQUIRED", ["bias", "daily_bias", "direction"]),
@@ -198,15 +263,21 @@ class StrategyValidator:
             ("DUPLICATE_ENTRY_GUARD", ["duplicate", "one_trade", "single_position"]),
         ]
         for rule_name, keys in checks:
-            found = any(self._cfg_contains(cfg, k) for k in keys) or any(k in corpus for k in keys)
-            results.append(RuleResult(
-                rule_name,
-                RuleStatus.PASS if found else RuleStatus.WARNING,
-                "" if found else f"Keywords {keys} not found in config or code",
-            ))
+            found = any(self._cfg_contains(cfg, k) for k in keys) or any(
+                k in corpus for k in keys
+            )
+            results.append(
+                RuleResult(
+                    rule_name,
+                    RuleStatus.PASS if found else RuleStatus.WARNING,
+                    "" if found else f"Keywords {keys} not found in config or code",
+                )
+            )
         return results
 
-    def _validate_smc_structures(self, cfg: dict[str, Any], corpus: str = "") -> list[RuleResult]:
+    def _validate_smc_structures(
+        self, cfg: dict[str, Any], corpus: str = ""
+    ) -> list[RuleResult]:
         results: list[RuleResult] = []
         structures = [
             ("BOS", ["bos", "break_of_structure", "breakofstructure"]),
@@ -216,15 +287,25 @@ class StrategyValidator:
             ("MITIGATION", ["mitigation", "mitigated"]),
         ]
         for rule_name, keys in structures:
-            found = any(self._cfg_contains(cfg, k) for k in keys) or any(k in corpus for k in keys)
-            results.append(RuleResult(
-                rule_name,
-                RuleStatus.PASS if found else RuleStatus.WARNING,
-                "" if found else f"SMC structure {rule_name} not found in config or code",
-            ))
+            found = any(self._cfg_contains(cfg, k) for k in keys) or any(
+                k in corpus for k in keys
+            )
+            results.append(
+                RuleResult(
+                    rule_name,
+                    RuleStatus.PASS if found else RuleStatus.WARNING,
+                    (
+                        ""
+                        if found
+                        else f"SMC structure {rule_name} not found in config or code"
+                    ),
+                )
+            )
         return results
 
-    def _validate_protection_rules(self, cfg: dict[str, Any], corpus: str = "") -> list[RuleResult]:
+    def _validate_protection_rules(
+        self, cfg: dict[str, Any], corpus: str = ""
+    ) -> list[RuleResult]:
         results: list[RuleResult] = []
         weekend = (
             self._cfg_contains(cfg, "weekend")
@@ -232,11 +313,13 @@ class StrategyValidator:
             or "weekend" in corpus
             or "friday" in corpus
         )
-        results.append(RuleResult(
-            "WEEKEND_PROTECTION",
-            RuleStatus.PASS if weekend else RuleStatus.WARNING,
-            "" if weekend else "Weekend protection not found in config or code",
-        ))
+        results.append(
+            RuleResult(
+                "WEEKEND_PROTECTION",
+                RuleStatus.PASS if weekend else RuleStatus.WARNING,
+                "" if weekend else "Weekend protection not found in config or code",
+            )
+        )
         market_closed = (
             self._cfg_contains(cfg, "market_closed")
             or self._cfg_contains(cfg, "market_hours")
@@ -244,15 +327,28 @@ class StrategyValidator:
             or "is_market_open" in corpus
             or "market_hours" in corpus
         )
-        results.append(RuleResult(
-            "MARKET_CLOSED_PROTECTION",
-            RuleStatus.PASS if market_closed else RuleStatus.WARNING,
-            "" if market_closed else "Market-closed protection not found in config or code",
-        ))
+        results.append(
+            RuleResult(
+                "MARKET_CLOSED_PROTECTION",
+                RuleStatus.PASS if market_closed else RuleStatus.WARNING,
+                (
+                    ""
+                    if market_closed
+                    else "Market-closed protection not found in config or code"
+                ),
+            )
+        )
         return results
 
     # Directories to scan for SMC code presence (excludes tests and cache).
-    _CODE_SCAN_DIRS = ["strategies", "strategy", "strategy_validation", "core", "src", "svos"]
+    _CODE_SCAN_DIRS = [
+        "strategies",
+        "strategy",
+        "strategy_validation",
+        "core",
+        "src",
+        "svos",
+    ]
     _CODE_EXCLUDE = {"__pycache__", ".git", "archive", "tests"}
 
     def _validate_code_presence(self) -> list[RuleResult]:
@@ -274,19 +370,27 @@ class StrategyValidator:
         results: list[RuleResult] = []
         for rule_name, keywords in checks:
             found = any(kw.lower() in corpus for kw in keywords)
-            results.append(RuleResult(
-                rule_name,
-                RuleStatus.PASS if found else RuleStatus.WARNING,
-                "" if found else f"No source file contains any of {keywords}",
-            ))
+            results.append(
+                RuleResult(
+                    rule_name,
+                    RuleStatus.PASS if found else RuleStatus.WARNING,
+                    "" if found else f"No source file contains any of {keywords}",
+                )
+            )
 
         # Check for validator pipeline (formal institutional validation).
         has_institutional = "institutional" in corpus or "strategy_validation" in corpus
-        results.append(RuleResult(
-            "INSTITUTIONAL_VALIDATOR",
-            RuleStatus.PASS if has_institutional else RuleStatus.WARNING,
-            "" if has_institutional else "Institutional validation pipeline not found",
-        ))
+        results.append(
+            RuleResult(
+                "INSTITUTIONAL_VALIDATOR",
+                RuleStatus.PASS if has_institutional else RuleStatus.WARNING,
+                (
+                    ""
+                    if has_institutional
+                    else "Institutional validation pipeline not found"
+                ),
+            )
+        )
 
         return results
 

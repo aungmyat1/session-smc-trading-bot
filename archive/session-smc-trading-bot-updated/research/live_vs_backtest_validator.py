@@ -61,11 +61,11 @@ _BACKTEST = {
     "net_pf_2x": 1.025,
     "max_dd_r": 18.72,
     "min_sl_pips": 5.0,
-    "session_london_pct": 0.70,   # 118/169
-    "session_ny_pct": 0.30,       # 51/169
-    "eurusd_trade_pct": 0.62,     # 105/169
-    "gbpusd_trade_pct": 0.38,     # 64/169
-    "spread_eurusd_pips": 1.4,    # std + commission RT
+    "session_london_pct": 0.70,  # 118/169
+    "session_ny_pct": 0.30,  # 51/169
+    "eurusd_trade_pct": 0.62,  # 105/169
+    "gbpusd_trade_pct": 0.38,  # 64/169
+    "spread_eurusd_pips": 1.4,  # std + commission RT
     "spread_gbpusd_pips": 1.8,
     # Per-session net PF (std)
     "london_net_pf_std": 0.949,
@@ -74,7 +74,7 @@ _BACKTEST = {
     "eurusd_net_pf_std": 1.059,
     "gbpusd_net_pf_std": 1.313,
     # Risk flags from ST_A2_CONFIRMATION.md
-    "eurusd_net_pf_2x": 0.945,    # fails alone — monitor closely
+    "eurusd_net_pf_2x": 0.945,  # fails alone — monitor closely
     "gbpusd_net_pf_2x": 1.168,
 }
 
@@ -83,22 +83,23 @@ _BACKTEST = {
 # Thresholds are generous to account for small sample sizes.
 
 _THRESHOLDS = {
-    "win_rate_min": 0.20,          # WARN if below 20% over n≥10
-    "win_rate_max": 0.60,          # WARN if above 60% over n≥10 (data error?)
-    "avg_r_min": -1.0,             # WARN if average R < -1.0
-    "slippage_warn_pips": 1.0,     # WARN if avg slippage > 1 pip
-    "slippage_critical_pips": 2.0, # CRITICAL if avg slippage > 2 pip
-    "sl_floor_pips": 5.0,          # WARN if any actual SL < 5.0 pips
-    "session_london_max_pct": 0.85,# WARN if London > 85% (NY crowded out)
-    "frequency_drift_pct": 0.50,   # WARN if actual frequency < 50% of expected
-    "min_n_for_win_rate": 10,      # Only flag win_rate if n >= this
-    "min_n_for_pf": 20,            # Only flag PF if n >= this
+    "win_rate_min": 0.20,  # WARN if below 20% over n≥10
+    "win_rate_max": 0.60,  # WARN if above 60% over n≥10 (data error?)
+    "avg_r_min": -1.0,  # WARN if average R < -1.0
+    "slippage_warn_pips": 1.0,  # WARN if avg slippage > 1 pip
+    "slippage_critical_pips": 2.0,  # CRITICAL if avg slippage > 2 pip
+    "sl_floor_pips": 5.0,  # WARN if any actual SL < 5.0 pips
+    "session_london_max_pct": 0.85,  # WARN if London > 85% (NY crowded out)
+    "frequency_drift_pct": 0.50,  # WARN if actual frequency < 50% of expected
+    "min_n_for_win_rate": 10,  # Only flag win_rate if n >= this
+    "min_n_for_pf": 20,  # Only flag PF if n >= this
 }
 
 _PIP_MUL: dict[str, float] = {"EURUSD": 10_000.0, "GBPUSD": 10_000.0}
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def _load_events(since: Optional[datetime] = None) -> list[dict]:
     if not _TRADE_LOG.exists():
@@ -120,6 +121,7 @@ def _load_events(since: Optional[datetime] = None) -> list[dict]:
 
 
 # ── Analysis functions ────────────────────────────────────────────────────────
+
 
 def _signal_frequency(events: list[dict], since: datetime, now: datetime) -> dict:
     """Compare actual signal frequency to backtest baseline."""
@@ -146,8 +148,11 @@ def _session_distribution(events: list[dict]) -> dict:
     signals = [e for e in events if e.get("event") == "SIGNAL_CREATED"]
     if not signals:
         return {
-            "n": 0, "london_count": 0, "ny_count": 0,
-            "london_pct": None, "ny_pct": None,
+            "n": 0,
+            "london_count": 0,
+            "ny_count": 0,
+            "london_pct": None,
+            "ny_pct": None,
             "backtest_london_pct": round(_BACKTEST["session_london_pct"] * 100, 1),
             "backtest_ny_pct": round(_BACKTEST["session_ny_pct"] * 100, 1),
             "warn": False,
@@ -176,10 +181,18 @@ def _session_distribution(events: list[dict]) -> dict:
 
 def _sl_distribution(events: list[dict]) -> dict:
     """Check SL pip distances against min_sl_pips gate and expected distribution."""
-    signals = [e for e in events if e.get("event") == "SIGNAL_CREATED" and "sl_pips" in e]
+    signals = [
+        e for e in events if e.get("event") == "SIGNAL_CREATED" and "sl_pips" in e
+    ]
     if not signals:
-        return {"n": 0, "min_sl": None, "max_sl": None, "avg_sl": None,
-                "below_floor": 0, "warn": False}
+        return {
+            "n": 0,
+            "min_sl": None,
+            "max_sl": None,
+            "avg_sl": None,
+            "below_floor": 0,
+            "warn": False,
+        }
 
     sl_vals = [s["sl_pips"] for s in signals]
     below_floor = sum(1 for v in sl_vals if v < _THRESHOLDS["sl_floor_pips"])
@@ -203,7 +216,11 @@ def _slippage_analysis(events: list[dict]) -> dict:
     Positive = adverse (bought above / sold below signal price).
     """
     signals = {e.get("symbol"): e for e in events if e.get("event") == "SIGNAL_CREATED"}
-    fills = [e for e in events if e.get("event") == "ORDER_FILLED" and not e.get("dry_run", False)]
+    fills = [
+        e
+        for e in events
+        if e.get("event") == "ORDER_FILLED" and not e.get("dry_run", False)
+    ]
 
     slippages = []
     for fill in fills:
@@ -218,11 +235,20 @@ def _slippage_analysis(events: list[dict]) -> dict:
         if signal_entry and fill_price:
             raw = (fill_price - signal_entry) * mul
             signed = raw if side == "long" else -raw
-            slippages.append({"symbol": sym, "slippage_pips": round(signed, 2), "side": side})
+            slippages.append(
+                {"symbol": sym, "slippage_pips": round(signed, 2), "side": side}
+            )
 
     if not slippages:
-        return {"n": 0, "avg_slippage_pips": None, "max_slippage_pips": None,
-                "pct_adverse": None, "warn": False, "critical": False, "samples": []}
+        return {
+            "n": 0,
+            "avg_slippage_pips": None,
+            "max_slippage_pips": None,
+            "pct_adverse": None,
+            "warn": False,
+            "critical": False,
+            "samples": [],
+        }
 
     vals = [s["slippage_pips"] for s in slippages]
     avg = statistics.mean(vals)
@@ -245,12 +271,17 @@ def _spread_analysis(events: list[dict]) -> dict:
     Estimate live spread from ORDER_REJECTED events with SPREAD_TOO_WIDE reason.
     Also reports on ORDER_SUBMITTED vs SIGNAL_CREATED price to infer spread at entry.
     """
-    rejections = [e for e in events if e.get("event") == "ORDER_REJECTED"
-                  and "SPREAD" in e.get("reason", "").upper()]
+    rejections = [
+        e
+        for e in events
+        if e.get("event") == "ORDER_REJECTED"
+        and "SPREAD" in e.get("reason", "").upper()
+    ]
     spread_pips: dict[str, list] = defaultdict(list)
     for r in rejections:
         m_val = None
         import re
+
         m = re.search(r"SPREAD_TOO_WIDE[:\s]*([\d.]+)", r.get("reason", ""), re.I)
         if m:
             try:
@@ -277,9 +308,19 @@ def _trade_performance(events: list[dict]) -> dict:
     """Compute live win rate, avg R, PF from POSITION_CLOSED events."""
     closed = [e for e in events if e.get("event") == "POSITION_CLOSED"]
     if not closed:
-        return {"n": 0, "win_rate": None, "avg_r": None, "total_r": None,
-                "pf": None, "wins": 0, "losses": 0, "gross_profit_r": 0.0,
-                "gross_loss_r": 0.0, "warn": False, "low_sample_warning": True}
+        return {
+            "n": 0,
+            "win_rate": None,
+            "avg_r": None,
+            "total_r": None,
+            "pf": None,
+            "wins": 0,
+            "losses": 0,
+            "gross_profit_r": 0.0,
+            "gross_loss_r": 0.0,
+            "warn": False,
+            "low_sample_warning": True,
+        }
 
     results = [e.get("result_r", 0.0) for e in closed]
     wins = [r for r in results if r > 0]
@@ -290,11 +331,18 @@ def _trade_performance(events: list[dict]) -> dict:
     total_r = sum(results)
     gross_profit = sum(wins) if wins else 0
     gross_loss = abs(sum(losses)) if losses else 0
-    pf = (gross_profit / gross_loss) if gross_loss > 0 else (float("inf") if gross_profit > 0 else None)
+    pf = (
+        (gross_profit / gross_loss)
+        if gross_loss > 0
+        else (float("inf") if gross_profit > 0 else None)
+    )
 
     warn = False
     if n >= _THRESHOLDS["min_n_for_win_rate"] and win_rate is not None:
-        warn = win_rate < _THRESHOLDS["win_rate_min"] or win_rate > _THRESHOLDS["win_rate_max"]
+        warn = (
+            win_rate < _THRESHOLDS["win_rate_min"]
+            or win_rate > _THRESHOLDS["win_rate_max"]
+        )
 
     return {
         "n": n,
@@ -341,6 +389,7 @@ def _symbol_breakdown(events: list[dict]) -> dict:
 
 
 # ── Report renderer ───────────────────────────────────────────────────────────
+
 
 def _fmt(val, suffix: str = "", na: str = "—", decimals: int = 3) -> str:
     if val is None:
@@ -395,7 +444,9 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a(f"| Expected monthly frequency | {_BACKTEST['trades_per_month']} trades/month |")
     a("")
     if n_closed < 10:
-        a("> **LOW SAMPLE WARNING:** Statistical metrics (win rate, PF) are not meaningful")
+        a(
+            "> **LOW SAMPLE WARNING:** Statistical metrics (win rate, PF) are not meaningful"
+        )
         a(f"> until n ≥ 10 closed trades. Currently {n_closed}/{10}.")
         a("> Continue collecting data. No strategy conclusions can be drawn yet.")
         a("")
@@ -405,9 +456,13 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a("")
     a(f"| Metric | Live | Backtest | Status |")
     a(f"|---|---|---|---|")
-    a(f"| Signals/month | {_fmt(freq['actual_per_month'])} | {_fmt(freq['expected_per_month'])} | "
-      f"{'⚠️ Below 50% of expected' if freq['warn'] else '✅ OK (or too early to judge)'} |")
-    a(f"| Total signals | {n_signals} | ~{round(_BACKTEST['trades_per_month'] * freq['days_elapsed'] / 30.44, 1)} expected | — |")
+    a(
+        f"| Signals/month | {_fmt(freq['actual_per_month'])} | {_fmt(freq['expected_per_month'])} | "
+        f"{'⚠️ Below 50% of expected' if freq['warn'] else '✅ OK (or too early to judge)'} |"
+    )
+    a(
+        f"| Total signals | {n_signals} | ~{round(_BACKTEST['trades_per_month'] * freq['days_elapsed'] / 30.44, 1)} expected | — |"
+    )
     a("")
     if freq["days_elapsed"] < 30:
         a(f"> Too early to judge frequency (only {freq['days_elapsed']} days elapsed).")
@@ -421,10 +476,14 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a(f"| Session | Live Count | Live % | Backtest % | Status |")
     a(f"|---|---|---|---|---|")
     if sess["n"] > 0:
-        a(f"| London | {sess['london_count']} | {_fmt(sess['london_pct'], '%')} | "
-          f"{sess['backtest_london_pct']}% | {'⚠️ Unusually high' if sess['warn'] else '✅'} |")
-        a(f"| New York | {sess['ny_count']} | {_fmt(sess['ny_pct'], '%')} | "
-          f"{sess['backtest_ny_pct']}% | ✅ |")
+        a(
+            f"| London | {sess['london_count']} | {_fmt(sess['london_pct'], '%')} | "
+            f"{sess['backtest_london_pct']}% | {'⚠️ Unusually high' if sess['warn'] else '✅'} |"
+        )
+        a(
+            f"| New York | {sess['ny_count']} | {_fmt(sess['ny_pct'], '%')} | "
+            f"{sess['backtest_ny_pct']}% | ✅ |"
+        )
     else:
         a(f"| London | 0 | — | {sess['backtest_london_pct']}% | — |")
         a(f"| New York | 0 | — | {sess['backtest_ny_pct']}% | — |")
@@ -438,17 +497,27 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a("")
     a(f"| Metric | Live | Backtest Gate | Status |")
     a(f"|---|---|---|---|")
-    a(f"| Avg SL (pips) | {_fmt(sl_dist.get('avg_sl_pips'))} | ≥5.0 pip floor | "
-      f"{'⚠️ Check' if sl_dist.get('warn') else '✅'} |")
-    a(f"| Min SL (pips) | {_fmt(sl_dist.get('min_sl_pips'))} | ≥5.0 | "
-      f"{'🔴 VIOLATION' if sl_dist.get('below_5pip_floor', 0) > 0 else '✅'} |")
+    a(
+        f"| Avg SL (pips) | {_fmt(sl_dist.get('avg_sl_pips'))} | ≥5.0 pip floor | "
+        f"{'⚠️ Check' if sl_dist.get('warn') else '✅'} |"
+    )
+    a(
+        f"| Min SL (pips) | {_fmt(sl_dist.get('min_sl_pips'))} | ≥5.0 | "
+        f"{'🔴 VIOLATION' if sl_dist.get('below_5pip_floor', 0) > 0 else '✅'} |"
+    )
     a(f"| Max SL (pips) | {_fmt(sl_dist.get('max_sl_pips'))} | — | — |")
-    a(f"| Trades below 5-pip floor | {sl_dist.get('below_5pip_floor', 0)} | 0 | "
-      f"{'🔴 CRITICAL' if sl_dist.get('below_5pip_floor', 0) > 0 else '✅'} |")
+    a(
+        f"| Trades below 5-pip floor | {sl_dist.get('below_5pip_floor', 0)} | 0 | "
+        f"{'🔴 CRITICAL' if sl_dist.get('below_5pip_floor', 0) > 0 else '✅'} |"
+    )
     a("")
     if sl_dist.get("below_5pip_floor", 0) > 0:
-        a("> **CRITICAL:** Trades with SL < 5 pips should have been filtered by ST-A2 gate.")
-        a("> This indicates a code regression in the min_sl_pips filter. Investigate immediately.")
+        a(
+            "> **CRITICAL:** Trades with SL < 5 pips should have been filtered by ST-A2 gate."
+        )
+        a(
+            "> This indicates a code regression in the min_sl_pips filter. Investigate immediately."
+        )
         a("")
 
     # ── 4. Slippage ───────────────────────────────────────────────────────────
@@ -464,13 +533,19 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
         a(f"| Metric | Value | Threshold | Status |")
         a(f"|---|---|---|---|")
         a(f"| Samples | {slip['n']} | — | — |")
-        a(f"| Avg slippage | {_fmt(slip['avg_slippage_pips'], ' pips')} | < 1.0 pip | "
-          f"{_badge(slip['warn'], slip['critical'])} |")
+        a(
+            f"| Avg slippage | {_fmt(slip['avg_slippage_pips'], ' pips')} | < 1.0 pip | "
+            f"{_badge(slip['warn'], slip['critical'])} |"
+        )
         a(f"| Max slippage | {_fmt(slip['max_slippage_pips'], ' pips')} | — | — |")
         a(f"| % adverse fills | {_fmt(slip['pct_adverse'], '%')} | — | — |")
     a("")
-    a("> **Note:** Backtest uses bar-close entry price. Live fills may differ due to spread")
-    a("> at execution time. Slippage > 1 pip consistently suggests a timing or broker issue.")
+    a(
+        "> **Note:** Backtest uses bar-close entry price. Live fills may differ due to spread"
+    )
+    a(
+        "> at execution time. Slippage > 1 pip consistently suggests a timing or broker issue."
+    )
     a("")
 
     # ── 5. Spread Analysis ────────────────────────────────────────────────────
@@ -482,8 +557,10 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
         key = f"spread_{sym.lower()}_pips"
         expected = _BACKTEST.get(key, "?")
         sym_data = spread["by_symbol"].get(sym, {})
-        a(f"| {sym} | {expected} pip | {sym_data.get('count', 0)} rejections | "
-          f"{_fmt(sym_data.get('max_pips'))} pips |")
+        a(
+            f"| {sym} | {expected} pip | {sym_data.get('count', 0)} rejections | "
+            f"{_fmt(sym_data.get('max_pips'))} pips |"
+        )
     a("")
     a(f"Total spread rejections: {spread['spread_rejections']}")
     a("")
@@ -496,18 +573,28 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a("")
     a(f"| Metric | Live | Backtest (ST-A2) | Status |")
     a(f"|---|---|---|---|")
-    a(f"| Closed trades | {n_closed} | 169 (5yr) | "
-      f"{'⚠️ Low sample' if perf['low_sample_warning'] else '—'} |")
-    a(f"| Win rate | {_fmt(perf['win_rate'], '%', decimals=1) if perf['win_rate'] else '—'} | "
-      f"32.0% | {'⚠️ Deviation' if perf['warn'] else ('— (need n≥10)' if n_closed < 10 else '✅')} |")
-    a(f"| Average R | {_fmt(perf['avg_r'])} | 0.108 | "
-      f"{'⚠️' if perf['avg_r'] is not None and perf['avg_r'] < _THRESHOLDS['avg_r_min'] else '—'} |")
+    a(
+        f"| Closed trades | {n_closed} | 169 (5yr) | "
+        f"{'⚠️ Low sample' if perf['low_sample_warning'] else '—'} |"
+    )
+    a(
+        f"| Win rate | {_fmt(perf['win_rate'], '%', decimals=1) if perf['win_rate'] else '—'} | "
+        f"32.0% | {'⚠️ Deviation' if perf['warn'] else ('— (need n≥10)' if n_closed < 10 else '✅')} |"
+    )
+    a(
+        f"| Average R | {_fmt(perf['avg_r'])} | 0.108 | "
+        f"{'⚠️' if perf['avg_r'] is not None and perf['avg_r'] < _THRESHOLDS['avg_r_min'] else '—'} |"
+    )
     a(f"| Total R | {_fmt(perf['total_r'])} | — | — |")
-    a(f"| Profit Factor | {_fmt(perf['pf'])} | 1.151 (std) | "
-      f"{'— (need n≥20)' if n_closed < 20 else '✅' if perf['pf'] and perf['pf'] > 1.0 else '⚠️'} |")
+    a(
+        f"| Profit Factor | {_fmt(perf['pf'])} | 1.151 (std) | "
+        f"{'— (need n≥20)' if n_closed < 20 else '✅' if perf['pf'] and perf['pf'] > 1.0 else '⚠️'} |"
+    )
     a("")
     if perf["low_sample_warning"]:
-        a(f"> **Low sample warning:** Need ≥{_THRESHOLDS['min_n_for_pf']} closed trades for")
+        a(
+            f"> **Low sample warning:** Need ≥{_THRESHOLDS['min_n_for_pf']} closed trades for"
+        )
         a(f"> statistically meaningful PF. Currently {n_closed}.")
         a("")
 
@@ -518,9 +605,11 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
         a(f"| Symbol | Signals | Trades | Win% | Avg R |")
         a(f"|---|---|---|---|---|")
         for sym, d in sorted(sym_bd.items()):
-            a(f"| {sym} | {d['signals']} | {d['closed_trades']} | "
-              f"{_fmt(d['win_rate'], '%', decimals=1) if d['win_rate'] else '—'} | "
-              f"{_fmt(d['avg_r']) if d['avg_r'] is not None else '—'} |")
+            a(
+                f"| {sym} | {d['signals']} | {d['closed_trades']} | "
+                f"{_fmt(d['win_rate'], '%', decimals=1) if d['win_rate'] else '—'} | "
+                f"{_fmt(d['avg_r']) if d['avg_r'] is not None else '—'} |"
+            )
         a("")
 
     # ── 8. Drift Summary ─────────────────────────────────────────────────────
@@ -528,13 +617,19 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a("")
     flags = []
     if freq["warn"]:
-        flags.append("🟡 SIGNAL_FREQUENCY: below 50% of expected rate (check session classification)")
+        flags.append(
+            "🟡 SIGNAL_FREQUENCY: below 50% of expected rate (check session classification)"
+        )
     if sess["warn"]:
         flags.append("🟡 SESSION_DIST: London > 85% — NY signals may be missed")
     if sl_dist.get("below_5pip_floor", 0) > 0:
-        flags.append("🔴 SL_FLOOR_VIOLATION: trades with SL < 5 pip detected (ST-A2 filter regression)")
+        flags.append(
+            "🔴 SL_FLOOR_VIOLATION: trades with SL < 5 pip detected (ST-A2 filter regression)"
+        )
     if slip["n"] > 0 and slip.get("critical"):
-        flags.append("🔴 SLIPPAGE_CRITICAL: average slippage > 2 pip — broker execution issue")
+        flags.append(
+            "🔴 SLIPPAGE_CRITICAL: average slippage > 2 pip — broker execution issue"
+        )
     elif slip["n"] > 0 and slip.get("warn"):
         flags.append("🟡 SLIPPAGE_HIGH: average slippage > 1 pip — monitor")
     if perf["warn"]:
@@ -544,7 +639,9 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
         a("✅ No drift flags. All metrics within expected bands.")
         a("")
         if n_signals == 0:
-            a("> No signals yet — all checks are in PENDING state (no data to compare).")
+            a(
+                "> No signals yet — all checks are in PENDING state (no data to compare)."
+            )
         a("")
     else:
         a("| # | Flag | Severity |")
@@ -575,7 +672,9 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a(f"| EURUSD PF (2×) | 0.945 ⚠️ |")
     a(f"| GBPUSD PF (2×) | 1.168 ✅ |")
     a("")
-    a(f"*Generated by `research/live_vs_backtest_validator.py` at {now.strftime('%Y-%m-%dT%H:%M UTC')}*")
+    a(
+        f"*Generated by `research/live_vs_backtest_validator.py` at {now.strftime('%Y-%m-%dT%H:%M UTC')}*"
+    )
     a("")
 
     result_dict = {
@@ -598,16 +697,28 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Live vs Backtest Validator")
-    parser.add_argument("--since", default=None,
-                        help="Start date for analysis (YYYY-MM-DD), default: all-time")
-    parser.add_argument("--out", default=None,
-                        help="Markdown output path (default: reports/live_vs_backtest.md)")
-    parser.add_argument("--json", action="store_true", dest="emit_json",
-                        help="Also print JSON summary to stdout")
-    parser.add_argument("--quiet", action="store_true",
-                        help="Suppress markdown stdout output")
+    parser.add_argument(
+        "--since",
+        default=None,
+        help="Start date for analysis (YYYY-MM-DD), default: all-time",
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Markdown output path (default: reports/live_vs_backtest.md)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="emit_json",
+        help="Also print JSON summary to stdout",
+    )
+    parser.add_argument(
+        "--quiet", action="store_true", help="Suppress markdown stdout output"
+    )
     args = parser.parse_args()
 
     now = datetime.now(_UTC)
@@ -628,6 +739,7 @@ def main() -> None:
         print(json.dumps(report_json, indent=2, default=str))
 
     import sys
+
     print(f"\n✅  Report written → {out_path}", file=sys.stderr)
 
 

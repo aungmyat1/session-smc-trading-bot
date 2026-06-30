@@ -1,16 +1,16 @@
 """Tests for execution/order_manager.py — order flow orchestration."""
 
-import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from execution.order_manager import OrderManager, MAX_OPEN_TRADES
-from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition
+import pytest
+
+from execution.metaapi_client import BrokerPosition, MetaAPIClient, OrderResult
+from execution.order_manager import MAX_OPEN_TRADES, OrderManager
 from execution.risk_manager import RiskManager
 from execution.trade_logger import TradeLogger
-
 
 _UTC = timezone.utc
 
@@ -35,6 +35,7 @@ BASE_CONFIG = {
 @dataclass
 class FakeSignal:
     """Minimal Signal-compatible object for testing."""
+
     side: str
     entry: float
     stop_loss: float
@@ -47,7 +48,9 @@ class FakeSignal:
 
 @pytest.fixture(autouse=True)
 def isolate_risk_state(tmp_path, monkeypatch):
-    monkeypatch.setattr("execution.risk_manager.STATE_FILE", tmp_path / "bot_state.json")
+    monkeypatch.setattr(
+        "execution.risk_manager.STATE_FILE", tmp_path / "bot_state.json"
+    )
 
 
 @pytest.fixture
@@ -76,8 +79,14 @@ def make_client(
     client.get_open_positions = AsyncMock(return_value=open_positions or [])
     if place_result is None:
         place_result = OrderResult(
-            order_id="DRY_RUN", symbol="EURUSD", direction="long",
-            volume=0.01, entry_price=0.0, sl=1.06, tp=1.09, dry_run=True,
+            order_id="DRY_RUN",
+            symbol="EURUSD",
+            direction="long",
+            volume=0.01,
+            entry_price=0.0,
+            sl=1.06,
+            tp=1.09,
+            dry_run=True,
         )
     client.place_order = AsyncMock(return_value=place_result)
     return client
@@ -89,13 +98,18 @@ def make_om(client, risk, tl) -> OrderManager:
 
 def long_signal() -> FakeSignal:
     return FakeSignal(
-        side="long", entry=1.07, stop_loss=1.06, take_profit=1.09,
-        risk_pips=10.0, session="london",
+        side="long",
+        entry=1.07,
+        stop_loss=1.06,
+        take_profit=1.09,
+        risk_pips=10.0,
+        session="london",
         timestamp=datetime(2026, 1, 15, 7, 30, tzinfo=_UTC),
     )
 
 
 # ── Category 1: Happy path ────────────────────────────────────────────────────
+
 
 class TestHappyPath:
     @pytest.mark.asyncio
@@ -132,12 +146,15 @@ class TestHappyPath:
         client = make_client()
         om = make_om(client, risk, trade_logger)
         await om.process_signal(long_signal(), "EURUSD", 1000.0)
-        submitted = next(e for e in trade_logger.read_all() if e["event"] == "ORDER_SUBMITTED")
+        submitted = next(
+            e for e in trade_logger.read_all() if e["event"] == "ORDER_SUBMITTED"
+        )
         assert submitted["symbol"] == "EURUSD"
         assert submitted["direction"] == "long"
 
 
 # ── Category 2: Circuit breaker rejection ────────────────────────────────────
+
 
 class TestCircuitBreakerRejection:
     @pytest.mark.asyncio
@@ -152,7 +169,9 @@ class TestCircuitBreakerRejection:
         assert "CIRCUIT_BREAKER" in detail
 
     @pytest.mark.asyncio
-    async def test_signal_created_logged_before_circuit_breaker_rejection(self, risk, trade_logger):
+    async def test_signal_created_logged_before_circuit_breaker_rejection(
+        self, risk, trade_logger
+    ):
         risk._state.halted = True
         risk._state.halt_reason = "MAX_WEEKLY_LOSS"
         client = make_client()
@@ -164,6 +183,7 @@ class TestCircuitBreakerRejection:
 
 
 # ── Category 3: Spread rejection ─────────────────────────────────────────────
+
 
 class TestSpreadRejection:
     @pytest.mark.asyncio
@@ -179,19 +199,29 @@ class TestSpreadRejection:
         client = make_client(spread_ok=False, spread_pips=8.0)
         om = make_om(client, risk, trade_logger)
         await om.process_signal(long_signal(), "EURUSD", 1000.0)
-        rejected = [e for e in trade_logger.read_all() if e["event"] == "ORDER_REJECTED"]
+        rejected = [
+            e for e in trade_logger.read_all() if e["event"] == "ORDER_REJECTED"
+        ]
         assert len(rejected) == 1
         assert "SPREAD" in rejected[0]["reason"]
 
 
 # ── Category 4: Duplicate position prevention ─────────────────────────────────
 
+
 class TestDuplicateOrderPrevention:
     @pytest.mark.asyncio
     async def test_existing_position_blocks_new_order(self, risk, trade_logger):
         existing = BrokerPosition(
-            position_id="pos-1", symbol="EURUSD", direction="long",
-            volume=0.01, open_price=1.07, sl=1.06, tp=1.09, profit=0.0, magic=21001,
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            volume=0.01,
+            open_price=1.07,
+            sl=1.06,
+            tp=1.09,
+            profit=0.0,
+            magic=21001,
         )
         client = make_client(open_positions=[existing])
         om = make_om(client, risk, trade_logger)
@@ -211,10 +241,19 @@ class TestDuplicateOrderPrevention:
         assert success is True
 
     @pytest.mark.asyncio
-    async def test_place_order_not_called_when_position_exists(self, risk, trade_logger):
+    async def test_place_order_not_called_when_position_exists(
+        self, risk, trade_logger
+    ):
         existing = BrokerPosition(
-            position_id="pos-1", symbol="EURUSD", direction="long",
-            volume=0.01, open_price=1.07, sl=1.06, tp=1.09, profit=0.0, magic=21001,
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            volume=0.01,
+            open_price=1.07,
+            sl=1.06,
+            tp=1.09,
+            profit=0.0,
+            magic=21001,
         )
         client = make_client(open_positions=[existing])
         om = make_om(client, risk, trade_logger)
@@ -224,11 +263,12 @@ class TestDuplicateOrderPrevention:
 
 # ── Category 5: Sizing rejection ─────────────────────────────────────────────
 
+
 class TestSizingRejection:
     @pytest.mark.asyncio
     async def test_sl_too_tight_rejected_by_sizer(self, risk, trade_logger):
         sig = long_signal()
-        sig.risk_pips = 1.5   # < 3.0 pip minimum
+        sig.risk_pips = 1.5  # < 3.0 pip minimum
         client = make_client()
         om = make_om(client, risk, trade_logger)
         success, detail = await om.process_signal(sig, "EURUSD", 1000.0)
@@ -247,6 +287,7 @@ class TestSizingRejection:
 
 
 # ── Category 6: Order placement failure ──────────────────────────────────────
+
 
 class TestOrderPlacementFailure:
     @pytest.mark.asyncio

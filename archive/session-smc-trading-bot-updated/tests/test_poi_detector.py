@@ -1,6 +1,8 @@
 """Tests for session_smc/poi_detector.py"""
+
 import pytest
-from session_smc.poi_detector import find_fvg, check_fvg_retest
+
+from session_smc.poi_detector import check_fvg_retest, find_fvg
 
 
 def c(o, h, l, cl):
@@ -8,6 +10,7 @@ def c(o, h, l, cl):
 
 
 # ── find_fvg ─────────────────────────────────────────────────────────────────
+
 
 class TestFindFVG:
     # Bullish FVG:
@@ -17,17 +20,17 @@ class TestFindFVG:
     def _bull_candles(self):
         # idx 0: prev; idx 1: displacement; idx 2: next
         return [
-            c(1.088, 1.0900, 1.088, 1.090),   # prev: high = 1.0900
-            c(1.090, 1.095, 1.089, 1.094),    # displacement
-            c(1.094, 1.096, 1.0910, 1.095),   # next: low = 1.0910
+            c(1.088, 1.0900, 1.088, 1.090),  # prev: high = 1.0900
+            c(1.090, 1.095, 1.089, 1.094),  # displacement
+            c(1.094, 1.096, 1.0910, 1.095),  # next: low = 1.0910
         ]
 
     def _bear_candles(self):
         # Bearish FVG: prev.low = 1.0910, next.high = 1.0900
         return [
-            c(1.095, 1.096, 1.0910, 1.092),   # prev: low = 1.0910
-            c(1.092, 1.093, 1.088, 1.089),    # displacement
-            c(1.089, 1.0900, 1.087, 1.088),   # next: high = 1.0900
+            c(1.095, 1.096, 1.0910, 1.092),  # prev: low = 1.0910
+            c(1.092, 1.093, 1.088, 1.089),  # displacement
+            c(1.089, 1.0900, 1.087, 1.088),  # next: high = 1.0900
         ]
 
     def test_bullish_fvg_detected(self):
@@ -50,7 +53,7 @@ class TestFindFVG:
         cd = [
             c(1.088, 1.0910, 1.088, 1.090),
             c(1.090, 1.095, 1.089, 1.094),
-            c(1.094, 1.096, 1.0905, 1.095),   # next.low < prev.high
+            c(1.094, 1.096, 1.0905, 1.095),  # next.low < prev.high
         ]
         assert find_fvg(cd, 1, "bullish") is None
 
@@ -69,6 +72,7 @@ class TestFindFVG:
 
 
 # ── check_fvg_retest ─────────────────────────────────────────────────────────
+
 
 class TestCheckFVGRetest:
     def _bull_fvg(self):

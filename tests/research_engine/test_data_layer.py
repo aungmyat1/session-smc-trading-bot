@@ -59,4 +59,12 @@ def test_parquet_round_trip(tmp_path: Path):
     saved = save_parquet(_frame(), path)
     loaded = load_parquet(saved)
     assert len(loaded) == 3
-    assert list(loaded.columns) == ["timestamp", "open", "high", "low", "close", "volume", "spread"]
+    assert list(loaded.columns) == [
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "spread",
+    ]

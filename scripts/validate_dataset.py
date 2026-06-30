@@ -27,10 +27,10 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_RAW  = ROOT / "data" / "raw" / "dukascopy"
+DATA_RAW = ROOT / "data" / "raw" / "dukascopy"
 DATA_PROC = ROOT / "data" / "processed"
 DATA_MARKET = ROOT / "data" / "market"
-REPORTS   = ROOT / "reports"
+REPORTS = ROOT / "reports"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("validate")
@@ -49,12 +49,12 @@ PIP_SIZE = {
 }
 
 EXPECTED_TF_GAPS = {
-    "M1":  pd.Timedelta(minutes=1),
-    "M5":  pd.Timedelta(minutes=5),
+    "M1": pd.Timedelta(minutes=1),
+    "M5": pd.Timedelta(minutes=5),
     "M15": pd.Timedelta(minutes=15),
-    "H1":  pd.Timedelta(hours=1),
-    "H4":  pd.Timedelta(hours=4),
-    "D1":  pd.Timedelta(days=1),
+    "H1": pd.Timedelta(hours=1),
+    "H4": pd.Timedelta(hours=4),
+    "D1": pd.Timedelta(days=1),
 }
 
 LEGACY_PROCESSED_COLS = [
@@ -124,7 +124,11 @@ def compute_month_coverage(
     expected_months = list(month_range(start, end))
     found = set(months_found)
     missing_months = [month for month in expected_months if month not in found]
-    coverage = 0.0 if not expected_months else (len(expected_months) - len(missing_months)) / len(expected_months)
+    coverage = (
+        0.0
+        if not expected_months
+        else (len(expected_months) - len(missing_months)) / len(expected_months)
+    )
     return {
         "expected_months": expected_months,
         "missing_months": missing_months,
@@ -209,7 +213,9 @@ class ValidationReport:
         elif not self.errors:
             lines.append(f"⚠️ {len(self.warnings)} warning(s). No blocking errors.")
         else:
-            lines.append(f"❌ {len(self.errors)} error(s) found. Dataset needs remediation before use.")
+            lines.append(
+                f"❌ {len(self.errors)} error(s) found. Dataset needs remediation before use."
+            )
 
         return "\n".join(lines)
 
@@ -230,7 +236,9 @@ def validate_raw_ticks(
         "missing_months": [],
     }
     if not sym_dir.exists():
-        report.add("WARN", f"{sym}: no raw tick directory — download_dukascopy.py not yet run")
+        report.add(
+            "WARN", f"{sym}: no raw tick directory — download_dukascopy.py not yet run"
+        )
         return stats
 
     for year_dir in sorted(sym_dir.iterdir()):
@@ -257,11 +265,15 @@ def validate_raw_ticks(
                 report.add("ERROR", f"{sym}: corrupted Parquet {year}-{month:02d}: {e}")
                 continue
             if n == 0:
-                report.add("WARN", f"{sym}: zero ticks in {year}-{month:02d} (holiday month?)")
+                report.add(
+                    "WARN", f"{sym}: zero ticks in {year}-{month:02d} (holiday month?)"
+                )
             else:
                 stats["nonempty_months"].append((year, month))
                 stats["total_rows"] += n
-                report.add("PASS", f"{sym}: raw ticks {year}-{month:02d} — {n:,} rows OK")
+                report.add(
+                    "PASS", f"{sym}: raw ticks {year}-{month:02d} — {n:,} rows OK"
+                )
 
     if stats["nonempty_months"]:
         # Check for month gaps
@@ -271,13 +283,20 @@ def validate_raw_ticks(
                 py, pm = prev
                 expected_y, expected_m = (py, pm + 1) if pm < 12 else (py + 1, 1)
                 if (y, m) != (expected_y, expected_m):
-                    report.add("WARN", f"{sym}: month gap between {py}-{pm:02d} and {y}-{m:02d}")
+                    report.add(
+                        "WARN",
+                        f"{sym}: month gap between {py}-{pm:02d} and {y}-{m:02d}",
+                    )
             prev = (y, m)
-        coverage = compute_month_coverage(stats["nonempty_months"], expected_start, expected_end)
+        coverage = compute_month_coverage(
+            stats["nonempty_months"], expected_start, expected_end
+        )
         stats["coverage"] = coverage["coverage"]
         stats["missing_months"] = coverage["missing_months"]
         if stats["missing_months"]:
-            preview = ", ".join(month_label(month) for month in stats["missing_months"][:6])
+            preview = ", ".join(
+                month_label(month) for month in stats["missing_months"][:6]
+            )
             if len(stats["missing_months"]) > 6:
                 preview += ", ..."
             report.add(
@@ -325,7 +344,9 @@ def summarize_acquisition(sym: str) -> dict | None:
         "months": len(entries),
         "rows": total_rows,
         "elapsed_seconds": round(elapsed_seconds, 3),
-        "rows_per_second": round(total_rows / elapsed_seconds, 2) if elapsed_seconds > 0 else 0.0,
+        "rows_per_second": (
+            round(total_rows / elapsed_seconds, 2) if elapsed_seconds > 0 else 0.0
+        ),
         "retries": total_retries,
         "hours_failed": hours_failed,
         "hours_missing": hours_missing,
@@ -336,8 +357,16 @@ def summarize_acquisition(sym: str) -> dict | None:
 def validate_processed(sym: str, tf: str, report: ValidationReport):
     legacy_path = DATA_PROC / sym / f"{tf}.parquet"
     partition_root = DATA_MARKET / tf.lower() / sym
-    partition_paths = sorted(partition_root.glob("year=*/month=*/part-*.parquet")) if partition_root.exists() else []
-    path = legacy_path if legacy_path.exists() else (partition_paths[0] if partition_paths else legacy_path)
+    partition_paths = (
+        sorted(partition_root.glob("year=*/month=*/part-*.parquet"))
+        if partition_root.exists()
+        else []
+    )
+    _path = (
+        legacy_path
+        if legacy_path.exists()
+        else (partition_paths[0] if partition_paths else legacy_path)
+    )
     stats = {
         "symbol": sym,
         "timeframe": tf,
@@ -348,17 +377,27 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
         "duplicates": 0,
         "schema_ok": False,
         "sorted": False,
-        "storage": "legacy" if legacy_path.exists() else "partitioned" if partition_paths else "missing",
+        "storage": (
+            "legacy"
+            if legacy_path.exists()
+            else "partitioned" if partition_paths else "missing"
+        ),
     }
     if not legacy_path.exists() and not partition_paths:
-        report.add("WARN", f"{sym} {tf}: market dataset missing — run build_timeframes.py or research pipeline")
+        report.add(
+            "WARN",
+            f"{sym} {tf}: market dataset missing — run build_timeframes.py or research pipeline",
+        )
         return stats
 
     try:
         if legacy_path.exists():
             df = pd.read_parquet(legacy_path)
         else:
-            df = pd.concat([pd.read_parquet(partition) for partition in partition_paths], ignore_index=True)
+            df = pd.concat(
+                [pd.read_parquet(partition) for partition in partition_paths],
+                ignore_index=True,
+            )
     except Exception as e:
         report.add("ERROR", f"{sym} {tf}: cannot read Parquet: {e}")
         return stats
@@ -376,13 +415,22 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
     ts_col = "timestamp_utc" if "timestamp_utc" in df.columns else df.columns[0]
     df[ts_col] = pd.to_datetime(df[ts_col], utc=True)
     schema_variants = [LEGACY_PROCESSED_COLS, LAYERED_MARKET_COLS]
-    matched_schema = next((cols for cols in schema_variants if all(column in df.columns for column in cols)), None)
+    matched_schema = next(
+        (
+            cols
+            for cols in schema_variants
+            if all(column in df.columns for column in cols)
+        ),
+        None,
+    )
     if matched_schema is None:
         missing_cols = [
             [column for column in candidate if column not in df.columns]
             for candidate in schema_variants
         ]
-        report.add("ERROR", f"{sym} {tf}: missing columns for supported schemas {missing_cols}")
+        report.add(
+            "ERROR", f"{sym} {tf}: missing columns for supported schemas {missing_cols}"
+        )
     else:
         stats["schema_ok"] = True
         report.add("PASS", f"{sym} {tf}: schema complete")
@@ -403,14 +451,17 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
     # Weekend bars (Saturday=5, Sunday=6)
     weekends = df[df[ts_col].dt.dayofweek >= 5]
     if not weekends.empty:
-        report.add("WARN", f"{sym} {tf}: {len(weekends)} weekend bars found (first: {weekends[ts_col].iloc[0]})")
+        report.add(
+            "WARN",
+            f"{sym} {tf}: {len(weekends)} weekend bars found (first: {weekends[ts_col].iloc[0]})",
+        )
     else:
         report.add("PASS", f"{sym} {tf}: no weekend bars")
 
     # OHLC integrity
     if all(c in df.columns for c in ("open", "high", "low", "close")):
         bad_high = (df["high"] < df[["open", "close"]].max(axis=1)).sum()
-        bad_low  = (df["low"]  > df[["open", "close"]].min(axis=1)).sum()
+        bad_low = (df["low"] > df[["open", "close"]].min(axis=1)).sum()
         if bad_high:
             report.add("ERROR", f"{sym} {tf}: {bad_high} bars where high < max(O,C)")
         else:
@@ -421,13 +472,19 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
             report.add("PASS", f"{sym} {tf}: OHLC low integrity OK")
 
     # Spread anomalies
-    spread_col = "spread_avg" if "spread_avg" in df.columns else "spread_mean" if "spread_mean" in df.columns else None
+    spread_col = (
+        "spread_avg"
+        if "spread_avg" in df.columns
+        else "spread_mean" if "spread_mean" in df.columns else None
+    )
     if spread_col and sym in PIP_SIZE:
         spread_pips = df[spread_col] / PIP_SIZE[sym]
-        threshold   = SPREAD_WARN_PIPS.get(sym, 10.0)
-        anomalies   = (spread_pips > threshold).sum()
+        threshold = SPREAD_WARN_PIPS.get(sym, 10.0)
+        anomalies = (spread_pips > threshold).sum()
         if anomalies:
-            report.add("WARN", f"{sym} {tf}: {anomalies} bars with spread > {threshold} pips")
+            report.add(
+                "WARN", f"{sym} {tf}: {anomalies} bars with spread > {threshold} pips"
+            )
         else:
             report.add("PASS", f"{sym} {tf}: spread within normal bounds")
 
@@ -443,9 +500,15 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
             gap_starts = df.loc[large_gaps.index - 1, ts_col]
             non_weekend = gap_starts[gap_starts.dt.dayofweek < 4]
             if len(non_weekend) > 0:
-                report.add("WARN", f"{sym} {tf}: {len(non_weekend)} non-weekend gaps > 2× bar size")
+                report.add(
+                    "WARN",
+                    f"{sym} {tf}: {len(non_weekend)} non-weekend gaps > 2× bar size",
+                )
             else:
-                report.add("PASS", f"{sym} {tf}: all large gaps are weekend closures (expected)")
+                report.add(
+                    "PASS",
+                    f"{sym} {tf}: all large gaps are weekend closures (expected)",
+                )
         else:
             report.add("PASS", f"{sym} {tf}: no significant gaps")
 
@@ -460,21 +523,31 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate historical data pipeline output")
+    parser = argparse.ArgumentParser(
+        description="Validate historical data pipeline output"
+    )
     parser.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
-    parser.add_argument("--timeframes", nargs="+", default=["M1", "M5", "M15", "H1", "H4", "D1"])
-    parser.add_argument("--expected-start", help="Expected start year-month e.g. 2023-07")
+    parser.add_argument(
+        "--timeframes", nargs="+", default=["M1", "M5", "M15", "H1", "H4", "D1"]
+    )
+    parser.add_argument(
+        "--expected-start", help="Expected start year-month e.g. 2023-07"
+    )
     parser.add_argument("--expected-end", help="Expected end year-month e.g. 2026-06")
     args = parser.parse_args()
 
     report = ValidationReport()
-    expected_start = parse_year_month(args.expected_start) if args.expected_start else None
+    expected_start = (
+        parse_year_month(args.expected_start) if args.expected_start else None
+    )
     expected_end = parse_year_month(args.expected_end) if args.expected_end else None
     raw_stats = {}
     processed_stats = {}
 
     for sym in args.symbols:
-        raw_stats[sym] = validate_raw_ticks(sym, report, expected_start=expected_start, expected_end=expected_end)
+        raw_stats[sym] = validate_raw_ticks(
+            sym, report, expected_start=expected_start, expected_end=expected_end
+        )
         processed_stats[sym] = {}
         for tf in args.timeframes:
             processed_stats[sym][tf] = validate_processed(sym, tf, report)
@@ -484,16 +557,26 @@ def main():
             f"Expected raw coverage window: {month_label(expected_start)} → {month_label(expected_end)}"
         )
 
-    raw_table = ["| Symbol | Raw files | Non-empty months | Coverage | Rows | Missing months |", "|---|---:|---:|---:|---:|---|"]
+    raw_table = [
+        "| Symbol | Raw files | Non-empty months | Coverage | Rows | Missing months |",
+        "|---|---:|---:|---:|---:|---|",
+    ]
     for sym in args.symbols:
         stats = raw_stats[sym]
-        missing = ", ".join(month_label(month) for month in stats["missing_months"]) if stats["missing_months"] else "None"
+        missing = (
+            ", ".join(month_label(month) for month in stats["missing_months"])
+            if stats["missing_months"]
+            else "None"
+        )
         raw_table.append(
             f"| {sym} | {stats['raw_files']} | {len(stats['nonempty_months'])} | {stats['coverage']:.1%} | "
             f"{stats['total_rows']:,} | {missing} |"
         )
 
-    processed_table = ["| Symbol | TF | Rows | Schema | Sorted | Duplicates | Date range |", "|---|---|---:|---|---|---:|---|"]
+    processed_table = [
+        "| Symbol | TF | Rows | Schema | Sorted | Duplicates | Date range |",
+        "|---|---|---:|---|---|---:|---|",
+    ]
     for sym in args.symbols:
         for tf in args.timeframes:
             stats = processed_stats[sym][tf]
@@ -522,7 +605,9 @@ def main():
     report.add_detail("\n".join(["### Raw Coverage", "", *raw_table]))
     report.add_detail("\n".join(["### Processed Coverage", "", *processed_table]))
     if acquisition_found:
-        report.add_detail("\n".join(["### Acquisition Telemetry", "", *acquisition_table]))
+        report.add_detail(
+            "\n".join(["### Acquisition Telemetry", "", *acquisition_table])
+        )
 
     REPORTS.mkdir(parents=True, exist_ok=True)
     out_path = REPORTS / "dataset_validation_report.md"
