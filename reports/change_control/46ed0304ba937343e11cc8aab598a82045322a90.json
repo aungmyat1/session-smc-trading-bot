@@ -1,0 +1,102 @@
+{
+  "actor": "codex",
+  "affected_files": [
+    "scripts/document_change.py",
+    "svos/shared/change_control.py",
+    "docs/CHANGE_CONTROL_SYSTEM.md"
+  ],
+  "change_type": "repo_change",
+  "event_id": "46ed0304ba937343e11cc8aab598a82045322a90",
+  "lifecycle_stage": "INTAKE",
+  "notes": [],
+  "recorded_at": "2026-06-30T08:12:02.107955+00:00",
+  "repo": {
+    "branch": "main",
+    "changed_files": [
+      "M docs/DEVELOPER_HANDBOOK.md",
+      "?? docs/CHANGE_CONTROL_SYSTEM.md",
+      "?? scripts/document_change.py",
+      "?? svos/shared/change_control.py",
+      "?? tests/svos/test_change_control.py"
+    ],
+    "commit": "cd7ad1ef23d410926cbc4e0197c842b0afdcff61",
+    "dirty": true
+  },
+  "runtime": {
+    "latest_log": {
+      "last_line": "2026-06-30 07:55:10,967  INFO      socketio.client  Received event \"synchronization\" [/]",
+      "path": "logs/d2e3_demo.log"
+    },
+    "latest_state": {
+      "account": {
+        "balance": 996.01,
+        "currency": "USD",
+        "equity": 996.01,
+        "free_margin": 996.01,
+        "margin": 0.0
+      },
+      "account_mode": "demo",
+      "daily_reset_at": "2026-06-29T19:02:38.598663+00:00",
+      "demo_only": false,
+      "interval_seconds": 60,
+      "last_decision": "no_signals",
+      "last_error": "",
+      "last_signal": null,
+      "last_tick_at": "2026-06-29T19:32:47.836098+00:00",
+      "live_trading": false,
+      "max_spread_pips": {
+        "EURUSD": 1.5,
+        "GBPUSD": 2.0,
+        "XAUUSD": 3.0
+      },
+      "mode": "demo",
+      "once": false,
+      "open_positions": [],
+      "pair_results": [
+        {
+          "bars": 200,
+          "price": 1.14247,
+          "spread_pips": 1.4,
+          "status": "ready",
+          "symbol": "EURUSD"
+        },
+        {
+          "bars": 200,
+          "price": 1.32588,
+          "spread_pips": 1.5,
+          "status": "ready",
+          "symbol": "GBPUSD"
+        },
+        {
+          "bars": 200,
+          "price": 4017.36,
+          "spread_pips": 2.3,
+          "status": "ready",
+          "symbol": "XAUUSD"
+        }
+      ],
+      "pairs": [
+        "EURUSD",
+        "GBPUSD",
+        "XAUUSD"
+      ],
+      "path": "logs/strategy_demo_state.json",
+      "pid": 605124,
+      "runner": "strategy_demo",
+      "started_at": "2026-06-29T19:02:30.362536+00:00",
+      "status": "running",
+      "strategy": "SMCOrderBlockFVGSession",
+      "updated_at": "2026-06-29T19:33:00.347941+00:00"
+    },
+    "runner_active": false,
+    "runner_processes": [],
+    "runtime_status": "running",
+    "runtime_strategy": "SMCOrderBlockFVGSession"
+  },
+  "status": "verified",
+  "strategy": "SMCOrderBlockFVGSession",
+  "summary": "Implemented repo/runtime change-control system",
+  "verification_steps": [
+    "python3 -m pytest -o addopts='' tests/svos/test_change_control.py -q"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "records": [
+    {
+      "change_type": "repo_change",
+      "event_id": "46ed0304ba937343e11cc8aab598a82045322a90",
+      "json": "46ed0304ba937343e11cc8aab598a82045322a90.json",
+      "markdown": "46ed0304ba937343e11cc8aab598a82045322a90.md",
+      "recorded_at": "2026-06-30T08:12:02.107955+00:00",
+      "status": "verified",
+      "strategy": "SMCOrderBlockFVGSession",
+      "summary": "Implemented repo/runtime change-control system"
+    }
+  ]
+}
