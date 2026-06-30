@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
+from ..models import (
+    StrategyDocument,
+    ValidationFinding,
+    ValidationRecommendation,
+    ValidatorResult,
+    ValidationStatus,
+)
 from ..module_base import BaseValidator
 
 
@@ -52,8 +58,14 @@ class InputValidator(BaseValidator):
                     )
                 )
 
-        score = round(((len(self.REQUIRED_FIELDS) - len(missing)) / len(self.REQUIRED_FIELDS)) * 100.0, 2)
-        status: ValidationStatus = "PASS" if not missing else "PARTIAL" if score >= 60 else "FAIL"
+        score = round(
+            ((len(self.REQUIRED_FIELDS) - len(missing)) / len(self.REQUIRED_FIELDS))
+            * 100.0,
+            2,
+        )
+        status: ValidationStatus = (
+            "PASS" if not missing else "PARTIAL" if score >= 60 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

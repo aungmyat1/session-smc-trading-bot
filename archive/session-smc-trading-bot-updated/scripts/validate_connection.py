@@ -35,6 +35,7 @@ Usage:
 # will not overwrite it, and any module that reads LIVE_TRADING at import time
 # will see "false".
 import os
+
 _ORIGINAL_LIVE_TRADING = os.environ.get("LIVE_TRADING", "not set in env")
 os.environ["LIVE_TRADING"] = "false"
 
@@ -48,6 +49,7 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(_ROOT / ".env", override=False)  # override=False: our forced "false" wins
 
 # Now import execution layer — LIVE_TRADING module-level variable will be False
@@ -61,6 +63,7 @@ _DOCS_DIR = _ROOT / "docs"
 
 
 # ── Check tracker ─────────────────────────────────────────────────────────────
+
 
 class CheckResult:
     def __init__(self) -> None:
@@ -95,6 +98,7 @@ class CheckResult:
 
 # ── Validation ────────────────────────────────────────────────────────────────
 
+
 async def run_validation() -> dict:
     r = CheckResult()
     run_ts = datetime.now(_UTC)
@@ -114,13 +118,22 @@ async def run_validation() -> dict:
 
     # ── Check 1: LIVE_TRADING guard ───────────────────────────────────────────
     print("\n[1] LIVE_TRADING guard")
-    r.add("LIVE_TRADING forced false", not LIVE_TRADING, str(LIVE_TRADING),
-          f".env said '{_ORIGINAL_LIVE_TRADING}' — overridden to false")
-    r.add(".env LIVE_TRADING safe",
-          _ORIGINAL_LIVE_TRADING.lower() != "true",
-          f"was '{_ORIGINAL_LIVE_TRADING}'",
-          "OK — not set to true in env" if _ORIGINAL_LIVE_TRADING.lower() != "true"
-          else "WARNING: .env had LIVE_TRADING=true — overridden for this script")
+    r.add(
+        "LIVE_TRADING forced false",
+        not LIVE_TRADING,
+        str(LIVE_TRADING),
+        f".env said '{_ORIGINAL_LIVE_TRADING}' — overridden to false",
+    )
+    r.add(
+        ".env LIVE_TRADING safe",
+        _ORIGINAL_LIVE_TRADING.lower() != "true",
+        f"was '{_ORIGINAL_LIVE_TRADING}'",
+        (
+            "OK — not set to true in env"
+            if _ORIGINAL_LIVE_TRADING.lower() != "true"
+            else "WARNING: .env had LIVE_TRADING=true — overridden for this script"
+        ),
+    )
 
     # ── Check 2: Credential presence ─────────────────────────────────────────
     print("\n[2] Credential presence")
@@ -129,10 +142,24 @@ async def run_validation() -> dict:
     tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     tg_chat = os.getenv("TELEGRAM_CHAT_ID", "")
 
-    r.add("METAAPI_TOKEN", bool(token),
-          f"{token[:6]}…{token[-4:]}" if len(token) > 10 else ("SET" if token else "MISSING"))
-    r.add("METAAPI_ACCOUNT_ID", bool(account_id),
-          f"{account_id[:8]}…{account_id[-4:]}" if len(account_id) > 12 else ("SET" if account_id else "MISSING"))
+    r.add(
+        "METAAPI_TOKEN",
+        bool(token),
+        (
+            f"{token[:6]}…{token[-4:]}"
+            if len(token) > 10
+            else ("SET" if token else "MISSING")
+        ),
+    )
+    r.add(
+        "METAAPI_ACCOUNT_ID",
+        bool(account_id),
+        (
+            f"{account_id[:8]}…{account_id[-4:]}"
+            if len(account_id) > 12
+            else ("SET" if account_id else "MISSING")
+        ),
+    )
     r.add("TELEGRAM_BOT_TOKEN", bool(tg_token), "SET" if tg_token else "MISSING")
     r.add("TELEGRAM_CHAT_ID", bool(tg_chat), "SET" if tg_chat else "MISSING")
 
@@ -166,9 +193,17 @@ async def run_validation() -> dict:
         # ── Check 4: Account sync ─────────────────────────────────────────────
         print("\n[4] Account synchronization")
         status = client.connection_status()
-        r.add("connection_status() connected", status["connected"], str(status["connected"]))
-        r.add("connection_status() live_trading", not status["live_trading"],
-              str(status["live_trading"]), "must be False")
+        r.add(
+            "connection_status() connected",
+            status["connected"],
+            str(status["connected"]),
+        )
+        r.add(
+            "connection_status() live_trading",
+            not status["live_trading"],
+            str(status["live_trading"]),
+            "must be False",
+        )
 
         # ── Check 5: Balance + equity ─────────────────────────────────────────
         print("\n[5] Account info (balance + equity)")
@@ -194,8 +229,11 @@ async def run_validation() -> dict:
             r.add("get_open_positions()", True, f"{open_pos_count} position(s)")
             if positions:
                 for p in positions:
-                    r.add(f"  position {p.position_id[:8]}…", True,
-                          f"{p.direction} {p.symbol} vol={p.volume}")
+                    r.add(
+                        f"  position {p.position_id[:8]}…",
+                        True,
+                        f"{p.direction} {p.symbol} vol={p.volume}",
+                    )
         except Exception as e:
             r.add("get_open_positions()", False, f"FAILED: {e}")
 
@@ -206,9 +244,12 @@ async def run_validation() -> dict:
                 price = await client.get_symbol_price(symbol)
                 spread_ok, spread_pips = await client.check_spread(symbol)
                 # Don't fail on wide spread — markets may be closed (weekend/off-hours)
-                r.add(f"{symbol} price", True,
-                      f"bid={price.bid:.5f}  ask={price.ask:.5f}  spread={price.spread_pips:.1f}pip",
-                      "spread OK" if spread_ok else "spread wide (off-hours?)")
+                r.add(
+                    f"{symbol} price",
+                    True,
+                    f"bid={price.bid:.5f}  ask={price.ask:.5f}  spread={price.spread_pips:.1f}pip",
+                    "spread OK" if spread_ok else "spread wide (off-hours?)",
+                )
                 spread_data[symbol] = {
                     "bid": price.bid,
                     "ask": price.ask,
@@ -232,9 +273,16 @@ async def run_validation() -> dict:
                 comment="DEP-02-VALIDATION",
             )
             is_dry = order_result.dry_run and order_result.order_id == "DRY_RUN"
-            r.add("place_order() returns DRY_RUN", is_dry,
-                  f"order_id={order_result.order_id}  dry_run={order_result.dry_run}")
-            r.add("No real order sent to broker", is_dry, "confirmed" if is_dry else "REAL ORDER MAY HAVE BEEN SENT")
+            r.add(
+                "place_order() returns DRY_RUN",
+                is_dry,
+                f"order_id={order_result.order_id}  dry_run={order_result.dry_run}",
+            )
+            r.add(
+                "No real order sent to broker",
+                is_dry,
+                "confirmed" if is_dry else "REAL ORDER MAY HAVE BEEN SENT",
+            )
         except Exception as e:
             r.add("place_order() DRY_RUN", False, f"FAILED: {e}")
 
@@ -243,11 +291,31 @@ async def run_validation() -> dict:
         log_file = _LOG_DIR / "dep02_validation.jsonl"
         tl = TradeLogger(log_file)
         try:
-            tl.signal_created("EURUSD", "london", "long",
-                               1.08000, 1.07000, 1.10000, 10.0, "DEP-02 validation")
-            tl.order_submitted("EURUSD", "london", "long",
-                                0.01, 1.07000, 1.10000, 0.01, equity, 1.0, dry_run=True)
-            tl.order_filled("EURUSD", "DRY_RUN", 0.0, 0.01, 1.07000, 1.10000, dry_run=True)
+            tl.signal_created(
+                "EURUSD",
+                "london",
+                "long",
+                1.08000,
+                1.07000,
+                1.10000,
+                10.0,
+                "DEP-02 validation",
+            )
+            tl.order_submitted(
+                "EURUSD",
+                "london",
+                "long",
+                0.01,
+                1.07000,
+                1.10000,
+                0.01,
+                equity,
+                1.0,
+                dry_run=True,
+            )
+            tl.order_filled(
+                "EURUSD", "DRY_RUN", 0.0, 0.01, 1.07000, 1.10000, dry_run=True
+            )
             tl.order_rejected("EURUSD", "MAX_OPEN_TRADES:1/1 (validation test)", "long")
             tl.position_closed("EURUSD", "DEP-02-pos", 0.0, "validation")
             tl.error("EURUSD", "synthetic error (validation only)", "DEP-02")
@@ -258,14 +326,21 @@ async def run_validation() -> dict:
             r.add("All records have ts + event", all_have_ts, "valid")
             r.add("Log file", log_file.exists(), str(log_file.relative_to(_ROOT)))
             expected_events = {
-                "SIGNAL_CREATED", "ORDER_SUBMITTED", "ORDER_FILLED",
-                "ORDER_REJECTED", "POSITION_CLOSED", "ERROR",
+                "SIGNAL_CREATED",
+                "ORDER_SUBMITTED",
+                "ORDER_FILLED",
+                "ORDER_REJECTED",
+                "POSITION_CLOSED",
+                "ERROR",
             }
             found_events = {e["event"] for e in events}
             all_present = expected_events <= found_events
-            r.add("All 6 event types", all_present,
-                  ", ".join(sorted(found_events)),
-                  "" if all_present else f"missing: {expected_events - found_events}")
+            r.add(
+                "All 6 event types",
+                all_present,
+                ", ".join(sorted(found_events)),
+                "" if all_present else f"missing: {expected_events - found_events}",
+            )
         except Exception as e:
             r.add("TradeLogger", False, f"FAILED: {e}")
 
@@ -280,12 +355,29 @@ async def run_validation() -> dict:
                 "balance": balance,
                 "open_positions": open_pos_count,
             }
-            required_keys = {"ts", "connected", "live_trading", "balance", "open_positions"}
+            required_keys = {
+                "ts",
+                "connected",
+                "live_trading",
+                "balance",
+                "open_positions",
+            }
             has_keys = required_keys <= set(heartbeat_data.keys())
-            r.add("Heartbeat has all 5 fields", has_keys, str(sorted(heartbeat_data.keys())))
-            r.add("Heartbeat connected=True", heartbeat_data["connected"], str(heartbeat_data["connected"]))
-            r.add("Heartbeat live_trading=False", not heartbeat_data["live_trading"],
-                  str(heartbeat_data["live_trading"]))
+            r.add(
+                "Heartbeat has all 5 fields",
+                has_keys,
+                str(sorted(heartbeat_data.keys())),
+            )
+            r.add(
+                "Heartbeat connected=True",
+                heartbeat_data["connected"],
+                str(heartbeat_data["connected"]),
+            )
+            r.add(
+                "Heartbeat live_trading=False",
+                not heartbeat_data["live_trading"],
+                str(heartbeat_data["live_trading"]),
+            )
         except Exception as e:
             r.add("Heartbeat", False, f"FAILED: {e}")
 
@@ -293,16 +385,25 @@ async def run_validation() -> dict:
         print("\n[11] Reconnect logic")
         try:
             await client.disconnect()
-            r.add("disconnect()", not client.is_connected,
-                  f"is_connected={client.is_connected}")
+            r.add(
+                "disconnect()",
+                not client.is_connected,
+                f"is_connected={client.is_connected}",
+            )
 
             await client.connect()
-            r.add("reconnect()", client.is_connected,
-                  f"is_connected={client.is_connected}")
+            r.add(
+                "reconnect()",
+                client.is_connected,
+                f"is_connected={client.is_connected}",
+            )
 
             info2 = await client.get_account_info()
-            r.add("Post-reconnect account_info", info2.balance > 0,
-                  f"balance={info2.balance:.2f} {info2.currency}")
+            r.add(
+                "Post-reconnect account_info",
+                info2.balance > 0,
+                f"balance={info2.balance:.2f} {info2.currency}",
+            )
         except Exception as e:
             r.add("Reconnect", False, f"FAILED: {e}")
 
@@ -344,6 +445,7 @@ async def run_validation() -> dict:
 
 # ── Report generator ──────────────────────────────────────────────────────────
 
+
 def generate_report(data: dict, out_path: Path) -> None:
     ts = data.get("ts", "unknown")
     passed = data.get("passed", False)
@@ -353,8 +455,11 @@ def generate_report(data: dict, out_path: Path) -> None:
     checks = data.get("checks", [])
     live_in_env = data.get("live_trading_in_env", "unknown")
 
-    verdict_line = "### ✅ PASS — all connection checks passed" if passed else \
-                   f"### ❌ FAIL — {data.get('fail_count',0)} check(s) failed"
+    verdict_line = (
+        "### ✅ PASS — all connection checks passed"
+        if passed
+        else f"### ❌ FAIL — {data.get('fail_count',0)} check(s) failed"
+    )
 
     lines = [
         "# DEP_02_CONNECTION_REPORT.md",
@@ -412,7 +517,13 @@ def generate_report(data: dict, out_path: Path) -> None:
         "## Synchronization Status",
         "",
     ]
-    sync_checks = [c for c in checks if "connect" in c["name"].lower() or "sync" in c["name"].lower() or "is_connected" in c["name"]]
+    sync_checks = [
+        c
+        for c in checks
+        if "connect" in c["name"].lower()
+        or "sync" in c["name"].lower()
+        or "is_connected" in c["name"]
+    ]
     if sync_checks:
         lines += ["| Check | Status | Value |", "|---|---|---|"]
         for c in sync_checks:
@@ -433,7 +544,9 @@ def generate_report(data: dict, out_path: Path) -> None:
             lines.append(f"| {sym} | — | — | — | ❌ {s['error']} |")
         else:
             ok = "✅" if s.get("spread_ok") else "⚠️ wide"
-            lines.append(f"| {sym} | `{s.get('bid',0):.5f}` | `{s.get('ask',0):.5f}` | `{s.get('spread_pips',0):.1f}` pip | {ok} |")
+            lines.append(
+                f"| {sym} | `{s.get('bid',0):.5f}` | `{s.get('ask',0):.5f}` | `{s.get('spread_pips',0):.1f}` pip | {ok} |"
+            )
     lines += [""]
 
     lines += [
@@ -448,7 +561,9 @@ def generate_report(data: dict, out_path: Path) -> None:
         lines.append(f"| {k} | `{v}` |")
     lines += [""]
 
-    dry_run_checks = [c for c in checks if "DRY_RUN" in c["name"] or "order" in c["name"].lower()]
+    dry_run_checks = [
+        c for c in checks if "DRY_RUN" in c["name"] or "order" in c["name"].lower()
+    ]
     lines += [
         "---",
         "",
@@ -530,6 +645,7 @@ def generate_report(data: dict, out_path: Path) -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def main() -> None:
     data = await run_validation()

@@ -78,8 +78,12 @@ class RiskManager:
             try:
                 data = json.loads(STATE_FILE.read_text())
                 state = BotState.from_dict(data)
-                logger.info("Bot state loaded: daily_loss=%.2fR consec=%d halted=%s",
-                            state.daily_loss_r, state.consecutive_losses, state.halted)
+                logger.info(
+                    "Bot state loaded: daily_loss=%.2fR consec=%d halted=%s",
+                    state.daily_loss_r,
+                    state.consecutive_losses,
+                    state.halted,
+                )
                 return state
             except Exception as e:
                 logger.warning("Could not parse state file, resetting: %s", e)
@@ -135,19 +139,26 @@ class RiskManager:
 
         pair_count = sum(1 for p in open_positions if p.symbol == symbol)
         if pair_count >= self.max_pair_exposure:
-            return False, f"MAX_PAIR_EXPOSURE for {symbol} ({pair_count}/{self.max_pair_exposure})"
+            return (
+                False,
+                f"MAX_PAIR_EXPOSURE for {symbol} ({pair_count}/{self.max_pair_exposure})",
+            )
 
         return True, ""
 
     # ── Circuit breakers ─────────────────────────────────────────────────────
 
-    def check_circuit_breakers(self, now: Optional[datetime] = None) -> CircuitBreakerResult:
+    def check_circuit_breakers(
+        self, now: Optional[datetime] = None
+    ) -> CircuitBreakerResult:
         self._maybe_reset(now)
         if self._state.halted:
             return CircuitBreakerResult(halted=True, reason=self._state.halt_reason)
         return CircuitBreakerResult(halted=False)
 
-    def record_trade_result(self, result_r: float, now: Optional[datetime] = None) -> None:
+    def record_trade_result(
+        self, result_r: float, now: Optional[datetime] = None
+    ) -> None:
         """Update running loss counters. Call after every closed trade."""
         self._maybe_reset(now)
 
@@ -160,17 +171,26 @@ class RiskManager:
             if self._state.daily_loss_r >= self.max_daily_loss_r:
                 self._state.halted = True
                 self._state.halt_reason = "MAX_DAILY_LOSS"
-                logger.warning("CIRCUIT BREAKER: max daily loss reached (%.2fR)", self._state.daily_loss_r)
+                logger.warning(
+                    "CIRCUIT BREAKER: max daily loss reached (%.2fR)",
+                    self._state.daily_loss_r,
+                )
 
             elif self._state.weekly_loss_r >= self.max_weekly_loss_r:
                 self._state.halted = True
                 self._state.halt_reason = "MAX_WEEKLY_LOSS"
-                logger.warning("CIRCUIT BREAKER: max weekly loss reached (%.2fR)", self._state.weekly_loss_r)
+                logger.warning(
+                    "CIRCUIT BREAKER: max weekly loss reached (%.2fR)",
+                    self._state.weekly_loss_r,
+                )
 
             elif self._state.consecutive_losses >= self.max_consecutive_losses:
                 self._state.halted = True
                 self._state.halt_reason = "MAX_CONSECUTIVE_LOSSES"
-                logger.warning("CIRCUIT BREAKER: %d consecutive losses", self._state.consecutive_losses)
+                logger.warning(
+                    "CIRCUIT BREAKER: %d consecutive losses",
+                    self._state.consecutive_losses,
+                )
         else:
             self._state.consecutive_losses = 0
 

@@ -11,4 +11,3 @@ class CheckResult:
     score: float = 0.0
     details: dict[str, Any] = field(default_factory=dict)
     message: str = ""
-

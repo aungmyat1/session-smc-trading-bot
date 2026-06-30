@@ -18,8 +18,13 @@ class ScoringEngine:
     def aggregate_score(self, results: list[ValidatorResult]) -> float:
         if not results:
             return 0.0
-        total_weight = sum(self.WEIGHTS.get(result.validator_name, 1.0) for result in results)
-        weighted = sum(result.score * self.WEIGHTS.get(result.validator_name, 1.0) for result in results)
+        total_weight = sum(
+            self.WEIGHTS.get(result.validator_name, 1.0) for result in results
+        )
+        weighted = sum(
+            result.score * self.WEIGHTS.get(result.validator_name, 1.0)
+            for result in results
+        )
         return round(weighted / total_weight, 2)
 
     def overall_status(self, results: list[ValidatorResult]) -> ValidationStatus:
@@ -29,9 +34,16 @@ class ScoringEngine:
             return "PARTIAL"
         return "PASS"
 
-    def readiness_decision(self, results: list[ValidatorResult], score: float) -> ReadinessStatus:
+    def readiness_decision(
+        self, results: list[ValidatorResult], score: float
+    ) -> ReadinessStatus:
         hard_fail = any(
-            result.validator_name in {"Input Validation", "Logical Consistency Validation", "Risk Management Validation"}
+            result.validator_name
+            in {
+                "Input Validation",
+                "Logical Consistency Validation",
+                "Risk Management Validation",
+            }
             and result.status == "FAIL"
             for result in results
         )

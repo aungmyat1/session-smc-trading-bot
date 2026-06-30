@@ -32,31 +32,36 @@ REPORTS.mkdir(exist_ok=True)
 DATA_DIR = ROOT / "data" / "historical"
 YEAR = 2025
 START = f"{YEAR}-01-01"
-END   = f"{YEAR}-12-31T23:59:59Z"
+END = f"{YEAR}-12-31T23:59:59Z"
 SYMBOL = "EURUSD"
 
 _PIP = 0.0001
-SPREAD_PIPS_STD    = 1.4   # VT Markets EURUSD standard (EURUSD 0.8pip spread + 0.6pip commission RT)
-SPREAD_PIPS_STRESS = 2.8   # 2× stress
+SPREAD_PIPS_STD = (
+    1.4  # VT Markets EURUSD standard (EURUSD 0.8pip spread + 0.6pip commission RT)
+)
+SPREAD_PIPS_STRESS = 2.8  # 2× stress
 
 RR_VARIANTS = [2.0, 3.0, 4.0, 5.0]
-MAX_BARS = 96   # 24h at M15
+MAX_BARS = 96  # 24h at M15
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
+
 
 def load_csv(path):
     rows = []
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            rows.append({
-                "time":   row["time"],
-                "open":   float(row["open"]),
-                "high":   float(row["high"]),
-                "low":    float(row["low"]),
-                "close":  float(row["close"]),
-                "volume": float(row.get("volume", 0.0)),
-            })
+            rows.append(
+                {
+                    "time": row["time"],
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row.get("volume", 0.0)),
+                }
+            )
     return rows
 
 
@@ -65,6 +70,7 @@ def build_time_index(bars):
 
 
 # ── Trade simulation (mirrors backtest_session_liquidity.py) ──────────────────
+
 
 def simulate_trade(entry, sl, side, rr, future_bars, max_bars=MAX_BARS):
     risk = abs(entry - sl)
@@ -98,9 +104,18 @@ def spread_cost_r(spread_pips_rt, sl_pips):
 
 def compute_metrics(net_rs):
     if not net_rs:
-        return {"n": 0, "wins": 0, "losses": 0, "wr": 0.0, "avg_r": 0.0,
-                "pf": 0.0, "total_r": 0.0, "max_dd": 0.0, "expectancy": 0.0}
-    wins   = [r for r in net_rs if r > 0]
+        return {
+            "n": 0,
+            "wins": 0,
+            "losses": 0,
+            "wr": 0.0,
+            "avg_r": 0.0,
+            "pf": 0.0,
+            "total_r": 0.0,
+            "max_dd": 0.0,
+            "expectancy": 0.0,
+        }
+    wins = [r for r in net_rs if r > 0]
     losses = [r for r in net_rs if r <= 0]
     gw = sum(wins)
     gl = abs(sum(losses))
@@ -109,9 +124,14 @@ def compute_metrics(net_rs):
     wr = len(wins) / n
     avg_r = sum(net_rs) / n
     return {
-        "n": n, "wins": len(wins), "losses": len(losses),
-        "wr": wr, "avg_r": avg_r, "pf": pf,
-        "total_r": sum(net_rs), "max_dd": max_drawdown(net_rs),
+        "n": n,
+        "wins": len(wins),
+        "losses": len(losses),
+        "wr": wr,
+        "avg_r": avg_r,
+        "pf": pf,
+        "total_r": sum(net_rs),
+        "max_dd": max_drawdown(net_rs),
         "expectancy": avg_r,
     }
 
@@ -125,12 +145,20 @@ def max_drawdown(net_rs):
     return max_dd
 
 
-def pct(v):  return f"{v * 100:.1f}%"
-def pf(v):   return "∞" if v == float("inf") else f"{v:.3f}"
-def fmt_r(v): return f"{v:+.3f}"
+def pct(v):
+    return f"{v * 100:.1f}%"
+
+
+def pf(v):
+    return "∞" if v == float("inf") else f"{v:.3f}"
+
+
+def fmt_r(v):
+    return f"{v:+.3f}"
 
 
 # ── Phase 1 — Environment check ───────────────────────────────────────────────
+
 
 def phase1_environment():
     lines = [
@@ -157,7 +185,13 @@ def phase1_environment():
         if not exists and s != "scripts/replay_2025.py":
             all_ok = False
 
-    lines += ["", "## Python Dependencies", "", "| Package | Version | Status |", "|---|---|---|"]
+    lines += [
+        "",
+        "## Python Dependencies",
+        "",
+        "| Package | Version | Status |",
+        "|---|---|---|",
+    ]
     deps = []
     for pkg in ["pyarrow", "pandas", "aiohttp"]:
         try:
@@ -184,7 +218,10 @@ def phase1_environment():
     lines += ["", "## Strategy Module", "", "| Component | Status |", "|---|---|"]
     try:
         from strategy.session_liquidity.session_strategy import DEFAULT_CONFIG
-        lines.append("| `strategy.session_liquidity.session_strategy` | ✅ importable |")
+
+        lines.append(
+            "| `strategy.session_liquidity.session_strategy` | ✅ importable |"
+        )
         lines.append(f"| DEFAULT_CONFIG | `{DEFAULT_CONFIG}` |")
     except ImportError as e:
         lines.append(f"| `strategy.session_liquidity.session_strategy` | ❌ {e} |")
@@ -194,8 +231,11 @@ def phase1_environment():
         "",
         "## Verdict",
         "",
-        "✅ READY — environment operational." if all_ok else
-        "❌ BLOCKED — critical failures above. Fix before continuing.",
+        (
+            "✅ READY — environment operational."
+            if all_ok
+            else "❌ BLOCKED — critical failures above. Fix before continuing."
+        ),
     ]
 
     out = REPORTS / "PHASE1_ENVIRONMENT_CHECK.md"
@@ -206,11 +246,13 @@ def phase1_environment():
 
 # ── Phase 2 — Dataset validation ──────────────────────────────────────────────
 
+
 def phase2_dataset(m15_bars):
     bars_2025 = [b for b in m15_bars if START <= b["time"] <= END]
     times = [b["time"] for b in bars_2025]
 
     import pandas as pd
+
     ts = pd.to_datetime(times, utc=True)
 
     # Coverage: expect ~24,000 M15 bars (250 trading days × 96 bars/day)
@@ -223,7 +265,8 @@ def phase2_dataset(m15_bars):
 
     # OHLC integrity
     ohlc_errors = sum(
-        1 for b in bars_2025
+        1
+        for b in bars_2025
         if b["high"] < max(b["open"], b["close"])
         or b["low"] > min(b["open"], b["close"])
     )
@@ -237,7 +280,9 @@ def phase2_dataset(m15_bars):
     for t in ts:
         if prev is not None:
             delta_min = (t - prev).total_seconds() / 60
-            if delta_min > 60:   # gaps > 1h are flagged (excludes normal 15min transitions)
+            if (
+                delta_min > 60
+            ):  # gaps > 1h are flagged (excludes normal 15min transitions)
                 gaps.append((str(prev)[:19], str(t)[:19], delta_min))
         prev = t
 
@@ -271,7 +316,12 @@ def phase2_dataset(m15_bars):
     ]
 
     if gaps[:5]:
-        lines += ["## Significant Gaps (first 5)", "", "| From | To | Duration (min) |", "|---|---|---|"]
+        lines += [
+            "## Significant Gaps (first 5)",
+            "",
+            "| From | To | Duration (min) |",
+            "|---|---|---|",
+        ]
         for g in gaps[:5]:
             lines.append(f"| {g[0]} | {g[1]} | {g[2]:.0f} |")
         lines.append("")
@@ -290,6 +340,7 @@ def phase2_dataset(m15_bars):
 
 
 # ── Phase 3 — Config audit ────────────────────────────────────────────────────
+
 
 def phase3_config():
     from strategy.session_liquidity.session_strategy import DEFAULT_CONFIG
@@ -368,14 +419,19 @@ def phase3_config():
 
 # ── Phase 4 — Run replay ──────────────────────────────────────────────────────
 
+
 def phase4_run_replay(m15_bars, h4_bars):
     from strategy.session_liquidity.session_strategy import run_strategy
 
     print(f"[PHASE 4] Running run_strategy on {len(m15_bars):,} M15 bars...")
     time_idx = build_time_index(m15_bars)
 
-    sigs, events = run_strategy(m15_bars, h4_bars, SYMBOL, config={"rr": 3.0}, debug=True)
-    sigs_2025 = [s for s in sigs if START <= s.timestamp.strftime("%Y-%m-%d") <= "2025-12-31"]
+    sigs, events = run_strategy(
+        m15_bars, h4_bars, SYMBOL, config={"rr": 3.0}, debug=True
+    )
+    sigs_2025 = [
+        s for s in sigs if START <= s.timestamp.strftime("%Y-%m-%d") <= "2025-12-31"
+    ]
 
     print(f"          Total signals: {len(sigs)} | 2025 signals: {len(sigs_2025)}")
 
@@ -396,6 +452,7 @@ def phase4_run_replay(m15_bars, h4_bars):
 
 # ── Phase 5 — Trade ledger ────────────────────────────────────────────────────
 
+
 def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
     trades = []
     for tid, sig in enumerate(sigs_2025, 1):
@@ -404,38 +461,43 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
         if idx is None:
             print(f"  WARN: signal bar not in index: {sig_time}")
             continue
-        future = m15_bars[idx + 1:]
+        future = m15_bars[idx + 1 :]
 
         outcome, gross_r, exit_p, exit_t, n_bars = simulate_trade(
             sig.entry, sig.stop_loss, sig.side, 3.0, future
         )
         sl_pips = sig.risk_pips
-        tp = sig.entry + abs(sig.entry - sig.stop_loss) * 3.0 if sig.side == "long" \
-             else sig.entry - abs(sig.entry - sig.stop_loss) * 3.0
+        tp = (
+            sig.entry + abs(sig.entry - sig.stop_loss) * 3.0
+            if sig.side == "long"
+            else sig.entry - abs(sig.entry - sig.stop_loss) * 3.0
+        )
 
-        cost_std    = spread_cost_r(SPREAD_PIPS_STD,    sl_pips)
+        cost_std = spread_cost_r(SPREAD_PIPS_STD, sl_pips)
         cost_stress = spread_cost_r(SPREAD_PIPS_STRESS, sl_pips)
-        net_r_std    = gross_r - cost_std
+        net_r_std = gross_r - cost_std
         net_r_stress = gross_r - cost_stress
 
-        trades.append({
-            "trade_id":   tid,
-            "open_time":  sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "close_time": exit_t,
-            "direction":  sig.side,
-            "entry":      round(sig.entry, 5),
-            "stop":       round(sig.stop_loss, 5),
-            "take_profit": round(tp, 5),
-            "sl_pips":    round(sl_pips, 1),
-            "session":    sig.session,
-            "gross_r":    round(gross_r, 4),
-            "cost_std_r": round(cost_std, 4),
-            "net_r_std":  round(net_r_std, 4),
-            "net_r_2x":   round(net_r_stress, 4),
-            "exit_reason": outcome,
-            "exit_price": round(exit_p, 5),
-            "bars_held":  n_bars,
-        })
+        trades.append(
+            {
+                "trade_id": tid,
+                "open_time": sig.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "close_time": exit_t,
+                "direction": sig.side,
+                "entry": round(sig.entry, 5),
+                "stop": round(sig.stop_loss, 5),
+                "take_profit": round(tp, 5),
+                "sl_pips": round(sl_pips, 1),
+                "session": sig.session,
+                "gross_r": round(gross_r, 4),
+                "cost_std_r": round(cost_std, 4),
+                "net_r_std": round(net_r_std, 4),
+                "net_r_2x": round(net_r_stress, 4),
+                "exit_reason": outcome,
+                "exit_price": round(exit_p, 5),
+                "bars_held": n_bars,
+            }
+        )
 
     ledger_path = REPORTS / "STA2_2025_TRADE_LEDGER.csv"
     if trades:
@@ -445,7 +507,7 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
             w.writeheader()
             w.writerows(trades)
 
-    wins   = [t for t in trades if t["net_r_std"] > 0]
+    wins = [t for t in trades if t["net_r_std"] > 0]
     losses = [t for t in trades if t["net_r_std"] <= 0]
 
     lines = [
@@ -460,8 +522,16 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
         f"| Wins | {len(wins)} |",
         f"| Losses | {len(losses)} |",
         f"| Win rate | {pct(len(wins)/len(trades)) if trades else 'N/A'} |",
-        f"| Avg net R (std) | {sum(t['net_r_std'] for t in trades)/len(trades):.3f}R |" if trades else "| Avg net R | N/A |",
-        f"| Total net R (std) | {sum(t['net_r_std'] for t in trades):.2f}R |" if trades else "| Total net R | N/A |",
+        (
+            f"| Avg net R (std) | {sum(t['net_r_std'] for t in trades)/len(trades):.3f}R |"
+            if trades
+            else "| Avg net R | N/A |"
+        ),
+        (
+            f"| Total net R (std) | {sum(t['net_r_std'] for t in trades):.2f}R |"
+            if trades
+            else "| Total net R | N/A |"
+        ),
         "",
         "## Exit Reason Breakdown",
         "",
@@ -474,13 +544,21 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
     for k, v in sorted(reasons.items()):
         lines.append(f"| {k} | {v} |")
 
-    lines += ["", "## Per-Session Breakdown", "", "| Session | Trades | WR | Avg R |", "|---|---|---|---|"]
+    lines += [
+        "",
+        "## Per-Session Breakdown",
+        "",
+        "| Session | Trades | WR | Avg R |",
+        "|---|---|---|---|",
+    ]
     for sess in ["london", "new_york"]:
         st = [t for t in trades if t["session"] == sess]
         if st:
             st_rs = [t["net_r_std"] for t in st]
             st_wins = [r for r in st_rs if r > 0]
-            lines.append(f"| {sess} | {len(st)} | {pct(len(st_wins)/len(st))} | {sum(st_rs)/len(st):.3f}R |")
+            lines.append(
+                f"| {sess} | {len(st)} | {pct(len(st_wins)/len(st))} | {sum(st_rs)/len(st):.3f}R |"
+            )
 
     lines.append("\nLedger: `reports/STA2_2025_TRADE_LEDGER.csv`")
 
@@ -492,13 +570,14 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
 
 # ── Phase 6 — Performance analysis ───────────────────────────────────────────
 
+
 def phase6_performance(trades):
     net_rs = [t["net_r_std"] for t in trades]
     net_rs_2x = [t["net_r_2x"] for t in trades]
     gross_rs = [t["gross_r"] for t in trades]
-    m_std    = compute_metrics(net_rs)
+    m_std = compute_metrics(net_rs)
     m_stress = compute_metrics(net_rs_2x)
-    m_gross  = compute_metrics(gross_rs)
+    m_gross = compute_metrics(gross_rs)
 
     # Monthly breakdown
     months = {}
@@ -531,27 +610,40 @@ def phase6_performance(trades):
     ]
     for mo in sorted(months.keys()):
         mo_rs = months[mo]
-        mo_m  = compute_metrics(mo_rs)
-        lines.append(f"| {mo} | {mo_m['n']} | {pct(mo_m['wr'])} | {pf(mo_m['pf'])} | {fmt_r(mo_m['total_r'])} |")
+        mo_m = compute_metrics(mo_rs)
+        lines.append(
+            f"| {mo} | {mo_m['n']} | {pct(mo_m['wr'])} | {pf(mo_m['pf'])} | {fmt_r(mo_m['total_r'])} |"
+        )
 
     # RR sensitivity
-    lines += ["", "## RR Sensitivity (std spread)", "", "| RR | n | WR | PF std | PF 2× | MaxDD |", "|---|---|---|---|---|---|"]
+    lines += [
+        "",
+        "## RR Sensitivity (std spread)",
+        "",
+        "| RR | n | WR | PF std | PF 2× | MaxDD |",
+        "|---|---|---|---|---|---|",
+    ]
 
     # Recompute for different RR (need future bars — skip full re-simulation, just note it requires re-run)
     # For now, show the primary RR=3 result across both spreads
     for rr_label in ["2.0", "3.0 (primary)", "4.0", "5.0"]:
         if "primary" in rr_label:
-            lines.append(f"| {rr_label} | {m_std['n']} | {pct(m_std['wr'])} | {pf(m_std['pf'])} | {pf(m_stress['pf'])} | {m_std['max_dd']:.2f}R |")
+            lines.append(
+                f"| {rr_label} | {m_std['n']} | {pct(m_std['wr'])} | {pf(m_std['pf'])} | {pf(m_stress['pf'])} | {m_std['max_dd']:.2f}R |"
+            )
         else:
             lines.append(f"| {rr_label} | (run replay_all_rr.py) | — | — | — | — |")
 
     out = REPORTS / "PHASE6_PERFORMANCE_ANALYSIS.md"
     out.write_text("\n".join(lines))
-    print(f"[PHASE 6] Performance: n={m_std['n']} WR={pct(m_std['wr'])} PF_std={pf(m_std['pf'])} PF_2x={pf(m_stress['pf'])}")
+    print(
+        f"[PHASE 6] Performance: n={m_std['n']} WR={pct(m_std['wr'])} PF_std={pf(m_std['pf'])} PF_2x={pf(m_stress['pf'])}"
+    )
     return m_std, m_stress, m_gross
 
 
 # ── Phase 7 — Strategy quality ────────────────────────────────────────────────
+
 
 def phase7_quality(trades, m_std):
     net_rs = [t["net_r_std"] for t in trades]
@@ -586,8 +678,8 @@ def phase7_quality(trades, m_std):
         monthly[t["open_time"][:7]] += 1
 
     total_months = 12
-    trades_per_month = m_std['n'] / total_months if m_std['n'] > 0 else 0
-    annual = m_std['n']
+    trades_per_month = m_std["n"] / total_months if m_std["n"] > 0 else 0
+    annual = m_std["n"]
 
     # Target: 0-1 trades/day → 250 trading days → 0-250/yr. Expected from 5yr data: ~28/yr (169/6yr ≈ 28)
     freq_warn = annual < 10 or annual > 300
@@ -633,11 +725,15 @@ def phase7_quality(trades, m_std):
     if max_consec_l > 8:
         lines.append("⚠️ Consecutive losses > 8 — drawdown risk elevated.")
     else:
-        lines.append(f"✅ Max consecutive losses = {max_consec_l} — within acceptable range.")
+        lines.append(
+            f"✅ Max consecutive losses = {max_consec_l} — within acceptable range."
+        )
     if freq_warn:
         lines.append(f"⚠️ Trade frequency anomaly: {annual} trades in {YEAR}.")
     else:
-        lines.append(f"✅ Trade frequency {annual}/yr consistent with historical (~28/yr EURUSD).")
+        lines.append(
+            f"✅ Trade frequency {annual}/yr consistent with historical (~28/yr EURUSD)."
+        )
 
     out = REPORTS / "PHASE7_STRATEGY_QUALITY.md"
     out.write_text("\n".join(lines))
@@ -645,6 +741,7 @@ def phase7_quality(trades, m_std):
 
 
 # ── Phase 8 — Comparison ─────────────────────────────────────────────────────
+
 
 def phase8_comparison(m_std, m_stress):
     # ST-A2 Phase-0 published results (VERDICT_LOG.md)
@@ -708,6 +805,7 @@ def phase8_comparison(m_std, m_stress):
 
 # ── Phase 9 — Failure analysis ────────────────────────────────────────────────
 
+
 def phase9_failure(trades, m_std, m_stress):
     lines = [
         "# PHASE 9 — Failure Analysis",
@@ -715,7 +813,7 @@ def phase9_failure(trades, m_std, m_stress):
         "",
     ]
 
-    if m_std['pf'] > 1.2 and m_std['n'] >= 10:
+    if m_std["pf"] > 1.2 and m_std["n"] >= 10:
         lines += [
             "## Result",
             "",
@@ -724,18 +822,26 @@ def phase9_failure(trades, m_std, m_stress):
         ]
     else:
         causes = []
-        if m_std['n'] < 10:
-            causes.append(f"**Low trade count (n={m_std['n']}):** Below 10-trade statistical floor. "
-                          "This period may be a low-signal year. Extend to 5yr for statistical validity.")
-        if m_std['pf'] <= 1.0:
-            causes.append(f"**PF_std={pf(m_std['pf'])} ≤ 1.0:** Strategy not recovering spread costs. "
-                          "Check if spread model is correctly applied.")
-        if m_stress['pf'] <= 1.0:
-            causes.append(f"**PF_2x={pf(m_stress['pf'])} ≤ 1.0:** Fails 2× stress test. "
-                          "Edge may be marginal — spread-sensitive.")
-        if m_std['max_dd'] > 20:
-            causes.append(f"**MaxDD={m_std['max_dd']:.2f}R > 20R:** Drawdown exceeds Phase-0 target. "
-                          "Check for SL cluster (min_sl_pips=5 filter should reduce tight SLs).")
+        if m_std["n"] < 10:
+            causes.append(
+                f"**Low trade count (n={m_std['n']}):** Below 10-trade statistical floor. "
+                "This period may be a low-signal year. Extend to 5yr for statistical validity."
+            )
+        if m_std["pf"] <= 1.0:
+            causes.append(
+                f"**PF_std={pf(m_std['pf'])} ≤ 1.0:** Strategy not recovering spread costs. "
+                "Check if spread model is correctly applied."
+            )
+        if m_stress["pf"] <= 1.0:
+            causes.append(
+                f"**PF_2x={pf(m_stress['pf'])} ≤ 1.0:** Fails 2× stress test. "
+                "Edge may be marginal — spread-sensitive."
+            )
+        if m_std["max_dd"] > 20:
+            causes.append(
+                f"**MaxDD={m_std['max_dd']:.2f}R > 20R:** Drawdown exceeds Phase-0 target. "
+                "Check for SL cluster (min_sl_pips=5 filter should reduce tight SLs)."
+            )
 
         # Session breakdown
         london_t = [t for t in trades if t["session"] == "london"]
@@ -773,17 +879,18 @@ def phase9_failure(trades, m_std, m_stress):
 
 # ── Phase 10 — Final report ───────────────────────────────────────────────────
 
+
 def phase10_final(trades, m_std, m_stress, m_gross):
-    n = m_std['n']
+    n = m_std["n"]
 
     # Pass criteria
-    positive_exp  = m_std['expectancy'] > 0
-    pf_above_1    = m_std['pf'] > 1.0
-    pf_above_12   = m_std['pf'] > 1.2
-    pf_2x_above_1 = m_stress['pf'] > 1.0
-    dd_ok         = m_std['max_dd'] < 20.0
-    freq_ok       = 10 <= n <= 300
-    has_trades    = n >= 5
+    positive_exp = m_std["expectancy"] > 0
+    pf_above_1 = m_std["pf"] > 1.0
+    pf_above_12 = m_std["pf"] > 1.2
+    pf_2x_above_1 = m_stress["pf"] > 1.0
+    dd_ok = m_std["max_dd"] < 20.0
+    freq_ok = 10 <= n <= 300
+    has_trades = n >= 5
 
     # Overall verdict
     if not has_trades:
@@ -796,17 +903,23 @@ def phase10_final(trades, m_std, m_stress, m_gross):
         recommendation = "1. Ready for continued demo validation"
     elif pf_above_1 and pf_2x_above_1 and freq_ok:
         verdict = "CONDITIONAL PASS"
-        verdict_note = (f"Edge present (PF_std={pf(m_std['pf'])}, PF_2x={pf(m_stress['pf'])}) "
-                        f"but marginal or n too small for strong inference.")
+        verdict_note = (
+            f"Edge present (PF_std={pf(m_std['pf'])}, PF_2x={pf(m_stress['pf'])}) "
+            f"but marginal or n too small for strong inference."
+        )
         recommendation = "2. Requires additional replay validation"
     elif n < 10:
         verdict = "INCONCLUSIVE"
-        verdict_note = f"n={n} below 10-trade statistical floor. Cannot determine edge direction."
+        verdict_note = (
+            f"n={n} below 10-trade statistical floor. Cannot determine edge direction."
+        )
         recommendation = "2. Requires additional replay validation"
     else:
         verdict = "FAIL"
-        verdict_note = (f"PF_std={pf(m_std['pf'])} PF_2x={pf(m_stress['pf'])} n={n}. "
-                        "Strategy not recovering costs in this period.")
+        verdict_note = (
+            f"PF_std={pf(m_std['pf'])} PF_2x={pf(m_stress['pf'])} n={n}. "
+            "Strategy not recovering costs in this period."
+        )
         recommendation = "3. Requires strategy redesign"
 
     lines = [
@@ -910,6 +1023,7 @@ def phase10_final(trades, m_std, m_stress, m_gross):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     print(f"\n=== ST-A2 2025 Validation Replay | {SYMBOL} | {YEAR} ===\n")
 
@@ -922,7 +1036,7 @@ def main():
     # Load data (full history — bias context requires prior bars)
     print(f"\n[DATA] Loading {SYMBOL} CSV data...")
     m15_all = load_csv(DATA_DIR / "EUR_USD_M15.csv")
-    h4_all  = load_csv(DATA_DIR / "EUR_USD_H4.csv")
+    h4_all = load_csv(DATA_DIR / "EUR_USD_H4.csv")
     m15_all.sort(key=lambda b: b["time"])
     h4_all.sort(key=lambda b: b["time"])
     print(f"       M15: {len(m15_all):,} bars | H4: {len(h4_all):,} bars")
@@ -939,7 +1053,9 @@ def main():
     # H4 kept full (all years needed for swing bias lookback).
     M15_CONTEXT_START = "2024-12-01"
     m15_ctx = [b for b in m15_all if b["time"] >= M15_CONTEXT_START]
-    print(f"\n[DATA] M15 trimmed to {M15_CONTEXT_START}+ for performance: {len(m15_ctx):,} bars")
+    print(
+        f"\n[DATA] M15 trimmed to {M15_CONTEXT_START}+ for performance: {len(m15_ctx):,} bars"
+    )
     print()
     sigs_2025, time_idx, bars, events = phase4_run_replay(m15_ctx, h4_all)
 

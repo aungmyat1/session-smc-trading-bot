@@ -36,10 +36,10 @@ from research.logger import (
     new_trade_id,
 )
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _read_csv(path: Path) -> list[dict]:
     with open(path, newline="", encoding="utf-8") as f:
@@ -177,6 +177,7 @@ def _sample_version() -> StrategyVersion:
 # Base test class — redirects all writes to a temp directory
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class ResearchLoggerTestCase(unittest.TestCase):
     _original_base: Path
 
@@ -202,10 +203,10 @@ class TestGenerateRunId(unittest.TestCase):
         parts = rid.split("-")
         self.assertEqual(len(parts), 2)
         ts, suffix = parts
-        self.assertEqual(len(ts), 15)   # YYYYMMDDTHHMMSS
+        self.assertEqual(len(ts), 15)  # YYYYMMDDTHHMMSS
         self.assertTrue(ts[8] == "T")
         self.assertEqual(len(suffix), 6)
-        int(suffix, 16)                 # must be valid hex
+        int(suffix, 16)  # must be valid hex
 
     def test_uniqueness(self):
         ids = {generate_run_id() for _ in range(50)}
@@ -433,8 +434,12 @@ class TestAppendRowEdgeCases(ResearchLoggerTestCase):
         log_strategy_version(_sample_version())
 
         for fname in [
-            "backtest_runs.csv", "trades.csv", "signal_log.csv",
-            "gate_rejections.csv", "market_conditions.csv", "strategy_versions.csv",
+            "backtest_runs.csv",
+            "trades.csv",
+            "signal_log.csv",
+            "gate_rejections.csv",
+            "market_conditions.csv",
+            "strategy_versions.csv",
         ]:
             rows = _read_csv(self.tmpdir / fname)
             self.assertEqual(len(rows), 1, msg=f"{fname} should have 1 row")

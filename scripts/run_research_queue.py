@@ -12,18 +12,22 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.research_queue import run_research_queue
+from research.research_queue import run_research_queue  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the research queue")
-    parser.add_argument("--queue", default="config/research_queue.yaml", help="Queue YAML file")
+    parser.add_argument(
+        "--queue", default="config/research_queue.yaml", help="Queue YAML file"
+    )
     parser.add_argument(
         "--output-dir",
         default="reports/research_queue",
         help="Directory for job results and reports",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Validate jobs without running commands")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Validate jobs without running commands"
+    )
     args = parser.parse_args()
 
     results = run_research_queue(

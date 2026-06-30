@@ -72,30 +72,35 @@ METAAPI_ACCOUNT_ID: str = os.getenv("METAAPI_ACCOUNT_ID", "")
 TELEGRAM_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
-HEARTBEAT_INTERVAL_S: int = 300   # 5 minutes
-WATCHDOG_TIMEOUT_S: int = 600     # 10 minutes — CRITICAL alert if no heartbeat fires
-_RECONNECT_BACKOFF_S: int = 120   # try reconnect every 2 min when disconnected
+HEARTBEAT_INTERVAL_S: int = 300  # 5 minutes
+WATCHDOG_TIMEOUT_S: int = 600  # 10 minutes — CRITICAL alert if no heartbeat fires
+_RECONNECT_BACKOFF_S: int = 120  # try reconnect every 2 min when disconnected
 _last_reconnect_attempt: "datetime | None" = None
 _BOT_START_TIME: datetime = datetime.now(timezone.utc)
 _LAST_SIGNAL_TIME: "datetime | None" = None
-_last_heartbeat_ts: datetime = datetime.now(timezone.utc)  # updated each time heartbeat logs
+_last_heartbeat_ts: datetime = datetime.now(
+    timezone.utc
+)  # updated each time heartbeat logs
 _CONNECT_RETRY_MAX: int = 12
 _CONNECT_RETRY_BASE_S: int = 5
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
-from data.session_filter import get_active_session, seconds_to_next_session
-from core.broker_interface import BrokerInterface
-from execution.metaapi_client import MetaAPIClient
-from execution.order_manager import OrderManager
-from execution.risk_manager import RiskManager
-from execution.trade_logger import TradeLogger
-from execution_simulator.broker.virtual_broker import VirtualBroker
-from monitoring.telegram import TelegramAlerter
-from strategy.session_liquidity.session_strategy import run_strategy
-
+from data.session_filter import (
+    get_active_session,
+    seconds_to_next_session,
+)  # noqa: E402
+from core.broker_interface import BrokerInterface  # noqa: E402
+from execution.metaapi_client import MetaAPIClient  # noqa: E402
+from execution.order_manager import OrderManager  # noqa: E402
+from execution.risk_manager import RiskManager  # noqa: E402
+from execution.trade_logger import TradeLogger  # noqa: E402
+from execution_simulator.broker.virtual_broker import VirtualBroker  # noqa: E402
+from monitoring.telegram import TelegramAlerter  # noqa: E402
+from strategy.session_liquidity.session_strategy import run_strategy  # noqa: E402
 
 # ── Broker wiring ───────────────────────────────────────────────────────────
+
 
 def _build_recovery_summary(
     trade_logger: TradeLogger,
@@ -135,6 +140,7 @@ def _build_recovery_summary(
     ]
     return "\n".join(lines)
 
+
 def _build_execution_client(
     market_client: MetaAPIClient | None = None,
     broker: BrokerInterface | None = None,
@@ -156,6 +162,7 @@ def _build_execution_client(
 
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
+
 
 async def run_bot(
     market_client: MetaAPIClient | None = None,
@@ -188,7 +195,9 @@ async def run_bot(
             await _connect_with_retry(execution_client, telegram)
             logger.info("MetaAPI connected.")
         else:
-            logger.info("Using execution broker: %s", execution_client.__class__.__name__)
+            logger.info(
+                "Using execution broker: %s", execution_client.__class__.__name__
+            )
             await execution_client.connect()
 
         recovery_summary = _build_recovery_summary(trade_logger, risk, seen_signals)
@@ -208,9 +217,14 @@ async def run_bot(
             if elapsed >= HEARTBEAT_INTERVAL_S:
                 await _send_heartbeat(execution_client, telegram, now)
                 last_heartbeat = now
-                if isinstance(execution_client, MetaAPIClient) and not execution_client.is_connected:
+                if (
+                    isinstance(execution_client, MetaAPIClient)
+                    and not execution_client.is_connected
+                ):
                     if session:
-                        logger.info("Connection lost after heartbeat — attempting reconnect")
+                        logger.info(
+                            "Connection lost after heartbeat — attempting reconnect"
+                        )
                         if await execution_client.reconnect():
                             _last_reconnect_attempt = None
                             await telegram.send_reconnect_success("MetaAPI")
@@ -222,7 +236,9 @@ async def run_bot(
             # ── Session boundary ──────────────────────────────────────────────
             if session != last_session:
                 if last_session is not None:
-                    await _close_session_positions(execution_client, telegram, last_session, CONFIG)
+                    await _close_session_positions(
+                        execution_client, telegram, last_session, CONFIG
+                    )
                 if session:
                     await telegram.send_session_open(session)
                 last_session = session
@@ -242,9 +258,16 @@ async def run_bot(
                 continue
 
             # ── Reconnect if disconnected (every 2 min, not just at heartbeat) ─
-            if isinstance(execution_client, MetaAPIClient) and not execution_client.is_connected:
+            if (
+                isinstance(execution_client, MetaAPIClient)
+                and not execution_client.is_connected
+            ):
                 now2 = datetime.now(timezone.utc)
-                since = (now2 - _last_reconnect_attempt).total_seconds() if _last_reconnect_attempt else 999
+                since = (
+                    (now2 - _last_reconnect_attempt).total_seconds()
+                    if _last_reconnect_attempt
+                    else 999
+                )
                 if since >= _RECONNECT_BACKOFF_S:
                     logger.info("Disconnected — attempting reconnect")
                     _last_reconnect_attempt = now2
@@ -253,8 +276,12 @@ async def run_bot(
                         _last_reconnect_attempt = None
                         await telegram.send_reconnect_success("MetaAPI")
                     else:
-                        await telegram.send_reconnect_failure("MetaAPI", "during active session")
-                        await telegram.send_error("MetaAPI reconnect failed during active session")
+                        await telegram.send_reconnect_failure(
+                            "MetaAPI", "during active session"
+                        )
+                        await telegram.send_error(
+                            "MetaAPI reconnect failed during active session"
+                        )
                         await asyncio.sleep(POLL_INTERVAL)
                         continue
                 else:
@@ -272,7 +299,10 @@ async def run_bot(
 
             logger.info(
                 "[%s] equity=%.2f balance=%.2f  %s",
-                session.upper(), equity, account_info.balance, risk.summary(),
+                session.upper(),
+                equity,
+                account_info.balance,
+                risk.summary(),
             )
 
             for symbol in PAIRS:
@@ -321,7 +351,9 @@ async def _connect_with_retry(client: MetaAPIClient, telegram: TelegramAlerter) 
         except Exception as exc:
             logger.warning(
                 "MetaAPI connect attempt %d/%d failed: %s",
-                attempt, _CONNECT_RETRY_MAX, exc,
+                attempt,
+                _CONNECT_RETRY_MAX,
+                exc,
             )
             if attempt >= _CONNECT_RETRY_MAX:
                 raise
@@ -333,6 +365,7 @@ async def _connect_with_retry(client: MetaAPIClient, telegram: TelegramAlerter) 
 
 
 # ── Pair scanner ──────────────────────────────────────────────────────────────
+
 
 async def _scan_pair(
     symbol: str,
@@ -372,7 +405,12 @@ async def _scan_pair(
 
         logger.info(
             "[%s] New signal: %s %s  entry=%.5f sl=%.5f  ts=%s",
-            symbol, sig.side.upper(), sig.session, sig.entry, sig.stop_loss, key,
+            symbol,
+            sig.side.upper(),
+            sig.session,
+            sig.entry,
+            sig.stop_loss,
+            key,
         )
 
         success, detail = await order_manager.process_signal(sig, symbol, equity)
@@ -387,14 +425,16 @@ async def _scan_pair(
                 sl=sig.stop_loss,
                 tp=sig.take_profit,
                 risk_pct=CONFIG["risk"]["risk_per_trade_pct"],
-                lot=0.0,       # actual lot in trade_logger; telegram shows signal price
+                lot=0.0,  # actual lot in trade_logger; telegram shows signal price
                 dry_run=not LIVE_TRADING,
             )
         else:
             logger.info("[%s] Signal not actioned: %s", symbol, detail)
 
 
-def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str, set[str]]:
+def _load_seen_signals(
+    trade_logger: TradeLogger, pairs: list[str]
+) -> dict[str, set[str]]:
     """Rebuild per-symbol signal dedup state from the append-only trade log."""
     seen: dict[str, set[str]] = {sym: set() for sym in pairs}
     for event in trade_logger.iter_events():
@@ -408,6 +448,7 @@ def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str,
 
 
 # ── Session-end position close ────────────────────────────────────────────────
+
 
 async def _close_session_positions(
     client: BrokerInterface | MetaAPIClient,
@@ -427,13 +468,16 @@ async def _close_session_positions(
             closed += 1
             logger.info(
                 "Session-end close: %s %s id=%s",
-                pos.direction, pos.symbol, pos.position_id,
+                pos.direction,
+                pos.symbol,
+                pos.position_id,
             )
 
     await telegram.send_session_close(session, closed)
 
 
 # ── Health monitor ────────────────────────────────────────────────────────────
+
 
 async def _send_heartbeat(
     client: BrokerInterface | MetaAPIClient,
@@ -478,9 +522,9 @@ async def _send_heartbeat(
         f"last_signal={last_sig}"
     )
     logger.info(msg)
-    _last_heartbeat_ts = now   # watchdog reads this to confirm heartbeat fired
+    _last_heartbeat_ts = now  # watchdog reads this to confirm heartbeat fired
     await telegram.send_heartbeat(
-        timestamp_label=now.strftime('%Y-%m-%dT%H:%M UTC'),
+        timestamp_label=now.strftime("%Y-%m-%dT%H:%M UTC"),
         uptime_s=uptime_s,
         connection_status=connection_status,
         live_trading=status["live_trading"],
@@ -492,6 +536,7 @@ async def _send_heartbeat(
 
 
 # ── Watchdog ──────────────────────────────────────────────────────────────────
+
 
 async def _run_watchdog(telegram: TelegramAlerter) -> None:
     """Fire a CRITICAL alert if no heartbeat has been logged for WATCHDOG_TIMEOUT_S.
@@ -505,7 +550,8 @@ async def _run_watchdog(telegram: TelegramAlerter) -> None:
         if age >= WATCHDOG_TIMEOUT_S:
             logger.critical(
                 "WATCHDOG: No heartbeat for %.0fs (threshold=%ds) — bot may be hung",
-                age, WATCHDOG_TIMEOUT_S,
+                age,
+                WATCHDOG_TIMEOUT_S,
             )
             await telegram.send_watchdog_critical(
                 age_s=age,

@@ -52,7 +52,10 @@ def register_position(position_id: str, signal, lots: float, state: dict) -> Non
     }
     log.info(
         "Registered positionId=%s [%s/%s %s]",
-        position_id, signal.instrument, signal.session, signal.setup,
+        position_id,
+        signal.instrument,
+        signal.session,
+        signal.setup,
     )
 
 
@@ -110,7 +113,14 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
         r = (mid - entry) / sl_dist if side == "long" else (entry - mid) / sl_dist
         log.debug(
             "[%s/%s] posId=%s side=%s mid=%.5f entry=%.5f r=%.2f first_done=%s",
-            instrument, setup, position_id, side, mid, entry, r, first_done,
+            instrument,
+            setup,
+            position_id,
+            side,
+            mid,
+            entry,
+            r,
+            first_done,
         )
 
         df_1h = data.get(instrument, {}).get("df_1h")
@@ -126,20 +136,25 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                 target_reached = True
                 log.info(
                     "[%s] SWEEP/RANGE long: price %.5f reached box_high %.5f — partial close",
-                    instrument, mid, box_high,
+                    instrument,
+                    mid,
+                    box_high,
                 )
             elif side == "short" and mid <= box_low:
                 target_reached = True
                 log.info(
                     "[%s] SWEEP/RANGE short: price %.5f reached box_low %.5f — partial close",
-                    instrument, mid, box_low,
+                    instrument,
+                    mid,
+                    box_low,
                 )
 
             if target_reached:
                 partial_lots = lots * first_close_pct
                 try:
                     await executor.place_reduce_only(
-                        position_id, partial_lots,
+                        position_id,
+                        partial_lots,
                         comment=f"first_close_{setup}",
                     )
                     await executor.set_sl(position_id, entry)
@@ -147,7 +162,9 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                     state[position_id]["sl"] = entry
                     log.info(
                         "[%s] First close done (%.2f lots) SL→BE=%.5f",
-                        instrument, partial_lots, entry,
+                        instrument,
+                        partial_lots,
+                        entry,
                     )
                 except Exception as e:
                     log.error("[%s] First close failed: %s", instrument, e)
@@ -158,7 +175,8 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                 trend_r_target = 4.0
             elif first_close_target == "opposite_box_edge":
                 trend_r_target = (
-                    (box_high - entry) / sl_dist if side == "long"
+                    (box_high - entry) / sl_dist
+                    if side == "long"
                     else (entry - box_low) / sl_dist
                 )
 
@@ -166,7 +184,8 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                 partial_lots = lots * first_close_pct
                 try:
                     await executor.place_reduce_only(
-                        position_id, partial_lots,
+                        position_id,
+                        partial_lots,
                         comment="first_close_trend",
                     )
                     await executor.set_sl(position_id, entry)
@@ -174,7 +193,10 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                     state[position_id]["sl"] = entry
                     log.info(
                         "[%s] Trend first close at %.1fR (%.2f lots) SL→BE=%.5f",
-                        instrument, r, partial_lots, entry,
+                        instrument,
+                        r,
+                        partial_lots,
+                        entry,
                     )
                 except Exception as e:
                     log.error("[%s] Trend first close failed: %s", instrument, e)
@@ -189,7 +211,11 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                         state[position_id]["sl"] = trail_sl
                         log.info(
                             "[%s] Trail SL long: %.5f → %.5f (price=%.5f ATR=%.5f)",
-                            instrument, current_sl, trail_sl, mid, atr,
+                            instrument,
+                            current_sl,
+                            trail_sl,
+                            mid,
+                            atr,
                         )
                     except Exception as e:
                         log.error("[%s] Trail SL failed: %s", instrument, e)
@@ -201,7 +227,11 @@ async def manage_positions(executor, data: dict, state: dict, cfg: dict) -> None
                         state[position_id]["sl"] = trail_sl
                         log.info(
                             "[%s] Trail SL short: %.5f → %.5f (price=%.5f ATR=%.5f)",
-                            instrument, current_sl, trail_sl, mid, atr,
+                            instrument,
+                            current_sl,
+                            trail_sl,
+                            mid,
+                            atr,
                         )
                     except Exception as e:
                         log.error("[%s] Trail SL failed: %s", instrument, e)

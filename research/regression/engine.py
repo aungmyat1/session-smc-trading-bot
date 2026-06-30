@@ -73,7 +73,13 @@ class RegressionResult:
         ]
         if self.summary:
             lines.extend(["", self.summary])
-        lines.extend(["", "| Metric | Latest | Previous | Delta | Delta % | Status |", "|---|---:|---:|---:|---:|---|"])
+        lines.extend(
+            [
+                "",
+                "| Metric | Latest | Previous | Delta | Delta % | Status |",
+                "|---|---:|---:|---:|---:|---|",
+            ]
+        )
         for comp in self.comparisons:
             lines.append(
                 f"| {comp.metric} | {comp.latest:.4f} | {comp.previous:.4f} | {comp.delta:.4f} | {comp.delta_pct:.2%} | {comp.status} |"
@@ -125,7 +131,14 @@ class RegressionEngine:
 
         comparisons: list[RegressionComparison] = []
         overall = "PASS"
-        for metric in ("profit_factor", "win_rate", "expectancy", "max_drawdown", "trade_count", "net_return"):
+        for metric in (
+            "profit_factor",
+            "win_rate",
+            "expectancy",
+            "max_drawdown",
+            "trade_count",
+            "net_return",
+        ):
             latest_v = _safe_float(latest.get(metric))
             previous_v = _safe_float(previous.get(metric))
             if _is_nan(latest_v) and _is_nan(previous_v):
@@ -197,4 +210,6 @@ class RegressionEngine:
                 "WARNING": "Latest run shows manageable regression drift.",
                 "FAIL": "Latest run regressed beyond configured thresholds.",
             }[overall]
-        return RegressionResult(status=overall, comparisons=comparisons, summary=summary)
+        return RegressionResult(
+            status=overall, comparisons=comparisons, summary=summary
+        )

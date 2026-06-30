@@ -13,6 +13,7 @@ Usage in generate_signal_A():
         # gate: daily structure must not conflict with 4H+1H bias
         # gate: session open price must be in the right zone for the trade direction
 """
+
 from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional

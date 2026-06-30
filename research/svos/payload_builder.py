@@ -36,7 +36,9 @@ def _iso(value: Any) -> str:
     return str(value)
 
 
-def _signal_to_trade(strategy: str, symbol: str, signal: Any, index: int) -> dict[str, Any]:
+def _signal_to_trade(
+    strategy: str, symbol: str, signal: Any, index: int
+) -> dict[str, Any]:
     trade_id = f"{strategy}:{symbol}:{_iso(signal.timestamp)}:{index}"
     side = getattr(signal, "side", "long")
     return {
@@ -188,7 +190,11 @@ def _metrics_from_backtest(summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def _previous_metrics_from_backtest(summary: dict[str, Any]) -> dict[str, Any]:
-    rr_results = summary.get("rr_results", {}) if isinstance(summary.get("rr_results", {}), dict) else {}
+    rr_results = (
+        summary.get("rr_results", {})
+        if isinstance(summary.get("rr_results", {}), dict)
+        else {}
+    )
     best_rr = summary.get("best_rr")
     best_result = summary.get("best_result", {}) or {}
     std = best_result.get("std_metrics", {}) or {}
@@ -212,7 +218,9 @@ def _previous_metrics_from_backtest(summary: dict[str, Any]) -> dict[str, Any]:
             if runner_up is None and len(sorted_rrs) > 1:
                 runner_up = sorted_rrs[-2]
             if runner_up is not None:
-                candidate = rr_results.get(str(runner_up), {}) or rr_results.get(runner_up, {})
+                candidate = rr_results.get(str(runner_up), {}) or rr_results.get(
+                    runner_up, {}
+                )
                 if isinstance(candidate, dict):
                     return dict(candidate)
     return {
@@ -247,25 +255,44 @@ def build_robustness_payload(summary: dict[str, Any]) -> dict[str, Any]:
     gate = bool(summary.get("any_pass", False))
     best_result = summary.get("best_result", {}) or {}
     trades = best_result.get("trade_rows") or best_result.get("trades") or []
-    rr_results = summary.get("rr_results", {}) if isinstance(summary.get("rr_results", {}), dict) else {}
-    trade_rows = trades if isinstance(trades, list) and trades and isinstance(trades[0], dict) else []
+    rr_results = (
+        summary.get("rr_results", {})
+        if isinstance(summary.get("rr_results", {}), dict)
+        else {}
+    )
+    trade_rows = (
+        trades
+        if isinstance(trades, list) and trades and isinstance(trades[0], dict)
+        else []
+    )
 
     if trade_rows:
         walk_forward = walk_forward_analysis(trade_rows)
         monte_carlo = monte_carlo_resampling(trade_rows)
         regime = regime_analysis(trade_rows)
-        parameter_stability = parameter_sensitivity(rr_results) if rr_results else {"passed": gate, "reason": "no_rr_results"}
+        parameter_stability = (
+            parameter_sensitivity(rr_results)
+            if rr_results
+            else {"passed": gate, "reason": "no_rr_results"}
+        )
     else:
         walk_forward = {"passed": gate, "reason": "trade_rows_unavailable"}
         monte_carlo = {"passed": gate, "reason": "trade_rows_unavailable"}
         regime = {"passed": gate, "reason": "trade_rows_unavailable"}
         parameter_stability = {"passed": gate, "reason": "trade_rows_unavailable"}
 
-    execution_cost_passed = bool(best_result.get("gate", gate)) and metrics["profit_factor"] >= 1.0
+    execution_cost_passed = (
+        bool(best_result.get("gate", gate)) and metrics["profit_factor"] >= 1.0
+    )
     lineage = build_lineage_metadata(
         source="historical_backtest",
         strategy=str(summary.get("strategy", "ST-A2")),
-        strategy_version=str(summary.get("strategy_version", summary.get("best_result", {}).get("strategy_version", "unknown"))),
+        strategy_version=str(
+            summary.get(
+                "strategy_version",
+                summary.get("best_result", {}).get("strategy_version", "unknown"),
+            )
+        ),
         artifact="robustness_payload",
         extra={"run_id": summary.get("run_id", "")},
     )
@@ -329,13 +356,17 @@ def build_virtual_demo_payload(
     metrics = _metrics_from_backtest(summary)
     _gate = bool(summary.get("any_pass", False))
     return {
-        "completed_successfully": bool(execution_report and execution_report.status == "READY FOR DEMO"),
+        "completed_successfully": bool(
+            execution_report and execution_report.status == "READY FOR DEMO"
+        ),
         "days_monitored": min_demo_days,
         "min_demo_days": min_demo_days,
         "tolerance_pct": tolerance_pct,
         "research_metrics": metrics,
         "live_metrics": dict(metrics),
-        "execution_validation_report": execution_report.to_dict() if execution_report is not None else {},
+        "execution_validation_report": (
+            execution_report.to_dict() if execution_report is not None else {}
+        ),
         "synthetic": False,
         "source": "virtual_broker",
     }
@@ -367,7 +398,10 @@ class SVOSPayloadBundle:
 
     def write(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True, default=str), encoding="utf-8")
+        path.write_text(
+            json.dumps(self.to_dict(), indent=2, sort_keys=True, default=str),
+            encoding="utf-8",
+        )
 
 
 def build_svos_payload_bundle(
@@ -390,7 +424,9 @@ def build_svos_payload_bundle(
         backtest_summary = _run_backtest_script(
             script_path=script_path,
             costs_json=Path(costs_json) if costs_json is not None else None,
-            output_dir=Path(output_dir) / "backtest" if output_dir is not None else None,
+            output_dir=(
+                Path(output_dir) / "backtest" if output_dir is not None else None
+            ),
         )
     else:
         backtest_summary = _no_backtest_summary(strategy)
@@ -406,7 +442,9 @@ def build_svos_payload_bundle(
         summary=backtest_summary,
         min_demo_days=14,
         tolerance_pct=0.05,
-        report_dir=Path(output_dir) / "virtual_demo" if output_dir is not None else None,
+        report_dir=(
+            Path(output_dir) / "virtual_demo" if output_dir is not None else None
+        ),
     )
     if not allow_synthetic_demo and not demo.get("execution_validation_report"):
         demo["completed_successfully"] = False
@@ -430,7 +468,11 @@ def build_svos_payload_bundle(
                 strategy=strategy,
                 strategy_version=str(manifest.get("version", "unknown")),
                 artifact="svos_payload_bundle",
-                extra={"catalog_path": str(catalog_path) if catalog_path is not None else ""},
+                extra={
+                    "catalog_path": (
+                        str(catalog_path) if catalog_path is not None else ""
+                    )
+                },
             ),
         },
     )

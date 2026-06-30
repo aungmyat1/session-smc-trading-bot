@@ -24,9 +24,27 @@ Exit Rules: Close at target, no trailing stop
 
 def _candles() -> list[dict[str, object]]:
     return [
-        {"time": "2026-06-01T08:00:00Z", "open": 1.10, "high": 1.11, "low": 1.09, "close": 1.105},
-        {"time": "2026-06-01T08:15:00Z", "open": 1.105, "high": 1.115, "low": 1.10, "close": 1.112},
-        {"time": "2026-06-01T08:30:00Z", "open": 1.112, "high": 1.12, "low": 1.11, "close": 1.118},
+        {
+            "time": "2026-06-01T08:00:00Z",
+            "open": 1.10,
+            "high": 1.11,
+            "low": 1.09,
+            "close": 1.105,
+        },
+        {
+            "time": "2026-06-01T08:15:00Z",
+            "open": 1.105,
+            "high": 1.115,
+            "low": 1.10,
+            "close": 1.112,
+        },
+        {
+            "time": "2026-06-01T08:30:00Z",
+            "open": 1.112,
+            "high": 1.12,
+            "low": 1.11,
+            "close": 1.118,
+        },
     ]
 
 
@@ -69,11 +87,26 @@ def test_full_audit_report_generates(tmp_path):
         candles=_candles(),
         trades=_trades(),
         execution_report=_execution_report(),
-        historical_metrics={"profit_factor": 1.45, "win_rate": 0.54, "expectancy": 0.42, "max_drawdown": 3.8},
-        live_metrics={"profit_factor": 1.42, "win_rate": 0.53, "expectancy": 0.41, "max_drawdown": 3.9},
+        historical_metrics={
+            "profit_factor": 1.45,
+            "win_rate": 0.54,
+            "expectancy": 0.42,
+            "max_drawdown": 3.8,
+        },
+        live_metrics={
+            "profit_factor": 1.42,
+            "win_rate": 0.53,
+            "expectancy": 0.41,
+            "max_drawdown": 3.9,
+        },
         parameter_grid={"best_profit_factor": 1.6, "runner_up_profit_factor": 1.25},
         notes={
-            "risk": {"daily_dd_pct": 1.5, "weekly_dd_pct": 3.0, "monthly_dd_pct": 5.5, "portfolio_heat_pct": 0.5},
+            "risk": {
+                "daily_dd_pct": 1.5,
+                "weekly_dd_pct": 3.0,
+                "monthly_dd_pct": 5.5,
+                "portfolio_heat_pct": 0.5,
+            },
             "risk_limits": {"daily_dd_pct": 2.0},
             "capital_allocation": {"tier": "Demo"},
             "monitoring": {"alerts": 3},
@@ -104,10 +137,27 @@ def test_audit_runner_from_payload(tmp_path):
         "candles": _candles(),
         "trades": _trades(),
         "execution_report": _execution_report(),
-        "historical_metrics": {"profit_factor": 1.45, "win_rate": 0.54, "expectancy": 0.42, "max_drawdown": 3.8},
-        "live_metrics": {"profit_factor": 1.42, "win_rate": 0.53, "expectancy": 0.41, "max_drawdown": 3.9},
+        "historical_metrics": {
+            "profit_factor": 1.45,
+            "win_rate": 0.54,
+            "expectancy": 0.42,
+            "max_drawdown": 3.8,
+        },
+        "live_metrics": {
+            "profit_factor": 1.42,
+            "win_rate": 0.53,
+            "expectancy": 0.41,
+            "max_drawdown": 3.9,
+        },
         "parameter_grid": {"best_profit_factor": 1.6, "runner_up_profit_factor": 1.25},
-        "notes": {"risk": {"daily_dd_pct": 1.5, "weekly_dd_pct": 3.0, "monthly_dd_pct": 5.5, "portfolio_heat_pct": 0.5}},
+        "notes": {
+            "risk": {
+                "daily_dd_pct": 1.5,
+                "weekly_dd_pct": 3.0,
+                "monthly_dd_pct": 5.5,
+                "portfolio_heat_pct": 0.5,
+            }
+        },
     }
     payload_path = tmp_path / "payload.json"
     payload_path.write_text(__import__("json").dumps(payload), encoding="utf-8")
@@ -115,4 +165,3 @@ def test_audit_runner_from_payload(tmp_path):
     runner = StrategyAuditRunner(output_dir=tmp_path)
     report = runner.from_payload(payload)
     assert report.overall_status in {"PASS", "PARTIAL"}
-

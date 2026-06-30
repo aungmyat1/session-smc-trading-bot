@@ -73,10 +73,42 @@ CFG = {
         },
     },
     "sessions": {
-        "asian":   {"start_h": 0,  "end_h": 8,  "range_thr": 0.50, "trend_thr": 0.70, "first_close_pct": 0.75, "first_close_target": "opposite_box_edge", "trail_remainder": False},
-        "london":  {"start_h": 7,  "end_h": 12, "range_thr": 0.55, "trend_thr": 0.75, "first_close_pct": 0.75, "first_close_target": "opposite_box_edge", "trail_remainder": False},
-        "overlap": {"start_h": 12, "end_h": 15, "range_thr": 0.60, "trend_thr": 0.80, "first_close_pct": 0.75, "first_close_target": "4R",                 "trail_remainder": True},
-        "newyork": {"start_h": 12, "end_h": 17, "range_thr": 0.55, "trend_thr": 0.75, "first_close_pct": 0.75, "first_close_target": "opposite_box_edge", "trail_remainder": False},
+        "asian": {
+            "start_h": 0,
+            "end_h": 8,
+            "range_thr": 0.50,
+            "trend_thr": 0.70,
+            "first_close_pct": 0.75,
+            "first_close_target": "opposite_box_edge",
+            "trail_remainder": False,
+        },
+        "london": {
+            "start_h": 7,
+            "end_h": 12,
+            "range_thr": 0.55,
+            "trend_thr": 0.75,
+            "first_close_pct": 0.75,
+            "first_close_target": "opposite_box_edge",
+            "trail_remainder": False,
+        },
+        "overlap": {
+            "start_h": 12,
+            "end_h": 15,
+            "range_thr": 0.60,
+            "trend_thr": 0.80,
+            "first_close_pct": 0.75,
+            "first_close_target": "4R",
+            "trail_remainder": True,
+        },
+        "newyork": {
+            "start_h": 12,
+            "end_h": 17,
+            "range_thr": 0.55,
+            "trend_thr": 0.75,
+            "first_close_pct": 0.75,
+            "first_close_target": "opposite_box_edge",
+            "trail_remainder": False,
+        },
     },
     "asian": {
         "target_r": 5.0,
@@ -89,9 +121,9 @@ CFG = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 FEE_PER_LOT = {
-    "EURUSD": 0.00008,   # 0.8 pip avg spread × $10/pip/lot = $0.80 per lot
-    "GBPUSD": 0.00010,   # 1.0 pip avg spread
-    "XAUUSD": 0.30,      # $0.30 per lot round-turn on Vantage ECN
+    "EURUSD": 0.00008,  # 0.8 pip avg spread × $10/pip/lot = $0.80 per lot
+    "GBPUSD": 0.00010,  # 1.0 pip avg spread
+    "XAUUSD": 0.30,  # $0.30 per lot round-turn on Vantage ECN
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -99,13 +131,13 @@ FEE_PER_LOT = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 PASS_CRITERIA = {
-    "net_pf":        1.4,
-    "min_trades":    100,
-    "min_win_pct":   35.0,
+    "net_pf": 1.4,
+    "min_trades": 100,
+    "min_win_pct": 35.0,
     "max_consec_loss": 8,
 }
 
-INSTRUMENT_MIN_TRADES = 30   # flag instrument×session if PF<1.0 AND n>=this
+INSTRUMENT_MIN_TRADES = 30  # flag instrument×session if PF<1.0 AND n>=this
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +170,9 @@ def load_ohlcv(symbol: str, tf: str) -> pd.DataFrame:
     cutoff = pd.Timestamp.now(tz="UTC") - pd.DateOffset(years=2)
     df = df[df.index >= cutoff]
 
-    log.info("Loaded %s %s: %d candles (from %s)", symbol, tf, len(df), df.index[0].date())
+    log.info(
+        "Loaded %s %s: %d candles (from %s)", symbol, tf, len(df), df.index[0].date()
+    )
     return df
 
 
@@ -154,18 +188,20 @@ def fetch_and_save_historical(symbol: str) -> None:
         return
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    end   = datetime.now(timezone.utc)
+    end = datetime.now(timezone.utc)
     start = end - timedelta(days=730)
 
     yf_symbol = symbol  # yfinance uses same symbols for forex/gold
     if symbol == "XAUUSD":
-        yf_symbol = "GC=F"    # Gold futures as proxy
+        yf_symbol = "GC=F"  # Gold futures as proxy
     elif symbol in ("EURUSD", "GBPUSD"):
-        yf_symbol = symbol.replace("USD", "=X")   # EURUSD → EUR=X
+        yf_symbol = symbol.replace("USD", "=X")  # EURUSD → EUR=X
 
     for tf, yf_interval, yf_period in [("1h", "1h", "730d"), ("4h", "1h", "730d")]:
         log.info("Fetching %s %s …", symbol, tf)
-        raw = yf.download(yf_symbol, start=start, end=end, interval=yf_interval, auto_adjust=True)
+        raw = yf.download(
+            yf_symbol, start=start, end=end, interval=yf_interval, auto_adjust=True
+        )
         if raw.empty:
             log.warning("No data returned for %s %s", symbol, tf)
             continue
@@ -174,10 +210,19 @@ def fetch_and_save_historical(symbol: str) -> None:
         raw.index.name = "datetime"
 
         if tf == "4h":
-            raw = raw.resample("4h").agg({
-                "open": "first", "high": "max",
-                "low": "min", "close": "last", "volume": "sum",
-            }).dropna()
+            raw = (
+                raw.resample("4h")
+                .agg(
+                    {
+                        "open": "first",
+                        "high": "max",
+                        "low": "min",
+                        "close": "last",
+                        "volume": "sum",
+                    }
+                )
+                .dropna()
+            )
 
         out = DATA_DIR / f"{symbol}_{tf}.csv"
         raw.to_csv(out)
@@ -188,8 +233,9 @@ def fetch_and_save_historical(symbol: str) -> None:
 # Trade simulator
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def simulate_trade(
-    signal,          # SessionSignal
+    signal,  # SessionSignal
     df_1h: pd.DataFrame,
     after_ts: pd.Timestamp,
 ) -> Optional[dict]:
@@ -205,19 +251,19 @@ def simulate_trade(
     if df_forward.empty:
         return None
 
-    entry       = signal.entry
-    sl          = signal.sl
-    tp          = signal.tp
-    side        = signal.side
-    box_high    = signal.box_high
-    box_low     = signal.box_low
-    mgmt        = signal.mgmt
-    instrument  = signal.instrument
-    pip_size    = CFG["instruments"][instrument]["pip_size"]
+    entry = signal.entry
+    sl = signal.sl
+    tp = signal.tp
+    side = signal.side
+    box_high = signal.box_high
+    box_low = signal.box_low
+    mgmt = signal.mgmt
+    instrument = signal.instrument
+    pip_size = CFG["instruments"][instrument]["pip_size"]
 
-    first_close_pct    = mgmt.get("first_close_pct", 0.75)
+    first_close_pct = mgmt.get("first_close_pct", 0.75)
     first_close_target = mgmt.get("first_close_target", "opposite_box_edge")
-    trail_remainder    = mgmt.get("trail_remainder", False)
+    trail_remainder = mgmt.get("trail_remainder", False)
 
     # Resolve first close price
     if first_close_target == "opposite_box_edge":
@@ -226,34 +272,36 @@ def simulate_trade(
         sl_dist = abs(entry - sl)
         r_target = 4.0
         first_target_price = (
-            entry + sl_dist * r_target if side == "long"
-            else entry - sl_dist * r_target
+            entry + sl_dist * r_target if side == "long" else entry - sl_dist * r_target
         )
 
-    lots = 1.0   # normalise to 1 lot for R-multiple accounting
-    fee  = FEE_PER_LOT.get(instrument, 0.0)
+    lots = 1.0  # normalise to 1 lot for R-multiple accounting
+    fee = FEE_PER_LOT.get(instrument, 0.0)
 
     first_close_done = False
-    first_close_pnl  = 0.0
-    current_sl       = sl
-    atr              = _rolling_atr(df_1h, after_ts)
+    first_close_pnl = 0.0
+    current_sl = sl
+    atr = _rolling_atr(df_1h, after_ts)
 
     for _, candle in df_forward.iterrows():
         high = candle["high"]
-        low  = candle["low"]
+        low = candle["low"]
 
         # ── SL hit ───────────────────────────────────────────────────────
-        sl_hit = (side == "long" and low <= current_sl) or \
-                 (side == "short" and high >= current_sl)
+        sl_hit = (side == "long" and low <= current_sl) or (
+            side == "short" and high >= current_sl
+        )
 
         if sl_hit:
-            remainder_lots   = lots * (1 - first_close_pct) if first_close_done else lots
-            remainder_pnl    = _pnl(side, entry, current_sl, remainder_lots, pip_size)
-            total_pnl        = first_close_pnl + remainder_pnl - fee * lots
-            sl_dist          = abs(entry - sl)
-            r_multiple        = total_pnl / (sl_dist / pip_size * 10) if sl_dist > 0 else 0
+            remainder_lots = lots * (1 - first_close_pct) if first_close_done else lots
+            remainder_pnl = _pnl(side, entry, current_sl, remainder_lots, pip_size)
+            total_pnl = first_close_pnl + remainder_pnl - fee * lots
+            sl_dist = abs(entry - sl)
+            r_multiple = total_pnl / (sl_dist / pip_size * 10) if sl_dist > 0 else 0
             return {
-                "result": "loss" if total_pnl < 0 else "win",  # BE stop = win if above entry
+                "result": (
+                    "loss" if total_pnl < 0 else "win"
+                ),  # BE stop = win if above entry
                 "pnl_raw": total_pnl,
                 "r_multiple": r_multiple,
                 "instrument": instrument,
@@ -263,15 +311,16 @@ def simulate_trade(
 
         # ── First close target hit ────────────────────────────────────────
         if not first_close_done:
-            target_hit = (
-                (side == "long"  and high >= first_target_price) or
-                (side == "short" and low  <= first_target_price)
+            target_hit = (side == "long" and high >= first_target_price) or (
+                side == "short" and low <= first_target_price
             )
             if target_hit:
                 first_close_lots = lots * first_close_pct
-                first_close_pnl  = _pnl(side, entry, first_target_price, first_close_lots, pip_size)
+                first_close_pnl = _pnl(
+                    side, entry, first_target_price, first_close_lots, pip_size
+                )
                 first_close_done = True
-                current_sl       = entry   # SL moves to BE
+                current_sl = entry  # SL moves to BE
 
         # ── Trailing stop (overlap/trend) ─────────────────────────────────
         if first_close_done and trail_remainder:
@@ -286,16 +335,13 @@ def simulate_trade(
                     current_sl = new_sl
 
         # ── Full TP hit ───────────────────────────────────────────────────
-        tp_hit = (
-            (side == "long"  and high >= tp) or
-            (side == "short" and low  <= tp)
-        )
+        tp_hit = (side == "long" and high >= tp) or (side == "short" and low <= tp)
         if tp_hit:
             remainder_lots = lots * (1 - first_close_pct) if first_close_done else lots
-            remainder_pnl  = _pnl(side, entry, tp, remainder_lots, pip_size)
-            total_pnl      = first_close_pnl + remainder_pnl - fee * lots
-            sl_dist        = abs(entry - sl)
-            r_multiple     = total_pnl / (sl_dist / pip_size * 10) if sl_dist > 0 else 0
+            remainder_pnl = _pnl(side, entry, tp, remainder_lots, pip_size)
+            total_pnl = first_close_pnl + remainder_pnl - fee * lots
+            sl_dist = abs(entry - sl)
+            r_multiple = total_pnl / (sl_dist / pip_size * 10) if sl_dist > 0 else 0
             return {
                 "result": "win",
                 "pnl_raw": total_pnl,
@@ -305,10 +351,12 @@ def simulate_trade(
                 "setup": signal.setup,
             }
 
-    return None   # unresolved within lookahead
+    return None  # unresolved within lookahead
 
 
-def _pnl(side: str, entry: float, exit_price: float, lots: float, pip_size: float) -> float:
+def _pnl(
+    side: str, entry: float, exit_price: float, lots: float, pip_size: float
+) -> float:
     """Raw P&L in price units (not USD — for R-multiple calc)."""
     diff = (exit_price - entry) if side == "long" else (entry - exit_price)
     return diff * lots
@@ -318,16 +366,17 @@ def _rolling_atr(df_1h: pd.DataFrame, as_of: pd.Timestamp, period: int = 14) -> 
     sub = df_1h[df_1h.index <= as_of].tail(period + 1)
     if len(sub) < 2:
         return 0.0
-    hl  = sub["high"] - sub["low"]
-    hc  = (sub["high"] - sub["close"].shift()).abs()
-    lc  = (sub["low"]  - sub["close"].shift()).abs()
-    tr  = pd.concat([hl, hc, lc], axis=1).max(axis=1)
+    hl = sub["high"] - sub["low"]
+    hc = (sub["high"] - sub["close"].shift()).abs()
+    lc = (sub["low"] - sub["close"].shift()).abs()
+    tr = pd.concat([hl, hc, lc], axis=1).max(axis=1)
     return float(tr.rolling(period).mean().iloc[-1])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Per instrument × session backtest runner
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def run_backtest_for(
     instrument: str,
@@ -341,9 +390,9 @@ def run_backtest_for(
                            max_consec_loss, instrument, session}
     """
     session_cfg = CFG["sessions"][session_name]
-    _start_h     = session_cfg["start_h"]
-    end_h       = session_cfg["end_h"]
-    instr_cfg   = CFG["instruments"][instrument]
+    _start_h = session_cfg["start_h"]
+    end_h = session_cfg["end_h"]
+    instr_cfg = CFG["instruments"][instrument]
 
     # Check instrument is configured for this session
     if session_name not in instr_cfg["sessions"]:
@@ -355,7 +404,7 @@ def run_backtest_for(
     # Iterate daily — one signal opportunity per session per day
     for ts in df_1h.index:
         if ts.hour != end_h:
-            continue   # only evaluate at session close
+            continue  # only evaluate at session close
 
         date_key = (ts.date(), session_name, instrument)
         if date_key in seen_dates:
@@ -370,9 +419,7 @@ def run_backtest_for(
             continue
 
         try:
-            sig = build_session_signal(
-                hist_4h, hist_1h, instrument, session_name, CFG
-            )
+            sig = build_session_signal(hist_4h, hist_1h, instrument, session_name, CFG)
         except Exception as e:
             log.debug("[%s/%s] Signal error at %s: %s", instrument, session_name, ts, e)
             continue
@@ -389,24 +436,31 @@ def run_backtest_for(
         return {
             "instrument": instrument,
             "session": session_name,
-            "n": 0, "wins": 0, "losses": 0,
-            "gross_pf": 0.0, "net_pf": 0.0,
-            "win_pct": 0.0, "max_consec_loss": 0,
+            "n": 0,
+            "wins": 0,
+            "losses": 0,
+            "gross_pf": 0.0,
+            "net_pf": 0.0,
+            "win_pct": 0.0,
+            "max_consec_loss": 0,
             "flag": "NO_TRADES",
         }
 
-    wins   = [t for t in trades if t["result"] == "win"]
+    wins = [t for t in trades if t["result"] == "win"]
     losses = [t for t in trades if t["result"] == "loss"]
-    n      = len(trades)
+    n = len(trades)
 
-    gross_wins   = sum(abs(t["pnl_raw"]) for t in wins)
+    gross_wins = sum(abs(t["pnl_raw"]) for t in wins)
     gross_losses = sum(abs(t["pnl_raw"]) for t in losses)
-    fee_total    = FEE_PER_LOT.get(instrument, 0) * n
+    fee_total = FEE_PER_LOT.get(instrument, 0) * n
 
     gross_pf = gross_wins / gross_losses if gross_losses > 0 else float("inf")
-    net_pf   = (gross_wins - fee_total / 2) / (gross_losses + fee_total / 2) \
-               if (gross_losses + fee_total / 2) > 0 else float("inf")
-    win_pct  = len(wins) / n * 100
+    net_pf = (
+        (gross_wins - fee_total / 2) / (gross_losses + fee_total / 2)
+        if (gross_losses + fee_total / 2) > 0
+        else float("inf")
+    )
+    win_pct = len(wins) / n * 100
 
     # Max consecutive losses
     consec = 0
@@ -440,10 +494,14 @@ def run_backtest_for(
 # Main
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fetch", action="store_true",
-                        help="Download fresh historical data before running")
+    parser.add_argument(
+        "--fetch",
+        action="store_true",
+        help="Download fresh historical data before running",
+    )
     args = parser.parse_args()
 
     if args.fetch:
@@ -468,7 +526,8 @@ def main():
         for session_name in ("asian", "london", "overlap", "newyork"):
             log.info("Running backtest: %s / %s …", instrument, session_name)
             result = run_backtest_for(
-                instrument, session_name,
+                instrument,
+                session_name,
                 data[instrument]["df_4h"],
                 data[instrument]["df_1h"],
             )
@@ -476,28 +535,33 @@ def main():
                 rows.append(result)
 
     # ── Combined totals ────────────────────────────────────────────────────
-    all_n      = sum(r["n"] for r in rows)
-    all_wins   = sum(r["wins"] for r in rows)
+    all_n = sum(r["n"] for r in rows)
+    all_wins = sum(r["wins"] for r in rows)
     all_losses = sum(r["losses"] for r in rows)
-    total_fee  = sum(FEE_PER_LOT.get(r["instrument"], 0) * r["n"] for r in rows)
+    total_fee = sum(FEE_PER_LOT.get(r["instrument"], 0) * r["n"] for r in rows)
 
     if all_losses > 0:
-        combined_gross_pf = sum(
-            r["gross_pf"] * r["losses"] for r in rows if r["losses"] > 0
-        ) / all_losses
+        combined_gross_pf = (
+            sum(r["gross_pf"] * r["losses"] for r in rows if r["losses"] > 0)
+            / all_losses
+        )
     else:
         combined_gross_pf = float("inf")
 
     combined_win_pct = all_wins / all_n * 100 if all_n > 0 else 0
 
     # Approximate combined net PF
-    all_gross_wins   = sum(r["wins"] * r.get("gross_pf", 1) * (r["n"] / max(r["wins"], 1))
-                           for r in rows if r["wins"] > 0)
+    all_gross_wins = sum(
+        r["wins"] * r.get("gross_pf", 1) * (r["n"] / max(r["wins"], 1))
+        for r in rows
+        if r["wins"] > 0
+    )
     all_gross_losses_val = sum(r["losses"] for r in rows)
-    combined_net_pf  = ((all_gross_wins - total_fee / 2) /
-                        (all_gross_losses_val + total_fee / 2)
-                        if (all_gross_losses_val + total_fee / 2) > 0
-                        else float("inf"))
+    combined_net_pf = (
+        (all_gross_wins - total_fee / 2) / (all_gross_losses_val + total_fee / 2)
+        if (all_gross_losses_val + total_fee / 2) > 0
+        else float("inf")
+    )
 
     # Max consecutive loss across combined run (approximate)
     combined_max_consec = max((r["max_consec_loss"] for r in rows), default=0)
@@ -529,10 +593,14 @@ def main():
     # ── Pass / fail verdict ────────────────────────────────────────────────
     print("\nPASS CRITERIA:")
     checks = {
-        f"net_pf >= {PASS_CRITERIA['net_pf']}":           combined_net_pf   >= PASS_CRITERIA["net_pf"],
-        f"n >= {PASS_CRITERIA['min_trades']} total":       all_n             >= PASS_CRITERIA["min_trades"],
-        f"win% >= {PASS_CRITERIA['min_win_pct']}%":        combined_win_pct  >= PASS_CRITERIA["min_win_pct"],
-        f"max_consec_loss <= {PASS_CRITERIA['max_consec_loss']}": combined_max_consec <= PASS_CRITERIA["max_consec_loss"],
+        f"net_pf >= {PASS_CRITERIA['net_pf']}": combined_net_pf
+        >= PASS_CRITERIA["net_pf"],
+        f"n >= {PASS_CRITERIA['min_trades']} total": all_n
+        >= PASS_CRITERIA["min_trades"],
+        f"win% >= {PASS_CRITERIA['min_win_pct']}%": combined_win_pct
+        >= PASS_CRITERIA["min_win_pct"],
+        f"max_consec_loss <= {PASS_CRITERIA['max_consec_loss']}": combined_max_consec
+        <= PASS_CRITERIA["max_consec_loss"],
     }
     passed = all(checks.values())
     for label, ok in checks.items():
@@ -543,7 +611,9 @@ def main():
     if failing:
         print("\n⚠️  FAILING COMBINATIONS (disable in config):")
         for r in failing:
-            print(f"  → {r['instrument']} / {r['session']}  (net_pf={r['net_pf']}, n={r['n']})")
+            print(
+                f"  → {r['instrument']} / {r['session']}  (net_pf={r['net_pf']}, n={r['n']})"
+            )
 
     verdict = "PASS" if passed else "FAIL"
     print(f"\n{'═'*40}")
@@ -552,14 +622,16 @@ def main():
 
     if not passed:
         print("STOP — Do NOT proceed to P6. Fix the failing combinations above,")
-        print("tune parameters, and re-run the backtest before activating demo trading.\n")
+        print(
+            "tune parameters, and re-run the backtest before activating demo trading.\n"
+        )
 
     # ── Append to VERDICT_LOG.md ───────────────────────────────────────────
     log_path = Path("docs/VERDICT_LOG.md")
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    row_str  = (
+    row_str = (
         f"| {date_str} | v2 multi-session | EURUSD+GBPUSD+XAUUSD "
         f"| net_pf={combined_net_pf:.3f} | n={all_n} "
         f"| win%={combined_win_pct:.1f} | {verdict} |\n"

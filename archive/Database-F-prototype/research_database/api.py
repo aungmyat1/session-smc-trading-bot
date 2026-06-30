@@ -41,4 +41,6 @@ def get_strategy_metrics(db: Session, run_id: str):
 
 def compare_strategies(db: Session, strategy_ids: list):
     """Compare multiple strategies."""
-    return db.query(StrategyMetric).filter(StrategyMetric.strategy.in_(strategy_ids)).all()
+    return (
+        db.query(StrategyMetric).filter(StrategyMetric.strategy.in_(strategy_ids)).all()
+    )

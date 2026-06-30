@@ -1,4 +1,5 @@
 """Architecture validator — enforces module boundary rules via AST import analysis."""
+
 from __future__ import annotations
 
 import ast
@@ -38,7 +39,9 @@ class ArchitectureValidator:
 
     def __init__(self, root: Path, config: dict[str, Any]) -> None:
         self._root = root
-        self._rules_path: Path = root / config.get("architecture_rules", _DEFAULT_RULES_PATH)
+        self._rules_path: Path = root / config.get(
+            "architecture_rules", _DEFAULT_RULES_PATH
+        )
         self._min_score: float = float(config.get("minimum_architecture_score", 90.0))
         self._max_violations: int = int(config.get("max_architecture_violations", 0))
 
@@ -69,15 +72,20 @@ class ArchitectureValidator:
                 if target_layer is None or target_layer == source_layer:
                     continue
                 for rule in forbidden:
-                    if rule.get("from") == source_layer and rule.get("to") == target_layer:
-                        violations.append(Violation(
-                            source_file=str(py_file.relative_to(self._root)),
-                            source_layer=source_layer,
-                            imported_module=imp,
-                            target_layer=target_layer,
-                            rule=f"{source_layer}→{target_layer}",
-                            reason=rule.get("reason", "forbidden dependency"),
-                        ))
+                    if (
+                        rule.get("from") == source_layer
+                        and rule.get("to") == target_layer
+                    ):
+                        violations.append(
+                            Violation(
+                                source_file=str(py_file.relative_to(self._root)),
+                                source_layer=source_layer,
+                                imported_module=imp,
+                                target_layer=target_layer,
+                                rule=f"{source_layer}→{target_layer}",
+                                reason=rule.get("reason", "forbidden dependency"),
+                            )
+                        )
 
         score = max(0.0, round(100.0 - len(violations) * 10.0, 1))
         errors = [
@@ -158,6 +166,16 @@ class ArchitectureValidator:
         return imports
 
     def _is_excluded(self, path: Path) -> bool:
-        excluded_parts = {".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-                          "archive", "data", "logs", "reports", "node_modules"}
+        excluded_parts = {
+            ".git",
+            "__pycache__",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            "archive",
+            "data",
+            "logs",
+            "reports",
+            "node_modules",
+        }
         return bool(excluded_parts.intersection(path.parts))

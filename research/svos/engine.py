@@ -14,7 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
-from core.strategy_registry import DirectCatalogMutationError, can_deploy_strategy, get_strategy_manifest
+from core.strategy_registry import (
+    DirectCatalogMutationError,
+    can_deploy_strategy,
+    get_strategy_manifest,
+)
 from execution_validation.engine import ExecutionValidationReport
 from research.regression.engine import RegressionEngine
 from research.validation.engine import (
@@ -27,8 +31,13 @@ from research.validation.engine import (
 from research.lineage import build_release_metadata
 from strategy_validation.ai.editor_engine import StrategyEditorEngine
 from strategy_validation.models import StrategyDocument as ValidationStrategyDocument
-from strategy_validation.models import ValidationRecommendation, ValidationReport as StrategyValidationReport
-from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
+from strategy_validation.models import (
+    ValidationRecommendation,
+    ValidationReport as StrategyValidationReport,
+)
+from strategy_validation.pipeline.strategy_validation_pipeline import (
+    StrategyValidationPipeline,
+)
 from svos.orchestration import SVOSPlatform
 from svos.registry import StrategyRegistryService
 from svos.reports.stage_package import write_stage_report_package
@@ -176,7 +185,9 @@ def _extract_fields(raw_text: str) -> dict[str, str]:
             fields[current_field].append(line)
             continue
 
-    extracted = {field: " ".join(parts).strip() for field, parts in fields.items() if parts}
+    extracted = {
+        field: " ".join(parts).strip() for field, parts in fields.items() if parts
+    }
     return extracted
 
 
@@ -199,12 +210,21 @@ def _infer_field_from_keywords(raw_text: str, field: str) -> str:
             return "Bearish / Short"
     elif field == "entry_trigger":
         if any(token in text for token in ("sweep", "breakout", "choch", "bos", "mss")):
-            return _first_matching_phrase(raw_text, ("sweep", "breakout", "choch", "bos", "mss"))
+            return _first_matching_phrase(
+                raw_text, ("sweep", "breakout", "choch", "bos", "mss")
+            )
     elif field == "confirmation":
-        if any(token in text for token in ("fvg", "order block", "retest", "displacement")):
-            return _first_matching_phrase(raw_text, ("fvg", "order block", "retest", "displacement"))
+        if any(
+            token in text for token in ("fvg", "order block", "retest", "displacement")
+        ):
+            return _first_matching_phrase(
+                raw_text, ("fvg", "order block", "retest", "displacement")
+            )
     elif field == "invalidation":
-        if any(token in text for token in ("invalidate", "invalid", "if price returns", "fails")):
+        if any(
+            token in text
+            for token in ("invalidate", "invalid", "if price returns", "fails")
+        ):
             return _first_matching_phrase(raw_text, ("invalidate", "invalid", "fails"))
     elif field == "stop_loss":
         if any(token in text for token in ("stop", "sl", "below", "above")):
@@ -223,8 +243,12 @@ def _infer_field_from_keywords(raw_text: str, field: str) -> str:
         if fragments:
             return ", ".join(dict.fromkeys(fragments))
     elif field == "exit_rules":
-        if any(token in text for token in ("exit", "close", "trail", "partial", "runner")):
-            return _first_matching_phrase(raw_text, ("exit", "close", "trail", "partial", "runner"))
+        if any(
+            token in text for token in ("exit", "close", "trail", "partial", "runner")
+        ):
+            return _first_matching_phrase(
+                raw_text, ("exit", "close", "trail", "partial", "runner")
+            )
     return ""
 
 
@@ -257,7 +281,9 @@ def _find_ambiguities(raw_text: str, fields: dict[str, str]) -> list["StrategyIs
     return issues
 
 
-def _find_contradictions(raw_text: str, fields: dict[str, str]) -> list["StrategyIssue"]:
+def _find_contradictions(
+    raw_text: str, fields: dict[str, str]
+) -> list["StrategyIssue"]:
     issues: list[StrategyIssue] = []
     lowered = raw_text.lower()
 
@@ -287,7 +313,9 @@ def _find_contradictions(raw_text: str, fields: dict[str, str]) -> list["Strateg
             break
 
     for fname, value in fields.items():
-        if "both" in value.lower() and any(token in value.lower() for token in ("long", "short", "bullish", "bearish")):
+        if "both" in value.lower() and any(
+            token in value.lower() for token in ("long", "short", "bullish", "bearish")
+        ):
             issues.append(
                 StrategyIssue(
                     code="contradictory_field",
@@ -342,7 +370,9 @@ def _normalize_data_tokens(values: Iterable[Any]) -> list[str]:
 
 def _detect_overfitting(raw_text: str) -> tuple[bool, dict[str, Any]]:
     numeric_literals = re.findall(_OVERFIT_PARAMETER_PATTERNS[1], raw_text)
-    fixed_parameter_matches = re.findall(_OVERFIT_PARAMETER_PATTERNS[0], raw_text.lower())
+    fixed_parameter_matches = re.findall(
+        _OVERFIT_PARAMETER_PATTERNS[0], raw_text.lower()
+    )
     score = len(numeric_literals) + len(fixed_parameter_matches)
     detected = score >= 8
     return detected, {
@@ -419,7 +449,9 @@ class VirtualDemoValidationInput:
     tolerance_pct: float = 0.05
     research_metrics: dict[str, float] = field(default_factory=dict)
     live_metrics: dict[str, float] = field(default_factory=dict)
-    execution_validation_report: ExecutionValidationReport | dict[str, Any] | None = None
+    execution_validation_report: ExecutionValidationReport | dict[str, Any] | None = (
+        None
+    )
     require_ready_for_demo: bool = True
     expected_signals: int | None = None
     observed_signals: int | None = None
@@ -457,12 +489,21 @@ class StrategyValidationAuditAdapter:
     def __init__(self, pipeline: StrategyValidationPipeline | None = None) -> None:
         self.pipeline = pipeline or StrategyValidationPipeline()
 
-    def audit(self, strategy: str | dict[str, Any], strategy_name: str | None = None) -> StageResult:
+    def audit(
+        self, strategy: str | dict[str, Any], strategy_name: str | None = None
+    ) -> StageResult:
         raw_text = _strategy_text(strategy)
         document = ValidationStrategyDocument.from_text(raw_text)
-        strategy_label = strategy_name or document.strategy_name or _extract_strategy_name(strategy) or "UNNAMED"
+        strategy_label = (
+            strategy_name
+            or document.strategy_name
+            or _extract_strategy_name(strategy)
+            or "UNNAMED"
+        )
         report = self.pipeline.run_text(raw_text)
-        spec = _strategy_spec_from_validation_document(document, strategy_label, strategy, report)
+        spec = _strategy_spec_from_validation_document(
+            document, strategy_label, strategy, report
+        )
         issues = _strategy_issues_from_validation_report(report)
         fix_instructions = _fix_instructions_from_validation_report(report)
         clarifying_questions = _clarifying_questions_from_validation_report(report)
@@ -494,7 +535,9 @@ class StrategyAuditEngine:
     def __init__(self, required_fields: Iterable[str] | None = None) -> None:
         self.required_fields = tuple(required_fields or _REQUIRED_FIELDS)
 
-    def audit(self, strategy: str | dict[str, Any], strategy_name: str | None = None) -> StageResult:
+    def audit(
+        self, strategy: str | dict[str, Any], strategy_name: str | None = None
+    ) -> StageResult:
         raw_text = _strategy_text(strategy)
         extracted = _extract_fields(raw_text)
         normalized_fields: dict[str, str] = {}
@@ -541,9 +584,15 @@ class StrategyAuditEngine:
                 fix_instructions.append(issue.suggestion)
 
         detected_required_data = required_data or _infer_required_data(raw_text)
-        data_availability_status = "NOT_VERIFIED" if detected_required_data and not available_data else "VERIFIED"
+        data_availability_status = (
+            "NOT_VERIFIED"
+            if detected_required_data and not available_data
+            else "VERIFIED"
+        )
         if detected_required_data and available_data:
-            missing_data = [item for item in detected_required_data if item not in available_data]
+            missing_data = [
+                item for item in detected_required_data if item not in available_data
+            ]
             if missing_data:
                 issues.append(
                     StrategyIssue(
@@ -554,7 +603,9 @@ class StrategyAuditEngine:
                         suggestion="Either supply the missing data or remove the dependency from the strategy spec.",
                     )
                 )
-                fix_instructions.append("Provide all required market data before testing.")
+                fix_instructions.append(
+                    "Provide all required market data before testing."
+                )
                 data_availability_status = "MISSING"
 
         overfit_detected, overfit_meta = _detect_overfitting(raw_text)
@@ -567,7 +618,9 @@ class StrategyAuditEngine:
                     suggestion="Simplify fixed parameters or validate the ranges across multiple datasets.",
                 )
             )
-            fix_instructions.append("Review fixed numeric parameters for overfitting risk.")
+            fix_instructions.append(
+                "Review fixed numeric parameters for overfitting risk."
+            )
 
         if any(issue.severity == "CRITICAL" for issue in issues):
             status: StageStatus = "FAIL"
@@ -612,14 +665,18 @@ class StrategyAuditEngine:
         )
 
 
-def audit_strategy_text(strategy: str | dict[str, Any], strategy_name: str | None = None) -> StageResult:
+def audit_strategy_text(
+    strategy: str | dict[str, Any], strategy_name: str | None = None
+) -> StageResult:
     return StrategyAuditEngine().audit(strategy, strategy_name=strategy_name)
 
 
 class StrategyIntakeEngine:
     """Normalize raw strategy input into a canonical intake record."""
 
-    def intake(self, strategy: str | dict[str, Any], strategy_name: str | None = None) -> StageResult:
+    def intake(
+        self, strategy: str | dict[str, Any], strategy_name: str | None = None
+    ) -> StageResult:
         raw_text = _strategy_text(strategy)
         if not raw_text.strip():
             return StageResult(
@@ -634,7 +691,9 @@ class StrategyIntakeEngine:
                         suggestion="Provide a markdown, text, JSON, YAML, or code-backed strategy description.",
                     )
                 ],
-                fix_instructions=["Provide a non-empty strategy description before intake."],
+                fix_instructions=[
+                    "Provide a non-empty strategy description before intake."
+                ],
                 next_stage=None,
                 can_promote=False,
                 metadata={"source_type": _detect_source_type(strategy)},
@@ -681,17 +740,24 @@ class SVOSRunner:
     ) -> None:
         self.strategy_name = strategy_name
         self.registry_path = Path(registry_path) if registry_path is not None else None
-        self.output_dir = Path(output_dir) if output_dir is not None else _ROOT / "reports" / "svos"
+        self.output_dir = (
+            Path(output_dir) if output_dir is not None else _ROOT / "reports" / "svos"
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.validation_config = validation_config or load_validation_config()
         self.intake_engine = StrategyIntakeEngine()
         self.audit_engine = StrategyValidationAuditAdapter()
         self.editor_engine = StrategyEditorEngine()
         self.validation_gate = ValidationGate(self.validation_config)
-        self.regression_engine = RegressionEngine(self.validation_config.regression_thresholds)
+        self.regression_engine = RegressionEngine(
+            self.validation_config.regression_thresholds
+        )
         self._run_strategy_text = ""
         self._run_input_payloads: dict[str, Any] = {}
-        self._strategy_id = re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-") or "UNNAMED"
+        self._strategy_id = (
+            re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-")
+            or "UNNAMED"
+        )
         self._strategy_version = "0.0.0"
         self._previous_version: str | None = None
         self._platform: SVOSPlatform | None = None
@@ -817,7 +883,11 @@ class SVOSRunner:
             self._write_stage_report(stages, promoted_stage)
             self._notify_stage_observer(stage_observer, stages, promoted_stage)
 
-        production_result = self._validate_production_approval(virtual_demo_payload, allow_live_promotion=allow_live_promotion, promote=promote)
+        production_result = self._validate_production_approval(
+            virtual_demo_payload,
+            allow_live_promotion=allow_live_promotion,
+            promote=promote,
+        )
         stages.append(production_result)
         self._write_stage_report(stages, promoted_stage)
         self._notify_stage_observer(stage_observer, stages, promoted_stage)
@@ -830,7 +900,9 @@ class SVOSRunner:
 
         return self._finish(stages, promoted_stage)
 
-    def _finish(self, stages: list[StageResult], promoted_stage: str | None = None) -> SVOSRunResult:
+    def _finish(
+        self, stages: list[StageResult], promoted_stage: str | None = None
+    ) -> SVOSRunResult:
         overall = "PASS"
         for stage in stages:
             if stage.status == "FAIL":
@@ -864,8 +936,13 @@ class SVOSRunner:
 
     def _prepare_run(self, strategy: str | dict[str, Any], **payloads: Any) -> None:
         self._run_strategy_text = _strategy_text(strategy)
-        self._run_input_payloads = {name: _as_dict(value) if value is not None else None for name, value in payloads.items()}
-        catalog_path = self.registry_path or (_ROOT / "config" / "strategy_catalog.yaml")
+        self._run_input_payloads = {
+            name: _as_dict(value) if value is not None else None
+            for name, value in payloads.items()
+        }
+        catalog_path = self.registry_path or (
+            _ROOT / "config" / "strategy_catalog.yaml"
+        )
         manifest = get_strategy_manifest(self.strategy_name, catalog_path)
         if manifest is None:
             return
@@ -883,7 +960,9 @@ class SVOSRunner:
         if versions_before:
             previous = str(versions_before[-1].get("version", ""))
             self._previous_version = previous or None
-        self._platform = SVOSPlatform(root=project_root, catalog_path=catalog_path, registry=registry)
+        self._platform = SVOSPlatform(
+            root=project_root, catalog_path=catalog_path, registry=registry
+        )
 
     def _validation_config_snapshot(self) -> dict[str, Any]:
         return {
@@ -936,7 +1015,10 @@ class SVOSRunner:
         )
         if self._platform is not None:
             for artifact in artifacts:
-                for report_type, path_key in (("json", "json_path"), ("markdown", "markdown_path")):
+                for report_type, path_key in (
+                    ("json", "json_path"),
+                    ("markdown", "markdown_path"),
+                ):
                     self._platform.record_report_evidence(
                         strategy=self.strategy_name,
                         stage=artifact["stage"],
@@ -963,10 +1045,16 @@ class SVOSRunner:
         spec = audit.spec
         validation_report = audit.metadata.get("validation_report", {})
         validation_recommendations = list(validation_report.get("recommendations", []))
-        document = ValidationStrategyDocument.from_text(spec.raw_text if spec is not None else "", source_path="")
+        document = ValidationStrategyDocument.from_text(
+            spec.raw_text if spec is not None else "", source_path=""
+        )
         enhancement_plan = self.editor_engine.build_plan(
             document,
-            [_validation_recommendation_from_dict(item) for item in validation_recommendations if isinstance(item, dict)],
+            [
+                _validation_recommendation_from_dict(item)
+                for item in validation_recommendations
+                if isinstance(item, dict)
+            ],
             str(audit.metadata.get("readiness_decision", "")),
         )
         if audit.status != "PASS":
@@ -975,16 +1063,33 @@ class SVOSRunner:
                 stage="enhancement",
                 status="FIX" if enhancement_plan.questions else audit.status,
                 issues=list(audit.issues),
-                fix_instructions=_dedupe_text(list(audit.fix_instructions) + [item.proposed_revision for item in enhancement_plan.questions if item.proposed_revision]),
+                fix_instructions=_dedupe_text(
+                    list(audit.fix_instructions)
+                    + [
+                        item.proposed_revision
+                        for item in enhancement_plan.questions
+                        if item.proposed_revision
+                    ]
+                ),
                 next_stage=None,
                 can_promote=False,
                 spec=spec,
-                clarifying_questions=_dedupe_text(list(audit.clarifying_questions) + [item.prompt for item in enhancement_plan.questions]),
-                metadata={"source_stage": "audit", "enhancement_plan": enhancement_plan.to_dict()},
+                clarifying_questions=_dedupe_text(
+                    list(audit.clarifying_questions)
+                    + [item.prompt for item in enhancement_plan.questions]
+                ),
+                metadata={
+                    "source_stage": "audit",
+                    "enhancement_plan": enhancement_plan.to_dict(),
+                },
             )
         assert spec is not None
         recommendations = _dedupe_text(
-            [str(item.get("message", "")).strip() for item in validation_recommendations if isinstance(item, dict)]
+            [
+                str(item.get("message", "")).strip()
+                for item in validation_recommendations
+                if isinstance(item, dict)
+            ]
             + self._suggest_enhancements(spec)
         )
         return StageResult(
@@ -1000,26 +1105,38 @@ class SVOSRunner:
             metadata={
                 "recommendations": recommendations,
                 "source_stage": "audit",
-                "audit_readiness_decision": audit.metadata.get("readiness_decision", ""),
+                "audit_readiness_decision": audit.metadata.get(
+                    "readiness_decision", ""
+                ),
                 "enhancement_plan": enhancement_plan.to_dict(),
             },
         )
 
-    def _validate_replay(self, replay: ReplayValidationInput | dict[str, Any] | None) -> StageResult:
+    def _validate_replay(
+        self, replay: ReplayValidationInput | dict[str, Any] | None
+    ) -> StageResult:
         if replay is None:
             return _missing_stage_result(3, "replay", "replay payload", "backtest")
         result = self.validation_gate.validate_replay(replay)
         return _stage_from_validation_result(3, "replay", result, "backtest")
 
-    def _validate_backtest(self, backtest: BacktestValidationInput | dict[str, Any] | None) -> StageResult:
+    def _validate_backtest(
+        self, backtest: BacktestValidationInput | dict[str, Any] | None
+    ) -> StageResult:
         if backtest is None:
-            return _missing_stage_result(4, "backtest", "backtest payload", "walk_forward")
+            return _missing_stage_result(
+                4, "backtest", "backtest payload", "walk_forward"
+            )
         result = self.validation_gate.validate_backtest(backtest)
         return _stage_from_validation_result(4, "backtest", result, "walk_forward")
 
-    def _validate_robustness(self, robustness: RobustnessValidationInput | dict[str, Any] | None) -> StageResult:
+    def _validate_robustness(
+        self, robustness: RobustnessValidationInput | dict[str, Any] | None
+    ) -> StageResult:
         if robustness is None:
-            return _missing_stage_result(5, "robustness", "robustness evidence", "shadow")
+            return _missing_stage_result(
+                5, "robustness", "robustness evidence", "shadow"
+            )
         data = _as_dict(robustness)
         issues: list[StrategyIssue] = []
         fix_instructions: list[str] = []
@@ -1050,8 +1167,12 @@ class SVOSRunner:
             "instrument_test_passed": data.get("instrument_test_passed"),
             "market_regime_passed": data.get("market_regime_passed"),
         }
-        optional_missing = [name for name, value in optional_checks.items() if value is None]
-        optional_failed = [name for name, value in optional_checks.items() if value is False]
+        optional_missing = [
+            name for name, value in optional_checks.items() if value is None
+        ]
+        optional_failed = [
+            name for name, value in optional_checks.items() if value is False
+        ]
 
         for name in missing:
             issues.append(
@@ -1077,7 +1198,9 @@ class SVOSRunner:
             )
             fix_instructions.append(f"Resolve the failing robustness gate: {name}.")
 
-        latest_metrics = _metric_dict(data.get("latest_metrics") or data.get("metrics") or {})
+        latest_metrics = _metric_dict(
+            data.get("latest_metrics") or data.get("metrics") or {}
+        )
         previous_metrics = _metric_dict(data.get("previous_metrics") or {})
         if not latest_metrics or not previous_metrics:
             issues.append(
@@ -1088,11 +1211,17 @@ class SVOSRunner:
                     suggestion="Provide latest_metrics and previous_metrics for regression comparison.",
                 )
             )
-            fix_instructions.append("Provide latest and previous metrics for regression comparison.")
-            regression_status = "PASS" if not latest_metrics and not previous_metrics else "FAIL"
+            fix_instructions.append(
+                "Provide latest and previous metrics for regression comparison."
+            )
+            regression_status = (
+                "PASS" if not latest_metrics and not previous_metrics else "FAIL"
+            )
             regression_result = None
         else:
-            regression_result = self.regression_engine.compare(latest_metrics, previous_metrics)
+            regression_result = self.regression_engine.compare(
+                latest_metrics, previous_metrics
+            )
             regression_status = regression_result.status
             if regression_status == "WARNING":
                 issues.append(
@@ -1103,7 +1232,9 @@ class SVOSRunner:
                         suggestion="Review the drift report and tighten the strategy before promotion.",
                     )
                 )
-                fix_instructions.append("Review regression drift before moving forward.")
+                fix_instructions.append(
+                    "Review regression drift before moving forward."
+                )
             elif regression_status == "FAIL":
                 issues.append(
                     StrategyIssue(
@@ -1116,7 +1247,11 @@ class SVOSRunner:
                 fix_instructions.append("Fix regression drift before continuing.")
 
         if any(issue.severity == "HIGH" for issue in issues):
-            status: StageStatus = "FAIL" if failed or regression_status == "FAIL" or not completed else "FIX"
+            status: StageStatus = (
+                "FAIL"
+                if failed or regression_status == "FAIL" or not completed
+                else "FIX"
+            )
         elif issues:
             status = "FIX"
         else:
@@ -1138,7 +1273,9 @@ class SVOSRunner:
                         suggestion=f"Fix the issue behind {name} before promotion.",
                     )
                 )
-                fix_instructions.append(f"Resolve optional robustness evidence: {name}.")
+                fix_instructions.append(
+                    f"Resolve optional robustness evidence: {name}."
+                )
             if status == "PASS":
                 status = "FAIL"
 
@@ -1151,7 +1288,11 @@ class SVOSRunner:
             next_stage="virtual_demo",
             can_promote=status == "PASS",
             metadata={
-                "regression": regression_result.to_dict() if regression_result is not None else None,
+                "regression": (
+                    regression_result.to_dict()
+                    if regression_result is not None
+                    else None
+                ),
                 "completed_successfully": completed,
                 "checks": checks,
                 "optional_checks": optional_checks,
@@ -1160,9 +1301,13 @@ class SVOSRunner:
             },
         )
 
-    def _validate_virtual_demo(self, virtual_demo: VirtualDemoValidationInput | dict[str, Any] | None) -> StageResult:
+    def _validate_virtual_demo(
+        self, virtual_demo: VirtualDemoValidationInput | dict[str, Any] | None
+    ) -> StageResult:
         if virtual_demo is None:
-            return _missing_stage_result(7, "virtual_demo", "virtual demo evidence", "production_approval")
+            return _missing_stage_result(
+                7, "virtual_demo", "virtual demo evidence", "production_approval"
+            )
         data = _as_dict(virtual_demo)
         issues: list[StrategyIssue] = []
         fix_instructions: list[str] = []
@@ -1201,7 +1346,9 @@ class SVOSRunner:
                     suggestion=f"Monitor the strategy for at least {min_demo_days} days.",
                 )
             )
-            fix_instructions.append(f"Extend virtual demo monitoring to at least {min_demo_days} days.")
+            fix_instructions.append(
+                f"Extend virtual demo monitoring to at least {min_demo_days} days."
+            )
 
         execution_report = _as_dict(data.get("execution_validation_report"))
         if not execution_report:
@@ -1213,14 +1360,20 @@ class SVOSRunner:
                     suggestion="Run execution validation against the virtual broker and attach the report.",
                 )
             )
-            fix_instructions.append("Attach the virtual broker execution validation report.")
+            fix_instructions.append(
+                "Attach the virtual broker execution validation report."
+            )
         else:
             execution_status = str(execution_report.get("status", "")).upper()
             readiness_status = str(execution_report.get("readiness_status", "")).upper()
             final_score = int(execution_report.get("final_score", 0) or 0)
-            broker_simulation_passed = bool(execution_report.get("broker_simulation_passed", False))
+            broker_simulation_passed = bool(
+                execution_report.get("broker_simulation_passed", False)
+            )
             recovery_passed = bool(execution_report.get("recovery_passed", False))
-            strategy_version_control_passed = bool(execution_report.get("strategy_version_control_passed", False))
+            strategy_version_control_passed = bool(
+                execution_report.get("strategy_version_control_passed", False)
+            )
             required_ready = bool(data.get("require_ready_for_demo", True))
             if required_ready and execution_status != "READY FOR DEMO":
                 issues.append(
@@ -1231,7 +1384,9 @@ class SVOSRunner:
                         suggestion="Run the virtual broker process until execution validation returns READY FOR DEMO.",
                     )
                 )
-                fix_instructions.append("Resolve execution validation readiness before promotion.")
+                fix_instructions.append(
+                    "Resolve execution validation readiness before promotion."
+                )
             if final_score < 90:
                 issues.append(
                     StrategyIssue(
@@ -1241,7 +1396,9 @@ class SVOSRunner:
                         suggestion="Raise the execution validation score before promotion.",
                     )
                 )
-                fix_instructions.append("Increase the execution validation score to at least 90.")
+                fix_instructions.append(
+                    "Increase the execution validation score to at least 90."
+                )
             if not broker_simulation_passed:
                 issues.append(
                     StrategyIssue(
@@ -1271,7 +1428,9 @@ class SVOSRunner:
                         suggestion="Align strategy metadata and rules hash before promotion.",
                     )
                 )
-                fix_instructions.append("Align strategy version metadata before continuing.")
+                fix_instructions.append(
+                    "Align strategy version metadata before continuing."
+                )
             data["execution_validation_status"] = execution_status
             data["execution_validation_readiness_status"] = readiness_status
             data["execution_validation_final_score"] = final_score
@@ -1307,7 +1466,9 @@ class SVOSRunner:
                                 suggestion=f"Reduce drift in {metric} before promoting to live.",
                             )
                         )
-                        fix_instructions.append(f"Bring {metric} drift within {tolerance:.2%}.")
+                        fix_instructions.append(
+                            f"Bring {metric} drift within {tolerance:.2%}."
+                        )
             if "max_drawdown" in research_metrics and "max_drawdown" in live_metrics:
                 research = float(research_metrics["max_drawdown"])
                 live = float(live_metrics["max_drawdown"])
@@ -1323,7 +1484,9 @@ class SVOSRunner:
                                 suggestion="Reduce live drawdown drift before promotion.",
                             )
                         )
-                        fix_instructions.append("Bring max_drawdown drift within tolerance.")
+                        fix_instructions.append(
+                            "Bring max_drawdown drift within tolerance."
+                        )
 
         if any(issue.severity == "HIGH" for issue in issues):
             status: StageStatus = "FAIL"
@@ -1362,9 +1525,16 @@ class SVOSRunner:
 
     def _build_verification_ready(self, stages: list[StageResult]) -> StageResult:
         audit = next((stage for stage in stages if stage.stage == "audit"), None)
-        robustness = next((stage for stage in stages if stage.stage == "robustness"), None)
+        robustness = next(
+            (stage for stage in stages if stage.stage == "robustness"), None
+        )
         if audit is None or robustness is None:
-            return _missing_stage_result(6, "verification_ready", "completed audit and robustness stages", "virtual_demo")
+            return _missing_stage_result(
+                6,
+                "verification_ready",
+                "completed audit and robustness stages",
+                "virtual_demo",
+            )
 
         passed_stages = [stage.stage for stage in stages if stage.status == "PASS"]
         affected_rules = []
@@ -1372,8 +1542,12 @@ class SVOSRunner:
             affected_rules = sorted(audit.spec.fields.keys())
 
         confidence_score = 1.0
-        if robustness.metadata.get("regression") and isinstance(robustness.metadata["regression"], dict):
-            regression_status = str(robustness.metadata["regression"].get("status", "PASS")).upper()
+        if robustness.metadata.get("regression") and isinstance(
+            robustness.metadata["regression"], dict
+        ):
+            regression_status = str(
+                robustness.metadata["regression"].get("status", "PASS")
+            ).upper()
             if regression_status == "WARNING":
                 confidence_score = 0.75
             elif regression_status == "FAIL":
@@ -1423,7 +1597,9 @@ class SVOSRunner:
         allow_live_promotion: bool,
         promote: bool,
     ) -> StageResult:
-        approved = can_deploy_strategy(self.strategy_name, target_stage="demo", path=self.registry_path)
+        approved = can_deploy_strategy(
+            self.strategy_name, target_stage="demo", path=self.registry_path
+        )
         virtual_demo_payload = _as_dict(virtual_demo)
         has_placeholder = _contains_placeholder_marker(virtual_demo_payload)
         live_guard_blocked = not allow_live_promotion or not promote or has_placeholder
@@ -1433,7 +1609,9 @@ class SVOSRunner:
         if not promote:
             blocking_reasons.append("Pipeline promotion is disabled.")
         if has_placeholder:
-            blocking_reasons.append("Virtual demo payload contains synthetic/sample/example placeholder markers.")
+            blocking_reasons.append(
+                "Virtual demo payload contains synthetic/sample/example placeholder markers."
+            )
         if approved:
             return StageResult(
                 phase=8,
@@ -1471,7 +1649,11 @@ class SVOSRunner:
             ],
             next_stage=None,
             can_promote=False,
-            metadata={"registry_approved": False, "live_promotion_allowed": False, "live_promotion_guard": {"blocked": True, "reasons": blocking_reasons}},
+            metadata={
+                "registry_approved": False,
+                "live_promotion_allowed": False,
+                "live_promotion_guard": {"blocked": True, "reasons": blocking_reasons},
+            },
         )
 
     def _promote(self, stage: str) -> None:
@@ -1486,17 +1668,25 @@ class SVOSRunner:
                 "Review inferred fields and convert them into explicit template values before replay."
             )
         if spec.missing_fields:
-            suggestions.append("Fill all required template fields before moving to replay.")
-        suggestions.append("Prefer reusable blocks: sweep, CHoCH, BOS, FVG, risk, and session filters.")
+            suggestions.append(
+                "Fill all required template fields before moving to replay."
+            )
+        suggestions.append(
+            "Prefer reusable blocks: sweep, CHoCH, BOS, FVG, risk, and session filters."
+        )
         return suggestions
 
     def _write_report(self, result: SVOSRunResult) -> None:
         report_dir = self.output_dir / result.strategy
         report_dir.mkdir(parents=True, exist_ok=True)
         (report_dir / "svos_result.json").write_text(result.to_json(), encoding="utf-8")
-        (report_dir / "svos_result.md").write_text(_render_markdown(result), encoding="utf-8")
+        (report_dir / "svos_result.md").write_text(
+            _render_markdown(result), encoding="utf-8"
+        )
 
-    def _write_stage_report(self, stages: list[StageResult], promoted_stage: str | None) -> None:
+    def _write_stage_report(
+        self, stages: list[StageResult], promoted_stage: str | None
+    ) -> None:
         if not stages:
             return
         stage = stages[-1]
@@ -1518,7 +1708,9 @@ class SVOSRunner:
             json.dumps(stage_result, indent=2, sort_keys=True, default=str),
             encoding="utf-8",
         )
-        (report_dir / f"{stem}.md").write_text(_render_stage_markdown(stage_result), encoding="utf-8")
+        (report_dir / f"{stem}.md").write_text(
+            _render_stage_markdown(stage_result), encoding="utf-8"
+        )
 
         index = {
             "strategy": self.strategy_name,
@@ -1595,7 +1787,9 @@ def _stage_from_validation_result(
     )
 
 
-def _missing_stage_result(phase: int, stage: str, what: str, next_stage: str) -> StageResult:
+def _missing_stage_result(
+    phase: int, stage: str, what: str, next_stage: str
+) -> StageResult:
     return StageResult(
         phase=phase,
         stage=stage,
@@ -1650,7 +1844,10 @@ def _detect_source_type(strategy: str | dict[str, Any]) -> str:
 
 def _strategy_id(strategy_name: str, raw_text: str) -> str:
     del raw_text
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-") or "UNNAMED"
+    slug = (
+        re.sub(r"[^A-Za-z0-9]+", "-", strategy_name.strip().upper()).strip("-")
+        or "UNNAMED"
+    )
     return slug
 
 
@@ -1707,7 +1904,9 @@ def _strategy_spec_from_validation_document(
     )
 
 
-def _stage_status_from_validation_report(report: StrategyValidationReport) -> StageStatus:
+def _stage_status_from_validation_report(
+    report: StrategyValidationReport,
+) -> StageStatus:
     if report.readiness_decision == "READY_FOR_REPLAY":
         return "PASS"
     if report.readiness_decision in {"REQUIRES_REVISION", "INCOMPLETE"}:
@@ -1724,7 +1923,9 @@ def _issue_severity_from_validation_severity(severity: str) -> str:
     return "LOW"
 
 
-def _strategy_issues_from_validation_report(report: StrategyValidationReport) -> list[StrategyIssue]:
+def _strategy_issues_from_validation_report(
+    report: StrategyValidationReport,
+) -> list[StrategyIssue]:
     issues: list[StrategyIssue] = []
     for result in report.validator_results:
         for finding in result.findings:
@@ -1734,13 +1935,19 @@ def _strategy_issues_from_validation_report(report: StrategyValidationReport) ->
                     field=finding.location,
                     severity=_issue_severity_from_validation_severity(finding.severity),
                     message=f"[{result.validator_name}] {finding.message}",
-                    suggestion=str(finding.details.get("recommendation", "")).strip() if isinstance(finding.details, dict) else "",
+                    suggestion=(
+                        str(finding.details.get("recommendation", "")).strip()
+                        if isinstance(finding.details, dict)
+                        else ""
+                    ),
                 )
             )
     return _dedupe_issues(issues)
 
 
-def _fix_instructions_from_validation_report(report: StrategyValidationReport) -> list[str]:
+def _fix_instructions_from_validation_report(
+    report: StrategyValidationReport,
+) -> list[str]:
     instructions = [item.message for item in report.recommendations if item.message]
     return _dedupe_text(instructions)
 
@@ -1765,12 +1972,19 @@ def _clarifying_question_from_recommendation(item: ValidationRecommendation) -> 
     return message.rstrip(".") + "?"
 
 
-def _clarifying_questions_from_validation_report(report: StrategyValidationReport) -> list[str]:
-    questions = [_clarifying_question_from_recommendation(item) for item in report.recommendations]
+def _clarifying_questions_from_validation_report(
+    report: StrategyValidationReport,
+) -> list[str]:
+    questions = [
+        _clarifying_question_from_recommendation(item)
+        for item in report.recommendations
+    ]
     return _dedupe_text(questions)
 
 
-def _validation_recommendation_from_dict(payload: dict[str, Any]) -> ValidationRecommendation:
+def _validation_recommendation_from_dict(
+    payload: dict[str, Any],
+) -> ValidationRecommendation:
     return ValidationRecommendation(
         code=str(payload.get("code", "")),
         message=str(payload.get("message", "")),
@@ -1891,7 +2105,11 @@ def _append_stage_block(lines: list[str], stage: dict[str, Any]) -> None:
         lines.append("- Issues:")
         for issue in stage["issues"]:
             lines.append(f"  - {issue['severity']}: {issue['message']}")
-    enhancement_plan = stage.get("metadata", {}).get("enhancement_plan", {}) if isinstance(stage.get("metadata", {}), dict) else {}
+    enhancement_plan = (
+        stage.get("metadata", {}).get("enhancement_plan", {})
+        if isinstance(stage.get("metadata", {}), dict)
+        else {}
+    )
     if enhancement_plan:
         lines.append("- Enhancement Plan:")
         if enhancement_plan.get("status"):

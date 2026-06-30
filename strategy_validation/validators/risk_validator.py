@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
+from ..models import (
+    StrategyDocument,
+    ValidationFinding,
+    ValidationRecommendation,
+    ValidatorResult,
+    ValidationStatus,
+)
 from ..module_base import BaseValidator
 
 
@@ -31,7 +37,12 @@ class RiskValidationValidator(BaseValidator):
                     ValidationFinding(
                         code="missing_risk_control",
                         message=f"Missing risk control: {label}",
-                        severity="ERROR" if label in {"Stop Loss", "Take Profit", "Risk %", "Position Sizing"} else "WARN",
+                        severity=(
+                            "ERROR"
+                            if label
+                            in {"Stop Loss", "Take Profit", "Risk %", "Position Sizing"}
+                            else "WARN"
+                        ),
                         location=field_name,
                     )
                 )
@@ -45,8 +56,13 @@ class RiskValidationValidator(BaseValidator):
                     )
                 )
 
-        score = round(((len(self.CONTROLS) - len(missing_controls)) / len(self.CONTROLS)) * 100.0, 2)
-        status: ValidationStatus = "PASS" if not missing_controls else "PARTIAL" if score >= 62.5 else "FAIL"
+        score = round(
+            ((len(self.CONTROLS) - len(missing_controls)) / len(self.CONTROLS)) * 100.0,
+            2,
+        )
+        status: ValidationStatus = (
+            "PASS" if not missing_controls else "PARTIAL" if score >= 62.5 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

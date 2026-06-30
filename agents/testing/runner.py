@@ -1,4 +1,5 @@
 """Testing Agent runner — CLI wrapper and config loader."""
+
 from __future__ import annotations
 
 import argparse
@@ -42,7 +43,13 @@ def run(argv: list[str] | None = None) -> int:
     reporter.write_markdown(args.output_dir / "testing_report.md")
 
     if result.status == Status.PASS:
-        logging.getLogger(__name__).info("Testing Agent PASS — score=%.1f coverage=%.1f%%", result.score, result.coverage)
+        logging.getLogger(__name__).info(
+            "Testing Agent PASS — score=%.1f coverage=%.1f%%",
+            result.score,
+            result.coverage,
+        )
         return 0
-    logging.getLogger(__name__).error("Testing Agent FAIL — score=%.1f coverage=%.1f%%", result.score, result.coverage)
+    logging.getLogger(__name__).error(
+        "Testing Agent FAIL — score=%.1f coverage=%.1f%%", result.score, result.coverage
+    )
     return 1

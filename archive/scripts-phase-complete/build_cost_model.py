@@ -21,8 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
-_SRC  = _ROOT / "research" / "spread_samples.csv"
-_OUT  = _ROOT / "research" / "cost_model.json"
+_SRC = _ROOT / "research" / "spread_samples.csv"
+_OUT = _ROOT / "research" / "cost_model.json"
 
 KILLZONE_SESSIONS = {"london", "new_york"}
 
@@ -41,19 +41,24 @@ def _percentile(data, p):
 def _stats(values):
     if not values:
         return {
-            "n": 0, "avg": None, "median": None,
-            "p90": None, "p95": None, "p99": None,
-            "min": None, "max": None,
+            "n": 0,
+            "avg": None,
+            "median": None,
+            "p90": None,
+            "p95": None,
+            "p99": None,
+            "min": None,
+            "max": None,
         }
     return {
-        "n":      len(values),
-        "avg":    round(statistics.mean(values), 4),
+        "n": len(values),
+        "avg": round(statistics.mean(values), 4),
         "median": round(statistics.median(values), 4),
-        "p90":    round(_percentile(values, 90), 4),
-        "p95":    round(_percentile(values, 95), 4),
-        "p99":    round(_percentile(values, 99), 4),
-        "min":    round(min(values), 4),
-        "max":    round(max(values), 4),
+        "p90": round(_percentile(values, 90), 4),
+        "p95": round(_percentile(values, 95), 4),
+        "p99": round(_percentile(values, 99), 4),
+        "min": round(min(values), 4),
+        "max": round(max(values), 4),
     }
 
 
@@ -70,9 +75,9 @@ def main():
         reader = csv.DictReader(f)
         for row in reader:
             total_rows += 1
-            sym     = row.get("symbol", "").strip()
+            sym = row.get("symbol", "").strip()
             session = row.get("session", "").strip()
-            raw     = row.get("spread_pips", "")
+            raw = row.get("spread_pips", "")
             try:
                 pips = float(raw)
             except (ValueError, TypeError):
@@ -83,15 +88,15 @@ def main():
                 continue
             buckets[(sym, session)].append(pips)
 
-    symbols  = sorted({k[0] for k in buckets})
+    symbols = sorted({k[0] for k in buckets})
     sessions = sorted({k[1] for k in buckets})
 
     model = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source":       str(_SRC.relative_to(_ROOT)),
-        "row_count":    total_rows,
+        "source": str(_SRC.relative_to(_ROOT)),
+        "row_count": total_rows,
         "skipped_rows": skipped,
-        "symbols":      {},
+        "symbols": {},
     }
 
     for sym in symbols:

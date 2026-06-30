@@ -16,16 +16,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
-_SRC  = _ROOT / "research" / "spread_samples.csv"
-_OUT  = _ROOT / "docs" / "SPREAD_RESEARCH_FINAL_REPORT.md"
+_SRC = _ROOT / "research" / "spread_samples.csv"
+_OUT = _ROOT / "docs" / "SPREAD_RESEARCH_FINAL_REPORT.md"
 
 KILLZONE_SESSIONS = ("london", "new_york")
-STRATEGY_SYMBOLS  = ("EURUSD", "GBPUSD")
-PLACEHOLDERS      = {"EURUSD": 1.40, "GBPUSD": 1.80}
+STRATEGY_SYMBOLS = ("EURUSD", "GBPUSD")
+PLACEHOLDERS = {"EURUSD": 1.40, "GBPUSD": 1.80}
 
 # Session-hour label mapping (UTC, summer EDT)
 SESSION_HOURS = {
-    "london":   ["06:xx", "07:xx", "08:xx"],
+    "london": ["06:xx", "07:xx", "08:xx"],
     "new_york": ["11:xx", "12:xx", "13:xx"],
 }
 
@@ -44,14 +44,14 @@ def _stats(values):
     if not values:
         return {}
     return {
-        "n":      len(values),
-        "avg":    statistics.mean(values),
+        "n": len(values),
+        "avg": statistics.mean(values),
         "median": statistics.median(values),
-        "p90":    _percentile(values, 90),
-        "p95":    _percentile(values, 95),
-        "p99":    _percentile(values, 99),
-        "min":    min(values),
-        "max":    max(values),
+        "p90": _percentile(values, 90),
+        "p95": _percentile(values, 95),
+        "p99": _percentile(values, 99),
+        "min": min(values),
+        "max": max(values),
     }
 
 
@@ -65,21 +65,27 @@ def main():
         raise SystemExit(1)
 
     # Accumulators
-    by_sym_sess  = defaultdict(list)          # (sym, sess) → [pips]
-    by_sym_hour  = defaultdict(list)          # (sym, sess, hour) → [pips]
-    sessions_seen = defaultdict(set)          # sym → {dates where london/ny appeared}
-    meta = {"start": None, "end": None, "total_rows": 0, "skipped": 0,
-            "gaps_over_90s": 0, "dropouts": 0}
+    by_sym_sess = defaultdict(list)  # (sym, sess) → [pips]
+    by_sym_hour = defaultdict(list)  # (sym, sess, hour) → [pips]
+    sessions_seen = defaultdict(set)  # sym → {dates where london/ny appeared}
+    meta = {
+        "start": None,
+        "end": None,
+        "total_rows": 0,
+        "skipped": 0,
+        "gaps_over_90s": 0,
+        "dropouts": 0,
+    }
 
     rows = []
     with _SRC.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             meta["total_rows"] += 1
-            sym     = row.get("symbol", "").strip()
+            sym = row.get("symbol", "").strip()
             session = row.get("session", "").strip()
-            raw     = row.get("spread_pips", "")
-            ts      = row.get("time_utc", "").strip()
+            raw = row.get("spread_pips", "")
+            ts = row.get("time_utc", "").strip()
             try:
                 pips = float(raw)
                 hour = int(row.get("hour", -1))
@@ -107,7 +113,7 @@ def main():
 
     # Count unique session days per symbol (use first strategy symbol as reference)
     london_days = len(sessions_seen.get(("EURUSD", "london"), set()))
-    ny_days     = len(sessions_seen.get(("EURUSD", "new_york"), set()))
+    ny_days = len(sessions_seen.get(("EURUSD", "new_york"), set()))
 
     # Estimate poll efficiency: expected = rows per 30s interval
     symbols_in_csv = sorted({k[0] for k in by_sym_sess})
@@ -215,6 +221,7 @@ def main():
         "|---|---|---|---|---|---|",
     ]
     import math
+
     for sym in STRATEGY_SYMBOLS:
         st = kz_by_sym.get(sym, {})
         if not st:
@@ -297,7 +304,9 @@ def main():
     print(f"\n{'='*60}")
     print(f"  Spread Analysis Summary")
     print(f"{'='*60}")
-    print(f"  Rows:    {meta['total_rows']:,}  |  London: {london_days}/5  |  NY: {ny_days}/5")
+    print(
+        f"  Rows:    {meta['total_rows']:,}  |  London: {london_days}/5  |  NY: {ny_days}/5"
+    )
     print(f"\n  {'Symbol':<10} {'Session':<12} {'n':>6} {'Avg':>6} {'P95':>6}")
     print(f"  {'-'*45}")
     for sym in STRATEGY_SYMBOLS:
@@ -305,7 +314,9 @@ def main():
             st = _stats(by_sym_sess.get((sym, sess), []))
             if not st:
                 continue
-            print(f"  {sym:<10} {sess:<12} {st['n']:>6} {st['avg']:>6.2f} {st['p95']:>6.2f}")
+            print(
+                f"  {sym:<10} {sess:<12} {st['n']:>6} {st['avg']:>6.2f} {st['p95']:>6.2f}"
+            )
     print(f"\nNext: python3 scripts/build_cost_model.py")
 
 

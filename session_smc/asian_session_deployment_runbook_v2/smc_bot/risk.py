@@ -30,9 +30,13 @@ def calc_qty(signal: SessionSignal, cfg: dict, account_balance: float) -> float:
     elif "risk_pct_per_trade" in risk_cfg:
         risk_usd = float(risk_cfg["risk_pct_per_trade"]) * account_balance
     else:
-        raise ValueError("Neither risk.risk_usd nor risk.risk_pct_per_trade configured.")
+        raise ValueError(
+            "Neither risk.risk_usd nor risk.risk_pct_per_trade configured."
+        )
 
-    log.info("[%s] risk_usd=%.2f balance=%.2f", signal.instrument, risk_usd, account_balance)
+    log.info(
+        "[%s] risk_usd=%.2f balance=%.2f", signal.instrument, risk_usd, account_balance
+    )
 
     sl_raw = abs(signal.entry - signal.sl)
     if sl_raw == 0:
@@ -57,7 +61,13 @@ def calc_qty(signal: SessionSignal, cfg: dict, account_balance: float) -> float:
 
     log.info(
         "[%s/%s] sl_raw=%.5f risk_usd=%.2f → lots=%.2f (raw=%.4f max=%.2f)",
-        signal.instrument, signal.setup, sl_raw, risk_usd, lots, raw_lots, max_lots,
+        signal.instrument,
+        signal.setup,
+        sl_raw,
+        risk_usd,
+        lots,
+        raw_lots,
+        max_lots,
     )
     return lots
 
@@ -67,7 +77,8 @@ def check_daily_loss_limit(pnl_today: float, cfg: dict) -> bool:
     if pnl_today <= -abs(limit):
         log.warning(
             "DAILY LOSS LIMIT HIT: today_pnl=%.2f limit=%.2f — halting new signals",
-            pnl_today, limit,
+            pnl_today,
+            limit,
         )
         return True
     return False
@@ -78,7 +89,8 @@ def check_max_open_positions(open_positions: list, cfg: dict) -> bool:
     if len(open_positions) >= max_pos:
         log.info(
             "Max open positions reached (%d/%d) — no new entries",
-            len(open_positions), max_pos,
+            len(open_positions),
+            max_pos,
         )
         return True
     return False
@@ -89,8 +101,8 @@ def symbol_already_open(symbol: str, open_positions: list) -> bool:
         if p.get("symbol") == symbol:
             log.info(
                 "Position already open for %s (positionId=%s) — skip",
-                symbol, p.get("id"),
+                symbol,
+                p.get("id"),
             )
             return True
     return False
-

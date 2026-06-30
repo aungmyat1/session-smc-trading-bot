@@ -50,9 +50,10 @@ SL_BUFFER_PIPS = 2
 DISPLACEMENT_ATR_MULT = 1.2
 ATR_PERIOD = 14
 MIN_RANGE_PIPS = {"EUR_USD": 15, "GBP_USD": 20}
-SWEEP_TIMEOUT_BARS = 4   # bars after sweep before setup is cancelled
+SWEEP_TIMEOUT_BARS = 4  # bars after sweep before setup is cancelled
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _parse_utc(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
@@ -64,9 +65,9 @@ def _load_csv(path: Path) -> list[dict]:
     with open(path, newline="") as f:
         rows = list(csv.DictReader(f))
     for r in rows:
-        r["open"]  = float(r["open"])
-        r["high"]  = float(r["high"])
-        r["low"]   = float(r["low"])
+        r["open"] = float(r["open"])
+        r["high"] = float(r["high"])
+        r["low"] = float(r["low"])
         r["close"] = float(r["close"])
     return rows
 
@@ -93,6 +94,7 @@ def _detect_displacement_inline(
 
 # ── Signal chain ──────────────────────────────────────────────────────────────
 
+
 class GateResult:
     def __init__(self, gate: str, passed: bool, value: str, detail: str = ""):
         self.gate = gate
@@ -115,7 +117,7 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
     """
     csv_sym = symbol[:3] + "_" + symbol[3:]
     m15_path = _symbol_file(symbol, "M15")
-    h4_path  = _symbol_file(symbol, "H4")
+    h4_path = _symbol_file(symbol, "H4")
 
     gates: list[GateResult] = []
     log: list[tuple[str, str, str]] = []  # (time_utc, event, detail)
@@ -130,12 +132,20 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
 
     # ── Load data ─────────────────────────────────────────────────────────────
     all_m15 = _load_csv(m15_path)
-    all_h4  = _load_csv(h4_path)
+    all_h4 = _load_csv(h4_path)
 
     if not all_m15:
-        return {"symbol": symbol, "date": str(trade_date), "error": f"No M15 data at {m15_path}"}
+        return {
+            "symbol": symbol,
+            "date": str(trade_date),
+            "error": f"No M15 data at {m15_path}",
+        }
     if not all_h4:
-        return {"symbol": symbol, "date": str(trade_date), "error": f"No H4 data at {h4_path}"}
+        return {
+            "symbol": symbol,
+            "date": str(trade_date),
+            "error": f"No H4 data at {h4_path}",
+        }
 
     # Pre-compute ATR for all M15 bars
     all_m15_sorted = sorted(all_m15, key=lambda c: c["time"])
@@ -150,31 +160,40 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
         gate("Asian Range", False, "None", "< 4 M15 bars in 18:00–02:00 EST window")
         return _build_result(symbol, trade_date, gates, log, asian=None)
 
-    gate("Asian Range", True,
-         f"H={asian.high:.5f}  L={asian.low:.5f}  ({asian.range_pips:.1f} pips)")
-    logline("pre-London", "Asian Range built",
-            f"high={asian.high:.5f}  low={asian.low:.5f}  range={asian.range_pips:.1f}pip")
+    gate(
+        "Asian Range",
+        True,
+        f"H={asian.high:.5f}  L={asian.low:.5f}  ({asian.range_pips:.1f} pips)",
+    )
+    logline(
+        "pre-London",
+        "Asian Range built",
+        f"high={asian.high:.5f}  low={asian.low:.5f}  range={asian.range_pips:.1f}pip",
+    )
 
     # ── GATE 2: Minimum range filter ─────────────────────────────────────────
     min_pips = MIN_RANGE_PIPS.get(csv_sym, 15)
     range_ok = asian.range_pips >= min_pips
-    gate("Min Range",
-         range_ok,
-         f"{asian.range_pips:.1f} pips vs {min_pips} pip minimum")
+    gate(
+        "Min Range", range_ok, f"{asian.range_pips:.1f} pips vs {min_pips} pip minimum"
+    )
     if not range_ok:
         return _build_result(symbol, trade_date, gates, log, asian=asian)
 
     # ── Session bar loop ──────────────────────────────────────────────────────
     # Filter to London + NY killzone bars on trade_date
     session_bars = [
-        c for c in all_m15_sorted
+        c
+        for c in all_m15_sorted
         if classify_session(_parse_utc(c["time"])) is not None
         and _parse_utc(c["time"]).date() == trade_date
     ]
 
     trade_signals: list[dict] = []
     session_traded: set[str] = set()
-    pending_sweep: dict | None = None   # {"sweep_result", "bar_time", "bar_idx", "session", "atr"}
+    pending_sweep: dict | None = (
+        None  # {"sweep_result", "bar_time", "bar_idx", "session", "atr"}
+    )
 
     for idx, candle in enumerate(all_m15_sorted):
         bar_time = _parse_utc(candle["time"])
@@ -190,7 +209,9 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
         # ── GATE 3: HTF Bias (evaluated fresh each bar) ───────────────────────
         bias = htf_bias(all_h4, bar_time)
 
-        if idx == session_bars.index(candle) + (len(all_m15_sorted) - len(session_bars)):
+        if idx == session_bars.index(candle) + (
+            len(all_m15_sorted) - len(session_bars)
+        ):
             pass  # logged below per bar
 
         # ── GATE 4: One trade per session ─────────────────────────────────────
@@ -227,8 +248,11 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
             bars_since_sweep = idx - pending_sweep["bar_idx"]
 
             if bars_since_sweep > SWEEP_TIMEOUT_BARS:
-                logline(bar_label, "Sweep TIMEOUT",
-                        f"no displacement in {SWEEP_TIMEOUT_BARS} bars — setup cancelled")
+                logline(
+                    bar_label,
+                    "Sweep TIMEOUT",
+                    f"no displacement in {SWEEP_TIMEOUT_BARS} bars — setup cancelled",
+                )
                 pending_sweep = None
                 continue
 
@@ -250,40 +274,54 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
                 sl_pips = round(sl_dist / 0.0001, 1)
 
                 if sl_dist <= 0:
-                    logline(bar_label, "ENTRY REJECTED",
-                            f"degenerate SL distance ({sl_dist:.6f}) — signal dropped")
+                    logline(
+                        bar_label,
+                        "ENTRY REJECTED",
+                        f"degenerate SL distance ({sl_dist:.6f}) — signal dropped",
+                    )
                     pending_sweep = None
                     continue
 
-                tps = {rr: (entry + rr * sl_dist if sweep.side == "long"
-                             else entry - rr * sl_dist)
-                       for rr in RR_LIST}
+                tps = {
+                    rr: (
+                        entry + rr * sl_dist
+                        if sweep.side == "long"
+                        else entry - rr * sl_dist
+                    )
+                    for rr in RR_LIST
+                }
 
                 sig = {
-                    "session":     pending_sweep["session"],
-                    "side":        sweep.side,
-                    "sweep_bar":   pending_sweep["bar_time"].strftime("%H:%M UTC"),
-                    "disp_bar":    bar_label,
-                    "entry":       entry,
-                    "stop_loss":   sl,
-                    "sl_pips":     sl_pips,
+                    "session": pending_sweep["session"],
+                    "side": sweep.side,
+                    "sweep_bar": pending_sweep["bar_time"].strftime("%H:%M UTC"),
+                    "disp_bar": bar_label,
+                    "entry": entry,
+                    "stop_loss": sl,
+                    "sl_pips": sl_pips,
                     "take_profits": tps,
                     "sweep_price": sweep.sweep_price,
-                    "atr":         atr,
-                    "bias":        bias,
+                    "atr": atr,
+                    "bias": bias,
                     "disp_reason": disp_reason,
-                    "candle":      candle,
+                    "candle": candle,
                 }
                 trade_signals.append(sig)
                 session_traded.add(pending_sweep["session"])
                 pending_sweep = None
 
-                logline(bar_label, "DISPLACEMENT CONFIRMED → SIGNAL GENERATED",
-                        f"entry={entry:.5f}  sl={sl:.5f}  ({sl_pips:.1f}pip)")
+                logline(
+                    bar_label,
+                    "DISPLACEMENT CONFIRMED → SIGNAL GENERATED",
+                    f"entry={entry:.5f}  sl={sl:.5f}  ({sl_pips:.1f}pip)",
+                )
 
             else:
-                logline(bar_label, f"Displacement pending [{bars_since_sweep}/{SWEEP_TIMEOUT_BARS}]",
-                        f"reject: {disp_reason}  H={candle['high']:.5f} L={candle['low']:.5f}")
+                logline(
+                    bar_label,
+                    f"Displacement pending [{bars_since_sweep}/{SWEEP_TIMEOUT_BARS}]",
+                    f"reject: {disp_reason}  H={candle['high']:.5f} L={candle['low']:.5f}",
+                )
 
     # Build gate summary from last-evaluated bias (use the last session bar)
     if session_bars:
@@ -292,35 +330,51 @@ def run_dry_run(symbol: str, trade_date: date) -> dict:
     else:
         final_bias = "neutral"
 
-    gate("HTF Bias",
-         final_bias != "neutral",
-         final_bias,
-         "4H swing structure (HH+HL / LH+LL)")
+    gate(
+        "HTF Bias",
+        final_bias != "neutral",
+        final_bias,
+        "4H swing structure (HH+HL / LH+LL)",
+    )
 
     return _build_result(
-        symbol, trade_date, gates, log, asian=asian,
-        bias=final_bias, signals=trade_signals,
-        session_bars=session_bars, all_m15=all_m15_sorted,
+        symbol,
+        trade_date,
+        gates,
+        log,
+        asian=asian,
+        bias=final_bias,
+        signals=trade_signals,
+        session_bars=session_bars,
+        all_m15=all_m15_sorted,
     )
 
 
 def _build_result(
-    symbol, trade_date, gates, log, asian=None,
-    bias=None, signals=None, session_bars=None, all_m15=None,
+    symbol,
+    trade_date,
+    gates,
+    log,
+    asian=None,
+    bias=None,
+    signals=None,
+    session_bars=None,
+    all_m15=None,
 ):
     return {
-        "symbol":       symbol,
-        "date":         str(trade_date),
-        "asian":        asian,
-        "bias":         bias,
-        "gates":        gates,
-        "log":          log,
-        "signals":      signals or [],
+        "symbol": symbol,
+        "date": str(trade_date),
+        "asian": asian,
+        "bias": bias,
+        "gates": gates,
+        "log": log,
+        "signals": signals or [],
         "session_bars": session_bars or [],
     }
 
 
 # ── Report generator ──────────────────────────────────────────────────────────
+
 
 def _fmt_tp_table(sig: dict) -> str:
     lines = []
@@ -365,7 +419,7 @@ def generate_report(results: list[dict], trade_date: date) -> str:
             continue
 
         asian = result["asian"]
-        bias  = result["bias"]
+        bias = result["bias"]
 
         # ── Phase 1: Asian Range ───────────────────────────────────────────────
         lines += [
@@ -409,7 +463,7 @@ def generate_report(results: list[dict], trade_date: date) -> str:
             "| Time (UTC) | Event | Detail |",
             "|---|---|---|",
         ]
-        for (ts, event, detail) in result["log"]:
+        for ts, event, detail in result["log"]:
             detail_escaped = detail.replace("|", "∣")
             lines.append(f"| {ts} | {event} | {detail_escaped} |")
         lines += [""]
@@ -431,7 +485,11 @@ def generate_report(results: list[dict], trade_date: date) -> str:
                     f"| Sweep bar | {sig['sweep_bar']} |",
                     f"| Sweep price | `{sig['sweep_price']:.5f}` |",
                     f"| Displacement bar | {sig['disp_bar']} |",
-                    f"| ATR (M15) | `{sig['atr']:.5f}`  ({sig['atr']/0.0001:.2f} pips) |" if sig['atr'] else "| ATR | N/A |",
+                    (
+                        f"| ATR (M15) | `{sig['atr']:.5f}`  ({sig['atr']/0.0001:.2f} pips) |"
+                        if sig["atr"]
+                        else "| ATR | N/A |"
+                    ),
                     f"| **Entry price** | **`{sig['entry']:.5f}`** |",
                     f"| **Stop Loss** | **`{sig['stop_loss']:.5f}`** ({sig['sl_pips']:.1f} pip) |",
                     "",
@@ -459,9 +517,14 @@ def generate_report(results: list[dict], trade_date: date) -> str:
             ]
 
         # ── Rejections summary ────────────────────────────────────────────────
-        rejections = [(ts, ev, det) for ts, ev, det in result["log"]
-                      if "No sweep" in ev or "reject" in ev.lower()
-                      or "TIMEOUT" in ev or "pending" in ev.lower()]
+        rejections = [
+            (ts, ev, det)
+            for ts, ev, det in result["log"]
+            if "No sweep" in ev
+            or "reject" in ev.lower()
+            or "TIMEOUT" in ev
+            or "pending" in ev.lower()
+        ]
         if rejections:
             lines += [
                 "### Rejection Log (sweep-phase bars only)",
@@ -499,12 +562,19 @@ def generate_report(results: list[dict], trade_date: date) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Session Liquidity dry run on one date")
-    p.add_argument("--date", required=True, metavar="YYYY-MM-DD",
-                   help="Trade date to evaluate")
-    p.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"],
-                   metavar="SYM", help="Pairs to evaluate (default: both)")
+    p.add_argument(
+        "--date", required=True, metavar="YYYY-MM-DD", help="Trade date to evaluate"
+    )
+    p.add_argument(
+        "--symbols",
+        nargs="+",
+        default=["EURUSD", "GBPUSD"],
+        metavar="SYM",
+        help="Pairs to evaluate (default: both)",
+    )
     args = p.parse_args()
 
     trade_date = datetime.strptime(args.date, "%Y-%m-%d").date()
@@ -540,7 +610,9 @@ def main() -> None:
             for sig in result["signals"]:
                 print(f"\n  *** SIGNAL: {sig['side'].upper()} in {sig['session']} ***")
                 print(f"      Entry  : {sig['entry']:.5f}")
-                print(f"      SL     : {sig['stop_loss']:.5f}  ({sig['sl_pips']:.1f} pip)")
+                print(
+                    f"      SL     : {sig['stop_loss']:.5f}  ({sig['sl_pips']:.1f} pip)"
+                )
                 for rr, tp in sig["take_profits"].items():
                     print(f"      TP{rr}    : {tp:.5f}  (RR {rr})")
         else:

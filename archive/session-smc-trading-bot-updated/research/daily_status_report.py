@@ -24,21 +24,22 @@ from typing import Optional
 _ROOT = Path(__file__).parent.parent
 _UTC = timezone.utc
 
-_BOT_LOG       = _ROOT / "logs" / "bot.log"
-_TRADE_LOG     = _ROOT / "logs" / "trades.jsonl"
-_BOT_STATE     = _ROOT / "logs" / "bot_state.json"
+_BOT_LOG = _ROOT / "logs" / "bot.log"
+_TRADE_LOG = _ROOT / "logs" / "trades.jsonl"
+_BOT_STATE = _ROOT / "logs" / "bot_state.json"
 _DAILY_SUMMARY = _ROOT / "logs" / "daily_trade_summary.json"
-_WEEKLY_SUMMARY= _ROOT / "logs" / "weekly_trade_summary.json"
-_REPORTS_DIR   = _ROOT / "reports"
-_OPS_AUDIT     = _ROOT / "docs" / "OPS01_INFRASTRUCTURE_AUDIT.md"
+_WEEKLY_SUMMARY = _ROOT / "logs" / "weekly_trade_summary.json"
+_REPORTS_DIR = _ROOT / "reports"
+_OPS_AUDIT = _ROOT / "docs" / "OPS01_INFRASTRUCTURE_AUDIT.md"
 
-_OPS01_START   = "2026-06-22"
-_OPS01_END     = "2026-06-28"
+_OPS01_START = "2026-06-22"
+_OPS01_END = "2026-06-28"
 
 _TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _now() -> datetime:
     return datetime.now(_UTC)
@@ -70,6 +71,7 @@ def _read_log_lines(date_prefix: str) -> list[str]:
 
 
 # ── Section parsers ──────────────────────────────────────────────────────────
+
 
 def _bot_process_status() -> dict:
     """Check whether tmux session and bot.py process are alive."""
@@ -155,13 +157,25 @@ def _heartbeat_metrics(lines: list[str]) -> dict:
 
 def _connection_metrics(lines: list[str]) -> dict:
     """Count disconnects, reconnect successes/failures, watchdog alerts, rpc timeouts."""
-    disconnects = sum(1 for l in lines if "MetaAPI RPC timeout" in l or
-                      "connection_status=DISCONNECTED" in l and "[HEARTBEAT]" in l)
+    disconnects = sum(
+        1
+        for l in lines
+        if "MetaAPI RPC timeout" in l
+        or "connection_status=DISCONNECTED" in l
+        and "[HEARTBEAT]" in l
+    )
     rpc_timeouts = sum(1 for l in lines if "MetaAPI RPC timeout" in l)
-    reconnect_ok = sum(1 for l in lines if "reconnected successfully" in l.lower() or
-                       "reconnect: connection established" in l.lower())
-    reconnect_fail = sum(1 for l in lines if "MetaAPI reconnect failed" in l or
-                         "reconnect failed" in l.lower())
+    reconnect_ok = sum(
+        1
+        for l in lines
+        if "reconnected successfully" in l.lower()
+        or "reconnect: connection established" in l.lower()
+    )
+    reconnect_fail = sum(
+        1
+        for l in lines
+        if "MetaAPI reconnect failed" in l or "reconnect failed" in l.lower()
+    )
     watchdog = sum(1 for l in lines if "CRITICAL" in l and "heartbeat" in l.lower())
     connected_events = sum(1 for l in lines if "MetaAPI connected" in l)
 
@@ -178,8 +192,12 @@ def _connection_metrics(lines: list[str]) -> dict:
 def _signal_metrics(lines: list[str]) -> dict:
     """Count signals generated and orders attempted today."""
     signals = sum(1 for l in lines if "SIGNAL" in l and "generated" in l.lower())
-    orders_ok = sum(1 for l in lines if "ORDER_FILLED" in l or "order placed" in l.lower())
-    orders_rej = sum(1 for l in lines if "ORDER_REJECTED" in l or "SPREAD_TOO_WIDE" in l)
+    orders_ok = sum(
+        1 for l in lines if "ORDER_FILLED" in l or "order placed" in l.lower()
+    )
+    orders_rej = sum(
+        1 for l in lines if "ORDER_REJECTED" in l or "SPREAD_TOO_WIDE" in l
+    )
     errors = sum(1 for l in lines if "ERROR" in l)
     return {
         "signals_generated": signals,
@@ -221,7 +239,7 @@ def _ops01_status() -> dict:
     today = _now().date()
     try:
         start = datetime.strptime(_OPS01_START, "%Y-%m-%d").date()
-        end   = datetime.strptime(_OPS01_END,   "%Y-%m-%d").date()
+        end = datetime.strptime(_OPS01_END, "%Y-%m-%d").date()
         day_n = (today - start).days + 1
         days_left = (end - today).days
         pct = min(100, round((today - start).days / (end - start).days * 100))
@@ -238,6 +256,7 @@ def _ops01_status() -> dict:
 
 def _disk_info() -> str:
     import shutil
+
     total, used, free = shutil.disk_usage("/")
     return f"{free / 1e9:.1f} GB free ({free / total * 100:.0f}%)"
 
@@ -245,12 +264,14 @@ def _disk_info() -> str:
 def _cpu_pct() -> float:
     """Sample CPU usage over 0.3s interval from /proc/stat."""
     import time
+
     def _read():
         with open("/proc/stat") as f:
             parts = list(map(int, f.readline().split()[1:8]))
         idle = parts[3]
         total = sum(parts)
         return idle, total
+
     i1, t1 = _read()
     time.sleep(0.3)
     i2, t2 = _read()
@@ -281,6 +302,7 @@ def _ram_info() -> dict:
 
 
 # ── Render ────────────────────────────────────────────────────────────────────
+
 
 def _fmt_opt(val, suffix: str = "", na: str = "—") -> str:
     if val is None or val in ("?", "null", ""):
@@ -332,7 +354,9 @@ def generate_report(date_str: str) -> str:
 
     a(f"# Daily Status Report — {date_str}")
     a(f"# Generated: {now_str}")
-    a(f"# OPS-01 Day {ops['day_n']} / 7 ({ops['pct_complete']}% complete, {ops['days_left']} days left)")
+    a(
+        f"# OPS-01 Day {ops['day_n']} / 7 ({ops['pct_complete']}% complete, {ops['days_left']} days left)"
+    )
     a("")
     a("---")
     a("")
@@ -342,12 +366,24 @@ def generate_report(date_str: str) -> str:
     a("")
     a(f"| Check | Status |")
     a(f"|---|---|")
-    a(f"| Bot process (PID {proc['pid'] or 'N/A'}) | {_status_icon(process_ok)} {'RUNNING' if process_ok else 'NOT RUNNING'} |")
-    a(f"| tmux session 'bot' | {_status_icon(proc['tmux_alive'])} {'alive' if proc['tmux_alive'] else 'MISSING'} |")
-    a(f"| MetaAPI connection | {'✅' if conn_status == 'CONNECTED' else '🔴'} {conn_status} |")
-    a(f"| LIVE_TRADING guard | {_status_icon(live_guard)} {'false (safe)' if live_guard else 'WARNING — NOT false'} |")
-    a(f"| Memory (bot RSS) | {'✅' if proc['rss_mb'] and proc['rss_mb'] < 500 else '⚠️'} {_fmt_opt(proc['rss_mb'], ' MB')} |")
-    a(f"| RAM (system) | {'✅' if ram['pct'] < 85 else '⚠️'} {ram['used_mb']} MB / {ram['total_mb']} MB ({ram['pct']}% used) |")
+    a(
+        f"| Bot process (PID {proc['pid'] or 'N/A'}) | {_status_icon(process_ok)} {'RUNNING' if process_ok else 'NOT RUNNING'} |"
+    )
+    a(
+        f"| tmux session 'bot' | {_status_icon(proc['tmux_alive'])} {'alive' if proc['tmux_alive'] else 'MISSING'} |"
+    )
+    a(
+        f"| MetaAPI connection | {'✅' if conn_status == 'CONNECTED' else '🔴'} {conn_status} |"
+    )
+    a(
+        f"| LIVE_TRADING guard | {_status_icon(live_guard)} {'false (safe)' if live_guard else 'WARNING — NOT false'} |"
+    )
+    a(
+        f"| Memory (bot RSS) | {'✅' if proc['rss_mb'] and proc['rss_mb'] < 500 else '⚠️'} {_fmt_opt(proc['rss_mb'], ' MB')} |"
+    )
+    a(
+        f"| RAM (system) | {'✅' if ram['pct'] < 85 else '⚠️'} {ram['used_mb']} MB / {ram['total_mb']} MB ({ram['pct']}% used) |"
+    )
     a(f"| CPU (sampled) | {'✅' if cpu < 80 else '⚠️'} {cpu}% |")
     a(f"| Disk | {'✅' if 41 > 10 else '⚠️'} {_disk_info()} |")
     a("")
@@ -356,7 +392,9 @@ def generate_report(date_str: str) -> str:
     a("## 2. Heartbeat Status")
     a("")
     last_age = hb.get("age_s")
-    age_str = f"{last_age // 60}m {last_age % 60}s ago" if last_age is not None else "unknown"
+    age_str = (
+        f"{last_age // 60}m {last_age % 60}s ago" if last_age is not None else "unknown"
+    )
     a(f"| Metric | Value |")
     a(f"|---|---|")
     a(f"| Heartbeats today | {hb.get('count', 0)} |")
@@ -381,7 +419,9 @@ def generate_report(date_str: str) -> str:
     a(f"| Successful reconnects | {conn.get('reconnect_ok', 0)} |")
     a(f"| Failed reconnects | {conn.get('reconnect_fail', 0)} |")
     a(f"| Watchdog alerts (CRITICAL) | {conn.get('watchdog_alerts', 0)} |")
-    a(f"| ERROR lines in log | {conn.get('errors_in_log', sig.get('errors_in_log', 0))} |")
+    a(
+        f"| ERROR lines in log | {conn.get('errors_in_log', sig.get('errors_in_log', 0))} |"
+    )
     a("")
 
     # ── 4. Signals & Orders ───────────────────────────────────────────────────
@@ -389,9 +429,13 @@ def generate_report(date_str: str) -> str:
     a("")
     a(f"| Metric | Value |")
     a(f"|---|---|")
-    a(f"| Signals generated | {daily.get('signals_generated', sig.get('signals_generated', 0))} |")
+    a(
+        f"| Signals generated | {daily.get('signals_generated', sig.get('signals_generated', 0))} |"
+    )
     a(f"| Orders filled | {daily.get('orders_filled', sig.get('orders_ok', 0))} |")
-    a(f"| Orders rejected | {daily.get('orders_rejected', sig.get('orders_rejected', 0))} |")
+    a(
+        f"| Orders rejected | {daily.get('orders_rejected', sig.get('orders_rejected', 0))} |"
+    )
     a(f"| Trades opened | {daily.get('orders_filled', 0)} |")
     a(f"| Trades closed | {daily.get('trades_closed', 0)} |")
     a(f"| Trades still open | {daily.get('trades_still_open', 0)} |")
@@ -422,7 +466,9 @@ def generate_report(date_str: str) -> str:
         a(f"| Profit Factor | {_fmt_opt(pf)}{_pf_badge(pf)} |")
         a(f"| Best trade | {_fmt_opt(daily.get('best_trade_R'), ' R')} |")
         a(f"| Worst trade | {_fmt_opt(daily.get('worst_trade_R'), ' R')} |")
-        a(f"| Avg hold time | {_fmt_opt(daily.get('average_hold_time_minutes'), ' min')} |")
+        a(
+            f"| Avg hold time | {_fmt_opt(daily.get('average_hold_time_minutes'), ' min')} |"
+        )
         a("")
 
     # ── 6. Session Breakdown ──────────────────────────────────────────────────
@@ -432,9 +478,11 @@ def generate_report(date_str: str) -> str:
         a("| Session | Trades | Wins | Win% | Avg R | PF |")
         a("|---|---|---|---|---|---|")
         for sess, m in sorted(session_bd.items()):
-            a(f"| {sess.upper()} | {m.get('trade_count', 0)} | {m.get('wins', 0)} | "
-              f"{_fmt_opt(m.get('win_rate'), '%')} | {_fmt_opt(m.get('average_R'))} | "
-              f"{_fmt_opt(m.get('PF'))}{_pf_badge(m.get('PF'))} |")
+            a(
+                f"| {sess.upper()} | {m.get('trade_count', 0)} | {m.get('wins', 0)} | "
+                f"{_fmt_opt(m.get('win_rate'), '%')} | {_fmt_opt(m.get('average_R'))} | "
+                f"{_fmt_opt(m.get('PF'))}{_pf_badge(m.get('PF'))} |"
+            )
         a("")
     else:
         a("No session data yet (no completed trades today).")
@@ -454,9 +502,11 @@ def generate_report(date_str: str) -> str:
         a("| Symbol | Trades | Wins | Win% | Avg R | PF |")
         a("|---|---|---|---|---|---|")
         for sym, m in sorted(symbol_bd.items()):
-            a(f"| {sym} | {m.get('trade_count', 0)} | {m.get('wins', 0)} | "
-              f"{_fmt_opt(m.get('win_rate'), '%')} | {_fmt_opt(m.get('average_R'))} | "
-              f"{_fmt_opt(m.get('PF'))}{_pf_badge(m.get('PF'))} |")
+            a(
+                f"| {sym} | {m.get('trade_count', 0)} | {m.get('wins', 0)} | "
+                f"{_fmt_opt(m.get('win_rate'), '%')} | {_fmt_opt(m.get('average_R'))} | "
+                f"{_fmt_opt(m.get('PF'))}{_pf_badge(m.get('PF'))} |"
+            )
         a("")
     else:
         a("No symbol data yet (no completed trades today).")
@@ -475,7 +525,9 @@ def generate_report(date_str: str) -> str:
     halted = state.get("halted", False)
     a(f"| Guard | Status |")
     a(f"|---|---|")
-    a(f"| Trading halted | {'🔴 YES — ' + str(state.get('halt_reason', '')) if halted else '✅ NO'} |")
+    a(
+        f"| Trading halted | {'🔴 YES — ' + str(state.get('halt_reason', '')) if halted else '✅ NO'} |"
+    )
     a(f"| Daily loss (R) | {_fmt_opt(state.get('daily_loss_r'))} / −3R limit |")
     a(f"| Weekly loss (R) | {_fmt_opt(state.get('weekly_loss_r'))} |")
     a(f"| Consecutive losses | {state.get('consecutive_losses', 0)} / 5 limit |")
@@ -515,7 +567,9 @@ def generate_report(date_str: str) -> str:
         a(f"| Completed trades | {wn} |")
         a(f"| Win rate | {_fmt_opt(weekly.get('win_rate'), '%')} |")
         a(f"| Average R | {_fmt_opt(weekly.get('average_R'))} |")
-        a(f"| Profit Factor | {_fmt_opt(weekly.get('PF'))}{_pf_badge(weekly.get('PF'))} |")
+        a(
+            f"| Profit Factor | {_fmt_opt(weekly.get('PF'))}{_pf_badge(weekly.get('PF'))} |"
+        )
         a(f"| Total R | {_fmt_opt(weekly.get('total_R'))} |")
         a("")
 
@@ -535,11 +589,17 @@ def generate_report(date_str: str) -> str:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="RESEARCH-06 daily status report")
-    parser.add_argument("--date", default=_now().strftime("%Y-%m-%d"),
-                        help="Date to report on (YYYY-MM-DD), default: today UTC")
-    parser.add_argument("--out", default=None, help="Output path (default: reports/daily_status.md)")
+    parser.add_argument(
+        "--date",
+        default=_now().strftime("%Y-%m-%d"),
+        help="Date to report on (YYYY-MM-DD), default: today UTC",
+    )
+    parser.add_argument(
+        "--out", default=None, help="Output path (default: reports/daily_status.md)"
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress stdout echo")
     args = parser.parse_args()
 

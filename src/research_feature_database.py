@@ -8,7 +8,6 @@ import pandas as pd
 
 from src.analytics.duckdb_store import DuckDBStore
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RAW_ROOT = ROOT / "data" / "raw"
 DEFAULT_PROCESSED_ROOT = ROOT / "data" / "processed"
@@ -58,7 +57,11 @@ def _normalize_source_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
         df["volume"] = 0.0
 
     out = df[["timestamp", "pair", "open", "high", "low", "close", "volume"]].copy()
-    out = out.sort_values("timestamp").drop_duplicates(subset=["timestamp", "pair"], keep="last").reset_index(drop=True)
+    out = (
+        out.sort_values("timestamp")
+        .drop_duplicates(subset=["timestamp", "pair"], keep="last")
+        .reset_index(drop=True)
+    )
     return out
 
 
@@ -70,7 +73,9 @@ def _read_candle_file(path: Path, symbol: str) -> pd.DataFrame:
     return _normalize_source_frame(frame, symbol)
 
 
-def discover_m1_sources(symbol: str, raw_root: Path, processed_root: Path) -> list[Path]:
+def discover_m1_sources(
+    symbol: str, raw_root: Path, processed_root: Path
+) -> list[Path]:
     symbol = symbol.upper().strip()
     matches: set[Path] = set()
 
@@ -102,7 +107,11 @@ def load_symbol_m1(symbol: str, paths: FeatureDatabasePaths) -> pd.DataFrame:
 
     frames = [_read_candle_file(path, symbol) for path in sources]
     frame = pd.concat(frames, ignore_index=True)
-    frame = frame.sort_values("timestamp").drop_duplicates(subset=["timestamp", "pair"], keep="last").reset_index(drop=True)
+    frame = (
+        frame.sort_values("timestamp")
+        .drop_duplicates(subset=["timestamp", "pair"], keep="last")
+        .reset_index(drop=True)
+    )
     return frame
 
 
@@ -123,8 +132,16 @@ def detect_swings(frame: pd.DataFrame, n: int = 5) -> pd.DataFrame:
 
     df = frame.copy()
     window = 2 * n + 1
-    df["swing_high"] = df["high"].eq(df["high"].rolling(window=window, center=True, min_periods=window).max()).fillna(False)
-    df["swing_low"] = df["low"].eq(df["low"].rolling(window=window, center=True, min_periods=window).min()).fillna(False)
+    df["swing_high"] = (
+        df["high"]
+        .eq(df["high"].rolling(window=window, center=True, min_periods=window).max())
+        .fillna(False)
+    )
+    df["swing_low"] = (
+        df["low"]
+        .eq(df["low"].rolling(window=window, center=True, min_periods=window).min())
+        .fillna(False)
+    )
     return df
 
 
@@ -165,7 +182,11 @@ def annotate_structure(frame: pd.DataFrame) -> pd.DataFrame:
             prev_swing_low = float(row["low"])
 
         close = float(row["close"])
-        if prev_swing_high is not None and close > prev_swing_high and (last_broken_high is None or prev_swing_high > last_broken_high):
+        if (
+            prev_swing_high is not None
+            and close > prev_swing_high
+            and (last_broken_high is None or prev_swing_high > last_broken_high)
+        ):
             event = "CHOCH" if trend == "bearish" else "BOS"
             df.at[idx, "structure"] = event
             df.at[idx, "bos"] = event == "BOS"
@@ -174,7 +195,11 @@ def annotate_structure(frame: pd.DataFrame) -> pd.DataFrame:
             trend = "bullish"
             last_broken_high = prev_swing_high
 
-        if prev_swing_low is not None and close < prev_swing_low and (last_broken_low is None or prev_swing_low < last_broken_low):
+        if (
+            prev_swing_low is not None
+            and close < prev_swing_low
+            and (last_broken_low is None or prev_swing_low < last_broken_low)
+        ):
             event = "CHOCH" if trend == "bullish" else "BOS"
             df.at[idx, "structure"] = event
             df.at[idx, "bos"] = event == "BOS"
@@ -265,7 +290,9 @@ def annotate_fvg(frame: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def build_symbol_feature_frame(symbol: str, paths: FeatureDatabasePaths, swing_lookback: int = 5) -> pd.DataFrame:
+def build_symbol_feature_frame(
+    symbol: str, paths: FeatureDatabasePaths, swing_lookback: int = 5
+) -> pd.DataFrame:
     base = load_symbol_m1(symbol, paths)
     base = label_sessions(base)
     base = detect_swings(base, n=swing_lookback)
@@ -313,11 +340,49 @@ def build_symbol_feature_frame(symbol: str, paths: FeatureDatabasePaths, swing_l
 
 
 def _stage_views(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    candles_labeled = frame[["timestamp", "pair", "open", "high", "low", "close", "volume", "session"]].copy()
-    structure = frame[["timestamp", "pair", "swing_high", "swing_low", "structure", "bos", "choch", "direction"]].copy()
-    sweeps = frame.loc[frame["sweep_high"] | frame["sweep_low"], ["timestamp", "pair", "sweep_high", "sweep_low", "direction"]].copy()
-    order_blocks = frame.loc[frame["has_order_block"], ["timestamp", "pair", "has_order_block", "ob_type", "ob_high", "ob_low", "direction"]].copy()
-    fvgs = frame.loc[frame["has_fvg"], ["timestamp", "pair", "has_fvg", "fvg_type", "fvg_high", "fvg_low", "direction"]].copy()
+    candles_labeled = frame[
+        ["timestamp", "pair", "open", "high", "low", "close", "volume", "session"]
+    ].copy()
+    structure = frame[
+        [
+            "timestamp",
+            "pair",
+            "swing_high",
+            "swing_low",
+            "structure",
+            "bos",
+            "choch",
+            "direction",
+        ]
+    ].copy()
+    sweeps = frame.loc[
+        frame["sweep_high"] | frame["sweep_low"],
+        ["timestamp", "pair", "sweep_high", "sweep_low", "direction"],
+    ].copy()
+    order_blocks = frame.loc[
+        frame["has_order_block"],
+        [
+            "timestamp",
+            "pair",
+            "has_order_block",
+            "ob_type",
+            "ob_high",
+            "ob_low",
+            "direction",
+        ],
+    ].copy()
+    fvgs = frame.loc[
+        frame["has_fvg"],
+        [
+            "timestamp",
+            "pair",
+            "has_fvg",
+            "fvg_type",
+            "fvg_high",
+            "fvg_low",
+            "direction",
+        ],
+    ].copy()
     return {
         "candles_labeled": candles_labeled,
         "structure": structure,
@@ -361,12 +426,16 @@ def build_feature_database(
     for key, frames in stage_buckets.items():
         if frames:
             combined = pd.concat(frames, ignore_index=True)
-            combined = combined.sort_values(["pair", "timestamp"]).reset_index(drop=True)
+            combined = combined.sort_values(["pair", "timestamp"]).reset_index(
+                drop=True
+            )
         else:
             combined = pd.DataFrame()
         outputs[key] = combined
 
-    _save_parquet(outputs["candles_labeled"], paths.stage_root / "candles_labeled.parquet")
+    _save_parquet(
+        outputs["candles_labeled"], paths.stage_root / "candles_labeled.parquet"
+    )
     _save_parquet(outputs["structure"], paths.stage_root / "structure.parquet")
     _save_parquet(outputs["sweeps"], paths.stage_root / "sweeps.parquet")
     _save_parquet(outputs["order_blocks"], paths.stage_root / "order_blocks.parquet")

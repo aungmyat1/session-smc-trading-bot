@@ -62,4 +62,3 @@ class OrderManager:
 
     def all(self) -> list[VirtualOrder]:
         return list(self._orders.values())
-

@@ -7,7 +7,9 @@ from typing import Any
 import yaml
 
 _ROOT = Path(__file__).resolve().parents[1]
-_DEFAULT_RULES_PATH = _ROOT / "execution_validation" / "config" / "validation_rules.yaml"
+_DEFAULT_RULES_PATH = (
+    _ROOT / "execution_validation" / "config" / "validation_rules.yaml"
+)
 
 
 @dataclass(slots=True)
@@ -22,7 +24,9 @@ class ValidationRules:
     minimum_live_executed_orders: int = 100
     risk_account_balance: float = 10_000.0
     risk_pct: float = 0.5
-    max_spread_points: dict[str, float] = field(default_factory=lambda: {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0})
+    max_spread_points: dict[str, float] = field(
+        default_factory=lambda: {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0}
+    )
     minimum_lot: float = 0.01
     maximum_lot: float = 10.0
     min_stop_distance_points: int = 50
@@ -39,17 +43,29 @@ def load_validation_rules(path: Path | str | None = None) -> ValidationRules:
         if isinstance(loaded, dict):
             payload = loaded
     return ValidationRules(
-        signal_match_minimum=float(payload.get("signal_match", {}).get("minimum", 0.99)),
+        signal_match_minimum=float(
+            payload.get("signal_match", {}).get("minimum", 0.99)
+        ),
         maximum_slippage_pip=float(payload.get("maximum_slippage_pip", 0.5)),
         maximum_pf_difference=float(payload.get("maximum_pf_difference", 0.10)),
         maximum_missing_orders=float(payload.get("maximum_missing_orders", 0.01)),
-        minimum_demo_executed_orders=int(payload.get("minimum_demo_executed_orders", 1)),
-        minimum_shadow_executed_orders=int(payload.get("minimum_shadow_executed_orders", 30)),
-        minimum_small_live_executed_orders=int(payload.get("minimum_small_live_executed_orders", 30)),
-        minimum_live_executed_orders=int(payload.get("minimum_live_executed_orders", 100)),
+        minimum_demo_executed_orders=int(
+            payload.get("minimum_demo_executed_orders", 1)
+        ),
+        minimum_shadow_executed_orders=int(
+            payload.get("minimum_shadow_executed_orders", 30)
+        ),
+        minimum_small_live_executed_orders=int(
+            payload.get("minimum_small_live_executed_orders", 30)
+        ),
+        minimum_live_executed_orders=int(
+            payload.get("minimum_live_executed_orders", 100)
+        ),
         risk_account_balance=float(payload.get("risk_account_balance", 10_000.0)),
         risk_pct=float(payload.get("risk_pct", 0.5)),
-        max_spread_points=dict(payload.get("max_spread", {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0})),
+        max_spread_points=dict(
+            payload.get("max_spread", {"EURUSD": 3.0, "GBPUSD": 4.0, "XAUUSD": 30.0})
+        ),
         minimum_lot=float(payload.get("minimum_lot", 0.01)),
         maximum_lot=float(payload.get("maximum_lot", 10.0)),
         min_stop_distance_points=int(payload.get("min_stop_distance_points", 50)),

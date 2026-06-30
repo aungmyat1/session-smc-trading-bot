@@ -4,15 +4,24 @@ import os
 from pathlib import Path
 from typing import Any
 
-from core.strategy_registry import get_current_strategy_manifest, get_current_strategy_name
+from core.strategy_registry import (
+    get_current_strategy_manifest,
+    get_current_strategy_name,
+)
 
 
 class DeploymentStatusService:
     """Read-only deployment status view over existing runtime configuration."""
 
-    def __init__(self, *, root: Path | str, catalog_path: Path | str | None = None) -> None:
+    def __init__(
+        self, *, root: Path | str, catalog_path: Path | str | None = None
+    ) -> None:
         self.root = Path(root)
-        self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
+        self.catalog_path = (
+            Path(catalog_path)
+            if catalog_path is not None
+            else self.root / "config" / "strategy_catalog.yaml"
+        )
 
     def status(self) -> dict[str, Any]:
         current = get_current_strategy_name(self.catalog_path) or ""

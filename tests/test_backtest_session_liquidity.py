@@ -9,7 +9,7 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from scripts.backtest_session_liquidity import (
+from scripts.backtest_session_liquidity import (  # noqa: E402
     simulate_trade,
     spread_cost_r,
     compute_metrics,
@@ -18,13 +18,20 @@ from scripts.backtest_session_liquidity import (
     build_time_index,
 )
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 def _bar(time, high, low, open_=None, close=None):
     o = open_ if open_ is not None else (high + low) / 2
     c = close if close is not None else (high + low) / 2
-    return {"time": time, "open": o, "high": high, "low": low, "close": c, "volume": 0.0}
+    return {
+        "time": time,
+        "open": o,
+        "high": high,
+        "low": low,
+        "close": c,
+        "volume": 0.0,
+    }
 
 
 def _long_bars():
@@ -41,6 +48,7 @@ def _short_bars():
 
 # ── simulate_trade ────────────────────────────────────────────────────────────
 
+
 class TestSimulateTrade:
 
     def test_long_win_on_tp_hit(self):
@@ -49,7 +57,9 @@ class TestSimulateTrade:
         risk = abs(entry - sl)
         tp = entry + risk * rr
         bars = [_bar("t1", high=tp + 0.001, low=1.0705)]
-        outcome, gross_r, exit_p, _, bars_held = simulate_trade(entry, sl, side, rr, bars)
+        outcome, gross_r, exit_p, _, bars_held = simulate_trade(
+            entry, sl, side, rr, bars
+        )
         assert outcome == "win"
         assert gross_r == rr
         assert exit_p == tp
@@ -58,7 +68,9 @@ class TestSimulateTrade:
     def test_long_loss_on_sl_hit(self):
         entry, sl, side = _long_bars()
         bars = [_bar("t1", high=1.0710, low=sl - 0.001)]
-        outcome, gross_r, exit_p, _, bars_held = simulate_trade(entry, sl, side, 3.0, bars)
+        outcome, gross_r, exit_p, _, bars_held = simulate_trade(
+            entry, sl, side, 3.0, bars
+        )
         assert outcome == "loss"
         assert gross_r == -1.0
         assert exit_p == sl
@@ -106,9 +118,13 @@ class TestSimulateTrade:
         entry, sl, side = _long_bars()
         risk = abs(entry - sl)
         exit_close = entry + risk * 1.5  # halfway to 3R
-        bars = [_bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001, close=exit_close)
-                for i in range(96)]
-        outcome, gross_r, exit_p, _, bars_held = simulate_trade(entry, sl, side, 3.0, bars)
+        bars = [
+            _bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001, close=exit_close)
+            for i in range(96)
+        ]
+        outcome, gross_r, exit_p, _, bars_held = simulate_trade(
+            entry, sl, side, 3.0, bars
+        )
         assert outcome == "timeout"
         assert abs(gross_r - 1.5) < 1e-9
         assert bars_held == 96
@@ -116,14 +132,17 @@ class TestSimulateTrade:
     def test_timeout_at_max_bars_cap(self):
         """Extra bars beyond max_bars=96 are ignored."""
         entry, sl, side = _long_bars()
-        bars = [_bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001)
-                for i in range(200)]
+        bars = [
+            _bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001) for i in range(200)
+        ]
         _, _, _, _, bars_held = simulate_trade(entry, sl, side, 3.0, bars, max_bars=96)
         assert bars_held == 96
 
     def test_timeout_with_fewer_than_max_bars(self):
         entry, sl, side = _long_bars()
-        bars = [_bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001) for i in range(10)]
+        bars = [
+            _bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001) for i in range(10)
+        ]
         outcome, _, _, _, bars_held = simulate_trade(entry, sl, side, 3.0, bars)
         assert outcome == "timeout"
         assert bars_held == 10
@@ -160,8 +179,10 @@ class TestSimulateTrade:
         entry, sl, side = _short_bars()
         risk = abs(entry - sl)
         exit_close = entry - risk * 1.0  # exactly 1R profit direction
-        bars = [_bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001, close=exit_close)
-                for i in range(96)]
+        bars = [
+            _bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001, close=exit_close)
+            for i in range(96)
+        ]
         outcome, gross_r, _, _, _ = simulate_trade(entry, sl, side, 3.0, bars)
         assert outcome == "timeout"
         assert abs(gross_r - 1.0) < 1e-9
@@ -169,7 +190,9 @@ class TestSimulateTrade:
     def test_custom_max_bars(self):
         """max_bars override stops at the custom limit."""
         entry, sl, side = _long_bars()
-        bars = [_bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001) for i in range(50)]
+        bars = [
+            _bar(f"t{i}", high=entry + 0.0001, low=entry - 0.0001) for i in range(50)
+        ]
         _, _, _, _, bars_held = simulate_trade(entry, sl, side, 3.0, bars, max_bars=20)
         assert bars_held == 20
 
@@ -178,15 +201,16 @@ class TestSimulateTrade:
         risk = abs(entry - sl)
         for rr in [2.0, 3.0, 4.0, 5.0]:
             tp = entry + risk * rr
-            bars_hit  = [_bar("t1", high=tp + 0.0001, low=entry - 0.0001)]
+            bars_hit = [_bar("t1", high=tp + 0.0001, low=entry - 0.0001)]
             bars_miss = [_bar("t1", high=tp - 0.0001, low=entry - 0.0001)]
-            outcome_hit,  _, _, _, _ = simulate_trade(entry, sl, side, rr, bars_hit)
+            outcome_hit, _, _, _, _ = simulate_trade(entry, sl, side, rr, bars_hit)
             outcome_miss, _, _, _, _ = simulate_trade(entry, sl, side, rr, bars_miss)
-            assert outcome_hit  == "win",    f"rr={rr}: expected win"
-            assert outcome_miss != "win",    f"rr={rr}: should not win yet"
+            assert outcome_hit == "win", f"rr={rr}: expected win"
+            assert outcome_miss != "win", f"rr={rr}: should not win yet"
 
 
 # ── spread_cost_r ─────────────────────────────────────────────────────────────
+
 
 class TestSpreadCostR:
 
@@ -217,6 +241,7 @@ class TestSpreadCostR:
 
 
 # ── compute_metrics ───────────────────────────────────────────────────────────
+
 
 class TestComputeMetrics:
 
@@ -283,6 +308,7 @@ class TestComputeMetrics:
 
 # ── max_drawdown ──────────────────────────────────────────────────────────────
 
+
 class TestMaxDrawdown:
 
     def test_empty(self):
@@ -313,6 +339,7 @@ class TestMaxDrawdown:
 
 # ── extract_contexts ──────────────────────────────────────────────────────────
 
+
 class TestExtractContexts:
 
     def _make_event(self, date, etype, detail):
@@ -320,8 +347,7 @@ class TestExtractContexts:
 
     def test_asian_range_parsed(self):
         ev = self._make_event(
-            "2023-03-14", "ASIAN_RANGE",
-            "H=1.07309 L=1.06970 range=33.9pip"
+            "2023-03-14", "ASIAN_RANGE", "H=1.07309 L=1.06970 range=33.9pip"
         )
         asian, _ = extract_contexts([ev])
         assert "2023-03-14" in asian
@@ -332,8 +358,9 @@ class TestExtractContexts:
 
     def test_sweep_parsed(self):
         ev = self._make_event(
-            "2023-03-14", "SWEEP",
-            "[08:00 UTC] london side=long price=1.06878 bias=bullish"
+            "2023-03-14",
+            "SWEEP",
+            "[08:00 UTC] london side=long price=1.06878 bias=bullish",
         )
         _, sweeps = extract_contexts([ev])
         assert ("2023-03-14", "london") in sweeps
@@ -343,10 +370,16 @@ class TestExtractContexts:
 
     def test_later_sweep_overwrites_earlier(self):
         evs = [
-            self._make_event("2023-03-14", "SWEEP",
-                             "[06:15 UTC] london side=long price=1.06942 bias=bullish"),
-            self._make_event("2023-03-14", "SWEEP",
-                             "[08:00 UTC] london side=long price=1.06878 bias=bullish"),
+            self._make_event(
+                "2023-03-14",
+                "SWEEP",
+                "[06:15 UTC] london side=long price=1.06942 bias=bullish",
+            ),
+            self._make_event(
+                "2023-03-14",
+                "SWEEP",
+                "[08:00 UTC] london side=long price=1.06878 bias=bullish",
+            ),
         ]
         _, sweeps = extract_contexts(evs)
         sw = sweeps[("2023-03-14", "london")]
@@ -354,10 +387,16 @@ class TestExtractContexts:
 
     def test_different_sessions_separate(self):
         evs = [
-            self._make_event("2023-03-14", "SWEEP",
-                             "[08:00 UTC] london side=long price=1.0 bias=bullish"),
-            self._make_event("2023-03-14", "SWEEP",
-                             "[13:00 UTC] new_york side=long price=1.1 bias=bullish"),
+            self._make_event(
+                "2023-03-14",
+                "SWEEP",
+                "[08:00 UTC] london side=long price=1.0 bias=bullish",
+            ),
+            self._make_event(
+                "2023-03-14",
+                "SWEEP",
+                "[13:00 UTC] new_york side=long price=1.1 bias=bullish",
+            ),
         ]
         _, sweeps = extract_contexts(evs)
         assert ("2023-03-14", "london") in sweeps
@@ -375,8 +414,9 @@ class TestExtractContexts:
 
     def test_bearish_sweep_bias(self):
         ev = self._make_event(
-            "2024-06-05", "SWEEP",
-            "[14:00 UTC] new_york side=short price=1.0850 bias=bearish"
+            "2024-06-05",
+            "SWEEP",
+            "[14:00 UTC] new_york side=short price=1.0850 bias=bearish",
         )
         _, sweeps = extract_contexts([ev])
         sw = sweeps[("2024-06-05", "new_york")]
@@ -384,8 +424,12 @@ class TestExtractContexts:
 
     def test_multiple_dates(self):
         evs = [
-            self._make_event("2023-03-14", "ASIAN_RANGE", "H=1.073 L=1.069 range=40.0pip"),
-            self._make_event("2023-03-15", "ASIAN_RANGE", "H=1.080 L=1.075 range=50.0pip"),
+            self._make_event(
+                "2023-03-14", "ASIAN_RANGE", "H=1.073 L=1.069 range=40.0pip"
+            ),
+            self._make_event(
+                "2023-03-15", "ASIAN_RANGE", "H=1.080 L=1.075 range=50.0pip"
+            ),
         ]
         asian, _ = extract_contexts(evs)
         assert len(asian) == 2
@@ -400,13 +444,35 @@ class TestExtractContexts:
 
 # ── build_time_index ──────────────────────────────────────────────────────────
 
+
 class TestBuildTimeIndex:
 
     def test_maps_time_to_index(self):
         bars = [
-            {"time": "2023-03-14T06:00:00Z", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.0, "volume": 0},
-            {"time": "2023-03-14T06:15:00Z", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.0, "volume": 0},
-            {"time": "2023-03-14T06:30:00Z", "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.0, "volume": 0},
+            {
+                "time": "2023-03-14T06:00:00Z",
+                "open": 1.0,
+                "high": 1.1,
+                "low": 0.9,
+                "close": 1.0,
+                "volume": 0,
+            },
+            {
+                "time": "2023-03-14T06:15:00Z",
+                "open": 1.0,
+                "high": 1.1,
+                "low": 0.9,
+                "close": 1.0,
+                "volume": 0,
+            },
+            {
+                "time": "2023-03-14T06:30:00Z",
+                "open": 1.0,
+                "high": 1.1,
+                "low": 0.9,
+                "close": 1.0,
+                "volume": 0,
+            },
         ]
         idx = build_time_index(bars)
         assert idx["2023-03-14T06:00:00Z"] == 0
@@ -414,7 +480,16 @@ class TestBuildTimeIndex:
         assert idx["2023-03-14T06:30:00Z"] == 2
 
     def test_unknown_time_not_in_index(self):
-        bars = [{"time": "2023-03-14T06:00:00Z", "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 0}]
+        bars = [
+            {
+                "time": "2023-03-14T06:00:00Z",
+                "open": 1.0,
+                "high": 1.0,
+                "low": 1.0,
+                "close": 1.0,
+                "volume": 0,
+            }
+        ]
         idx = build_time_index(bars)
         assert "2023-03-14T07:00:00Z" not in idx
 

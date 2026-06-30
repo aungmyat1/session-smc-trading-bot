@@ -1,4 +1,5 @@
 """Quality Agent report — JSON and Markdown output."""
+
 from __future__ import annotations
 
 import json
@@ -75,7 +76,11 @@ class QualityReport:
         for key in _STAGES:
             s = d.get(key)
             if s:
-                si = "✅" if s["status"] == "PASS" else ("⏭" if s["status"] == "SKIP" else "❌")
+                si = (
+                    "✅"
+                    if s["status"] == "PASS"
+                    else ("⏭" if s["status"] == "SKIP" else "❌")
+                )
                 lines.append(f"| {key} | {si} {s['status']} | {s['score']} |")
 
         for key in _STAGES:

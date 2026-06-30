@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONTROL_STATE_PATH = ROOT / "reports" / "control_state.json"
 
@@ -49,11 +48,15 @@ def load_control_state() -> dict[str, Any]:
 def save_control_state(payload: dict[str, Any]) -> dict[str, Any]:
     state = _merge_default(payload)
     CONTROL_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONTROL_STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+    CONTROL_STATE_PATH.write_text(
+        json.dumps(state, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return state
 
 
-def activate_emergency_stop(*, reason: str, activated_by: str = "dashboard") -> dict[str, Any]:
+def activate_emergency_stop(
+    *, reason: str, activated_by: str = "dashboard"
+) -> dict[str, Any]:
     state = load_control_state()
     state["emergency_stop"] = {
         "active": True,
@@ -67,7 +70,9 @@ def activate_emergency_stop(*, reason: str, activated_by: str = "dashboard") -> 
     return save_control_state(state)
 
 
-def clear_emergency_stop(*, reason: str, cleared_by: str = "dashboard") -> dict[str, Any]:
+def clear_emergency_stop(
+    *, reason: str, cleared_by: str = "dashboard"
+) -> dict[str, Any]:
     state = load_control_state()
     current = state.get("emergency_stop", {})
     state["emergency_stop"] = {

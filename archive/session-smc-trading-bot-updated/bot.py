@@ -44,7 +44,7 @@ _file_handler = logging.handlers.TimedRotatingFileHandler(
     "logs/bot.log",
     when="midnight",
     utc=True,
-    backupCount=7,        # keep 7 days of rotated logs
+    backupCount=7,  # keep 7 days of rotated logs
     encoding="utf-8",
 )
 _file_handler.suffix = "%Y-%m-%d"
@@ -73,11 +73,13 @@ METAAPI_ACCOUNT_ID: str = os.getenv("VANTAGE_DEMO_METAAPI_ID", "")
 TELEGRAM_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
 
-HEARTBEAT_INTERVAL_S: int = 300   # 5 minutes
-WATCHDOG_TIMEOUT_S: int = 600     # 10 minutes — CRITICAL alert if no heartbeat fires
+HEARTBEAT_INTERVAL_S: int = 300  # 5 minutes
+WATCHDOG_TIMEOUT_S: int = 600  # 10 minutes — CRITICAL alert if no heartbeat fires
 _BOT_START_TIME: datetime = datetime.now(timezone.utc)
 _LAST_SIGNAL_TIME: "datetime | None" = None
-_last_heartbeat_ts: datetime = datetime.now(timezone.utc)  # updated each time heartbeat logs
+_last_heartbeat_ts: datetime = datetime.now(
+    timezone.utc
+)  # updated each time heartbeat logs
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
@@ -89,8 +91,8 @@ from execution.trade_logger import TradeLogger
 from monitoring.telegram import TelegramAlerter
 from strategy.session_liquidity.session_strategy import run_strategy
 
-
 # ── Main loop ─────────────────────────────────────────────────────────────────
+
 
 async def run_bot() -> None:
     telegram = TelegramAlerter(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
@@ -118,7 +120,9 @@ async def run_bot() -> None:
         await client.connect()
         logger.info("MetaAPI connected.")
 
-        await telegram.send_startup(PAIRS, CONFIG["risk"]["risk_per_trade_pct"], LIVE_TRADING)
+        await telegram.send_startup(
+            PAIRS, CONFIG["risk"]["risk_per_trade_pct"], LIVE_TRADING
+        )
 
         while True:
             now = datetime.now(timezone.utc)
@@ -130,13 +134,17 @@ async def run_bot() -> None:
                 await _send_heartbeat(client, telegram, now)
                 last_heartbeat = now
                 if not client.is_connected:
-                    logger.info("Connection lost after heartbeat — attempting reconnect")
+                    logger.info(
+                        "Connection lost after heartbeat — attempting reconnect"
+                    )
                     await client.reconnect()
 
             # ── Session boundary ──────────────────────────────────────────────
             if session != last_session:
                 if last_session is not None:
-                    await _close_session_positions(client, telegram, last_session, CONFIG)
+                    await _close_session_positions(
+                        client, telegram, last_session, CONFIG
+                    )
                 if session:
                     await telegram.send_session_open(session)
                 last_session = session
@@ -166,7 +174,10 @@ async def run_bot() -> None:
 
             logger.info(
                 "[%s] equity=%.2f balance=%.2f  %s",
-                session.upper(), equity, account_info.balance, risk.summary(),
+                session.upper(),
+                equity,
+                account_info.balance,
+                risk.summary(),
             )
 
             for symbol in PAIRS:
@@ -206,6 +217,7 @@ async def run_bot() -> None:
 
 # ── Pair scanner ──────────────────────────────────────────────────────────────
 
+
 async def _scan_pair(
     symbol: str,
     equity: float,
@@ -238,7 +250,12 @@ async def _scan_pair(
 
         logger.info(
             "[%s] New signal: %s %s  entry=%.5f sl=%.5f  ts=%s",
-            symbol, sig.side.upper(), sig.session, sig.entry, sig.stop_loss, key,
+            symbol,
+            sig.side.upper(),
+            sig.session,
+            sig.entry,
+            sig.stop_loss,
+            key,
         )
 
         success, detail = await order_manager.process_signal(sig, symbol, equity)
@@ -253,7 +270,7 @@ async def _scan_pair(
                 sl=sig.stop_loss,
                 tp=sig.take_profit,
                 risk_pct=CONFIG["risk"]["risk_per_trade_pct"],
-                lot=0.0,       # actual lot in trade_logger; telegram shows signal price
+                lot=0.0,  # actual lot in trade_logger; telegram shows signal price
                 dry_run=not LIVE_TRADING,
             )
         else:
@@ -261,6 +278,7 @@ async def _scan_pair(
 
 
 # ── Session-end position close ────────────────────────────────────────────────
+
 
 async def _close_session_positions(
     client: MetaAPIClient,
@@ -280,13 +298,16 @@ async def _close_session_positions(
             closed += 1
             logger.info(
                 "Session-end close: %s %s id=%s",
-                pos.direction, pos.symbol, pos.position_id,
+                pos.direction,
+                pos.symbol,
+                pos.position_id,
             )
 
     await telegram.send_session_close(session, closed)
 
 
 # ── Health monitor ────────────────────────────────────────────────────────────
+
 
 async def _send_heartbeat(
     client: MetaAPIClient,
@@ -331,11 +352,12 @@ async def _send_heartbeat(
         f"last_signal={last_sig}"
     )
     logger.info(msg)
-    _last_heartbeat_ts = now   # watchdog reads this to confirm heartbeat fired
+    _last_heartbeat_ts = now  # watchdog reads this to confirm heartbeat fired
     await telegram.send(msg)
 
 
 # ── Watchdog ──────────────────────────────────────────────────────────────────
+
 
 async def _run_watchdog(telegram: TelegramAlerter) -> None:
     """Fire a CRITICAL alert if no heartbeat has been logged for WATCHDOG_TIMEOUT_S.
@@ -349,7 +371,8 @@ async def _run_watchdog(telegram: TelegramAlerter) -> None:
         if age >= WATCHDOG_TIMEOUT_S:
             logger.critical(
                 "WATCHDOG: No heartbeat for %.0fs (threshold=%ds) — bot may be hung",
-                age, WATCHDOG_TIMEOUT_S,
+                age,
+                WATCHDOG_TIMEOUT_S,
             )
             await telegram.send(
                 f"[CRITICAL] No heartbeat for {age:.0f}s "

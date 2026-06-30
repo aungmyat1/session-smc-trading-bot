@@ -12,4 +12,3 @@ class AuditModule(ABC):
     @abstractmethod
     def audit(self, context: AuditContext) -> AuditResult:
         raise NotImplementedError
-

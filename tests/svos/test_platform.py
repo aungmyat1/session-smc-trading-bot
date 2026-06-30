@@ -31,7 +31,9 @@ strategies:
 def _setup_repo(tmp_path: Path) -> Path:
     (tmp_path / "config").mkdir(parents=True, exist_ok=True)
     (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "config" / "strategy_catalog.yaml").write_text(_catalog_text(), encoding="utf-8")
+    (tmp_path / "config" / "strategy_catalog.yaml").write_text(
+        _catalog_text(), encoding="utf-8"
+    )
     return tmp_path / "config" / "strategy_catalog.yaml"
 
 
@@ -101,7 +103,9 @@ def test_platform_records_standardized_evidence_and_audited_transition(tmp_path)
     )
 
     assert recorded["report"]["artifact_hash"]
-    assert recorded["evidence"]["metadata"]["report_id"] == recorded["report"]["report_id"]
+    assert (
+        recorded["evidence"]["metadata"]["report_id"] == recorded["report"]["report_id"]
+    )
     assert transition["from_stage"] == "ROBUSTNESS_VALIDATION"
     assert transition["to_stage"] == "VIRTUAL_DEMO"
     assert transition["metadata"]["governance_decision_id"]
@@ -114,7 +118,9 @@ def test_governance_blocks_transition_without_current_version_pass_evidence(tmp_
     platform.bootstrap()
 
     with pytest.raises(GovernanceGateError, match="No PASS evidence"):
-        platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review")
+        platform.audited_transition(
+            "ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review"
+        )
 
     summary = platform.strategy_summary("ST-A2")
     assert summary["record"]["current_stage"] == "ROBUSTNESS_VALIDATION"
@@ -147,7 +153,9 @@ def test_evidence_from_previous_strategy_version_does_not_qualify(tmp_path):
     platform.registry.record_version("ST-A2", actor="tester", reason="new version")
 
     with pytest.raises(GovernanceGateError, match="strategy version"):
-        platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review")
+        platform.audited_transition(
+            "ST-A2", to_stage="VIRTUAL_DEMO", reason="Qualification review"
+        )
 
 
 def test_production_approval_transition_is_disabled_during_construction(tmp_path):

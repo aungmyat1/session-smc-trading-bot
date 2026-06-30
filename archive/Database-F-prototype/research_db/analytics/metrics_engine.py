@@ -20,12 +20,14 @@ def session_stats(df: pl.DataFrame) -> pl.DataFrame:
     """Session performance breakdown."""
     return (
         df.group_by("session")
-        .agg([
-            pl.count().alias("trades"),
-            pl.col("result_r").mean().alias("avg_r"),
-            pl.col("result_r").sum().alias("total_r"),
-            ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
-        ])
+        .agg(
+            [
+                pl.count().alias("trades"),
+                pl.col("result_r").mean().alias("avg_r"),
+                pl.col("result_r").sum().alias("total_r"),
+                ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
+            ]
+        )
         .sort("avg_r", descending=True)
     )
 
@@ -34,12 +36,14 @@ def pair_stats(df: pl.DataFrame) -> pl.DataFrame:
     """Pair performance breakdown."""
     return (
         df.group_by("pair")
-        .agg([
-            pl.count().alias("trades"),
-            pl.col("result_r").mean().alias("avg_r"),
-            pl.col("result_r").sum().alias("total_r"),
-            ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
-        ])
+        .agg(
+            [
+                pl.count().alias("trades"),
+                pl.col("result_r").mean().alias("avg_r"),
+                pl.col("result_r").sum().alias("total_r"),
+                ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
+            ]
+        )
         .sort("avg_r", descending=True)
     )
 
@@ -48,12 +52,14 @@ def setup_stats(df: pl.DataFrame) -> pl.DataFrame:
     """Setup fingerprint analysis (most important edge detector)."""
     return (
         df.group_by(["sweep", "has_ob", "has_fvg", "direction"])
-        .agg([
-            pl.count().alias("trades"),
-            pl.col("result_r").mean().alias("avg_r"),
-            pl.col("result_r").sum().alias("total_r"),
-            ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
-        ])
+        .agg(
+            [
+                pl.count().alias("trades"),
+                pl.col("result_r").mean().alias("avg_r"),
+                pl.col("result_r").sum().alias("total_r"),
+                ((pl.col("result_r") > 0).mean() * 100).alias("win_rate"),
+            ]
+        )
         .sort("avg_r", descending=True)
     )
 

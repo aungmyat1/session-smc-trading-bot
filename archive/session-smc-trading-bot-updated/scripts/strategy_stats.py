@@ -70,7 +70,9 @@ def _count_signals_from_log(days: int) -> dict[str, int]:
             if not m:
                 continue
             try:
-                ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+                ts = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(
+                    tzinfo=timezone.utc
+                )
                 if ts >= cutoff:
                     counts["ST-A2"] += 1
             except ValueError:
@@ -79,9 +81,9 @@ def _count_signals_from_log(days: int) -> dict[str, int]:
 
 
 def _strategy_breakdown(trades: list[dict]) -> dict[str, dict]:
-    stats: dict[str, dict] = defaultdict(lambda: {
-        "opened": 0, "closed": 0, "wins": 0, "losses": 0, "total_r": 0.0
-    })
+    stats: dict[str, dict] = defaultdict(
+        lambda: {"opened": 0, "closed": 0, "wins": 0, "losses": 0, "total_r": 0.0}
+    )
     for t in trades:
         strat = t.get("strategy", "unknown")
         if t.get("record_type") == "open":
@@ -98,17 +100,19 @@ def _strategy_breakdown(trades: list[dict]) -> dict[str, dict]:
 
 
 def _print_report(days: int) -> None:
-    trades   = _load_journal_trades(days)
-    signals  = _count_signals_from_log(days)
+    trades = _load_journal_trades(days)
+    signals = _count_signals_from_log(days)
     by_strat = _strategy_breakdown(trades)
 
-    total_opens  = sum(1 for t in trades if t.get("record_type") == "open")
+    total_opens = sum(1 for t in trades if t.get("record_type") == "open")
     total_closes = sum(1 for t in trades if t.get("record_type") == "close")
-    all_r        = [t.get("result_R", 0) or 0 for t in trades if t.get("record_type") == "close"]
-    wins         = sum(1 for r in all_r if r > 0)
-    pf_denom     = sum(abs(r) for r in all_r if r < 0)
-    pf_numer     = sum(r for r in all_r if r > 0)
-    pf           = round(pf_numer / pf_denom, 2) if pf_denom else float("inf")
+    all_r = [
+        t.get("result_R", 0) or 0 for t in trades if t.get("record_type") == "close"
+    ]
+    wins = sum(1 for r in all_r if r > 0)
+    pf_denom = sum(abs(r) for r in all_r if r < 0)
+    pf_numer = sum(r for r in all_r if r > 0)
+    pf = round(pf_numer / pf_denom, 2) if pf_denom else float("inf")
 
     print()
     print("=" * 60)
@@ -126,21 +130,25 @@ def _print_report(days: int) -> None:
 
     print()
     print("  BY STRATEGY:")
-    print(f"  {'Strategy':<18} {'Signals':>7} {'Opened':>7} {'Closed':>7} "
-          f"{'W':>4} {'L':>4} {'Sum R':>7}")
+    print(
+        f"  {'Strategy':<18} {'Signals':>7} {'Opened':>7} {'Closed':>7} "
+        f"{'W':>4} {'L':>4} {'Sum R':>7}"
+    )
     print("  " + "-" * 56)
 
     all_strats = sorted(set(list(by_strat.keys()) + list(signals.keys())))
     for strat in all_strats:
         s = by_strat.get(strat, {})
         sig_count = signals.get(strat, 0)
-        opened  = s.get("opened", 0)
-        closed  = s.get("closed", 0)
-        wins_s  = s.get("wins", 0)
+        opened = s.get("opened", 0)
+        closed = s.get("closed", 0)
+        wins_s = s.get("wins", 0)
         losses_s = s.get("losses", 0)
         total_r_s = round(s.get("total_r", 0.0), 2)
-        print(f"  {strat:<18} {sig_count:>7} {opened:>7} {closed:>7} "
-              f"{wins_s:>4} {losses_s:>4} {total_r_s:>7.2f}")
+        print(
+            f"  {strat:<18} {sig_count:>7} {opened:>7} {closed:>7} "
+            f"{wins_s:>4} {losses_s:>4} {total_r_s:>7.2f}"
+        )
 
     print()
     print("=" * 60)

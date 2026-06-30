@@ -10,7 +10,6 @@ from dashboard.control_state import load_control_state, mark_report_reviewed
 from dashboard.status_mapper import recommendation_badge
 from scripts import generate_reports as report_cli
 
-
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS_ROOT = ROOT / "reports"
 REPORT_INDEX_PATH = REPORTS_ROOT / "index.json"
@@ -56,7 +55,9 @@ def _build_record(path: Path, report_type: str) -> ReportRecord:
         report_id=rel.replace("/", "__"),
         report_type=report_type,
         path=rel,
-        created_at=datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat(),
+        created_at=datetime.fromtimestamp(
+            path.stat().st_mtime, tz=timezone.utc
+        ).isoformat(),
         filename=path.name,
         title=_read_report_title(path),
     )
@@ -68,7 +69,9 @@ def scan_reports() -> list[ReportRecord]:
         directory = REPORTS_ROOT / dirname
         if not directory.exists():
             continue
-        for path in sorted(directory.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for path in sorted(
+            directory.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             records.append(_build_record(path, report_type))
     for report_type, relative_path in STATIC_REPORTS.items():
         path = ROOT / relative_path
@@ -76,7 +79,11 @@ def scan_reports() -> list[ReportRecord]:
             records.append(_build_record(path, report_type))
     svos_directory = REPORTS_ROOT / "svos"
     if svos_directory.exists():
-        for path in sorted(svos_directory.glob("**/*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for path in sorted(
+            svos_directory.glob("**/*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        ):
             records.append(_build_record(path, "svos-stage"))
     records.sort(key=lambda item: item.created_at, reverse=True)
     return records
@@ -110,7 +117,9 @@ def write_index() -> dict[str, Any]:
         "latest": latest,
     }
     REPORT_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORT_INDEX_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    REPORT_INDEX_PATH.write_text(
+        json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return payload
 
 
@@ -138,11 +147,15 @@ def latest_reports() -> dict[str, Any]:
         text = read_report(record["report_id"]).get("content", "")
         if "Final verdict:" in text:
             marker = text.split("Final verdict:", 1)[1].split("`", 2)
-            recommendation = recommendation_badge(marker[1] if len(marker) > 1 else "REVIEW")
+            recommendation = recommendation_badge(
+                marker[1] if len(marker) > 1 else "REVIEW"
+            )
             break
         if "Final recommendation:" in text:
             marker = text.split("Final recommendation:", 1)[1].split("`", 2)
-            recommendation = recommendation_badge(marker[1] if len(marker) > 1 else "REVIEW")
+            recommendation = recommendation_badge(
+                marker[1] if len(marker) > 1 else "REVIEW"
+            )
             break
     return {
         "generated_at": payload.get("generated_at"),

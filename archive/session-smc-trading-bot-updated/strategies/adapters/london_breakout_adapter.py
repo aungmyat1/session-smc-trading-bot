@@ -28,7 +28,7 @@ class LondonBreakoutAdapter(BaseStrategy):
         except ImportError:
             return None
 
-        m15    = data.get("m15", [])
+        m15 = data.get("m15", [])
         symbol = data.get("symbol", "")
 
         if len(m15) < 30:
@@ -43,7 +43,7 @@ class LondonBreakoutAdapter(BaseStrategy):
 
         sl_pips = abs(raw.entry_price - raw.sl_price) / 0.0001
         tp_pips = abs(raw.tp_price - raw.entry_price) / 0.0001
-        rr      = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
+        rr = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
 
         return Signal(
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -54,13 +54,13 @@ class LondonBreakoutAdapter(BaseStrategy):
             entry_price=float(raw.entry_price),
             stop_loss=float(raw.sl_price),
             take_profit=float(raw.tp_price),
-            risk_percent=0.20,          # conditionally validated tier-2: 0.20% per strategy_portfolio.yaml
-            confidence=min(1.0, rr / 2.0),   # 1.5R → 0.75, 2R → 1.0
+            risk_percent=0.20,  # conditionally validated tier-2: 0.20% per strategy_portfolio.yaml
+            confidence=min(1.0, rr / 2.0),  # 1.5R → 0.75, 2R → 1.0
             metadata={
-                "session":     raw.session,
-                "reason":      raw.reason,
-                "risk_pips":   round(sl_pips, 1),
+                "session": raw.session,
+                "reason": raw.reason,
+                "risk_pips": round(sl_pips, 1),
                 "reward_pips": round(tp_pips, 1),
-                "rr":          rr,
+                "rr": rr,
             },
         )

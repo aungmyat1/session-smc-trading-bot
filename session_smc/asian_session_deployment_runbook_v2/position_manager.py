@@ -27,6 +27,7 @@ STATE_FILE = Path("data/position_state.json")
 # State persistence helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def load_state() -> dict:
     """Load position state from disk. Returns {} if file missing."""
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -51,32 +52,35 @@ def save_state(state: dict) -> None:
 
 def register_position(
     position_id: str,
-    signal,           # SessionSignal
-    lots:        float,
-    state:       dict,
+    signal,  # SessionSignal
+    lots: float,
+    state: dict,
 ) -> None:
     """
     Store position metadata after a new trade is placed.
     Merges into in-memory state dict (caller must save_state afterwards).
     """
     state[position_id] = {
-        "instrument":       signal.instrument,
-        "session":          signal.session,
-        "setup":            signal.setup,
-        "side":             signal.side,
-        "entry":            signal.entry,
-        "sl":               signal.sl,
-        "tp":               signal.tp,
-        "box_high":         signal.box_high,
-        "box_low":          signal.box_low,
-        "lots":             lots,
-        "mgmt":             signal.mgmt,
+        "instrument": signal.instrument,
+        "session": signal.session,
+        "setup": signal.setup,
+        "side": signal.side,
+        "entry": signal.entry,
+        "sl": signal.sl,
+        "tp": signal.tp,
+        "box_high": signal.box_high,
+        "box_low": signal.box_low,
+        "lots": lots,
+        "mgmt": signal.mgmt,
         "first_close_done": False,
-        "opened_at":        datetime.now(timezone.utc).isoformat(),
+        "opened_at": datetime.now(timezone.utc).isoformat(),
     }
     log.info(
         "Registered positionId=%s [%s/%s %s]",
-        position_id, signal.instrument, signal.session, signal.setup,
+        position_id,
+        signal.instrument,
+        signal.session,
+        signal.setup,
     )
 
 
@@ -96,11 +100,12 @@ def purge_closed_positions(state: dict, open_position_ids: list[str]) -> dict:
 # ATR helper (used for trailing stop)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _calc_atr(df_1h: pd.DataFrame, period: int = 14) -> float:
-    high_low   = df_1h["high"] - df_1h["low"]
+    high_low = df_1h["high"] - df_1h["low"]
     high_close = (df_1h["high"] - df_1h["close"].shift()).abs()
-    low_close  = (df_1h["low"]  - df_1h["close"].shift()).abs()
-    tr  = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    low_close = (df_1h["low"] - df_1h["close"].shift()).abs()
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     atr = tr.rolling(period).mean().iloc[-1]
     return float(atr)
 
@@ -109,11 +114,12 @@ def _calc_atr(df_1h: pd.DataFrame, period: int = 14) -> float:
 # Core management function — called each run_cycle
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def manage_positions(
-    executor,        # MetaApiExecutor instance
-    data:    dict,   # {'EURUSD': {'df_1h': pd.DataFrame}, ...}
-    state:   dict,   # in-memory state loaded from disk
-    cfg:     dict,
+    executor,  # MetaApiExecutor instance
+    data: dict,  # {'EURUSD': {'df_1h': pd.DataFrame}, ...}
+    state: dict,  # in-memory state loaded from disk
+    cfg: dict,
 ) -> None:
     """
     Iterate all tracked positions and apply session-specific management rules.
@@ -133,14 +139,14 @@ async def manage_positions(
             continue  # already purged or closed between iterations
 
         instrument = pos["instrument"]
-        side       = pos["side"]
-        entry      = pos["entry"]
-        sl         = pos["sl"]
-        box_high   = pos["box_high"]
-        box_low    = pos["box_low"]
-        lots       = pos["lots"]
-        mgmt       = pos["mgmt"]
-        setup      = pos["setup"]
+        side = pos["side"]
+        entry = pos["entry"]
+        sl = pos["sl"]
+        box_high = pos["box_high"]
+        box_low = pos["box_low"]
+        lots = pos["lots"]
+        mgmt = pos["mgmt"]
+        setup = pos["setup"]
         first_done = pos["first_close_done"]
 
         # ── Current price ─────────────────────────────────────────────────
@@ -161,16 +167,23 @@ async def manage_positions(
 
         log.debug(
             "[%s/%s] posId=%s side=%s mid=%.5f entry=%.5f r=%.2f first_done=%s",
-            instrument, setup, position_id, side, mid, entry, r, first_done,
+            instrument,
+            setup,
+            position_id,
+            side,
+            mid,
+            entry,
+            r,
+            first_done,
         )
 
         # ── ATR for trailing stop ─────────────────────────────────────────
         df_1h = data.get(instrument, {}).get("df_1h")
-        atr   = _calc_atr(df_1h) if df_1h is not None else sl_dist
+        atr = _calc_atr(df_1h) if df_1h is not None else sl_dist
 
-        first_close_pct    = mgmt.get("first_close_pct", 0.75)
+        first_close_pct = mgmt.get("first_close_pct", 0.75)
         first_close_target = mgmt.get("first_close_target", "opposite_box_edge")
-        trail_remainder    = mgmt.get("trail_remainder", False)
+        trail_remainder = mgmt.get("trail_remainder", False)
 
         # ─────────────────────────────────────────────────────────────────
         # SWEEP / RANGE : close 75% at opposite box edge → BE
@@ -182,28 +195,35 @@ async def manage_positions(
                 target_reached = True
                 log.info(
                     "[%s] SWEEP/RANGE long: price %.5f reached box_high %.5f — partial close",
-                    instrument, mid, box_high,
+                    instrument,
+                    mid,
+                    box_high,
                 )
             elif side == "short" and mid <= box_low:
                 target_reached = True
                 log.info(
                     "[%s] SWEEP/RANGE short: price %.5f reached box_low %.5f — partial close",
-                    instrument, mid, box_low,
+                    instrument,
+                    mid,
+                    box_low,
                 )
 
             if target_reached:
                 partial_lots = round(lots * first_close_pct, 2)
                 try:
                     await executor.place_reduce_only(
-                        position_id, partial_lots,
+                        position_id,
+                        partial_lots,
                         comment=f"first_close_{setup}",
                     )
-                    await executor.set_sl(position_id, entry)   # SL → BE
+                    await executor.set_sl(position_id, entry)  # SL → BE
                     state[position_id]["first_close_done"] = True
                     state[position_id]["sl"] = entry
                     log.info(
                         "[%s] First close done (%.2f lots) SL→BE=%.5f",
-                        instrument, partial_lots, entry,
+                        instrument,
+                        partial_lots,
+                        entry,
                     )
                 except Exception as e:
                     log.error("[%s] First close failed: %s", instrument, e)
@@ -219,7 +239,8 @@ async def manage_positions(
             elif first_close_target == "opposite_box_edge":
                 # recalculate dynamically
                 trend_r_target = (
-                    (box_high - entry) / sl_dist if side == "long"
+                    (box_high - entry) / sl_dist
+                    if side == "long"
                     else (entry - box_low) / sl_dist
                 )
 
@@ -227,15 +248,19 @@ async def manage_positions(
                 partial_lots = round(lots * first_close_pct, 2)
                 try:
                     await executor.place_reduce_only(
-                        position_id, partial_lots,
+                        position_id,
+                        partial_lots,
                         comment="first_close_trend",
                     )
-                    await executor.set_sl(position_id, entry)   # SL → BE
+                    await executor.set_sl(position_id, entry)  # SL → BE
                     state[position_id]["first_close_done"] = True
                     state[position_id]["sl"] = entry
                     log.info(
                         "[%s] Trend first close at %.1fR (%.2f lots) SL→BE=%.5f",
-                        instrument, r, partial_lots, entry,
+                        instrument,
+                        r,
+                        partial_lots,
+                        entry,
                     )
                 except Exception as e:
                     log.error("[%s] Trend first close failed: %s", instrument, e)
@@ -248,26 +273,38 @@ async def manage_positions(
 
             if side == "long":
                 trail_sl = mid - atr
-                if trail_sl > current_sl and trail_sl > entry:   # only tighten, stay above BE
+                if (
+                    trail_sl > current_sl and trail_sl > entry
+                ):  # only tighten, stay above BE
                     try:
                         await executor.set_sl(position_id, trail_sl)
                         state[position_id]["sl"] = trail_sl
                         log.info(
                             "[%s] Trail SL long: %.5f → %.5f (price=%.5f ATR=%.5f)",
-                            instrument, current_sl, trail_sl, mid, atr,
+                            instrument,
+                            current_sl,
+                            trail_sl,
+                            mid,
+                            atr,
                         )
                     except Exception as e:
                         log.error("[%s] Trail SL failed: %s", instrument, e)
 
             elif side == "short":
                 trail_sl = mid + atr
-                if trail_sl < current_sl and trail_sl < entry:   # only tighten, stay below BE
+                if (
+                    trail_sl < current_sl and trail_sl < entry
+                ):  # only tighten, stay below BE
                     try:
                         await executor.set_sl(position_id, trail_sl)
                         state[position_id]["sl"] = trail_sl
                         log.info(
                             "[%s] Trail SL short: %.5f → %.5f (price=%.5f ATR=%.5f)",
-                            instrument, current_sl, trail_sl, mid, atr,
+                            instrument,
+                            current_sl,
+                            trail_sl,
+                            mid,
+                            atr,
                         )
                     except Exception as e:
                         log.error("[%s] Trail SL failed: %s", instrument, e)

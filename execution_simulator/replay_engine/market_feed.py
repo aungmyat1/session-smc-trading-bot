@@ -39,5 +39,7 @@ class MarketFeed:
         symbol: str | None = None,
         replay_speed: float = 100.0,
     ) -> "MarketFeed":
-        return cls(EventStream.from_records(rows, symbol=symbol), ReplayClock(replay_speed=replay_speed))
-
+        return cls(
+            EventStream.from_records(rows, symbol=symbol),
+            ReplayClock(replay_speed=replay_speed),
+        )

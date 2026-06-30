@@ -22,6 +22,7 @@ The report is intentionally conservative:
   - "BOS quality" is a proxy derived from displacement candle strength and close position.
   - "FVG size" is derived from the 3-bar FVG rule already used elsewhere in this repo.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,7 +37,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from strategy.session_liquidity.displacement_detector import wilder_atr
+from strategy.session_liquidity.displacement_detector import wilder_atr  # noqa: E402
 
 TRADES_CSV = ROOT / "research" / "trades.csv"
 REPORT_MD = ROOT / "reports" / "ST_A2_TRADE_AUTOPSY.md"
@@ -156,7 +157,9 @@ def _percentile(values: list[float], pct: float) -> float | None:
     return vals[f] * (c - k) + vals[c] * (k - f)
 
 
-def _bucket_from_threshold(value: float | None, low: float | None, high: float | None) -> str:
+def _bucket_from_threshold(
+    value: float | None, low: float | None, high: float | None
+) -> str:
     if value is None or low is None or high is None:
         return "unknown"
     if value < low:
@@ -187,7 +190,9 @@ def _bos_quality(side: str, body_to_atr: float | None, close_pos: float | None) 
     return "unknown"
 
 
-def _fvg_context(bars: list[dict], idx: int, pip_size: float) -> tuple[float | None, float | None, str]:
+def _fvg_context(
+    bars: list[dict], idx: int, pip_size: float
+) -> tuple[float | None, float | None, str]:
     if idx <= 0 or idx >= len(bars) - 1:
         return None, None, "unknown"
 
@@ -198,13 +203,17 @@ def _fvg_context(bars: list[dict], idx: int, pip_size: float) -> tuple[float | N
     if next_c["low"] > prev_c["high"]:
         size = (next_c["low"] - prev_c["high"]) / pip_size
         atr_v = disp_c.get("atr")
-        ratio = (next_c["low"] - prev_c["high"]) / atr_v if atr_v and atr_v > 0 else None
+        ratio = (
+            (next_c["low"] - prev_c["high"]) / atr_v if atr_v and atr_v > 0 else None
+        )
         return round(size, 2), round(ratio, 3) if ratio is not None else None, "bullish"
 
     if next_c["high"] < prev_c["low"]:
         size = (prev_c["low"] - next_c["high"]) / pip_size
         atr_v = disp_c.get("atr")
-        ratio = (prev_c["low"] - next_c["high"]) / atr_v if atr_v and atr_v > 0 else None
+        ratio = (
+            (prev_c["low"] - next_c["high"]) / atr_v if atr_v and atr_v > 0 else None
+        )
         return round(size, 2), round(ratio, 3) if ratio is not None else None, "bearish"
 
     return None, None, "none"
@@ -217,7 +226,11 @@ def _classify_primary_cause(
     bos_quality: str,
     fvg_quality: str,
 ) -> str:
-    if spread_pips is not None and spread_threshold is not None and spread_pips >= spread_threshold:
+    if (
+        spread_pips is not None
+        and spread_threshold is not None
+        and spread_pips >= spread_threshold
+    ):
         return "large_spread"
     if bos_quality == "weak":
         return "weak_BOS"
@@ -240,7 +253,9 @@ def _build_contexts(rows: list[dict[str, str]]) -> list[TradeContext]:
             bars_cache[symbol] = _load_bars(symbol)
             atrs = wilder_atr(bars_cache[symbol], 14)
             atr_cache[symbol] = atrs
-            idx_cache[symbol] = {bar["time_iso"]: i for i, bar in enumerate(bars_cache[symbol])}
+            idx_cache[symbol] = {
+                bar["time_iso"]: i for i, bar in enumerate(bars_cache[symbol])
+            }
 
         bars = bars_cache[symbol]
         atrs = atr_cache[symbol]
@@ -250,15 +265,25 @@ def _build_contexts(rows: list[dict[str, str]]) -> list[TradeContext]:
         disp_time = row.get("displacement_bar_time") or row.get("sweep_bar_time") or ""
         idx = idx_map.get(disp_time)
         if idx is None:
-            raise KeyError(f"could not locate displacement bar {disp_time} for {symbol}")
+            raise KeyError(
+                f"could not locate displacement bar {disp_time} for {symbol}"
+            )
 
         bar = bars[idx]
         atr = atrs[idx]
         atr_pips = round(atr / pip_size, 2) if atr and atr > 0 else None
         body_pips = round(abs(bar["close"] - bar["open"]) / pip_size, 2)
-        body_to_atr = round((abs(bar["close"] - bar["open"]) / atr), 3) if atr and atr > 0 else None
+        body_to_atr = (
+            round((abs(bar["close"] - bar["open"]) / atr), 3)
+            if atr and atr > 0
+            else None
+        )
         candle_range = bar["high"] - bar["low"]
-        close_pos = round((bar["close"] - bar["low"]) / candle_range, 3) if candle_range > 0 else None
+        close_pos = (
+            round((bar["close"] - bar["low"]) / candle_range, 3)
+            if candle_range > 0
+            else None
+        )
         bos_quality = _bos_quality(row["side"], body_to_atr, close_pos)
         fvg_size_pips, fvg_atr_ratio, _ = _fvg_context(bars, idx, pip_size)
 
@@ -311,15 +336,21 @@ def _build_contexts(rows: list[dict[str, str]]) -> list[TradeContext]:
             contexts[i] = TradeContext(
                 **{
                     **ctx.__dict__,
-                    "fvg_quality": _bucket_from_threshold(ctx.fvg_size_pips, fvg_q25_all, fvg_q75_all),
+                    "fvg_quality": _bucket_from_threshold(
+                        ctx.fvg_size_pips, fvg_q25_all, fvg_q75_all
+                    ),
                 }
             )
 
     # Thresholds for the exclusive root-cause heuristic are derived from the loss set.
-    loss_spreads = [c.spread_pips for c in contexts if c.net_r < 0 and c.spread_pips is not None]
+    loss_spreads = [
+        c.spread_pips for c in contexts if c.net_r < 0 and c.spread_pips is not None
+    ]
     spread_threshold = _percentile(loss_spreads, 75)
 
-    fvg_sizes = [c.fvg_size_pips for c in contexts if c.net_r < 0 and c.fvg_size_pips is not None]
+    fvg_sizes = [
+        c.fvg_size_pips for c in contexts if c.net_r < 0 and c.fvg_size_pips is not None
+    ]
     fvg_q25 = _percentile(fvg_sizes, 25)
     fvg_q75 = _percentile(fvg_sizes, 75)
 
@@ -342,10 +373,13 @@ def _build_contexts(rows: list[dict[str, str]]) -> list[TradeContext]:
 
     return contexts
 
+
 def _write_csv(path: Path, contexts: list[TradeContext]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(contexts[0].__dict__.keys()) if contexts else [])
+        writer = csv.DictWriter(
+            handle, fieldnames=list(contexts[0].__dict__.keys()) if contexts else []
+        )
         if contexts:
             writer.writeheader()
         for ctx in contexts:
@@ -373,11 +407,20 @@ def _table_loss_rate(title: str, contexts: list[TradeContext], key_fn) -> list[s
         row[1] += 1 if ctx.net_r < 0 else 0
         row[2] += ctx.net_r
 
-    lines = [f"### {title}", "", "| Bucket | Trades | Losses | Loss rate | Avg net R |", "|---|---:|---:|---:|---:|"]
-    for key, (trades, losses, net_r_sum) in sorted(buckets.items(), key=lambda kv: (-kv[1][1], kv[0])):
+    lines = [
+        f"### {title}",
+        "",
+        "| Bucket | Trades | Losses | Loss rate | Avg net R |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for key, (trades, losses, net_r_sum) in sorted(
+        buckets.items(), key=lambda kv: (-kv[1][1], kv[0])
+    ):
         loss_rate = (losses / trades * 100.0) if trades else 0.0
         avg_net_r = (net_r_sum / trades) if trades else 0.0
-        lines.append(f"| {key} | {int(trades)} | {int(losses)} | {loss_rate:.1f}% | {avg_net_r:+.3f}R |")
+        lines.append(
+            f"| {key} | {int(trades)} | {int(losses)} | {loss_rate:.1f}% | {avg_net_r:+.3f}R |"
+        )
     lines.append("")
     return lines
 
@@ -447,7 +490,9 @@ def _render_report(
         )
 
     lines.extend(["", "## Breakdown By Dimension", ""])
-    lines.extend(_table_from_counter("Primary Cause Heuristic", loss_primary, len(losses)))
+    lines.extend(
+        _table_from_counter("Primary Cause Heuristic", loss_primary, len(losses))
+    )
     lines.extend(_table_from_counter("Session", loss_sessions, len(losses)))
     lines.extend(_table_from_counter("Sweep Type", loss_sweep_types, len(losses)))
     lines.extend(_table_from_counter("BOS Quality", loss_bos, len(losses)))
@@ -465,17 +510,33 @@ def _render_report(
     bos_buckets = Counter(
         _bucket_from_threshold(c.body_to_atr, bos_q25, bos_q75) for c in losses
     )
-    lines.extend(_table_from_counter("BOS Strength Proxy Bucket", bos_buckets, len(losses)))
+    lines.extend(
+        _table_from_counter("BOS Strength Proxy Bucket", bos_buckets, len(losses))
+    )
 
-    lines.extend([
-        "## Loss Rate By Dimension",
-        "",
-    ])
+    lines.extend(
+        [
+            "## Loss Rate By Dimension",
+            "",
+        ]
+    )
     lines.extend(_table_loss_rate("Session Loss Rate", contexts, lambda c: c.session))
-    lines.extend(_table_loss_rate("Sweep Type Loss Rate", contexts, lambda c: c.sweep_type))
-    lines.extend(_table_loss_rate("BOS Quality Loss Rate", contexts, lambda c: c.bos_quality))
-    lines.extend(_table_loss_rate("Spread Bucket Loss Rate", contexts, lambda c: _bucket_from_threshold(c.spread_pips, spread_q25, spread_q75)))
-    lines.extend(_table_loss_rate("FVG Quality Loss Rate", contexts, lambda c: c.fvg_quality))
+    lines.extend(
+        _table_loss_rate("Sweep Type Loss Rate", contexts, lambda c: c.sweep_type)
+    )
+    lines.extend(
+        _table_loss_rate("BOS Quality Loss Rate", contexts, lambda c: c.bos_quality)
+    )
+    lines.extend(
+        _table_loss_rate(
+            "Spread Bucket Loss Rate",
+            contexts,
+            lambda c: _bucket_from_threshold(c.spread_pips, spread_q25, spread_q75),
+        )
+    )
+    lines.extend(
+        _table_loss_rate("FVG Quality Loss Rate", contexts, lambda c: c.fvg_quality)
+    )
 
     lines.extend(
         [
@@ -515,7 +576,9 @@ def _render_report(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate the ST-A2 trade autopsy report")
+    parser = argparse.ArgumentParser(
+        description="Generate the ST-A2 trade autopsy report"
+    )
     parser.add_argument("--run-id", default=CANONICAL_RUN_ID)
     parser.add_argument("--rr", type=float, default=CANONICAL_RR)
     parser.add_argument("--trades-csv", type=Path, default=TRADES_CSV)

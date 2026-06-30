@@ -25,16 +25,16 @@ from adaptive.engine.signal_scorer import score_signal
 from adaptive.engine import risk_manager as _rm
 
 _LOG_FILE = Path("logs/adaptive_engine.log")
-_logger   = logging.getLogger("adaptive_engine.router")
+_logger = logging.getLogger("adaptive_engine.router")
 
 # Regimes that block trading
 _BLOCKED_REGIMES = {"UNSAFE"}
 
 # Regimes each strategy is allowed in
 _STRATEGY_REGIME_MAP: dict[str, set[str]] = {
-    "smc_session":      {"RANGING", "BREAKOUT", "TRENDING"},
-    "london_breakout":  {"BREAKOUT", "RANGING"},
-    "ny_momentum":      {"TRENDING", "BREAKOUT"},
+    "smc_session": {"RANGING", "BREAKOUT", "TRENDING"},
+    "london_breakout": {"BREAKOUT", "RANGING"},
+    "ny_momentum": {"TRENDING", "BREAKOUT"},
 }
 
 
@@ -86,17 +86,21 @@ def route_signal(
     # ── Stage 1: Regime filter ─────────────────────────────────────────────
     spread_pips = float(context.get("spread_pips", 0.0))
     regime_result = detect_regime(candles, spread_pips=spread_pips)
-    regime        = regime_result["regime"]
+    regime = regime_result["regime"]
 
     if regime in _BLOCKED_REGIMES:
         reason = f"REGIME_BLOCKED: {regime}"
-        _emit_log(_build_log(ts, signal, regime_result, {}, {}, "REJECTED", reason, dry_run))
+        _emit_log(
+            _build_log(ts, signal, regime_result, {}, {}, "REJECTED", reason, dry_run)
+        )
         return _build_result("REJECTED", reason, regime_result, {}, {}, ts)
 
     allowed = _STRATEGY_REGIME_MAP.get(signal.strategy, set())
     if allowed and regime not in allowed:
         reason = f"REGIME_MISMATCH: {signal.strategy} not suited for {regime}"
-        _emit_log(_build_log(ts, signal, regime_result, {}, {}, "REJECTED", reason, dry_run))
+        _emit_log(
+            _build_log(ts, signal, regime_result, {}, {}, "REJECTED", reason, dry_run)
+        )
         return _build_result("REJECTED", reason, regime_result, {}, {}, ts)
 
     # ── Stage 2: Signal score ──────────────────────────────────────────────
@@ -105,7 +109,11 @@ def route_signal(
 
     if not score_result["approved"]:
         reason = f"SCORE_REJECTED: {score_result['score']}/10 (need 7)"
-        _emit_log(_build_log(ts, signal, regime_result, score_result, {}, "REJECTED", reason, dry_run))
+        _emit_log(
+            _build_log(
+                ts, signal, regime_result, score_result, {}, "REJECTED", reason, dry_run
+            )
+        )
         return _build_result("REJECTED", reason, regime_result, score_result, {}, ts)
 
     # ── Stage 3: Risk check ────────────────────────────────────────────────
@@ -113,22 +121,62 @@ def route_signal(
 
     if not risk_result["approved"]:
         reason = risk_result["rejection_reason"]
-        _emit_log(_build_log(ts, signal, regime_result, score_result, risk_result, "REJECTED", reason, dry_run))
-        return _build_result("REJECTED", reason, regime_result, score_result, risk_result, ts)
+        _emit_log(
+            _build_log(
+                ts,
+                signal,
+                regime_result,
+                score_result,
+                risk_result,
+                "REJECTED",
+                reason,
+                dry_run,
+            )
+        )
+        return _build_result(
+            "REJECTED", reason, regime_result, score_result, risk_result, ts
+        )
 
     # ── APPROVED ──────────────────────────────────────────────────────────
     if dry_run:
-        _emit_log(_build_log(ts, signal, regime_result, score_result, risk_result, "APPROVED", "", dry_run))
-        return _build_result("APPROVED", "", regime_result, score_result, risk_result, ts)
+        _emit_log(
+            _build_log(
+                ts,
+                signal,
+                regime_result,
+                score_result,
+                risk_result,
+                "APPROVED",
+                "",
+                dry_run,
+            )
+        )
+        return _build_result(
+            "APPROVED", "", regime_result, score_result, risk_result, ts
+        )
 
     # Live execution would happen here — blocked until DRY_RUN=false and
     # CONFIRM token flow (per CLAUDE.md §6) is wired.
     reason = "LIVE_TRADING_NOT_ENABLED"
-    _emit_log(_build_log(ts, signal, regime_result, score_result, risk_result, "REJECTED", reason, dry_run))
-    return _build_result("REJECTED", reason, regime_result, score_result, risk_result, ts)
+    _emit_log(
+        _build_log(
+            ts,
+            signal,
+            regime_result,
+            score_result,
+            risk_result,
+            "REJECTED",
+            reason,
+            dry_run,
+        )
+    )
+    return _build_result(
+        "REJECTED", reason, regime_result, score_result, risk_result, ts
+    )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _build_result(
     decision: str,
@@ -139,12 +187,12 @@ def _build_result(
     ts: str,
 ) -> dict:
     return {
-        "decision":         decision,
+        "decision": decision,
         "rejection_reason": reason,
-        "regime":           regime,
-        "score_result":     score,
-        "risk_result":      risk,
-        "timestamp":        ts,
+        "regime": regime,
+        "score_result": score,
+        "risk_result": risk,
+        "timestamp": ts,
     }
 
 
@@ -159,16 +207,16 @@ def _build_log(
     dry_run: bool,
 ) -> dict:
     return {
-        "ts":       ts,
-        "module":   "trade_router",
-        "event":    "route_signal",
+        "ts": ts,
+        "module": "trade_router",
+        "event": "route_signal",
         "strategy": signal.strategy,
-        "pair":     signal.pair,
+        "pair": signal.pair,
         "direction": signal.direction,
-        "session":  signal.session,
-        "regime":   regime.get("regime", ""),
-        "score":    score.get("score", -1),
+        "session": signal.session,
+        "regime": regime.get("regime", ""),
+        "score": score.get("score", -1),
         "decision": decision,
-        "reason":   reason,
-        "dry_run":  dry_run,
+        "reason": reason,
+        "dry_run": dry_run,
     }

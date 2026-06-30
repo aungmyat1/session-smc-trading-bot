@@ -12,7 +12,9 @@ def test_research_engine_builds_symbol(tmp_path):
     raw_file = raw_root / "EURUSD_M1.csv"
     frame = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2024-01-01T08:00:00Z", periods=6, freq="1min", tz="UTC"),
+            "timestamp": pd.date_range(
+                "2024-01-01T08:00:00Z", periods=6, freq="1min", tz="UTC"
+            ),
             "open": [1.0, 1.0, 1.01, 1.02, 1.03, 1.04],
             "high": [1.01, 1.02, 1.05, 1.06, 1.07, 1.08],
             "low": [0.99, 0.97, 1.00, 1.01, 1.02, 1.03],
@@ -24,11 +26,33 @@ def test_research_engine_builds_symbol(tmp_path):
     frame.to_csv(raw_file, index=False)
 
     engine = ResearchEngine(
-        ResearchPaths(raw_root=raw_root, parquet_root=tmp_path / "parquet", duckdb_path=tmp_path / "research.db")
+        ResearchPaths(
+            raw_root=raw_root,
+            parquet_root=tmp_path / "parquet",
+            duckdb_path=tmp_path / "research.db",
+        )
     )
     result = engine.build_symbol("EURUSD", timeframe="M1")
     assert "signals" in result
-    assert (tmp_path / "parquet" / "market" / "m1" / "EURUSD" / "year=2024" / "month=01" / "part-000.parquet").exists()
-    assert (tmp_path / "parquet" / "structure" / "swings" / "EURUSD" / "year=2024" / "month=01" / "part-000.parquet").exists()
+    assert (
+        tmp_path
+        / "parquet"
+        / "market"
+        / "m1"
+        / "EURUSD"
+        / "year=2024"
+        / "month=01"
+        / "part-000.parquet"
+    ).exists()
+    assert (
+        tmp_path
+        / "parquet"
+        / "structure"
+        / "swings"
+        / "EURUSD"
+        / "year=2024"
+        / "month=01"
+        / "part-000.parquet"
+    ).exists()
     assert (tmp_path / "parquet" / "metadata" / "layers_manifest.json").exists()
     assert (tmp_path / "research.db").exists()

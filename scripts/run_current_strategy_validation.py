@@ -22,12 +22,15 @@ import yaml
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from db.runtime import normalize_database_url
-from core.strategy_registry import (
+from db.runtime import normalize_database_url  # noqa: E402
+from core.strategy_registry import (  # noqa: E402
     get_current_strategy_name,
     get_strategy_manifest,
 )
-from research.validation.engine import ValidationRunner, load_validation_config
+from research.validation.engine import (
+    ValidationRunner,
+    load_validation_config,
+)  # noqa: E402
 
 try:
     import psycopg2
@@ -111,8 +114,12 @@ def _sync_catalog_to_postgres(catalog_path: Path, database_url: str) -> dict[str
                         "deployment_target": manifest.get("deployment_target"),
                         "verification": {
                             "last_revalidated_at": manifest.get("last_revalidated_at"),
-                            "last_revalidation_status": manifest.get("last_revalidation_status"),
-                            "last_revalidation_report": manifest.get("last_revalidation_report"),
+                            "last_revalidation_status": manifest.get(
+                                "last_revalidation_status"
+                            ),
+                            "last_revalidation_report": manifest.get(
+                                "last_revalidation_report"
+                            ),
                             "validation_mode": manifest.get("validation_mode"),
                         },
                     }
@@ -142,19 +149,41 @@ def _sync_catalog_to_postgres(catalog_path: Path, database_url: str) -> dict[str
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Revalidate the catalog's current strategy")
-    parser.add_argument("--strategy", help="Strategy to mark as current before revalidation")
-    parser.add_argument("--catalog", default="config/strategy_catalog.yaml", help="Strategy catalog YAML")
-    parser.add_argument("--payload", help="Combined JSON payload with replay/backtest/latest metrics")
+    parser = argparse.ArgumentParser(
+        description="Revalidate the catalog's current strategy"
+    )
+    parser.add_argument(
+        "--strategy", help="Strategy to mark as current before revalidation"
+    )
+    parser.add_argument(
+        "--catalog",
+        default="config/strategy_catalog.yaml",
+        help="Strategy catalog YAML",
+    )
+    parser.add_argument(
+        "--payload", help="Combined JSON payload with replay/backtest/latest metrics"
+    )
     parser.add_argument("--replay-json", help="Replay validation payload JSON")
     parser.add_argument("--backtest-json", help="Backtest validation payload JSON")
     parser.add_argument("--latest-json", help="Latest metrics JSON")
     parser.add_argument("--previous-json", help="Previous metrics JSON")
     parser.add_argument("--stage", default="demo", help="Current lifecycle stage")
-    parser.add_argument("--outdir", default="reports/current_strategy_validation", help="Validation report output directory")
-    parser.add_argument("--config", default="config/validation.yaml", help="Validation config YAML")
-    parser.add_argument("--database-url", default=os.getenv("DATABASE_URL", ""), help="PostgreSQL research DB URL")
-    parser.add_argument("--sync-db", action="store_true", help="Mirror catalog metadata into PostgreSQL")
+    parser.add_argument(
+        "--outdir",
+        default="reports/current_strategy_validation",
+        help="Validation report output directory",
+    )
+    parser.add_argument(
+        "--config", default="config/validation.yaml", help="Validation config YAML"
+    )
+    parser.add_argument(
+        "--database-url",
+        default=os.getenv("DATABASE_URL", ""),
+        help="PostgreSQL research DB URL",
+    )
+    parser.add_argument(
+        "--sync-db", action="store_true", help="Mirror catalog metadata into PostgreSQL"
+    )
     args = parser.parse_args()
 
     catalog_path = Path(args.catalog)
@@ -163,7 +192,9 @@ def main() -> int:
 
     strategy = args.strategy or get_current_strategy_name(catalog_path)
     if not strategy:
-        raise SystemExit("No current strategy set in the catalog and no --strategy provided.")
+        raise SystemExit(
+            "No current strategy set in the catalog and no --strategy provided."
+        )
 
     if get_strategy_manifest(strategy, catalog_path) is None:
         raise SystemExit(f"Strategy not found in catalog: {strategy}")
@@ -180,7 +211,12 @@ def main() -> int:
         config_path = _ROOT / config_path
     config = load_validation_config(config_path)
 
-    runner = ValidationRunner(strategy, config=config, registry_path=catalog_path, output_dir=_ROOT / args.outdir)
+    runner = ValidationRunner(
+        strategy,
+        config=config,
+        registry_path=catalog_path,
+        output_dir=_ROOT / args.outdir,
+    )
     bundle = runner.run(
         payload.get("replay") or None,
         payload.get("backtest") or None,

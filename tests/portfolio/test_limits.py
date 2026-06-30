@@ -22,12 +22,12 @@ def _sig(strategy="ST-A2", symbol="EURUSD", action="BUY", confidence=0.9) -> Sig
 def _pm(**overrides) -> PortfolioManager:
     cfg = {
         "portfolio": {
-            "max_trades_per_day":    4,
-            "max_open_positions":    3,
-            "daily_loss_limit_pct":  2.0,
+            "max_trades_per_day": 4,
+            "max_open_positions": 3,
+            "daily_loss_limit_pct": 2.0,
             "weekly_loss_limit_pct": 5.0,
-            "monthly_loss_limit_pct":8.0,
-            "min_confidence":        0.6,
+            "monthly_loss_limit_pct": 8.0,
+            "min_confidence": 0.6,
         },
         "strategies": {"ST-A2": {"enabled": True}},
     }
@@ -39,13 +39,13 @@ class TestDailyTradeLimit:
     def test_blocks_when_limit_reached(self):
         pm = _pm(max_trades_per_day=2)
         pm._trades_today = 2
-        pm._last_reset   = date.today().isoformat()
+        pm._last_reset = date.today().isoformat()
         assert pm.evaluate([_sig()]) == []
 
     def test_allows_below_limit(self):
         pm = _pm(max_trades_per_day=4)
         pm._trades_today = 2
-        pm._last_reset   = date.today().isoformat()
+        pm._last_reset = date.today().isoformat()
         assert len(pm.evaluate([_sig()])) == 1
 
 

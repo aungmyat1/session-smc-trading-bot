@@ -19,6 +19,7 @@ def tl(log_file) -> TradeLogger:
 
 # ── Category 1: File creation and append ─────────────────────────────────────
 
+
 class TestFileCreation:
     def test_creates_parent_directory(self, tmp_path):
         deep = tmp_path / "a" / "b" / "c" / "trades.jsonl"
@@ -45,6 +46,7 @@ class TestFileCreation:
 
 # ── Category 2: All six event types ──────────────────────────────────────────
 
+
 class TestEventTypes:
     def test_signal_created(self, tl):
         tl.signal_created("EURUSD", "london", "long", 1.07, 1.06, 1.09, 10.0, "sweep")
@@ -56,7 +58,9 @@ class TestEventTypes:
         assert ev["sl_pips"] == 10.0
 
     def test_order_submitted(self, tl):
-        tl.order_submitted("EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0)
+        tl.order_submitted(
+            "EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0
+        )
         ev = tl.read_all()[0]
         assert ev["event"] == "ORDER_SUBMITTED"
         assert ev["lots"] == 0.01
@@ -93,12 +97,14 @@ class TestEventTypes:
 
 # ── Category 3: Record format ─────────────────────────────────────────────────
 
+
 class TestRecordFormat:
     def test_ts_field_is_iso_format(self, tl):
         tl.error("BOT", "test")
         ev = tl.read_all()[0]
         # ISO 8601 — must parse without raising
         from datetime import datetime
+
         datetime.fromisoformat(ev["ts"].replace("Z", "+00:00"))
 
     def test_each_line_is_valid_json(self, tl, log_file):
@@ -109,7 +115,9 @@ class TestRecordFormat:
 
     def test_event_field_in_every_record(self, tl):
         tl.signal_created("EURUSD", "london", "long", 1.07, 1.06, 1.09, 10.0)
-        tl.order_submitted("EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0)
+        tl.order_submitted(
+            "EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0
+        )
         tl.order_filled("EURUSD", "DRY_RUN", 0.0, 0.01, 1.06, 1.09)
         tl.order_rejected("EURUSD", "reason")
         tl.position_closed("EURUSD", "pos-1", -1.0, "SL")
@@ -121,6 +129,7 @@ class TestRecordFormat:
 
 # ── Category 4: Validation ────────────────────────────────────────────────────
 
+
 class TestValidation:
     def test_unknown_event_raises(self, tl):
         with pytest.raises(ValueError, match="Unknown event"):
@@ -128,7 +137,9 @@ class TestValidation:
 
     def test_multiple_events_ordered(self, tl):
         tl.signal_created("EURUSD", "london", "long", 1.07, 1.06, 1.09, 10.0)
-        tl.order_submitted("EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0)
+        tl.order_submitted(
+            "EURUSD", "london", "long", 0.01, 1.06, 1.09, 0.01, 1000.0, 1.0
+        )
         tl.order_filled("EURUSD", "DRY_RUN", 0.0, 0.01, 1.06, 1.09)
         events = tl.read_all()
         assert events[0]["event"] == "SIGNAL_CREATED"

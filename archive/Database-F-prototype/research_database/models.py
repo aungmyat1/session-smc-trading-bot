@@ -3,7 +3,18 @@ research_database/models.py
 SQLAlchemy ORM models for trading_research database.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, ForeignKey, JSON, Date, BigInteger
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Numeric,
+    DateTime,
+    Boolean,
+    ForeignKey,
+    JSON,
+    Date,
+    BigInteger,
+)
 from sqlalchemy.orm import relationship
 from .database import Base
 from datetime import datetime

@@ -20,6 +20,7 @@ Usage:
                     measured spread (Vantage Raw ~0.6; Standard 0.0 — commission
                     is embedded in the spread). Default 0.0.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,9 +40,9 @@ _ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_ROOT / ".env")
 sys.path.insert(0, str(_ROOT))
 
-from execution.metaapi_client import MetaAPIClient          # noqa: E402
+from execution.metaapi_client import MetaAPIClient  # noqa: E402
 from monitoring.logging_utils import build_gzip_timed_rotating_handler  # noqa: E402
-from strategy.session_liquidity.session_builder import (    # noqa: E402
+from strategy.session_liquidity.session_builder import (  # noqa: E402
     classify_session as _classify_session_builder,
 )
 
@@ -82,6 +83,7 @@ CSV_HEADER = ["time_utc", "symbol", "session", "hour", "minute", "spread_pips"]
 
 
 # ── Pure functions (testable without MetaAPI) ─────────────────────────────────
+
 
 def session_label(dt_utc: datetime) -> str:
     """
@@ -177,6 +179,7 @@ def build_summary(
 
 # ── Reconnect helper ──────────────────────────────────────────────────────────
 
+
 async def reconnect_if_needed(client: MetaAPIClient, label: str) -> bool:
     """
     If client is not connected, attempt one reconnect.
@@ -201,18 +204,27 @@ async def reconnect_if_needed(client: MetaAPIClient, label: str) -> bool:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 async def main() -> None:
-    ap = argparse.ArgumentParser(description="Capture live Vantage spreads at killzone hours.")
+    ap = argparse.ArgumentParser(
+        description="Capture live Vantage spreads at killzone hours."
+    )
     ap.add_argument(
-        "--commission-pips", type=float, default=0.0,
+        "--commission-pips",
+        type=float,
+        default=0.0,
         help="Round-trip commission in pips to add to spread (Vantage Raw ~0.6; Standard 0.0).",
     )
     ap.add_argument(
-        "--interval", type=int, default=30,
+        "--interval",
+        type=int,
+        default=30,
         help="Seconds between samples (default 30).",
     )
     ap.add_argument(
-        "--pairs", nargs="+", default=PAIRS,
+        "--pairs",
+        nargs="+",
+        default=PAIRS,
         help="Symbols to sample (default: EURUSD GBPUSD USDJPY AUDUSD).",
     )
     args = ap.parse_args()
@@ -274,7 +286,12 @@ async def main() -> None:
                         update_agg(agg, sym, sess, sp)
                         total_samples += 1
                     except (RuntimeError, asyncio.TimeoutError) as exc:
-                        logger.warning("[%s] %s sample failed: %s", now.strftime("%H:%M:%S"), sym, exc)
+                        logger.warning(
+                            "[%s] %s sample failed: %s",
+                            now.strftime("%H:%M:%S"),
+                            sym,
+                            exc,
+                        )
                         await reconnect_if_needed(client, sym)
 
                 # Heartbeat: killzone averages so far

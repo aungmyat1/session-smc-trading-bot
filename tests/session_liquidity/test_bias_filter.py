@@ -40,7 +40,7 @@ UTC = timezone.utc
 # Dataset builders
 # ─────────────────────────────────────────────────────────────────────────────
 
-_T0 = datetime(2024, 1, 15, 0, 0, 0, tzinfo=UTC)   # 2024-01-15 00:00 UTC
+_T0 = datetime(2024, 1, 15, 0, 0, 0, tzinfo=UTC)  # 2024-01-15 00:00 UTC
 
 
 def _bars(highs: list[float], lows: list[float], start: datetime = _T0) -> list[dict]:
@@ -49,10 +49,15 @@ def _bars(highs: list[float], lows: list[float], start: datetime = _T0) -> list[
     t = start
     for h, lo in zip(highs, lows):
         mid = round((h + lo) / 2, 5)
-        out.append({
-            "time": t.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "open": mid, "high": h, "low": lo, "close": mid,
-        })
+        out.append(
+            {
+                "time": t.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "open": mid,
+                "high": h,
+                "low": lo,
+                "close": mid,
+            }
+        )
         t += timedelta(hours=4)
     return out
 
@@ -60,13 +65,13 @@ def _bars(highs: list[float], lows: list[float], start: datetime = _T0) -> list[
 def _all_visible(bars: list[dict]) -> datetime:
     """Return a before_dt that makes ALL supplied bars visible (last bar closed)."""
     last_open = datetime.fromisoformat(bars[-1]["time"].replace("Z", "+00:00"))
-    return last_open + timedelta(hours=4)   # cutoff = last_open → last bar included
+    return last_open + timedelta(hours=4)  # cutoff = last_open → last bar included
 
 
 def _exclude_last(bars: list[dict]) -> datetime:
     """Return a before_dt that makes every bar EXCEPT the last visible."""
     last_open = datetime.fromisoformat(bars[-1]["time"].replace("Z", "+00:00"))
-    return last_open                        # cutoff = last_open - 4h → excludes last bar
+    return last_open  # cutoff = last_open - 4h → excludes last bar
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -96,7 +101,7 @@ class TestBullishStructure(unittest.TestCase):
         """Latest SH (idx10=8.0) > previous SH (idx2=5.0)."""
         # If we manually flip to make LH, result must change
         highs = _BULL_H[:]
-        highs[10] = 4.0          # LH instead of HH
+        highs[10] = 4.0  # LH instead of HH
         bars = _bars(highs, _BULL_L)
         result = htf_bias(bars, _all_visible(bars))
         self.assertNotEqual(result, "bullish")
@@ -104,7 +109,7 @@ class TestBullishStructure(unittest.TestCase):
     def test_hl_confirmed(self):
         """Latest SL (idx9=0.3) > previous SL (idx4=0.2) → HL."""
         lows = _BULL_L[:]
-        lows[9] = 0.1            # LL instead of HL
+        lows[9] = 0.1  # LL instead of HL
         bars = _bars(_BULL_H, lows)
         result = htf_bias(bars, _all_visible(bars))
         self.assertNotEqual(result, "bullish")
@@ -125,7 +130,7 @@ class TestBearishStructure(unittest.TestCase):
     def test_lh_confirmed(self):
         """Latest SH (idx10=5.0) < previous SH (idx2=8.0) → LH."""
         highs = _BEAR_H[:]
-        highs[10] = 9.0          # HH instead of LH → no longer bearish
+        highs[10] = 9.0  # HH instead of LH → no longer bearish
         bars = _bars(highs, _BEAR_L)
         result = htf_bias(bars, _all_visible(bars))
         self.assertNotEqual(result, "bearish")
@@ -133,7 +138,7 @@ class TestBearishStructure(unittest.TestCase):
     def test_ll_confirmed(self):
         """Latest SL (idx9=0.2) < previous SL (idx4=0.3) → LL."""
         lows = _BEAR_L[:]
-        lows[9] = 0.5            # HL instead of LL → no longer bearish
+        lows[9] = 0.5  # HL instead of LL → no longer bearish
         bars = _bars(_BEAR_H, lows)
         result = htf_bias(bars, _all_visible(bars))
         self.assertNotEqual(result, "bearish")
@@ -172,7 +177,7 @@ class TestInsufficientSwings(unittest.TestCase):
         """Flat high sequence produces only one confirmed SH → neutral."""
         # All highs equal except one peak — only 1 SH can be confirmed
         highs = [1.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
-        lows  = [0.5] * 13
+        lows = [0.5] * 13
         bars = _bars(highs, lows)
         # Only one SH (at idx2) confirmed → neutral regardless of lows
         self.assertEqual(htf_bias(bars, _all_visible(bars)), "neutral")
@@ -180,7 +185,7 @@ class TestInsufficientSwings(unittest.TestCase):
     def test_only_one_swing_low(self):
         """Flat low sequence produces only one confirmed SL → neutral."""
         highs = [1.0, 2.0, 5.0, 2.0, 1.0, 2.0, 3.0, 3.0, 2.0, 1.0, 8.0, 2.0, 1.0]
-        lows  = [0.5, 0.5, 0.5, 0.5, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        lows = [0.5, 0.5, 0.5, 0.5, 0.2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
         bars = _bars(highs, lows)
         # Only one SL at idx4 → neutral despite valid SHs
         self.assertEqual(htf_bias(bars, _all_visible(bars)), "neutral")
@@ -252,7 +257,7 @@ class TestH4Cutoff(unittest.TestCase):
         cutoff = T - 4h → last bar open T > cutoff → EXCLUDED.
         Using open_time alone would incorrectly include a still-forming bar.
         """
-        before_dt = self.last_open          # one 4h bar is still forming
+        before_dt = self.last_open  # one 4h bar is still forming
         result = htf_bias(self.bars, before_dt)
         # Without bar 12, the SH at idx10 loses its right-side confirmation
         # (need idx11,12; with bar12 excluded the loop only reaches idx9)
@@ -270,7 +275,7 @@ class TestH4Cutoff(unittest.TestCase):
         open_time <= before_dt - 4h (correct rule), they would differ at boundary.
         The correct rule excludes the forming bar; the wrong rule includes it.
         """
-        before_dt = self.last_open      # correct rule: exclude; wrong rule: include
+        before_dt = self.last_open  # correct rule: exclude; wrong rule: include
         # Correct behaviour (already tested above): neutral (1 SH only)
         self.assertEqual(htf_bias(self.bars, before_dt), "neutral")
         # Prove the last bar WOULD give bullish if included (wrong rule)
@@ -279,7 +284,7 @@ class TestH4Cutoff(unittest.TestCase):
 
     def test_earlier_bar_on_cutoff_boundary_included(self):
         """Bar at T0+44h (second-to-last): with before_dt = T0+48h, cutoff = T0+44h → included."""
-        before_dt = self.last_open      # cutoff = last_open - 4h = second-to-last open
+        before_dt = self.last_open  # cutoff = last_open - 4h = second-to-last open
         # Second-to-last bar should be included (equal to cutoff)
         # With 12 bars (0-11): only 1 SH → neutral (test_bar_excluded already covers this)
         # Confirm this is neutral, not an error
@@ -303,7 +308,7 @@ class TestLookaheadPrevention(unittest.TestCase):
         last_open = datetime.fromisoformat(bars[-1]["time"].replace("Z", "+00:00"))
 
         # before_dt set so last bar is still forming → neutral
-        before_future = last_open           # cutoff = last_open - 4h → excludes bars[-1]
+        before_future = last_open  # cutoff = last_open - 4h → excludes bars[-1]
         self.assertEqual(htf_bias(bars, before_future), "neutral")
 
         # Advance before_dt by exactly 4h → last bar now closed → bullish
@@ -317,7 +322,10 @@ class TestLookaheadPrevention(unittest.TestCase):
         # Add one more bar at last_open + 4h (simulates the currently-forming bar)
         future_bar = {
             "time": (last_open + timedelta(hours=4)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "open": 1.05, "high": 1.10, "low": 0.90, "close": 1.05,
+            "open": 1.05,
+            "high": 1.10,
+            "low": 0.90,
+            "close": 1.05,
         }
         bars_with_future = bars + [future_bar]
 
@@ -356,6 +364,7 @@ class TestDSTSafeTimestamps(unittest.TestCase):
     def test_before_dt_as_est_aware_datetime(self):
         """before_dt supplied as EST-aware datetime is handled without error."""
         from zoneinfo import ZoneInfo
+
         bars = _bars(_BULL_H, _BULL_L)
         last_open = datetime.fromisoformat(bars[-1]["time"].replace("Z", "+00:00"))
         # Express before_dt in EST (UTC-5 in January)
@@ -381,6 +390,7 @@ class TestUnsortedInput(unittest.TestCase):
     def test_shuffled_input_same_result(self):
         """Shuffled input must give the same bias as sorted input."""
         import random
+
         bars = _bars(_BULL_H, _BULL_L)
         before_dt = _all_visible(bars)
         shuffled = bars[:]

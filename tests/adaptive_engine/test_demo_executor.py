@@ -7,15 +7,15 @@ from adaptive.execution.demo_executor import DemoExecutor
 
 def _signal() -> AdaptiveSignal:
     return AdaptiveSignal(
-        strategy    = "smc_session",
-        pair        = "EURUSD",
-        direction   = "LONG",
-        entry_price = 1.1000,
-        sl_price    = 1.0950,
-        tp_price    = 1.1150,
-        session     = "london",
-        timestamp   = "2026-06-24T07:30:00+00:00",
-        reason      = "test",
+        strategy="smc_session",
+        pair="EURUSD",
+        direction="LONG",
+        entry_price=1.1000,
+        sl_price=1.0950,
+        tp_price=1.1150,
+        session="london",
+        timestamp="2026-06-24T07:30:00+00:00",
+        reason="test",
     )
 
 
@@ -40,8 +40,17 @@ class TestDemoExecutor:
     async def test_execute_result_fields(self):
         ex = DemoExecutor(dry_run=True)
         result = await ex.execute(_signal())
-        for key in ("order_id", "dry_run", "symbol", "direction",
-                    "entry", "sl", "tp", "timestamp", "status"):
+        for key in (
+            "order_id",
+            "dry_run",
+            "symbol",
+            "direction",
+            "entry",
+            "sl",
+            "tp",
+            "timestamp",
+            "status",
+        ):
             assert key in result, f"Missing: {key}"
 
     @pytest.mark.asyncio

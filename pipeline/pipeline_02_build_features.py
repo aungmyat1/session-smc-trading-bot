@@ -12,6 +12,7 @@ Session hours fixed to CLAUDE.md spec: London 07-10 UTC | NY 13-16 UTC.
 Run:
     python -m pipeline.02_build_features [--symbol EURUSD] [--all]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,6 +36,7 @@ _UTC = timezone.utc
 
 
 # ── Polars → candle-dict helpers ──────────────────────────────────────────────
+
 
 def _df_to_candles(df: pl.DataFrame) -> list[dict]:
     """Convert a Polars frame to list[dict] with key 'time' (not 'timestamp')."""
@@ -64,6 +66,7 @@ def _load_tf(symbol: str, tf: str) -> Optional[pl.DataFrame]:
 
 # ── Asian range ───────────────────────────────────────────────────────────────
 
+
 def build_asian_ranges(symbol: str) -> pl.DataFrame:
     """
     Compute the Asian session H/L/mid for every UTC calendar day.
@@ -78,27 +81,34 @@ def build_asian_ranges(symbol: str) -> pl.DataFrame:
     w = ASIAN_WINDOW
     asian = (
         df.filter(
-            (pl.col("timestamp").dt.hour() >= w.open_utc) &
-            (pl.col("timestamp").dt.hour() < w.close_utc)
+            (pl.col("timestamp").dt.hour() >= w.open_utc)
+            & (pl.col("timestamp").dt.hour() < w.close_utc)
         )
         .with_columns(pl.col("timestamp").dt.date().alias("date"))
         .group_by("date")
-        .agg([
-            pl.col("high").max().alias("asian_high"),
-            pl.col("low").min().alias("asian_low"),
-            pl.col("volume").sum().alias("asian_volume"),
-        ])
-        .with_columns([
-            ((pl.col("asian_high") + pl.col("asian_low")) / 2).alias("asian_mid"),
-            ((pl.col("asian_high") - pl.col("asian_low")) / PIP).alias("asian_range_pips"),
-            pl.lit(symbol).alias("symbol"),
-        ])
+        .agg(
+            [
+                pl.col("high").max().alias("asian_high"),
+                pl.col("low").min().alias("asian_low"),
+                pl.col("volume").sum().alias("asian_volume"),
+            ]
+        )
+        .with_columns(
+            [
+                ((pl.col("asian_high") + pl.col("asian_low")) / 2).alias("asian_mid"),
+                ((pl.col("asian_high") - pl.col("asian_low")) / PIP).alias(
+                    "asian_range_pips"
+                ),
+                pl.lit(symbol).alias("symbol"),
+            ]
+        )
         .sort("date")
     )
     return asian
 
 
 # ── Session ranges ────────────────────────────────────────────────────────────
+
 
 def build_session_ranges(symbol: str) -> pl.DataFrame:
     """
@@ -111,22 +121,19 @@ def build_session_ranges(symbol: str) -> pl.DataFrame:
         return pl.DataFrame()
 
     rows: list[dict] = []
-    all_dates = sorted(df_m15.select(pl.col("timestamp").dt.date()).unique()["timestamp"].to_list())
+    all_dates = sorted(
+        df_m15.select(pl.col("timestamp").dt.date()).unique()["timestamp"].to_list()
+    )
 
     for d in all_dates:
         d_start = datetime(d.year, d.month, d.day, tzinfo=_UTC)
         for sess in SESSIONS:
-            t_open  = d_start.replace(hour=sess.open_utc)
+            t_open = d_start.replace(hour=sess.open_utc)
             t_close = d_start.replace(hour=sess.close_utc)
 
-            sess_bars = (
-                df_m15
-                .filter(
-                    (pl.col("timestamp") >= t_open) &
-                    (pl.col("timestamp") < t_close)
-                )
-                .sort("timestamp")
-            )
+            sess_bars = df_m15.filter(
+                (pl.col("timestamp") >= t_open) & (pl.col("timestamp") < t_close)
+            ).sort("timestamp")
             if sess_bars.is_empty():
                 continue
 
@@ -141,16 +148,18 @@ def build_session_ranges(symbol: str) -> pl.DataFrame:
 
             sess_class = classify_session(candles, sr, SIGNAL_CONFIG["atr_period"])
 
-            rows.append({
-                "date":            d,
-                "symbol":          symbol,
-                "session":         sess.name,
-                "session_high":    sr["high"],
-                "session_low":     sr["low"],
-                "session_mid":     sr["midpoint"],
-                "session_range_pips": sr["range_pips"],
-                "session_type":    sess_class,
-            })
+            rows.append(
+                {
+                    "date": d,
+                    "symbol": symbol,
+                    "session": sess.name,
+                    "session_high": sr["high"],
+                    "session_low": sr["low"],
+                    "session_mid": sr["midpoint"],
+                    "session_range_pips": sr["range_pips"],
+                    "session_type": sess_class,
+                }
+            )
 
     if not rows:
         return pl.DataFrame()
@@ -158,6 +167,7 @@ def build_session_ranges(symbol: str) -> pl.DataFrame:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def process_symbol(symbol: str) -> None:
     out_dir = FEATURES_DIR / symbol

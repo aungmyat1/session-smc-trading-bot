@@ -40,7 +40,7 @@ class StateStore:
             try:
                 data = json.loads(self._path.read_text(encoding="utf-8"))
                 base = new_state()
-                base.update(data)   # merge: extra keys in file are preserved
+                base.update(data)  # merge: extra keys in file are preserved
                 self._state = base
                 _logger.info("State loaded from %s", self._path)
                 return self._state

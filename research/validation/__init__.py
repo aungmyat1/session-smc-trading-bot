@@ -25,4 +25,3 @@ __all__ = [
     "ValidationRunner",
     "load_validation_config",
 ]
-

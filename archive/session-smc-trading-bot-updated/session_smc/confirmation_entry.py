@@ -19,11 +19,18 @@ Entry: close of FVG retest bar (bar-close, no lookahead).
 SL: tighter of (25% session range | sweep wick extreme ± 3 pip buffer).
 TP1: entry ± 4 R.   TP2: entry ± 5 R.
 """
+
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from .structure_detector import atr, detect_choch, detect_bos, detect_displacement, htf_bias
+from .structure_detector import (
+    atr,
+    detect_choch,
+    detect_bos,
+    detect_displacement,
+    htf_bias,
+)
 from .liquidity_detector import build_session_range, classify_session, detect_sweep
 from .poi_detector import find_fvg, check_fvg_retest
 from .swing_detector import last_swing_high, last_swing_low
@@ -35,15 +42,15 @@ PIP: float = 0.0001
 @dataclass
 class Signal:
     symbol: str
-    direction: str      # 'long' | 'short'
+    direction: str  # 'long' | 'short'
     entry: float
     sl: float
     tp1: float
     tp2: float
     sl_pips: float
     rr: float
-    setup_type: str     # 'A'
-    session: str        # 'london' | 'newyork'
+    setup_type: str  # 'A'
+    session: str  # 'london' | 'newyork'
     bar_time: Optional[str]
     # diagnostic fields
     sweep_idx: int
@@ -73,6 +80,7 @@ DEFAULT_CONFIG: dict = {
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
+
 
 def generate_signal_A(
     symbol: str,
@@ -114,7 +122,9 @@ def generate_signal_A(
         return None
 
     # ── Phase 3 — Session Range ───────────────────────────────────────────────
-    sess_range = build_session_range(session_candles, range_bars, cfg["min_session_range_pips"])
+    sess_range = build_session_range(
+        session_candles, range_bars, cfg["min_session_range_pips"]
+    )
     if sess_range is None:
         return None
 
@@ -189,8 +199,8 @@ def generate_signal_A(
     if bias == "bullish":
         wick_sl = wick_ext - buf
         range_sl = entry - range_sl_dist
-        sl = max(wick_sl, range_sl)   # tighter = higher price (closer to entry)
-        if sl >= entry:               # degenerate: SL above/at entry
+        sl = max(wick_sl, range_sl)  # tighter = higher price (closer to entry)
+        if sl >= entry:  # degenerate: SL above/at entry
             return None
         sl_pips = (entry - sl) / PIP
         tp1 = entry + cfg["tp1_r"] * sl_pips * PIP
@@ -199,7 +209,7 @@ def generate_signal_A(
     else:
         wick_sl = wick_ext + buf
         range_sl = entry + range_sl_dist
-        sl = min(wick_sl, range_sl)   # tighter = lower price
+        sl = min(wick_sl, range_sl)  # tighter = lower price
         if sl <= entry:
             return None
         sl_pips = (sl - entry) / PIP

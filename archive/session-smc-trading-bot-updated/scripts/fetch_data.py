@@ -55,8 +55,8 @@ SYMBOLS: dict[str, str] = {
 
 DEFAULT_GRANULARITIES = ["M15", "H1", "H4"]
 YEARS_BACK = 5
-MAX_CONCURRENT = 8      # parallel hour-file downloads
-_RETRY_SLEEP = 1.0      # seconds between retry attempts
+MAX_CONCURRENT = 8  # parallel hour-file downloads
+_RETRY_SLEEP = 1.0  # seconds between retry attempts
 
 OUTPUT_DIR = Path(__file__).parent.parent / "data" / "historical"
 _FIELDNAMES = ["time", "open", "high", "low", "close", "volume"]
@@ -71,6 +71,7 @@ _PRICE_DIV = 100_000.0
 
 # ── URL builder ───────────────────────────────────────────────────────────────
 
+
 def _hour_url(duka_sym: str, dt: datetime) -> str:
     """Build Dukascopy datafeed URL for a specific clock hour. Month is 0-indexed."""
     return (
@@ -80,6 +81,7 @@ def _hour_url(duka_sym: str, dt: datetime) -> str:
 
 
 # ── Download + parse one hour file ───────────────────────────────────────────
+
 
 async def _fetch_hour(
     session: aiohttp.ClientSession,
@@ -98,7 +100,9 @@ async def _fetch_hour(
         raw = b""
         for attempt in range(2):
             try:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=25)) as r:
+                async with session.get(
+                    url, timeout=aiohttp.ClientTimeout(total=25)
+                ) as r:
                     if r.status in (404, 204):
                         return []
                     if r.status != 200:
@@ -138,6 +142,7 @@ async def _fetch_hour(
 
 
 # ── Aggregate ticks → OHLCV candles ──────────────────────────────────────────
+
 
 def _to_ohlcv(
     ticks: list[tuple[datetime, float, float]],
@@ -187,6 +192,7 @@ def _to_ohlcv(
 
 # ── CSV helpers ───────────────────────────────────────────────────────────────
 
+
 def _load(path: Path) -> dict[str, dict]:
     """Load CSV into {time_str: row_dict} for O(1) upsert."""
     if not path.exists():
@@ -216,6 +222,7 @@ def _save(cache: dict[str, dict], path: Path) -> None:
 
 # ── Per-symbol fetch ──────────────────────────────────────────────────────────
 
+
 async def fetch_symbol(
     duka_sym: str,
     csv_sym: str,
@@ -227,8 +234,7 @@ async def fetch_symbol(
 
     # Load existing caches and find latest day already saved
     caches = {
-        gran: _load(OUTPUT_DIR / f"{csv_sym}_{gran}.csv")
-        for gran in granularities
+        gran: _load(OUTPUT_DIR / f"{csv_sym}_{gran}.csv") for gran in granularities
     }
     resume = start
     for cache in caches.values():
@@ -240,7 +246,8 @@ async def fetch_symbol(
 
     # Count trading days for progress display (approximate)
     trading_days = sum(
-        1 for n in range((end - resume).days + 1)
+        1
+        for n in range((end - resume).days + 1)
         if (resume + timedelta(days=n)).weekday() < 5
     )
 
@@ -296,6 +303,7 @@ async def fetch_symbol(
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 async def _run(
     symbols: list[str],
     granularities: list[str],
@@ -317,7 +325,9 @@ async def _run(
 
     for sym in symbols:
         if sym not in SYMBOLS:
-            print(f"Unknown symbol {sym!r}. Available: {list(SYMBOLS)}", file=sys.stderr)
+            print(
+                f"Unknown symbol {sym!r}. Available: {list(SYMBOLS)}", file=sys.stderr
+            )
             continue
         print(f"\n[{sym}]  {start} → {end}  ({', '.join(granularities)})")
         await fetch_symbol(sym, SYMBOLS[sym], start, end, granularities)
@@ -340,19 +350,29 @@ def main() -> None:
         ),
     )
     p.add_argument(
-        "--symbols", nargs="+", default=list(SYMBOLS), metavar="SYM",
+        "--symbols",
+        nargs="+",
+        default=list(SYMBOLS),
+        metavar="SYM",
         help=f"Pairs to fetch. Default: {list(SYMBOLS)}",
     )
     p.add_argument(
-        "--granularities", nargs="+", default=DEFAULT_GRANULARITIES, metavar="TF",
+        "--granularities",
+        nargs="+",
+        default=DEFAULT_GRANULARITIES,
+        metavar="TF",
         help=f"Timeframes. Default: {DEFAULT_GRANULARITIES}. Supported: {list(_TF_MINUTES)}",
     )
     p.add_argument(
-        "--start", default=default_start, metavar="YYYY-MM-DD",
+        "--start",
+        default=default_start,
+        metavar="YYYY-MM-DD",
         help=f"Earliest date to fetch. Default: {default_start}",
     )
     p.add_argument(
-        "--end", default=None, metavar="YYYY-MM-DD",
+        "--end",
+        default=None,
+        metavar="YYYY-MM-DD",
         help="Latest date to fetch (inclusive). Default: yesterday",
     )
     args = p.parse_args()

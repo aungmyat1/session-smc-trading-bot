@@ -10,9 +10,7 @@ from .risk_model import evaluate_r_multiple
 
 
 def simulate_trade(
-    signal: Dict,
-    candles: pl.DataFrame,
-    rr_multiple: float = 2.0
+    signal: Dict, candles: pl.DataFrame, rr_multiple: float = 2.0
 ) -> Optional[Dict]:
     """
     Simulate one trade from a signal.

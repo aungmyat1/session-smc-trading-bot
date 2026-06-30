@@ -152,7 +152,9 @@ class TradeRow:
     strategy: str
 
 
-def _simulate_trade(signal, session_bars: list[dict], cost_pips: float) -> TradeRow | None:
+def _simulate_trade(
+    signal, session_bars: list[dict], cost_pips: float
+) -> TradeRow | None:
     entry_idx = None
     for idx, candle in enumerate(session_bars):
         if candle["time"] == signal.timestamp:
@@ -171,7 +173,7 @@ def _simulate_trade(signal, session_bars: list[dict], cost_pips: float) -> Trade
     exit_time = session_bars[-1]["time"]
     exit_reason = "SESSION_END"
 
-    for bar in session_bars[entry_idx + 1:]:
+    for bar in session_bars[entry_idx + 1 :]:
         if is_long:
             if bar["low"] <= signal.stop_loss:
                 exit_price = signal.stop_loss
@@ -258,7 +260,9 @@ def run_symbol(symbol: str, config: dict, costs: dict[str, float]) -> list[Trade
         if signal is None:
             continue
 
-        trade = _simulate_trade(signal, session_bars[i:], costs.get(symbol, _DEFAULT_COSTS[symbol]))
+        trade = _simulate_trade(
+            signal, session_bars[i:], costs.get(symbol, _DEFAULT_COSTS[symbol])
+        )
         if trade is not None:
             trades.append(trade)
 
@@ -305,7 +309,9 @@ def main() -> None:
         per_symbol[symbol] = _summary(trades)
         all_trades.extend(trades)
         if trades:
-            print(f"{symbol}: n={len(trades)} win_rate={per_symbol[symbol]['win_rate_pct']}% net_pf={per_symbol[symbol]['net_pf']}")
+            print(
+                f"{symbol}: n={len(trades)} win_rate={per_symbol[symbol]['win_rate_pct']}% net_pf={per_symbol[symbol]['net_pf']}"
+            )
         else:
             print(f"{symbol}: no trades")
 
@@ -319,7 +325,9 @@ def main() -> None:
 
     (OUTDIR / "report.json").write_text(json.dumps(output, indent=2))
     with (OUTDIR / "trades.csv").open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(asdict(all_trades[0]).keys()) if all_trades else [])
+        writer = csv.DictWriter(
+            handle, fieldnames=list(asdict(all_trades[0]).keys()) if all_trades else []
+        )
         if all_trades:
             writer.writeheader()
             for row in all_trades:

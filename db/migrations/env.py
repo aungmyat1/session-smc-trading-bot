@@ -3,6 +3,7 @@ db/migrations/env.py
 Alembic environment — reads DATABASE_URL from environment/.env,
 imports db.models to give autogenerate full schema awareness.
 """
+
 # ruff: noqa: E402
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from sqlalchemy import engine_from_config, pool
 # Load .env so DATABASE_URL is available without exporting it in the shell.
 try:
     from dotenv import load_dotenv
+
     load_dotenv(ROOT / ".env")
 except ImportError:
     pass
@@ -51,9 +53,17 @@ if _db_url:
 # Schemas that autogenerate should inspect.
 # Every schema declared in schema_v2.sql and schema_v3.sql must be listed.
 _INCLUDE_SCHEMAS = {
-    "market", "research", "analytics", "config",
-    "strategy", "governance", "evidence",
-    "experiments", "robustness", "execution", "operations",
+    "market",
+    "research",
+    "analytics",
+    "config",
+    "strategy",
+    "governance",
+    "evidence",
+    "experiments",
+    "robustness",
+    "execution",
+    "operations",
 }
 
 

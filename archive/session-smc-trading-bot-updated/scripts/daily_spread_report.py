@@ -8,6 +8,7 @@ Usage:
 Prints a summary of today's collection progress and overall status.
 Read-only — does not modify any files.
 """
+
 import csv
 import subprocess
 import sys
@@ -100,8 +101,10 @@ def main() -> None:
     print(f"New York:            {ny_total:,} samples ({ny_days}/5 sessions)")
     print(f"  Today:             {ny_today:,}")
     print()
-    print(f"Symbol coverage:     {', '.join(sorted(symbols_seen))} "
-          f"{'✅' if not missing else f'⚠️ missing: {missing}'}")
+    print(
+        f"Symbol coverage:     {', '.join(sorted(symbols_seen))} "
+        f"{'✅' if not missing else f'⚠️ missing: {missing}'}"
+    )
     print()
     print(f"Latest sample:       {latest_dt.strftime('%Y-%m-%d %H:%M')} UTC")
     print(f"Sample age:          {age_seconds / 60:.1f} min ago")
@@ -134,13 +137,17 @@ def main() -> None:
         print("Status:              ✅ GATE MET — ready for cost revalidation")
     else:
         days_left = max(5 - london_days, 5 - ny_days)
-        print(f"Status:              ✅ HEALTHY — {days_left} more trading day(s) to gate")
+        print(
+            f"Status:              ✅ HEALTHY — {days_left} more trading day(s) to gate"
+        )
 
     print()
 
     if not gate_met:
         print("Next action:         Continue collecting. Run this report each morning.")
-        print("                     Run check: python3 scripts/check_phase2_completion.py")
+        print(
+            "                     Run check: python3 scripts/check_phase2_completion.py"
+        )
     else:
         print("Next action:         Run python3 scripts/check_phase2_completion.py")
         print("                     Then proceed to E6 cost revalidation.")

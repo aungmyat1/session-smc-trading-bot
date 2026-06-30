@@ -1,4 +1,5 @@
 """Testing Agent — orchestrates all validation stages in pipeline order."""
+
 from __future__ import annotations
 
 import logging
@@ -88,7 +89,12 @@ class TestingAgent:
                 result: StageResult = validator.validate()
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Stage %s raised unexpectedly", name)
-                result = StageResult(name=name, status=Status.FAIL, score=0.0, errors=[f"Unhandled: {exc}"])
+                result = StageResult(
+                    name=name,
+                    status=Status.FAIL,
+                    score=0.0,
+                    errors=[f"Unhandled: {exc}"],
+                )
             result.duration_seconds = time.monotonic() - st
             results[name] = result
             logger.info(

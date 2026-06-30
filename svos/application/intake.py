@@ -21,7 +21,6 @@ from typing import Any
 from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import IntakeReportBuilder
 
-
 _REQUIRED_CATALOG_FIELDS = ("symbols", "timeframes", "owner", "version")
 _SPEC_MIN_LENGTH = 50
 
@@ -39,9 +38,9 @@ class IntakeFinding:
 @dataclass(slots=True)
 class IntakeResult:
     strategy: str
-    status: str               # PASS | FAIL
+    status: str  # PASS | FAIL
     version_id: str
-    report_artifact: str      # absolute path to intake report JSON
+    report_artifact: str  # absolute path to intake report JSON
     evidence_id: str
     manifest_id: str
     findings: list[IntakeFinding] = field(default_factory=list)
@@ -97,7 +96,10 @@ class IntakeService:
 
         # ── validate catalog entry ────────────────────────────────────────
         from core.strategy_registry import get_strategy_manifest
-        catalog_manifest = get_strategy_manifest(strategy, self._platform.catalog_path) or {}
+
+        catalog_manifest = (
+            get_strategy_manifest(strategy, self._platform.catalog_path) or {}
+        )
         findings += self._validate_catalog(catalog_manifest)
 
         status = "FAIL" if any(f.severity == "ERROR" for f in findings) else "PASS"
@@ -177,66 +179,87 @@ class IntakeService:
         findings: list[IntakeFinding] = []
         text = (specification or "").strip()
         if not text:
-            findings.append(IntakeFinding(
-                code="SPEC-001",
-                message="Strategy specification is empty.",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="SPEC-001",
+                    message="Strategy specification is empty.",
+                )
+            )
             return findings
         if len(text) < _SPEC_MIN_LENGTH:
-            findings.append(IntakeFinding(
-                code="SPEC-002",
-                message=f"Specification is too short ({len(text)} chars); minimum {_SPEC_MIN_LENGTH}.",
-                severity="WARN",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="SPEC-002",
+                    message=f"Specification is too short ({len(text)} chars); minimum {_SPEC_MIN_LENGTH}.",
+                    severity="WARN",
+                )
+            )
         if not re.search(r"(entry|signal|setup|trigger)", text, re.IGNORECASE):
-            findings.append(IntakeFinding(
-                code="SPEC-003",
-                message="Specification does not describe an entry condition.",
-                severity="WARN",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="SPEC-003",
+                    message="Specification does not describe an entry condition.",
+                    severity="WARN",
+                )
+            )
         if not re.search(r"(stop.?loss|sl\b|invalidat)", text, re.IGNORECASE):
-            findings.append(IntakeFinding(
-                code="SPEC-004",
-                message="Specification does not define a stop-loss or invalidation rule.",
-                severity="WARN",
-            ))
-        if not re.search(r"(risk|lot.?size|position.?siz|0\.\d+%)", text, re.IGNORECASE):
-            findings.append(IntakeFinding(
-                code="SPEC-005",
-                message="Specification does not state a risk or position sizing rule.",
-                severity="WARN",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="SPEC-004",
+                    message="Specification does not define a stop-loss or invalidation rule.",
+                    severity="WARN",
+                )
+            )
+        if not re.search(
+            r"(risk|lot.?size|position.?siz|0\.\d+%)", text, re.IGNORECASE
+        ):
+            findings.append(
+                IntakeFinding(
+                    code="SPEC-005",
+                    message="Specification does not state a risk or position sizing rule.",
+                    severity="WARN",
+                )
+            )
         return findings
 
     def _validate_catalog(self, manifest: dict[str, Any]) -> list[IntakeFinding]:
         findings: list[IntakeFinding] = []
         if not manifest:
-            findings.append(IntakeFinding(
-                code="CAT-001",
-                message="Strategy is not registered in the catalog.",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="CAT-001",
+                    message="Strategy is not registered in the catalog.",
+                )
+            )
             return findings
         for field_name in _REQUIRED_CATALOG_FIELDS:
             if not manifest.get(field_name):
-                findings.append(IntakeFinding(
-                    code=f"CAT-{field_name.upper()}",
-                    message=f"Catalog entry is missing required field: {field_name!r}.",
-                ))
+                findings.append(
+                    IntakeFinding(
+                        code=f"CAT-{field_name.upper()}",
+                        message=f"Catalog entry is missing required field: {field_name!r}.",
+                    )
+                )
         symbols = manifest.get("symbols", [])
         if not symbols or not isinstance(symbols, list):
-            findings.append(IntakeFinding(
-                code="CAT-SYMBOLS",
-                message="Catalog entry must declare at least one instrument symbol.",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="CAT-SYMBOLS",
+                    message="Catalog entry must declare at least one instrument symbol.",
+                )
+            )
         timeframes = manifest.get("timeframes", [])
         if not timeframes or not isinstance(timeframes, list):
-            findings.append(IntakeFinding(
-                code="CAT-TIMEFRAMES",
-                message="Catalog entry must declare at least one timeframe.",
-            ))
+            findings.append(
+                IntakeFinding(
+                    code="CAT-TIMEFRAMES",
+                    message="Catalog entry must declare at least one timeframe.",
+                )
+            )
         return findings
 
     @staticmethod
     def _spec_hash(specification: str) -> str:
         import hashlib
+
         return hashlib.sha256(specification.encode("utf-8")).hexdigest()

@@ -42,8 +42,8 @@ class ST2Adapter(BaseStrategy):
         except ImportError:
             return None
 
-        m15    = data.get("m15", [])
-        h4     = data.get("h4", [])
+        m15 = data.get("m15", [])
+        h4 = data.get("h4", [])
         symbol = data.get("symbol", "")
         config = data.get("config", DEFAULT_CONFIG)
 
@@ -69,10 +69,10 @@ class ST2Adapter(BaseStrategy):
             risk_percent=0.25,
             confidence=1.0,
             metadata={
-                "session":      raw.session,
-                "risk_pips":    float(getattr(raw, "risk_pips", 0)),
-                "reward_pips":  float(getattr(raw, "reward_pips", 0)),
-                "rr":           float(getattr(raw, "rr", 0)),
-                "reason":       getattr(raw, "reason", ""),
+                "session": raw.session,
+                "risk_pips": float(getattr(raw, "risk_pips", 0)),
+                "reward_pips": float(getattr(raw, "reward_pips", 0)),
+                "rr": float(getattr(raw, "rr", 0)),
+                "reason": getattr(raw, "reason", ""),
             },
         )

@@ -15,6 +15,7 @@ Usage:
 
 The script is safe to re-run. All seed inserts use ON CONFLICT DO NOTHING.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,7 @@ from psycopg2 import sql
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from db.runtime import resolve_database_url
+from db.runtime import resolve_database_url  # noqa: E402
 
 SCHEMA_PATHS = [
     ROOT / "db" / "schema_v2.sql",
@@ -123,7 +124,9 @@ def _verify(conn) -> dict[str, int]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bootstrap quant research DB")
     parser.add_argument("--database-url", default=DEFAULT_DATABASE_URL)
-    parser.add_argument("--dry-run", action="store_true", help="Parse schema only, do not execute SQL")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Parse schema only, do not execute SQL"
+    )
     args = parser.parse_args()
 
     if args.dry_run:

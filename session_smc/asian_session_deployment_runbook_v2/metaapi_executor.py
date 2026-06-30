@@ -29,13 +29,15 @@ class MetaApiExecutor:
     """
 
     def __init__(self, cfg: dict):
-        self.cfg        = cfg
-        self.token      = os.getenv("METAAPI_TOKEN", cfg["metaapi"].get("token", ""))
-        self.account_id = os.getenv("METAAPI_ACCOUNT_ID", cfg["metaapi"].get("account_id", ""))
-        self.timeout    = cfg["metaapi"].get("deploy_timeout", 300)
-        self._api       = None
-        self._account   = None
-        self._conn      = None
+        self.cfg = cfg
+        self.token = os.getenv("METAAPI_TOKEN", cfg["metaapi"].get("token", ""))
+        self.account_id = os.getenv(
+            "METAAPI_ACCOUNT_ID", cfg["metaapi"].get("account_id", "")
+        )
+        self.timeout = cfg["metaapi"].get("deploy_timeout", 300)
+        self._api = None
+        self._account = None
+        self._conn = None
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -54,8 +56,10 @@ class MetaApiExecutor:
             )
 
         log.info("Connecting to MetaAPI account %s …", self.account_id)
-        self._api     = MetaApi(self.token)
-        self._account = await self._api.metatrader_account_api.get_account(self.account_id)
+        self._api = MetaApi(self.token)
+        self._account = await self._api.metatrader_account_api.get_account(
+            self.account_id
+        )
 
         state = self._account.state
         if state not in ("DEPLOYING", "DEPLOYED"):
@@ -115,12 +119,12 @@ class MetaApiExecutor:
 
     async def place_market_order(
         self,
-        symbol:   str,
-        side:     str,       # 'long' | 'short'
-        volume:   float,     # lots, e.g. 0.10
-        sl:       float,     # stop-loss price
-        tp:       float,     # take-profit price
-        comment:  str = "",
+        symbol: str,
+        side: str,  # 'long' | 'short'
+        volume: float,  # lots, e.g. 0.10
+        sl: float,  # stop-loss price
+        tp: float,  # take-profit price
+        comment: str = "",
     ) -> dict:
         """
         Place a market order and return the result dict from MetaAPI.
@@ -131,7 +135,12 @@ class MetaApiExecutor:
 
         log.info(
             "MARKET %s %s %.2f lots | SL=%.5f TP=%.5f [%s]",
-            side.upper(), symbol, volume, sl, tp, comment,
+            side.upper(),
+            symbol,
+            volume,
+            sl,
+            tp,
+            comment,
         )
 
         if side == "long":
@@ -158,12 +167,12 @@ class MetaApiExecutor:
 
     async def place_limit_order(
         self,
-        symbol:  str,
-        side:    str,
-        volume:  float,
-        price:   float,
-        sl:      float,
-        tp:      float,
+        symbol: str,
+        side: str,
+        volume: float,
+        price: float,
+        sl: float,
+        tp: float,
         comment: str = "",
     ) -> dict:
         """Place a pending limit order."""
@@ -172,19 +181,31 @@ class MetaApiExecutor:
 
         log.info(
             "LIMIT %s %s %.2f lots @ %.5f | SL=%.5f TP=%.5f [%s]",
-            side.upper(), symbol, volume, price, sl, tp, comment,
+            side.upper(),
+            symbol,
+            volume,
+            price,
+            sl,
+            tp,
+            comment,
         )
 
         if side == "long":
             result = await self._conn.create_limit_buy_order(
-                symbol, volume, price,
-                stop_loss=sl, take_profit=tp,
+                symbol,
+                volume,
+                price,
+                stop_loss=sl,
+                take_profit=tp,
                 options={"comment": comment},
             )
         else:
             result = await self._conn.create_limit_sell_order(
-                symbol, volume, price,
-                stop_loss=sl, take_profit=tp,
+                symbol,
+                volume,
+                price,
+                stop_loss=sl,
+                take_profit=tp,
                 options={"comment": comment},
             )
 
@@ -196,8 +217,8 @@ class MetaApiExecutor:
     async def place_reduce_only(
         self,
         position_id: str,
-        volume:      float,
-        comment:     str = "partial_close",
+        volume: float,
+        comment: str = "partial_close",
     ) -> dict:
         """
         Close a partial volume of an open position at market.
@@ -207,7 +228,9 @@ class MetaApiExecutor:
         volume = round(volume, 2)
         log.info(
             "PARTIAL CLOSE positionId=%s volume=%.2f [%s]",
-            position_id, volume, comment,
+            position_id,
+            volume,
+            comment,
         )
         result = await self._conn.close_position_partially(position_id, volume)
         return result
@@ -265,9 +288,9 @@ class MetaApiExecutor:
 
     async def get_candles(
         self,
-        symbol:    str,
-        timeframe: str,   # e.g. '1h', '4h'
-        count:     int = 500,
+        symbol: str,
+        timeframe: str,  # e.g. '1h', '4h'
+        count: int = 500,
     ) -> list[dict]:
         """
         Fetch recent OHLCV candles from MetaAPI.

@@ -12,8 +12,11 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from execution_validation import ExecutionValidationSuite, load_validation_rules
-from execution_simulator.replay_engine.event_stream import MarketEvent
+from execution_validation import (
+    ExecutionValidationSuite,
+    load_validation_rules,
+)  # noqa: E402
+from execution_simulator.replay_engine.event_stream import MarketEvent  # noqa: E402
 
 
 def _load_json(path: str | None) -> dict:
@@ -25,7 +28,9 @@ def _load_json(path: str | None) -> dict:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def _parse_market_event(value: dict | MarketEvent | None, symbol: str) -> MarketEvent | None:
+def _parse_market_event(
+    value: dict | MarketEvent | None, symbol: str
+) -> MarketEvent | None:
     if value is None or isinstance(value, MarketEvent):
         return value
     timestamp = value.get("timestamp") or value.get("time")
@@ -48,7 +53,9 @@ def _normalize_samples(samples: list[dict]) -> list[dict]:
     normalized: list[dict] = []
     for sample in samples:
         item = dict(sample)
-        market_event = _parse_market_event(item.get("market_event"), str(item.get("symbol", "")))
+        market_event = _parse_market_event(
+            item.get("market_event"), str(item.get("symbol", ""))
+        )
         if market_event is not None:
             item["market_event"] = market_event
         normalized.append(item)
@@ -78,7 +85,9 @@ def main() -> int:
         risk_samples=risk_samples,
         broker_rule_samples=broker_rule_samples,
         recovery_snapshot=payload.get("recovery_snapshot", {}),
-        recovery_expected_open_positions=int(payload.get("recovery_expected_open_positions", 0)),
+        recovery_expected_open_positions=int(
+            payload.get("recovery_expected_open_positions", 0)
+        ),
         backtest_pf=float(payload.get("backtest_pf", 1.0)),
         virtual_pf=float(payload.get("virtual_pf", 1.0)),
     )

@@ -27,17 +27,9 @@ def detect_data_source(symbol: str):
     m1_path = RAW_DIR / symbol / f"{symbol}_M1_raw.parquet"
 
     if dukascopy_path.exists():
-        return {
-            "type": "Dukascopy Tick",
-            "path": dukascopy_path,
-            "priority": 1
-        }
+        return {"type": "Dukascopy Tick", "path": dukascopy_path, "priority": 1}
     elif m1_path.exists():
-        return {
-            "type": "M1 Parquet",
-            "path": m1_path,
-            "priority": 2
-        }
+        return {"type": "M1 Parquet", "path": m1_path, "priority": 2}
     else:
         return None
 
@@ -52,25 +44,27 @@ def load_data(symbol: str):
     print(f"\nData Source: {source['type']}")
     print(f"Path: {source['path']}")
 
-    df = pl.read_parquet(source['path'])
+    df = pl.read_parquet(source["path"])
 
-    if source['type'] == "Dukascopy Tick":
+    if source["type"] == "Dukascopy Tick":
         # Convert tick to M1 for replay
         print("Converting tick data to M1 candles...")
         df = df.with_columns(pl.col("timestamp").alias("time"))
         df = df.sort("time")
 
         # Resample to M1
-        df = df.group_by_dynamic("time", every="1m").agg([
-            pl.col("bid").first().alias("open"),
-            pl.col("bid").max().alias("high"),
-            pl.col("bid").min().alias("low"),
-            pl.col("bid").last().alias("close"),
-            pl.col("volume").sum().alias("volume"),
-            pl.col("spread").mean().alias("spread")
-        ])
+        df = df.group_by_dynamic("time", every="1m").agg(
+            [
+                pl.col("bid").first().alias("open"),
+                pl.col("bid").max().alias("high"),
+                pl.col("bid").min().alias("low"),
+                pl.col("bid").last().alias("close"),
+                pl.col("volume").sum().alias("volume"),
+                pl.col("spread").mean().alias("spread"),
+            ]
+        )
 
-        tick_count = len(pl.read_parquet(source['path']))
+        tick_count = len(pl.read_parquet(source["path"]))
         print(f"Tick Count: {tick_count:,}")
         print(f"M1 Candles: {len(df):,}")
 
@@ -87,20 +81,24 @@ def load_data(symbol: str):
 
 def detect_liquidity_events(df: pl.DataFrame):
     """Detect liquidity sweep events."""
-    df = df.with_columns([
-        pl.col("low").rolling_mean(window_size=20).alias("avg_low"),
-        pl.col("high").rolling_mean(window_size=20).alias("avg_high"),
-        
-        ((pl.col("low") < pl.col("low").shift(1)) & 
-         (pl.col("low") < pl.col("low").shift(-1))).alias("swing_low"),
-        
-        ((pl.col("high") > pl.col("high").shift(1)) & 
-         (pl.col("high") > pl.col("high").shift(-1))).alias("swing_high")
-    ])
-    
+    df = df.with_columns(
+        [
+            pl.col("low").rolling_mean(window_size=20).alias("avg_low"),
+            pl.col("high").rolling_mean(window_size=20).alias("avg_high"),
+            (
+                (pl.col("low") < pl.col("low").shift(1))
+                & (pl.col("low") < pl.col("low").shift(-1))
+            ).alias("swing_low"),
+            (
+                (pl.col("high") > pl.col("high").shift(1))
+                & (pl.col("high") > pl.col("high").shift(-1))
+            ).alias("swing_high"),
+        ]
+    )
+
     events = df.filter(
-        ((pl.col("swing_low")) & (pl.col("low") < pl.col("avg_low") * 0.9995)) |
-        ((pl.col("swing_high")) & (pl.col("high") > pl.col("avg_high") * 1.0005))
+        ((pl.col("swing_low")) & (pl.col("low") < pl.col("avg_low") * 0.9995))
+        | ((pl.col("swing_high")) & (pl.col("high") > pl.col("avg_high") * 1.0005))
     )
     return events
 
@@ -118,7 +116,7 @@ def run_realistic_replay(df: pl.DataFrame, rr: float = 3.0):
 
     for row in events.iter_rows(named=True):
         current_time = row["time"]
-        
+
         hour = current_time.hour
         if 8 <= hour < 16:
             session = "London"
@@ -127,7 +125,9 @@ def run_realistic_replay(df: pl.DataFrame, rr: float = 3.0):
         else:
             continue
 
-        if last_trade_time and (current_time - last_trade_time) < timedelta(minutes=cooldown_minutes):
+        if last_trade_time and (current_time - last_trade_time) < timedelta(
+            minutes=cooldown_minutes
+        ):
             continue
 
         if session_counts[session] >= session_limits[session]:
@@ -146,14 +146,16 @@ def run_realistic_replay(df: pl.DataFrame, rr: float = 3.0):
         hit_tp = np.random.random() < 0.58
         result_r = rr if hit_tp else -1.0
 
-        trades.append({
-            "trade_id": f"EURUSD-2024-{len(trades)}",
-            "entry_time": current_time,
-            "direction": direction,
-            "session": session,
-            "result_r": result_r,
-            "exit_reason": "TP_HIT" if hit_tp else "SL_HIT"
-        })
+        trades.append(
+            {
+                "trade_id": f"EURUSD-2024-{len(trades)}",
+                "entry_time": current_time,
+                "direction": direction,
+                "session": session,
+                "result_r": result_r,
+                "exit_reason": "TP_HIT" if hit_tp else "SL_HIT",
+            }
+        )
 
         last_trade_time = current_time
         session_counts[session] += 1
@@ -187,14 +189,15 @@ def calculate_validation_metrics(trades: pl.DataFrame):
         if dd > max_dd:
             max_dd = dd
 
-    trades_per_day = trades.group_by(pl.col("entry_time").dt.date()).agg(pl.len().alias("count"))
+    trades_per_day = trades.group_by(pl.col("entry_time").dt.date()).agg(
+        pl.len().alias("count")
+    )
     avg_trades_per_day = trades_per_day["count"].mean()
     max_trades_per_day = trades_per_day["count"].max()
 
-    session_stats = trades.group_by("session").agg([
-        pl.len().alias("trades"),
-        pl.col("result_r").mean().alias("avg_r")
-    ])
+    session_stats = trades.group_by("session").agg(
+        [pl.len().alias("trades"), pl.col("result_r").mean().alias("avg_r")]
+    )
 
     max_consecutive_wins = 0
     max_consecutive_losses = 0
@@ -227,7 +230,7 @@ def calculate_validation_metrics(trades: pl.DataFrame):
         "max_trades_per_day": int(max_trades_per_day),
         "session_stats": session_stats,
         "max_consecutive_wins": max_consecutive_wins,
-        "max_consecutive_losses": max_consecutive_losses
+        "max_consecutive_losses": max_consecutive_losses,
     }
 
 
@@ -292,7 +295,7 @@ def main():
 
     symbol = "EURUSD"
     df, source = load_data(symbol)
-    
+
     if df is None:
         return
 

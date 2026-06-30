@@ -25,13 +25,15 @@ RAW_DIR = Path("data/raw")
 YF_TICKERS = {
     "EURUSD": "EURUSD=X",
     "GBPUSD": "GBPUSD=X",
-    "XAUUSD": "GC=F",        # Gold futures (closest to XAUUSD)
+    "XAUUSD": "GC=F",  # Gold futures (closest to XAUUSD)
 }
 
 MAX_DAYS_PER_REQUEST = 7
 
+
 def get_yf_ticker(symbol: str) -> str:
     return YF_TICKERS.get(symbol, f"{symbol}=X")
+
 
 def download_chunk(ticker: str, start: datetime, end: datetime) -> pl.DataFrame:
     """Download a single chunk of M1 data."""
@@ -54,32 +56,43 @@ def download_chunk(ticker: str, start: datetime, end: datetime) -> pl.DataFrame:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
-    df = df.rename(columns={
-        "Open": "open",
-        "High": "high",
-        "Low": "low",
-        "Close": "close",
-        "Volume": "volume",
-    }).reset_index().rename(columns={"Datetime": "time"})
+    df = (
+        df.rename(
+            columns={
+                "Open": "open",
+                "High": "high",
+                "Low": "low",
+                "Close": "close",
+                "Volume": "volume",
+            }
+        )
+        .reset_index()
+        .rename(columns={"Datetime": "time"})
+    )
 
     df = df[["time", "open", "high", "low", "close", "volume"]]
 
     pl_df = pl.from_pandas(df)
-    pl_df = pl_df.with_columns([
-        pl.col("time").cast(pl.Datetime("us")),
-        pl.col("open").cast(pl.Float64),
-        pl.col("high").cast(pl.Float64),
-        pl.col("low").cast(pl.Float64),
-        pl.col("close").cast(pl.Float64),
-        pl.col("volume").cast(pl.Int64).fill_null(0),
-    ])
+    pl_df = pl_df.with_columns(
+        [
+            pl.col("time").cast(pl.Datetime("us")),
+            pl.col("open").cast(pl.Float64),
+            pl.col("high").cast(pl.Float64),
+            pl.col("low").cast(pl.Float64),
+            pl.col("close").cast(pl.Float64),
+            pl.col("volume").cast(pl.Int64).fill_null(0),
+        ]
+    )
 
     return pl_df
+
 
 def download_symbol(symbol: str) -> pl.DataFrame:
     """Download full M1 history using multiple chunked requests."""
     ticker = get_yf_ticker(symbol)
-    print(f"Downloading {symbol} ({ticker}) from {START_DATE.date()} to {END_DATE.date()}...")
+    print(
+        f"Downloading {symbol} ({ticker}) from {START_DATE.date()} to {END_DATE.date()}..."
+    )
 
     all_data = []
     current = START_DATE
@@ -108,6 +121,7 @@ def download_symbol(symbol: str) -> pl.DataFrame:
     print(f"  Total: {len(df):,} rows for {symbol}")
     return df
 
+
 def save_parquet(df: pl.DataFrame, symbol: str):
     """Save DataFrame to Parquet."""
     if df.is_empty():
@@ -119,6 +133,7 @@ def save_parquet(df: pl.DataFrame, symbol: str):
     filename = out_dir / f"{symbol}_M1_raw.parquet"
     df.write_parquet(filename, compression="zstd")
     print(f"  Saved → {filename}")
+
 
 def main():
     print("=" * 60)
@@ -134,6 +149,7 @@ def main():
         print()
 
     print("✅ Stage 1 complete. Raw data saved in data/raw/")
+
 
 if __name__ == "__main__":
     main()

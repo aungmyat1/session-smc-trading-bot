@@ -1,4 +1,5 @@
 """Quality Agent runner — CLI wrapper and config loader."""
+
 from __future__ import annotations
 
 import argparse
@@ -45,11 +46,17 @@ def run(argv: list[str] | None = None) -> int:
     if result.status == Status.PASS:
         log.info(
             "Quality Agent PASS — quality=%.1f security=%.1f arch=%.1f docs=%.1f",
-            result.quality_score, result.security_score, result.architecture_score, result.documentation_score,
+            result.quality_score,
+            result.security_score,
+            result.architecture_score,
+            result.documentation_score,
         )
         return 0
     log.error(
         "Quality Agent FAIL — quality=%.1f security=%.1f arch=%.1f docs=%.1f",
-        result.quality_score, result.security_score, result.architecture_score, result.documentation_score,
+        result.quality_score,
+        result.security_score,
+        result.architecture_score,
+        result.documentation_score,
     )
     return 1

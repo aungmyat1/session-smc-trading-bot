@@ -22,4 +22,3 @@ class AccountManager:
     def apply_margin(self, margin: float) -> None:
         self.margin = margin
         self.free_margin = max(self.balance - margin, 0.0)
-

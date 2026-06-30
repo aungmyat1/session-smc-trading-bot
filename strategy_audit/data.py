@@ -23,7 +23,12 @@ class DataAuditModule(AuditModule):
     def audit(self, context: AuditContext) -> AuditResult:
         candles = context.candles
         if not candles:
-            return AuditResult(self.name, "NOT_VERIFIED", 0.0, recommendation="Provide candle data for data integrity checks")
+            return AuditResult(
+                self.name,
+                "NOT_VERIFIED",
+                0.0,
+                recommendation="Provide candle data for data integrity checks",
+            )
         anomalies: list[str] = []
         timestamps = []
         seen = set()
@@ -53,7 +58,11 @@ class DataAuditModule(AuditModule):
             warnings=anomalies,
             errors=[] if score >= 60 else anomalies,
             metrics={"candle_count": len(candles), "anomaly_count": len(anomalies)},
-            recommendation="Repair the data before using it for qualification" if anomalies else "Proceed to statistical audit",
+            recommendation=(
+                "Repair the data before using it for qualification"
+                if anomalies
+                else "Proceed to statistical audit"
+            ),
             details={"anomalies": anomalies},
         )
 
@@ -63,12 +72,32 @@ class SpreadAuditModule(AuditModule):
     mandatory = False
 
     def audit(self, context: AuditContext) -> AuditResult:
-        spreads = [float(row.get("spread_pips", 0.0)) for row in context.notes.get("spread_samples", []) if isinstance(row, dict)]
+        spreads = [
+            float(row.get("spread_pips", 0.0))
+            for row in context.notes.get("spread_samples", [])
+            if isinstance(row, dict)
+        ]
         if not spreads:
-            return AuditResult(self.name, "NOT_VERIFIED", 0.0, recommendation="Provide spread samples")
-        anomalies = [value for value in spreads if value <= 0 or value > float(context.notes.get("max_spread_pips", 5.0))]
+            return AuditResult(
+                self.name, "NOT_VERIFIED", 0.0, recommendation="Provide spread samples"
+            )
+        anomalies = [
+            value
+            for value in spreads
+            if value <= 0 or value > float(context.notes.get("max_spread_pips", 5.0))
+        ]
         score = max(0.0, 100.0 - len(anomalies) * 20.0)
-        return AuditResult(self.name, "PASS" if not anomalies else "PARTIAL", score, warnings=[f"spread:{v}" for v in anomalies], metrics={"sample_count": len(spreads), "mean_spread": sum(spreads)/len(spreads)}, recommendation="Review spread outliers" if anomalies else "Proceed")
+        return AuditResult(
+            self.name,
+            "PASS" if not anomalies else "PARTIAL",
+            score,
+            warnings=[f"spread:{v}" for v in anomalies],
+            metrics={
+                "sample_count": len(spreads),
+                "mean_spread": sum(spreads) / len(spreads),
+            },
+            recommendation="Review spread outliers" if anomalies else "Proceed",
+        )
 
 
 class SessionAuditModule(AuditModule):
@@ -76,11 +105,26 @@ class SessionAuditModule(AuditModule):
     mandatory = False
 
     def audit(self, context: AuditContext) -> AuditResult:
-        sessions = {str(row.get("session", "")).lower() for row in context.trades if isinstance(row, dict) and row.get("session")}
+        sessions = {
+            str(row.get("session", "")).lower()
+            for row in context.trades
+            if isinstance(row, dict) and row.get("session")
+        }
         if not sessions:
-            return AuditResult(self.name, "NOT_VERIFIED", 0.0, recommendation="Provide session-tagged trades")
+            return AuditResult(
+                self.name,
+                "NOT_VERIFIED",
+                0.0,
+                recommendation="Provide session-tagged trades",
+            )
         score = 100.0 if len(sessions) >= 2 else 75.0
-        return AuditResult(self.name, "PASS" if len(sessions) >= 2 else "PARTIAL", score, metrics={"sessions": sorted(sessions)}, recommendation="Verify session coverage across the intended trading windows")
+        return AuditResult(
+            self.name,
+            "PASS" if len(sessions) >= 2 else "PARTIAL",
+            score,
+            metrics={"sessions": sorted(sessions)},
+            recommendation="Verify session coverage across the intended trading windows",
+        )
 
 
 class TimestampAuditModule(AuditModule):
@@ -88,12 +132,33 @@ class TimestampAuditModule(AuditModule):
     mandatory = False
 
     def audit(self, context: AuditContext) -> AuditResult:
-        timestamps = [row.get("timestamp") for row in context.trades if isinstance(row, dict) and row.get("timestamp")]
+        timestamps = [
+            row.get("timestamp")
+            for row in context.trades
+            if isinstance(row, dict) and row.get("timestamp")
+        ]
         if not timestamps:
-            return AuditResult(self.name, "NOT_VERIFIED", 0.0, recommendation="Provide timestamped trades")
+            return AuditResult(
+                self.name,
+                "NOT_VERIFIED",
+                0.0,
+                recommendation="Provide timestamped trades",
+            )
         if timestamps != sorted(timestamps):
-            return AuditResult(self.name, "PARTIAL", 60.0, warnings=["trade timestamps are not ordered"], recommendation="Sort event streams chronologically")
-        return AuditResult(self.name, "PASS", 100.0, metrics={"trade_count": len(timestamps)}, recommendation="Proceed")
+            return AuditResult(
+                self.name,
+                "PARTIAL",
+                60.0,
+                warnings=["trade timestamps are not ordered"],
+                recommendation="Sort event streams chronologically",
+            )
+        return AuditResult(
+            self.name,
+            "PASS",
+            100.0,
+            metrics={"trade_count": len(timestamps)},
+            recommendation="Proceed",
+        )
 
 
 class IntegrityAuditModule(AuditModule):
@@ -101,9 +166,19 @@ class IntegrityAuditModule(AuditModule):
     mandatory = True
 
     def audit(self, context: AuditContext) -> AuditResult:
-        checks = [DataAuditModule().audit(context), TimestampAuditModule().audit(context)]
+        checks = [
+            DataAuditModule().audit(context),
+            TimestampAuditModule().audit(context),
+        ]
         score = sum(item.score for item in checks) / len(checks)
-        status = "PASS" if all(item.status == "PASS" or item.status == "NOT_VERIFIED" for item in checks) else "PARTIAL"
+        status = (
+            "PASS"
+            if all(
+                item.status == "PASS" or item.status == "NOT_VERIFIED"
+                for item in checks
+            )
+            else "PARTIAL"
+        )
         return AuditResult(
             self.name,
             status,
@@ -114,4 +189,3 @@ class IntegrityAuditModule(AuditModule):
             recommendation="Fix data integrity issues before performance evaluation",
             details={"submodule_results": [item.to_dict() for item in checks]},
         )
-

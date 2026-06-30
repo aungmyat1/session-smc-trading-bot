@@ -12,14 +12,25 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from db.control_plane import ControlPlaneConflict, PostgresControlPlane, TransitionCommand
+from db.control_plane import (
+    ControlPlaneConflict,
+    PostgresControlPlane,
+    TransitionCommand,
+)
 from db.evidence_repository import PostgresEvidenceRepository
-from db.models import ArtifactBinding, ReportRecord, StageState, StrategyEntity, StrategyVersion
+from db.models import (
+    ArtifactBinding,
+    ReportRecord,
+    StageState,
+    StrategyEntity,
+    StrategyVersion,
+)
 from svos.orchestration.service import SVOSPlatform
 
-
 TEST_DATABASE_URL = os.getenv("SVOS_TEST_DATABASE_URL", "")
-pytestmark = pytest.mark.skipif(not TEST_DATABASE_URL, reason="SVOS_TEST_DATABASE_URL is not configured")
+pytestmark = pytest.mark.skipif(
+    not TEST_DATABASE_URL, reason="SVOS_TEST_DATABASE_URL is not configured"
+)
 
 
 def _fresh_sessions():
@@ -124,7 +135,9 @@ def test_svos_platform_bootstrap_seeds_postgres(tmp_path: Path) -> None:
     pg = PostgresControlPlane(sessions)
     ev = PostgresEvidenceRepository(sessions)
 
-    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev)
+    platform = SVOSPlatform(
+        root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev
+    )
     result = platform.bootstrap()
 
     assert result["strategy_count"] == 1
@@ -148,11 +161,15 @@ def test_svos_platform_transition_routes_to_postgres(tmp_path: Path) -> None:
     pg = PostgresControlPlane(sessions)
     ev = PostgresEvidenceRepository(sessions)
 
-    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev)
+    platform = SVOSPlatform(
+        root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev
+    )
     platform.bootstrap()
 
     # DRAFT → INTAKE requires no evidence
-    result = platform.audited_transition(name, to_stage="INTAKE", actor="integration-test", reason="P1-1 smoke test")
+    result = platform.audited_transition(
+        name, to_stage="INTAKE", actor="integration-test", reason="P1-1 smoke test"
+    )
 
     assert result["from_stage"] == "DRAFT"
     assert result["to_stage"] == "INTAKE"
@@ -177,7 +194,9 @@ def test_svos_platform_evidence_routes_to_postgres(tmp_path: Path) -> None:
     pg = PostgresControlPlane(sessions)
     ev = PostgresEvidenceRepository(sessions)
 
-    platform = SVOSPlatform(root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev)
+    platform = SVOSPlatform(
+        root=tmp_path, catalog_path=catalog, pg_control_plane=pg, pg_evidence_repo=ev
+    )
     platform.bootstrap()
 
     artifact = tmp_path / "audit.json"
@@ -195,18 +214,28 @@ def test_svos_platform_evidence_routes_to_postgres(tmp_path: Path) -> None:
 
     # No JSONL evidence file
     jsonl_ev = tmp_path / "data" / "svos" / "registry" / name / "evidence.jsonl"
-    assert not jsonl_ev.exists(), "record_report_evidence() wrote JSONL when PG is active"
+    assert (
+        not jsonl_ev.exists()
+    ), "record_report_evidence() wrote JSONL when PG is active"
 
     # PG ReportRecord exists
     with sessions() as session:
-        report = session.query(ReportRecord).filter_by(report_id=recorded["report"]["report_id"]).first()
+        report = (
+            session.query(ReportRecord)
+            .filter_by(report_id=recorded["report"]["report_id"])
+            .first()
+        )
         assert report is not None
         assert report.status == "PASS"
 
     # ArtifactBinding created (for future transition evidence validation)
     with sessions() as session:
         entity = session.query(StrategyEntity).filter_by(slug=name).one()
-        binding = session.query(ArtifactBinding).filter_by(strategy_id=entity.id, stage="DRAFT").first()
+        binding = (
+            session.query(ArtifactBinding)
+            .filter_by(strategy_id=entity.id, stage="DRAFT")
+            .first()
+        )
         assert binding is not None
         assert binding.trust == "QUALIFYING_REAL"
         assert str(binding.id) == recorded["evidence"]["evidence_id"]

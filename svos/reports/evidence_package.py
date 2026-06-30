@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
-
 OBJECTIVES = {
     "strategy_audit": "Verify that the strategy specification is complete, consistent, measurable, and implementable.",
     "historical_replay": "Verify that the interpreted rules produce correct signals during candle-by-candle replay.",
@@ -21,21 +20,31 @@ def _number(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def _severity_breakdown(findings: list[dict[str, Any]], passed_checks: int) -> dict[str, int]:
+def _severity_breakdown(
+    findings: list[dict[str, Any]], passed_checks: int
+) -> dict[str, int]:
     counter = Counter(str(item.get("severity", "INFO")).upper() for item in findings)
     return {
         "critical": counter.get("CRITICAL", 0) + counter.get("ERROR", 0),
         "high": counter.get("HIGH", 0),
-        "medium": counter.get("MEDIUM", 0) + counter.get("WARN", 0) + counter.get("WARNING", 0),
+        "medium": counter.get("MEDIUM", 0)
+        + counter.get("WARN", 0)
+        + counter.get("WARNING", 0),
         "low": counter.get("LOW", 0) + counter.get("INFO", 0),
         "passed": passed_checks,
     }
 
 
-def _audit_results(source: list[dict[str, Any]], findings: list[dict[str, Any]], checks: list[dict[str, Any]]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _audit_results(
+    source: list[dict[str, Any]],
+    findings: list[dict[str, Any]],
+    checks: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     report: dict[str, Any] = {}
     for item in source:
-        metadata = item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        metadata = (
+            item.get("metadata", {}) if isinstance(item.get("metadata"), dict) else {}
+        )
         candidate = metadata.get("validation_report")
         if isinstance(candidate, dict):
             report = candidate
@@ -49,7 +58,9 @@ def _audit_results(source: list[dict[str, Any]], findings: list[dict[str, Any]],
         for item in report.get("validator_results", [])
         if isinstance(item, dict)
     ]
-    breakdown = _severity_breakdown(findings, sum(1 for check in checks if check.get("passed")))
+    breakdown = _severity_breakdown(
+        findings, sum(1 for check in checks if check.get("passed"))
+    )
     results = {
         "validator_scores": validators,
         "issue_breakdown": breakdown,
@@ -62,7 +73,10 @@ def _audit_results(source: list[dict[str, Any]], findings: list[dict[str, Any]],
             "type": "donut",
             "title": "Audit Issue Distribution",
             "labels": ["Critical", "High", "Medium", "Low", "Passed"],
-            "values": [breakdown[key] for key in ("critical", "high", "medium", "low", "passed")],
+            "values": [
+                breakdown[key]
+                for key in ("critical", "high", "medium", "low", "passed")
+            ],
         },
         {
             "type": "bar",
@@ -74,13 +88,21 @@ def _audit_results(source: list[dict[str, Any]], findings: list[dict[str, Any]],
     return results, visualizations
 
 
-def _replay_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    trades = payload.get("trades", []) if isinstance(payload.get("trades"), list) else []
+def _replay_results(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    trades = (
+        payload.get("trades", []) if isinstance(payload.get("trades"), list) else []
+    )
     summary = dict(payload.get("replay_summary", {}) or {})
     total = int(summary.get("total_signals", len(trades)))
-    invalid = int(summary.get("invalid_signals", len(payload.get("invalid_signals", []) or [])))
+    invalid = int(
+        summary.get("invalid_signals", len(payload.get("invalid_signals", []) or []))
+    )
     valid = int(summary.get("valid_signals", max(total - invalid, 0)))
-    accuracy = _number(summary.get("replay_accuracy", (valid / total * 100 if total else 0.0)))
+    accuracy = _number(
+        summary.get("replay_accuracy", (valid / total * 100 if total else 0.0))
+    )
     reasons = payload.get("invalid_signal_reasons", {}) or {}
     results = {
         "replay_summary": {
@@ -110,7 +132,9 @@ def _replay_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[
     return results, visualizations
 
 
-def _backtest_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _backtest_results(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     metrics = dict(payload.get("metrics", {}) or {})
     for key in ("trade_count", "expectancy", "max_drawdown", "profit_factor"):
         if key in payload:
@@ -139,7 +163,9 @@ def _backtest_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dic
     return results, visualizations
 
 
-def _robustness_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _robustness_results(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     walk_forward = payload.get("walk_forward", []) or []
     parameter_sensitivity = payload.get("parameter_sensitivity", {}) or {}
     regimes = payload.get("regime_analysis", []) or []
@@ -158,8 +184,16 @@ def _robustness_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[d
         {
             "type": "bar",
             "title": "Walk-Forward Profit Factor",
-            "labels": [str(item.get("period", "")) for item in walk_forward if isinstance(item, dict)],
-            "values": [_number(item.get("profit_factor")) for item in walk_forward if isinstance(item, dict)],
+            "labels": [
+                str(item.get("period", ""))
+                for item in walk_forward
+                if isinstance(item, dict)
+            ],
+            "values": [
+                _number(item.get("profit_factor"))
+                for item in walk_forward
+                if isinstance(item, dict)
+            ],
         },
         {
             "type": "histogram",
@@ -180,7 +214,9 @@ def _robustness_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[d
     return results, visualizations
 
 
-def _virtual_demo_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _virtual_demo_results(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     expected = dict(payload.get("research_metrics", {}) or {})
     observed = dict(payload.get("live_metrics", {}) or {})
     comparison = []
@@ -216,7 +252,11 @@ def _virtual_demo_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list
         },
     }
     visualizations = [
-        {"type": "line", "title": "Virtual Demo Equity Curve", "series": payload.get("equity_curve", []) or []},
+        {
+            "type": "line",
+            "title": "Virtual Demo Equity Curve",
+            "series": payload.get("equity_curve", []) or [],
+        },
         {
             "type": "comparison",
             "title": "Research vs Virtual Demo",
@@ -226,7 +266,9 @@ def _virtual_demo_results(payload: dict[str, Any]) -> tuple[dict[str, Any], list
     return results, visualizations
 
 
-def _production_results(prior_reports: list[dict[str, Any]], payload: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _production_results(
+    prior_reports: list[dict[str, Any]], payload: dict[str, Any]
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     scorecard = [
         {
             "stage": report["stage_label"],
@@ -235,7 +277,9 @@ def _production_results(prior_reports: list[dict[str, Any]], payload: dict[str, 
         }
         for report in prior_reports
     ]
-    scores = [_number(item["score"]) for item in scorecard if item.get("score") is not None]
+    scores = [
+        _number(item["score"]) for item in scorecard if item.get("score") is not None
+    ]
     overall = round(sum(scores) / len(scores), 2) if scores else None
     results = {
         "qualification_summary": scorecard,
@@ -245,7 +289,14 @@ def _production_results(prior_reports: list[dict[str, Any]], payload: dict[str, 
         "recommended_risk_pct": payload.get("recommended_risk_pct"),
         "monitoring_level": payload.get("monitoring_level", "high"),
     }
-    return results, [{"type": "bar", "title": "Qualification Scores", "labels": [item["stage"] for item in scorecard], "values": [item["score"] for item in scorecard]}]
+    return results, [
+        {
+            "type": "bar",
+            "title": "Qualification Scores",
+            "labels": [item["stage"] for item in scorecard],
+            "values": [item["score"] for item in scorecard],
+        }
+    ]
 
 
 def build_stage_evidence(
@@ -282,25 +333,50 @@ def build_stage_evidence(
     decision_reason = (
         "All hard gates passed."
         if status == "PASS"
-        else (findings[0].get("message", "Evidence is incomplete.") if findings else "Evidence is incomplete.")
+        else (
+            findings[0].get("message", "Evidence is incomplete.")
+            if findings
+            else "Evidence is incomplete."
+        )
     )
     sections = {
         "report_header": {"stage": label, "status": status, "score": score},
         "executive_summary": f"{label} finished with status {status} and diagnostic score {score if score is not None else 'n/a'}.",
         "objective": OBJECTIVES[public_stage],
-        "scope": ["Strategy rules and stage-specific evidence", "Configured hard-gate thresholds", "Promotion readiness"],
-        "inputs": {"payload_fields": sorted(raw_payload.keys()), "evidence_hashes": evidence_hashes},
+        "scope": [
+            "Strategy rules and stage-specific evidence",
+            "Configured hard-gate thresholds",
+            "Promotion readiness",
+        ],
+        "inputs": {
+            "payload_fields": sorted(raw_payload.keys()),
+            "evidence_hashes": evidence_hashes,
+        },
         "evaluation_results": results,
-        "evidence": {"hard_gate_results": checks, "metrics": metrics, "thresholds": thresholds},
+        "evidence": {
+            "hard_gate_results": checks,
+            "metrics": metrics,
+            "thresholds": thresholds,
+        },
         "issues": findings,
         "recommendations": actions,
         "decision": {
             "status": status,
             "promotion_allowed": promotion_allowed,
             "reason": decision_reason,
-            "failed_hard_gates": [check.get("name") for check in failed_checks if check.get("hard_gate")],
+            "failed_hard_gates": [
+                check.get("name") for check in failed_checks if check.get("hard_gate")
+            ],
         },
-        "next_action": actions[0] if actions else ("Proceed to the next SVOS stage." if promotion_allowed else "Await explicit approval or additional evidence."),
+        "next_action": (
+            actions[0]
+            if actions
+            else (
+                "Proceed to the next SVOS stage."
+                if promotion_allowed
+                else "Await explicit approval or additional evidence."
+            )
+        ),
         "appendices": {"internal_sources": [item.get("stage") for item in source]},
     }
     return sections, [item for item in visualizations if item]

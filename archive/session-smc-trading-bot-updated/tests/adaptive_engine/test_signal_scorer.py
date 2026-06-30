@@ -14,17 +14,17 @@ def _make_signal(
     structure_confirmed: bool = True,
 ) -> AdaptiveSignal:
     return AdaptiveSignal(
-        strategy    = strategy,
-        pair        = pair,
-        direction   = direction,
-        entry_price = 1.1000,
-        sl_price    = 1.0950,
-        tp_price    = 1.1150,
-        session     = session,
-        timestamp   = "2026-06-24T07:30:00+00:00",
-        reason      = "test signal",
-        metadata    = {
-            "liquidity_swept":     liquidity_swept,
+        strategy=strategy,
+        pair=pair,
+        direction=direction,
+        entry_price=1.1000,
+        sl_price=1.0950,
+        tp_price=1.1150,
+        session=session,
+        timestamp="2026-06-24T07:30:00+00:00",
+        reason="test signal",
+        metadata={
+            "liquidity_swept": liquidity_swept,
             "structure_confirmed": structure_confirmed,
         },
     )
@@ -39,11 +39,11 @@ def _full_context(
     news_event: bool = False,
 ) -> dict:
     return {
-        "htf_bias":    htf_bias,
-        "utc_hour":    utc_hour,
+        "htf_bias": htf_bias,
+        "utc_hour": utc_hour,
         "spread_pips": spread_pips,
-        "atr_pct":     atr_pct,
-        "news_event":  news_event,
+        "atr_pct": atr_pct,
+        "news_event": news_event,
     }
 
 
@@ -63,15 +63,17 @@ class TestScoreSignal:
     def test_rejected_when_score_below_min(self):
         # No HTF bias alignment, no liquidity, no structure, wrong session
         sig = _make_signal(
-            direction="LONG", session="asian",
-            liquidity_swept=False, structure_confirmed=False
+            direction="LONG",
+            session="asian",
+            liquidity_swept=False,
+            structure_confirmed=False,
         )
         ctx = {
-            "htf_bias":    "BEARISH",
-            "utc_hour":    3,           # asian session — not in active windows
-            "spread_pips": 5.0,         # too wide
-            "atr_pct":     0.0001,      # too low
-            "news_event":  True,
+            "htf_bias": "BEARISH",
+            "utc_hour": 3,  # asian session — not in active windows
+            "spread_pips": 5.0,  # too wide
+            "atr_pct": 0.0001,  # too low
+            "news_event": True,
         }
         result = score_signal(sig, ctx)
         assert result["score"] < MIN_SCORE
@@ -82,8 +84,13 @@ class TestScoreSignal:
         ctx = _full_context()
         result = score_signal(sig, ctx)
         expected = {
-            "htf_bias_aligned", "liquidity_event", "structure_confirmation",
-            "active_session", "spread_acceptable", "volatility_acceptable", "news_clear",
+            "htf_bias_aligned",
+            "liquidity_event",
+            "structure_confirmation",
+            "active_session",
+            "spread_acceptable",
+            "volatility_acceptable",
+            "news_clear",
         }
         assert set(result["breakdown"].keys()) == expected
 
@@ -113,8 +120,13 @@ class TestScoreSignal:
 
     def test_score_non_negative(self):
         sig = _make_signal(liquidity_swept=False, structure_confirmed=False)
-        ctx = {"htf_bias": "NEUTRAL", "utc_hour": 3, "spread_pips": 10.0,
-               "atr_pct": 0.0, "news_event": True}
+        ctx = {
+            "htf_bias": "NEUTRAL",
+            "utc_hour": 3,
+            "spread_pips": 10.0,
+            "atr_pct": 0.0,
+            "news_event": True,
+        }
         result = score_signal(sig, ctx)
         assert result["score"] >= 0
 

@@ -74,7 +74,11 @@ class PostgresControlPlane:
         self.lifecycle = lifecycle or StrategyLifecycleManager()
 
     def commit_transition(self, command: TransitionCommand) -> CommittedTransition:
-        if not command.actor.strip() or not command.reason.strip() or not command.policy_version.strip():
+        if (
+            not command.actor.strip()
+            or not command.reason.strip()
+            or not command.policy_version.strip()
+        ):
             raise ControlPlaneError("actor, reason, and policy_version are required")
         source = self.lifecycle.normalize_stage(command.from_stage)
         target = self.lifecycle.normalize_stage(command.to_stage)
@@ -83,26 +87,39 @@ class PostgresControlPlane:
         with self.session_factory() as session:
             with session.begin():
                 strategy = session.scalar(
-                    select(StrategyEntity).where(StrategyEntity.slug == command.strategy_slug)
+                    select(StrategyEntity).where(
+                        StrategyEntity.slug == command.strategy_slug
+                    )
                 )
                 if strategy is None:
-                    raise ControlPlaneError(f"unknown strategy: {command.strategy_slug}")
+                    raise ControlPlaneError(
+                        f"unknown strategy: {command.strategy_slug}"
+                    )
                 state = session.scalar(
                     select(StageState)
                     .where(StageState.strategy_id == strategy.id)
                     .with_for_update()
                 )
                 if state is None:
-                    raise ControlPlaneError(f"missing stage state: {command.strategy_slug}")
-                if state.opt_lock != command.expected_revision or state.current_stage != source.value:
+                    raise ControlPlaneError(
+                        f"missing stage state: {command.strategy_slug}"
+                    )
+                if (
+                    state.opt_lock != command.expected_revision
+                    or state.current_stage != source.value
+                ):
                     raise ControlPlaneConflict(
                         f"stale lifecycle state: expected {source.value}@{command.expected_revision}, "
                         f"found {state.current_stage}@{state.opt_lock}"
                     )
                 if state.current_version_id != command.version_id:
-                    raise ControlPlaneConflict("strategy version changed after gate evaluation")
+                    raise ControlPlaneConflict(
+                        "strategy version changed after gate evaluation"
+                    )
 
-                self._validate_evidence(session, cast(UUID, strategy.id), command, source.value)
+                self._validate_evidence(
+                    session, cast(UUID, strategy.id), command, source.value
+                )
 
                 decision = GateDecision(
                     strategy_id=strategy.id,
@@ -167,7 +184,9 @@ class PostgresControlPlane:
         if source_stage in self._NO_EVIDENCE_SOURCES:
             return
         if not command.evidence_ids:
-            raise ControlPlaneEvidenceError(f"qualifying evidence is required for {source_stage}")
+            raise ControlPlaneEvidenceError(
+                f"qualifying evidence is required for {source_stage}"
+            )
         bindings: Sequence[ArtifactBinding] = session.scalars(
             select(ArtifactBinding).where(ArtifactBinding.id.in_(command.evidence_ids))
         ).all()

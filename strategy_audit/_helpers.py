@@ -93,4 +93,3 @@ def _score_from_ratio(ratio: float | None, threshold: float = 1.0) -> float:
     if ratio >= threshold:
         return min(100.0, 60.0 + (ratio - threshold) * 20.0)
     return max(0.0, 60.0 * (ratio / threshold))
-

@@ -114,7 +114,9 @@ def _current_session(ts: pd.Timestamp, config: dict) -> Optional[str]:
 
 def _latest_bos(frame: pd.DataFrame, config: dict, pair: str) -> Optional[dict]:
     lookback = max(int(config["bos_lookback"]), 2)
-    scan_start = max(lookback, len(frame) - max(int(config["ob_lookback"]), lookback) - 1)
+    scan_start = max(
+        lookback, len(frame) - max(int(config["ob_lookback"]), lookback) - 1
+    )
     records: list[dict] = []
 
     for idx in range(scan_start, len(frame) - 1):
@@ -166,7 +168,9 @@ class SMCOrderBlockFVGSessionAdapter(BaseStrategy):
         candles = data.get("m15", [])
         config = {**DEFAULT_CONFIG, **(data.get("config") or {})}
 
-        if not symbol or len(candles) < max(int(config["ob_lookback"]), int(config["atr_period"]) + 5):
+        if not symbol or len(candles) < max(
+            int(config["ob_lookback"]), int(config["atr_period"]) + 5
+        ):
             return None
 
         spread_pips = float(data.get("spread_pips", 0.0) or 0.0)
@@ -183,7 +187,9 @@ class SMCOrderBlockFVGSessionAdapter(BaseStrategy):
             return None
 
         frame["atr"] = _atr(frame, int(config["atr_period"]))
-        latest_atr = float(frame["atr"].iloc[-1]) if pd.notna(frame["atr"].iloc[-1]) else 0.0
+        latest_atr = (
+            float(frame["atr"].iloc[-1]) if pd.notna(frame["atr"].iloc[-1]) else 0.0
+        )
         if latest_atr <= 0:
             return None
 
@@ -191,8 +197,14 @@ class SMCOrderBlockFVGSessionAdapter(BaseStrategy):
         if bos is None:
             return None
 
-        structure = pd.DataFrame.from_records([bos], columns=["timestamp", "pair", "structure", "direction", "index"])
-        order_blocks = detect_order_blocks(frame, structure[["timestamp", "pair", "structure", "direction"]], pair=symbol)
+        structure = pd.DataFrame.from_records(
+            [bos], columns=["timestamp", "pair", "structure", "direction", "index"]
+        )
+        order_blocks = detect_order_blocks(
+            frame,
+            structure[["timestamp", "pair", "structure", "direction"]],
+            pair=symbol,
+        )
         if order_blocks.empty:
             return None
 

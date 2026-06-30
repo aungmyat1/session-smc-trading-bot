@@ -32,27 +32,30 @@ def db(tmp_path):
 
 class TestRecordSignal:
     def test_returns_positive_id(self, db):
-        trade_id = db.record_signal(_sig(), router_result="PASS",
-                                    breaker_result="PASS",
-                                    portfolio_result="PASS",
-                                    execution_result="OPEN")
+        trade_id = db.record_signal(
+            _sig(),
+            router_result="PASS",
+            breaker_result="PASS",
+            portfolio_result="PASS",
+            execution_result="OPEN",
+        )
         assert trade_id > 0
 
     def test_record_stored_in_db(self, db):
         tid = db.record_signal(_sig(), execution_result="OPEN")
-        t   = db.get_trade(tid)
+        t = db.get_trade(tid)
         assert t is not None
-        assert t["symbol"]       == "EURUSD"
-        assert t["direction"]    == "long"
-        assert t["entry_price"]  == 1.10
-        assert t["stop_loss"]    == 1.095
-        assert t["take_profit"]  == 1.11
+        assert t["symbol"] == "EURUSD"
+        assert t["direction"] == "long"
+        assert t["entry_price"] == 1.10
+        assert t["stop_loss"] == 1.095
+        assert t["take_profit"] == 1.11
         assert t["risk_percentage"] == 0.25
-        assert t["strategy_name"]   == "ST-A2"
+        assert t["strategy_name"] == "ST-A2"
 
     def test_sell_direction_mapped(self, db):
         tid = db.record_signal(_sig(action="SELL"), execution_result="OPEN")
-        t   = db.get_trade(tid)
+        t = db.get_trade(tid)
         assert t["direction"] == "short"
 
     def test_pipeline_results_stored(self, db):
@@ -64,29 +67,31 @@ class TestRecordSignal:
             execution_result="SKIPPED",
         )
         t = db.get_trade(tid)
-        assert t["router_result"]    == "PASS"
+        assert t["router_result"] == "PASS"
         assert t["portfolio_result"] == "BLOCKED"
         assert t["execution_result"] == "SKIPPED"
-        assert t["status"]           == "BLOCKED"
+        assert t["status"] == "BLOCKED"
 
     def test_open_status_on_open_result(self, db):
         tid = db.record_signal(_sig(), execution_result="OPEN")
-        t   = db.get_trade(tid)
+        t = db.get_trade(tid)
         assert t["status"] == "OPEN"
 
     def test_shadow_status_on_shadow_result(self, db):
         tid = db.record_signal(_sig(), execution_result="SHADOW")
-        t   = db.get_trade(tid)
+        t = db.get_trade(tid)
         assert t["status"] == "OPEN"
 
     def test_broker_order_id_stored(self, db):
-        tid = db.record_signal(_sig(), broker_order_id="ORD-123", execution_result="OPEN")
-        t   = db.get_trade(tid)
+        tid = db.record_signal(
+            _sig(), broker_order_id="ORD-123", execution_result="OPEN"
+        )
+        t = db.get_trade(tid)
         assert t["broker_order_id"] == "ORD-123"
 
     def test_position_size_stored(self, db):
         tid = db.record_signal(_sig(), position_size=0.05, execution_result="OPEN")
-        t   = db.get_trade(tid)
+        t = db.get_trade(tid)
         assert t["position_size"] == pytest.approx(0.05)
 
 
@@ -95,22 +100,28 @@ class TestUpdateClose:
         tid = db.record_signal(_sig(), execution_result="OPEN")
         db.update_close(tid, close_price=1.115, profit_loss=25.0, r_multiple=2.5)
         t = db.get_trade(tid)
-        assert t["status"]      == "CLOSED"
+        assert t["status"] == "CLOSED"
         assert t["close_price"] == 1.115
-        assert t["r_multiple"]  == pytest.approx(2.5, abs=0.001)
+        assert t["r_multiple"] == pytest.approx(2.5, abs=0.001)
         assert t["profit_loss"] == pytest.approx(25.0)
 
     def test_reason_for_exit_stored(self, db):
         tid = db.record_signal(_sig(), execution_result="OPEN")
-        db.update_close(tid, close_price=1.09, profit_loss=-12.0, r_multiple=-1.0,
-                        reason_for_exit="sl_hit")
+        db.update_close(
+            tid,
+            close_price=1.09,
+            profit_loss=-12.0,
+            r_multiple=-1.0,
+            reason_for_exit="sl_hit",
+        )
         t = db.get_trade(tid)
         assert t["reason_for_exit"] == "sl_hit"
 
     def test_entry_price_update_on_close(self, db):
         tid = db.record_signal(_sig(), execution_result="OPEN")
-        db.update_close(tid, close_price=1.11, profit_loss=10.0, r_multiple=1.0,
-                        entry_price=1.1002)
+        db.update_close(
+            tid, close_price=1.11, profit_loss=10.0, r_multiple=1.0, entry_price=1.1002
+        )
         t = db.get_trade(tid)
         assert t["entry_price"] == pytest.approx(1.1002)
 
@@ -146,13 +157,12 @@ class TestQueries:
 class TestSummary:
     def _make_closed(self, db, r: float) -> None:
         tid = db.record_signal(_sig(), execution_result="OPEN")
-        db.update_close(tid, 1.11 if r > 0 else 1.09,
-                        profit_loss=r * 10, r_multiple=r)
+        db.update_close(tid, 1.11 if r > 0 else 1.09, profit_loss=r * 10, r_multiple=r)
 
     def test_empty_summary(self, db):
         s = db.summary()
         assert s["total"] == 0
-        assert s["wins"]  == 0
+        assert s["wins"] == 0
         assert s["losses"] == 0
 
     def test_win_loss_counts(self, db):
@@ -160,7 +170,7 @@ class TestSummary:
         self._make_closed(db, 2.0)
         self._make_closed(db, -1.0)
         s = db.summary()
-        assert s["wins"]   == 2
+        assert s["wins"] == 2
         assert s["losses"] == 1
         assert s["closed"] == 3
 
@@ -188,8 +198,8 @@ class TestSummary:
         db.record_signal(_sig(), execution_result="OPEN")
         s = db.summary()
         assert s["blocked"] == 1
-        assert s["open"]    == 1
-        assert s["total"]   == 2
+        assert s["open"] == 1
+        assert s["total"] == 2
 
 
 class TestXAUUSD:
@@ -207,7 +217,7 @@ class TestXAUUSD:
             metadata={"session": "london", "risk_pips": 100.0},
         )
         tid = db.record_signal(sig, execution_result="OPEN", position_size=0.01)
-        t   = db.get_trade(tid)
-        assert t["symbol"]      == "XAUUSD"
+        t = db.get_trade(tid)
+        assert t["symbol"] == "XAUUSD"
         assert t["entry_price"] == pytest.approx(2340.0)
-        assert t["stop_loss"]   == pytest.approx(2330.0)
+        assert t["stop_loss"] == pytest.approx(2330.0)

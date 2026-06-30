@@ -12,26 +12,28 @@ Public API:
 from datetime import datetime, timezone
 
 from strategy.session_liquidity.session_builder import (
-    build_asian_range, classify_session,
+    build_asian_range,
+    classify_session,
     classify_session_v2,
 )
 from strategy.session_liquidity.bias_filter import htf_bias
 from strategy.session_liquidity.sweep_detector import detect_sweep
 from strategy.session_liquidity.displacement_detector import (
-    detect_displacement, wilder_atr,
+    detect_displacement,
+    wilder_atr,
 )
 from strategy.session_liquidity.entry_engine import Signal, build_signal
 
 _UTC = timezone.utc
 
 DEFAULT_CONFIG: dict = {
-    "rr":                  3.0,
-    "sl_buffer_pips":      2.0,
-    "displacement_mult":   1.2,
-    "atr_period":          14,
-    "sweep_timeout_bars":  4,
-    "min_sl_pips":         5.0,
-    "session_mode":        "legacy",
+    "rr": 3.0,
+    "sl_buffer_pips": 2.0,
+    "displacement_mult": 1.2,
+    "atr_period": 14,
+    "sweep_timeout_bars": 4,
+    "min_sl_pips": 5.0,
+    "session_mode": "legacy",
     "min_range_pips": {
         "EURUSD": 15.0,
         "GBPUSD": 20.0,
@@ -66,33 +68,33 @@ def run_strategy(
     One signal per session (london / new_york) per calendar day.
     Displacement must appear within sweep_timeout_bars killzone bars of the sweep.
     """
-    cfg          = {**DEFAULT_CONFIG, **(config or {})}
+    cfg = {**DEFAULT_CONFIG, **(config or {})}
     session_mode = str(cfg.get("session_mode", "legacy")).lower()
-    rr           = float(cfg["rr"])
-    sl_buf       = float(cfg["sl_buffer_pips"])
-    mult         = float(cfg["displacement_mult"])
-    period       = int(cfg["atr_period"])
-    timeout      = int(cfg["sweep_timeout_bars"])
-    min_sl_pips  = float(cfg.get("min_sl_pips", 0.0))
-    min_range    = float(cfg["min_range_pips"].get(_norm(symbol), 15.0))
+    rr = float(cfg["rr"])
+    sl_buf = float(cfg["sl_buffer_pips"])
+    mult = float(cfg["displacement_mult"])
+    period = int(cfg["atr_period"])
+    timeout = int(cfg["sweep_timeout_bars"])
+    min_sl_pips = float(cfg.get("min_sl_pips", 0.0))
+    min_range = float(cfg["min_range_pips"].get(_norm(symbol), 15.0))
 
     signals: list[Signal] = []
-    events:  list[dict]   = []
+    events: list[dict] = []
 
     if not candles_m15:
         return (signals, events) if debug else signals
 
     # ── Sort once; pre-compute ATR across the full history ────────────────────
     sorted_m15 = sorted(candles_m15, key=lambda c: c["time"])
-    atrs       = wilder_atr(sorted_m15, period)
-    atr_map    = {c["time"]: atr for c, atr in zip(sorted_m15, atrs)}
+    atrs = wilder_atr(sorted_m15, period)
+    atr_map = {c["time"]: atr for c, atr in zip(sorted_m15, atrs)}
 
     # ── Pre-group killzone bars by UTC date (one O(n) pass) ───────────────────
     # Avoids O(n_bars × n_days) rescanning inside the day loop.
     _kz_by_date: dict = {}
     for _c in sorted_m15:
         _dt = _utc(_c["time"])
-        _s  = classify_session_v2(_dt) if session_mode == "v2" else classify_session(_dt)
+        _s = classify_session_v2(_dt) if session_mode == "v2" else classify_session(_dt)
         if _s is not None:
             _kz_by_date.setdefault(_dt.date(), []).append((_c, _s))
 
@@ -108,21 +110,31 @@ def run_strategy(
 
         # ── Phase 4: Minimum range filter ─────────────────────────────────────
         if asian.range_pips < min_range:
-            _evt(events, debug, trade_date, "SKIP_DAY",
-                 f"range={asian.range_pips:.1f}pip < {min_range}pip min")
+            _evt(
+                events,
+                debug,
+                trade_date,
+                "SKIP_DAY",
+                f"range={asian.range_pips:.1f}pip < {min_range}pip min",
+            )
             continue
 
-        _evt(events, debug, trade_date, "ASIAN_RANGE",
-             f"H={asian.high:.5f} L={asian.low:.5f} range={asian.range_pips:.1f}pip")
+        _evt(
+            events,
+            debug,
+            trade_date,
+            "ASIAN_RANGE",
+            f"H={asian.high:.5f} L={asian.low:.5f} range={asian.range_pips:.1f}pip",
+        )
 
         # Killzone bars for this date — pre-grouped, O(1) lookup
         day_bars = _kz_by_date.get(trade_date, [])
 
         session_traded: set = set()
-        pending: "dict | None" = None   # {sweep, bar_idx, session}
+        pending: "dict | None" = None  # {sweep, bar_idx, session}
 
         for bar_idx, (candle, session) in enumerate(day_bars):
-            bar_time  = _utc(candle["time"])
+            bar_time = _utc(candle["time"])
             bar_label = bar_time.strftime("%H:%M UTC")
 
             if session_mode == "v2" and session == "asian":
@@ -137,8 +149,13 @@ def run_strategy(
 
             # Cancel pending sweep when session changes
             if pending and pending["session"] != session:
-                _evt(events, debug, trade_date, "SWEEP_CANCEL",
-                     f"[{bar_label}] session changed {pending['session']}→{session}")
+                _evt(
+                    events,
+                    debug,
+                    trade_date,
+                    "SWEEP_CANCEL",
+                    f"[{bar_label}] session changed {pending['session']}→{session}",
+                )
                 pending = None
 
             # ── Phase 2: HTF Bias ──────────────────────────────────────────────
@@ -147,59 +164,104 @@ def run_strategy(
             if pending is None:
                 # ── Phase 5: Sweep detection ───────────────────────────────────
                 if bias == "neutral":
-                    _evt(events, debug, trade_date, "NO_TRADE",
-                         f"[{bar_label}] {session} bias=neutral")
+                    _evt(
+                        events,
+                        debug,
+                        trade_date,
+                        "NO_TRADE",
+                        f"[{bar_label}] {session} bias=neutral",
+                    )
                     continue
 
                 sweep = detect_sweep(candle, asian.high, asian.low, bias)
 
                 if sweep.detected:
                     pending = {"sweep": sweep, "bar_idx": bar_idx, "session": session}
-                    _evt(events, debug, trade_date, "SWEEP",
-                         f"[{bar_label}] {session} side={sweep.side} "
-                         f"price={sweep.sweep_price:.5f} bias={bias}")
+                    _evt(
+                        events,
+                        debug,
+                        trade_date,
+                        "SWEEP",
+                        f"[{bar_label}] {session} side={sweep.side} "
+                        f"price={sweep.sweep_price:.5f} bias={bias}",
+                    )
                 else:
-                    _evt(events, debug, trade_date, "NO_SWEEP",
-                         f"[{bar_label}] {session} {sweep.reason} bias={bias}")
+                    _evt(
+                        events,
+                        debug,
+                        trade_date,
+                        "NO_SWEEP",
+                        f"[{bar_label}] {session} {sweep.reason} bias={bias}",
+                    )
 
             else:
                 # ── Phase 6: Displacement search ───────────────────────────────
                 bars_since = bar_idx - pending["bar_idx"]
 
                 if bars_since > timeout:
-                    _evt(events, debug, trade_date, "SWEEP_TIMEOUT",
-                         f"[{bar_label}] {session} no displacement in {timeout} bars")
+                    _evt(
+                        events,
+                        debug,
+                        trade_date,
+                        "SWEEP_TIMEOUT",
+                        f"[{bar_label}] {session} no displacement in {timeout} bars",
+                    )
                     pending = None
                     continue
 
-                atr  = atr_map.get(candle["time"])
+                atr = atr_map.get(candle["time"])
                 disp = detect_displacement(candle, atr, pending["sweep"].side, mult)
 
                 if disp.detected:
                     # ── Phases 7-9: Build signal ───────────────────────────────
                     sig = build_signal(
-                        candle, pending["sweep"], disp,
-                        asian, session, rr, sl_buf,
+                        candle,
+                        pending["sweep"],
+                        disp,
+                        asian,
+                        session,
+                        rr,
+                        sl_buf,
                     )
                     pending = None
                     if sig is None:
-                        _evt(events, debug, trade_date, "SIGNAL_REJECTED",
-                             f"[{bar_label}] {session} build_signal returned None")
+                        _evt(
+                            events,
+                            debug,
+                            trade_date,
+                            "SIGNAL_REJECTED",
+                            f"[{bar_label}] {session} build_signal returned None",
+                        )
                     elif sig.risk_pips < min_sl_pips:
-                        _evt(events, debug, trade_date, "SIGNAL_REJECTED",
-                             f"[{bar_label}] {session} "
-                             f"sl={sig.risk_pips:.1f}pip < min_sl={min_sl_pips:.1f}pip")
+                        _evt(
+                            events,
+                            debug,
+                            trade_date,
+                            "SIGNAL_REJECTED",
+                            f"[{bar_label}] {session} "
+                            f"sl={sig.risk_pips:.1f}pip < min_sl={min_sl_pips:.1f}pip",
+                        )
                     else:
                         signals.append(sig)
                         session_traded.add(session)
-                        _evt(events, debug, trade_date, "SIGNAL",
-                             f"[{bar_label}] {session} {sig.side} "
-                             f"entry={sig.entry:.5f} sl={sig.stop_loss:.5f} "
-                             f"rr={sig.rr}")
+                        _evt(
+                            events,
+                            debug,
+                            trade_date,
+                            "SIGNAL",
+                            f"[{bar_label}] {session} {sig.side} "
+                            f"entry={sig.entry:.5f} sl={sig.stop_loss:.5f} "
+                            f"rr={sig.rr}",
+                        )
                 else:
-                    _evt(events, debug, trade_date, "DISP_REJECT",
-                         f"[{bar_label}] {session} [{bars_since}/{timeout}] "
-                         f"{disp.reason}")
+                    _evt(
+                        events,
+                        debug,
+                        trade_date,
+                        "DISP_REJECT",
+                        f"[{bar_label}] {session} [{bars_since}/{timeout}] "
+                        f"{disp.reason}",
+                    )
 
     if debug:
         return signals, events
@@ -219,6 +281,7 @@ def run_strategy_v2(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _utc(t) -> datetime:
     if isinstance(t, datetime):

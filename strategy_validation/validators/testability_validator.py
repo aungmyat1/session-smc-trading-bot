@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
+from ..models import (
+    StrategyDocument,
+    ValidationFinding,
+    ValidationRecommendation,
+    ValidatorResult,
+    ValidationStatus,
+)
 from ..module_base import BaseValidator
 
 
@@ -28,7 +34,18 @@ class TestabilityValidator(BaseValidator):
                     severity="ERROR",
                 )
             )
-        if not any(token in text for token in (">", "<", "at least", "minimum", "maximum", "within", "exactly")):
+        if not any(
+            token in text
+            for token in (
+                ">",
+                "<",
+                "at least",
+                "minimum",
+                "maximum",
+                "within",
+                "exactly",
+            )
+        ):
             findings.append(
                 ValidationFinding(
                     code="coding_requires_assumptions",
@@ -36,7 +53,16 @@ class TestabilityValidator(BaseValidator):
                     severity="WARN",
                 )
             )
-        if any(phrase in text for phrase in ("strong trend", "good momentum", "high probability", "large candle", "near support")):
+        if any(
+            phrase in text
+            for phrase in (
+                "strong trend",
+                "good momentum",
+                "high probability",
+                "large candle",
+                "near support",
+            )
+        ):
             findings.append(
                 ValidationFinding(
                     code="reviewers_may_disagree",
@@ -56,8 +82,17 @@ class TestabilityValidator(BaseValidator):
                 )
             )
 
-        score = round(max(0.0, 100.0 - sum(30 if item.severity == "ERROR" else 15 for item in findings)), 2)
-        status: ValidationStatus = "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
+        score = round(
+            max(
+                0.0,
+                100.0
+                - sum(30 if item.severity == "ERROR" else 15 for item in findings),
+            ),
+            2,
+        )
+        status: ValidationStatus = (
+            "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

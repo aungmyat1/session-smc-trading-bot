@@ -15,14 +15,15 @@ from __future__ import annotations
 ATR_PERIOD = 14
 ADX_PERIOD = 14
 
-ADX_TRENDING   = 25.0
-ADX_RANGING    = 20.0
-ATR_PCT_HIGH   = 0.005   # > 0.5%  of price
-ATR_PCT_LOW    = 0.002   # < 0.2%  of price
-MAX_SPREAD_PIPS = 3.0    # above this = UNSAFE
+ADX_TRENDING = 25.0
+ADX_RANGING = 20.0
+ATR_PCT_HIGH = 0.005  # > 0.5%  of price
+ATR_PCT_LOW = 0.002  # < 0.2%  of price
+MAX_SPREAD_PIPS = 3.0  # above this = UNSAFE
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _true_range(c: dict, prev_close: float) -> float:
     h, lo, pc = c["high"], c["low"], prev_close
@@ -45,11 +46,15 @@ def _wilder_smooth(values: list[float], period: int) -> list[float]:
 def _compute_atr(candles: list[dict], period: int = ATR_PERIOD) -> list[float]:
     if len(candles) < period + 1:
         return []
-    trs = [_true_range(candles[i], candles[i - 1]["close"]) for i in range(1, len(candles))]
+    trs = [
+        _true_range(candles[i], candles[i - 1]["close"]) for i in range(1, len(candles))
+    ]
     return _wilder_smooth(trs, period)
 
 
-def _compute_adx(candles: list[dict], period: int = ADX_PERIOD) -> tuple[float, float, float]:
+def _compute_adx(
+    candles: list[dict], period: int = ADX_PERIOD
+) -> tuple[float, float, float]:
     """
     Returns (adx, plus_di, minus_di) for the final bar.
     Needs at least 2*period+1 candles for a stable reading.
@@ -77,16 +82,16 @@ def _compute_adx(candles: list[dict], period: int = ADX_PERIOD) -> tuple[float, 
         minus_dms.append(minus_dm)
         trs.append(_true_range(candles[i], pc))
 
-    atr_s   = _wilder_smooth(trs,       period)
-    pdm_s   = _wilder_smooth(plus_dms,  period)
-    mdm_s   = _wilder_smooth(minus_dms, period)
+    atr_s = _wilder_smooth(trs, period)
+    pdm_s = _wilder_smooth(plus_dms, period)
+    mdm_s = _wilder_smooth(minus_dms, period)
 
     if not atr_s or atr_s[-1] == 0:
         return 0.0, 0.0, 0.0
 
-    plus_di  = 100.0 * pdm_s[-1] / atr_s[-1]
+    plus_di = 100.0 * pdm_s[-1] / atr_s[-1]
     minus_di = 100.0 * mdm_s[-1] / atr_s[-1]
-    di_sum   = plus_di + minus_di
+    di_sum = plus_di + minus_di
 
     if di_sum == 0:
         return 0.0, plus_di, minus_di
@@ -99,16 +104,17 @@ def _compute_adx(candles: list[dict], period: int = ADX_PERIOD) -> tuple[float, 
             continue
         pdi = 100.0 * pdm_s[j] / atr_s[j]
         mdi = 100.0 * mdm_s[j] / atr_s[j]
-        s   = pdi + mdi
+        s = pdi + mdi
         dxs.append(100.0 * abs(pdi - mdi) / s if s else 0.0)
 
     adx_s = _wilder_smooth(dxs, period)
-    adx   = adx_s[-1] if adx_s else 0.0
+    adx = adx_s[-1] if adx_s else 0.0
 
     return adx, plus_di, minus_di
 
 
 # ── ATR expansion detection ───────────────────────────────────────────────────
+
 
 def _atr_expanding(atr_series: list[float], lookback: int = 3) -> bool:
     """True if ATR has been rising for the last `lookback` readings."""
@@ -118,6 +124,7 @@ def _atr_expanding(atr_series: list[float], lookback: int = 3) -> bool:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def detect_regime(
     candles: list[dict],
@@ -172,31 +179,31 @@ def detect_regime(
 
     adx, plus_di, minus_di = _compute_adx(candles, adx_period)
     atr_series = _compute_atr(candles, atr_period)
-    atr_val    = atr_series[-1] if atr_series else 0.0
-    close      = candles[-1]["close"]
-    atr_pct    = atr_val / close if close else 0.0
-    expanding  = _atr_expanding(atr_series)
+    atr_val = atr_series[-1] if atr_series else 0.0
+    close = candles[-1]["close"]
+    atr_pct = atr_val / close if close else 0.0
+    expanding = _atr_expanding(atr_series)
 
     # ── Classification ────────────────────────────────────────────────────────
     if adx >= ADX_TRENDING and expanding:
-        regime     = "TRENDING"
+        regime = "TRENDING"
         confidence = min(1.0, (adx - ADX_TRENDING) / 25.0 + 0.6)
     elif adx >= ADX_RANGING and atr_pct >= ATR_PCT_HIGH and expanding:
-        regime     = "BREAKOUT"
+        regime = "BREAKOUT"
         confidence = min(1.0, (atr_pct - ATR_PCT_HIGH) / 0.005 + 0.6)
     elif adx < ADX_RANGING and ATR_PCT_LOW <= atr_pct < ATR_PCT_HIGH:
-        regime     = "RANGING"
+        regime = "RANGING"
         confidence = min(1.0, (ADX_RANGING - adx) / 20.0 + 0.5)
     else:
-        regime     = "UNSAFE"
+        regime = "UNSAFE"
         confidence = 0.4
 
     return {
-        "regime":       regime,
-        "confidence":   round(confidence, 4),
-        "adx":          round(adx, 4),
-        "plus_di":      round(plus_di, 4),
-        "minus_di":     round(minus_di, 4),
-        "atr_pct":      round(atr_pct, 6),
+        "regime": regime,
+        "confidence": round(confidence, 4),
+        "adx": round(adx, 4),
+        "plus_di": round(plus_di, 4),
+        "minus_di": round(minus_di, 4),
+        "atr_pct": round(atr_pct, 6),
         "atr_expanding": expanding,
     }

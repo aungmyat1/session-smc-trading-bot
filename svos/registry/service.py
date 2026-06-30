@@ -7,12 +7,27 @@ from typing import Any
 
 from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
 from svos.lifecycle.manager import LifecycleTransitionError, StrategyLifecycleManager
-from svos.shared.models import EvidenceRecord, GateDecision, StrategyRecord, TransitionRecord, VersionRecord
-from svos.shared.support import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
+from svos.shared.models import (
+    EvidenceRecord,
+    GateDecision,
+    StrategyRecord,
+    TransitionRecord,
+    VersionRecord,
+)
+from svos.shared.support import (
+    append_jsonl,
+    now_iso,
+    read_json,
+    read_jsonl,
+    stable_manifest_hash,
+    write_json,
+)
 
 
 def _stable_strategy_id(strategy: str) -> str:
-    return re.sub(r"[^A-Za-z0-9]+", "-", strategy.strip().upper()).strip("-") or "UNNAMED"
+    return (
+        re.sub(r"[^A-Za-z0-9]+", "-", strategy.strip().upper()).strip("-") or "UNNAMED"
+    )
 
 
 def _next_patch_version(version: str) -> str:
@@ -36,7 +51,11 @@ class StrategyRegistryService:
         lifecycle: StrategyLifecycleManager | None = None,
     ) -> None:
         self.root = Path(root)
-        self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
+        self.catalog_path = (
+            Path(catalog_path)
+            if catalog_path is not None
+            else self.root / "config" / "strategy_catalog.yaml"
+        )
         self.lifecycle = lifecycle or StrategyLifecycleManager()
         self.registry_root = self.root / "data" / "svos" / "registry"
 
@@ -55,14 +74,18 @@ class StrategyRegistryService:
     def _transitions_path(self, strategy: str) -> Path:
         return self._strategy_dir(strategy) / "transitions.jsonl"
 
-    def ensure_strategy(self, strategy: str, actor: str = "system", reason: str = "bootstrap") -> StrategyRecord:
+    def ensure_strategy(
+        self, strategy: str, actor: str = "system", reason: str = "bootstrap"
+    ) -> StrategyRecord:
         manifest = get_strategy_manifest(strategy, self.catalog_path)
         if manifest is None:
             raise KeyError(f"strategy not found in catalog: {strategy}")
         versions = read_jsonl(self._versions_path(strategy))
         state = read_json(self._state_path(strategy), {})
         if not versions:
-            version = self.record_version(strategy, manifest=manifest, actor=actor, reason=reason)
+            version = self.record_version(
+                strategy, manifest=manifest, actor=actor, reason=reason
+            )
             stage = self.lifecycle.infer_stage(manifest).value
             state = {
                 "strategy": strategy,
@@ -83,12 +106,21 @@ class StrategyRegistryService:
         actor: str = "system",
         reason: str = "snapshot",
     ) -> VersionRecord:
-        manifest = dict(manifest or get_strategy_manifest(strategy, self.catalog_path) or {})
+        manifest = dict(
+            manifest or get_strategy_manifest(strategy, self.catalog_path) or {}
+        )
         if not manifest:
             raise KeyError(f"strategy not found in catalog: {strategy}")
         created_at = now_iso()
         version = str(manifest.get("version", "0"))
-        version_id = stable_manifest_hash({"strategy": strategy, "version": version, "manifest": manifest, "created_at": created_at})
+        version_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version": version,
+                "manifest": manifest,
+                "created_at": created_at,
+            }
+        )
         record = VersionRecord(
             version_id=version_id,
             strategy=strategy,
@@ -107,7 +139,9 @@ class StrategyRegistryService:
                 "current_version_id": version_id,
                 "latest_version": version,
                 "updated_at": created_at,
-                "current_stage": state.get("current_stage", self.lifecycle.infer_stage(manifest).value),
+                "current_stage": state.get(
+                    "current_stage", self.lifecycle.infer_stage(manifest).value
+                ),
             }
         )
         write_json(self._state_path(strategy), state)
@@ -122,7 +156,9 @@ class StrategyRegistryService:
         reason: str = "strategy specification registered",
     ) -> VersionRecord:
         """Register a stable strategy identity and version a changed specification."""
-        current = self.ensure_strategy(strategy, actor=actor, reason="strategy registry initialized")
+        current = self.ensure_strategy(
+            strategy, actor=actor, reason="strategy registry initialized"
+        )
         versions = self.versions(strategy)
         manifest = dict(
             (versions[-1].get("manifest") if versions else None)
@@ -131,7 +167,9 @@ class StrategyRegistryService:
         )
         spec_hash = hashlib.sha256(specification.encode("utf-8")).hexdigest()
         previous_hash = str(manifest.get("strategy_spec_hash", ""))
-        strategy_id = str(manifest.get("strategy_id", "")).strip() or _stable_strategy_id(strategy)
+        strategy_id = str(
+            manifest.get("strategy_id", "")
+        ).strip() or _stable_strategy_id(strategy)
         version = str(manifest.get("version", current.latest_version or "0.0.0"))
         changed = bool(previous_hash and previous_hash != spec_hash)
         if changed:
@@ -157,7 +195,9 @@ class StrategyRegistryService:
             "version": version,
         }
         change_reason = f"{reason}; specification changed" if changed else reason
-        return self.record_version(strategy, manifest=updated, actor=actor, reason=change_reason)
+        return self.record_version(
+            strategy, manifest=updated, actor=actor, reason=change_reason
+        )
 
     def record_evidence(
         self,
@@ -219,16 +259,22 @@ class StrategyRegistryService:
         current = self.ensure_strategy(strategy)
         self.lifecycle.validate_transition(current.current_stage, to_stage)
         if governance_decision is None:
-            raise LifecycleTransitionError("Lifecycle transitions require an allowed governance gate decision.")
+            raise LifecycleTransitionError(
+                "Lifecycle transitions require an allowed governance gate decision."
+            )
         if not governance_decision.allowed:
-            raise LifecycleTransitionError("The governance gate decision denied this lifecycle transition.")
+            raise LifecycleTransitionError(
+                "The governance gate decision denied this lifecycle transition."
+            )
         if (
             governance_decision.strategy != strategy
             or governance_decision.from_stage != current.current_stage
             or governance_decision.to_stage != to_stage
             or governance_decision.current_version_id != current.current_version_id
         ):
-            raise LifecycleTransitionError("The governance gate decision does not match the current strategy state.")
+            raise LifecycleTransitionError(
+                "The governance gate decision does not match the current strategy state."
+            )
         recorded_at = now_iso()
         transition_id = stable_manifest_hash(
             {
@@ -247,7 +293,10 @@ class StrategyRegistryService:
             recorded_at=recorded_at,
             actor=actor,
             reason=reason,
-            metadata={"governance_decision_id": governance_decision.decision_id, **(metadata or {})},
+            metadata={
+                "governance_decision_id": governance_decision.decision_id,
+                **(metadata or {}),
+            },
         )
         append_jsonl(self._transitions_path(strategy), record.to_dict())
         state = read_json(self._state_path(strategy), {})
@@ -274,8 +323,13 @@ class StrategyRegistryService:
         versions = self.versions(strategy)
         evidence = self.evidence(strategy)
         transitions = self.transitions(strategy)
-        current_stage = str(state.get("current_stage") or self.lifecycle.infer_stage(manifest).value)
-        current_version_id = str(state.get("current_version_id") or (versions[-1]["version_id"] if versions else ""))
+        current_stage = str(
+            state.get("current_stage") or self.lifecycle.infer_stage(manifest).value
+        )
+        current_version_id = str(
+            state.get("current_version_id")
+            or (versions[-1]["version_id"] if versions else "")
+        )
         latest_version = str(state.get("latest_version") or manifest.get("version", ""))
         return StrategyRecord(
             strategy=strategy,

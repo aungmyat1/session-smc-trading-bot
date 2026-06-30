@@ -12,7 +12,7 @@ def evaluate_r_multiple(
     entry: float,
     stop: float,
     target: float,
-    direction: str
+    direction: str,
 ) -> Optional[float]:
     """
     Walk forward through future price action and determine R-multiple outcome.

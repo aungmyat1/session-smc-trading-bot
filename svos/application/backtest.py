@@ -24,7 +24,6 @@ from typing import Any
 from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import BacktestReportBuilder
 
-
 _MIN_TRADE_COUNT = 50
 _MIN_PROFIT_FACTOR = 1.0
 
@@ -86,11 +85,18 @@ class BacktestIntegrationService:
             service="svos.backtest",
             strategy=strategy,
             dataset_id=dataset_id,
-            parameters={"actor": actor, "trade_count": int(metrics.get("trade_count", 0))},
+            parameters={
+                "actor": actor,
+                "trade_count": int(metrics.get("trade_count", 0)),
+            },
         )
 
         checks = self._evaluate_gate(metrics)
-        status = "PASS" if all(c["passed"] for c in checks if c.get("severity") == "ERROR") else "FAIL"
+        status = (
+            "PASS"
+            if all(c["passed"] for c in checks if c.get("severity") == "ERROR")
+            else "FAIL"
+        )
 
         current = self._platform.registry.ensure_strategy(strategy)
 
@@ -151,49 +157,63 @@ class BacktestIntegrationService:
         spread_ok = metrics.get("spread_included", None)
         commission_ok = metrics.get("commission_included", None)
 
-        checks.append({
-            "name": "minimum_trade_count",
-            "passed": n >= _MIN_TRADE_COUNT,
-            "severity": "ERROR",
-            "message": f"n={n} (required ≥ {_MIN_TRADE_COUNT})",
-        })
-        checks.append({
-            "name": "profit_factor_standard",
-            "passed": pf > _MIN_PROFIT_FACTOR,
-            "severity": "ERROR",
-            "message": f"PF={pf:.3f} (required > {_MIN_PROFIT_FACTOR})",
-        })
-        checks.append({
-            "name": "profit_factor_2x_stress",
-            "passed": pf_2x > _MIN_PROFIT_FACTOR,
-            "severity": "ERROR",
-            "message": f"PF_2x={pf_2x:.3f} (required > {_MIN_PROFIT_FACTOR})",
-        })
-        checks.append({
-            "name": "positive_expectancy",
-            "passed": expectancy > 0.0,
-            "severity": "ERROR",
-            "message": f"expectancy={expectancy:.4f}R (required > 0)",
-        })
-        checks.append({
-            "name": "spread_cost_included",
-            "passed": spread_ok is not False,
-            "severity": "ERROR",
-            "message": "Spread cost must be applied — a result without spread is not a result.",
-        })
-        checks.append({
-            "name": "commission_cost_included",
-            "passed": commission_ok is not False,
-            "severity": "WARN",
-            "message": "Commission cost should be applied for institutional-grade results.",
-        })
-        if max_dd > 0:
-            checks.append({
-                "name": "drawdown_below_policy",
-                "passed": max_dd <= 20.0,
+        checks.append(
+            {
+                "name": "minimum_trade_count",
+                "passed": n >= _MIN_TRADE_COUNT,
+                "severity": "ERROR",
+                "message": f"n={n} (required ≥ {_MIN_TRADE_COUNT})",
+            }
+        )
+        checks.append(
+            {
+                "name": "profit_factor_standard",
+                "passed": pf > _MIN_PROFIT_FACTOR,
+                "severity": "ERROR",
+                "message": f"PF={pf:.3f} (required > {_MIN_PROFIT_FACTOR})",
+            }
+        )
+        checks.append(
+            {
+                "name": "profit_factor_2x_stress",
+                "passed": pf_2x > _MIN_PROFIT_FACTOR,
+                "severity": "ERROR",
+                "message": f"PF_2x={pf_2x:.3f} (required > {_MIN_PROFIT_FACTOR})",
+            }
+        )
+        checks.append(
+            {
+                "name": "positive_expectancy",
+                "passed": expectancy > 0.0,
+                "severity": "ERROR",
+                "message": f"expectancy={expectancy:.4f}R (required > 0)",
+            }
+        )
+        checks.append(
+            {
+                "name": "spread_cost_included",
+                "passed": spread_ok is not False,
+                "severity": "ERROR",
+                "message": "Spread cost must be applied — a result without spread is not a result.",
+            }
+        )
+        checks.append(
+            {
+                "name": "commission_cost_included",
+                "passed": commission_ok is not False,
                 "severity": "WARN",
-                "message": f"max_drawdown={max_dd:.2f}% (warn threshold 20%)",
-            })
+                "message": "Commission cost should be applied for institutional-grade results.",
+            }
+        )
+        if max_dd > 0:
+            checks.append(
+                {
+                    "name": "drawdown_below_policy",
+                    "passed": max_dd <= 20.0,
+                    "severity": "WARN",
+                    "message": f"max_drawdown={max_dd:.2f}% (warn threshold 20%)",
+                }
+            )
         return checks
 
     @staticmethod
@@ -222,13 +242,20 @@ class BacktestIntegrationService:
         if status == "PASS" and current_stage == "HISTORICAL_REPLAY":
             target = "STATISTICAL_VALIDATION"
             reason = f"Phase-0 gate passed (n={n}, PF={pf:.3f}, PF_2x={pf_2x:.3f})"
-        elif status == "FAIL" and current_stage in ("HISTORICAL_REPLAY", "STATISTICAL_VALIDATION"):
+        elif status == "FAIL" and current_stage in (
+            "HISTORICAL_REPLAY",
+            "STATISTICAL_VALIDATION",
+        ):
             target = "REFINEMENT"
             reason = f"Phase-0 gate failed (n={n}, PF={pf:.3f}, PF_2x={pf_2x:.3f})"
         else:
             return
         try:
-            self._platform.audited_transition(strategy, to_stage=target, actor=actor, reason=reason)
+            self._platform.audited_transition(
+                strategy, to_stage=target, actor=actor, reason=reason
+            )
         except Exception as exc:
-            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(exc):
+            if "No PASS evidence" not in str(exc) and "Illegal lifecycle" not in str(
+                exc
+            ):
                 raise

@@ -21,6 +21,7 @@ from adaptive.strategies import AdaptiveSignal
 # Lazy import to avoid hard dependency if running tests without the full stack.
 try:
     from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
+
     _STRATEGY_AVAILABLE = True
 except ImportError:
     _STRATEGY_AVAILABLE = False
@@ -66,24 +67,26 @@ def generate_signals(
         else:
             ts_str = str(ts)
 
-        results.append(AdaptiveSignal(
-            strategy  = "smc_session",
-            pair      = symbol,
-            direction = "LONG" if sig.side == "long" else "SHORT",
-            entry_price = sig.entry,
-            sl_price    = sig.stop_loss,
-            tp_price    = sig.take_profit,
-            session   = sig.session,
-            timestamp = ts_str,
-            reason    = sig.reason,
-            metadata  = {
-                "risk_pips":            sig.risk_pips,
-                "reward_pips":          sig.reward_pips,
-                "rr":                   sig.rr,
-                "liquidity_swept":      True,   # sweep is a precondition in SA
-                "structure_confirmed":  True,   # CHoCH+BOS+displacement required
-            },
-        ))
+        results.append(
+            AdaptiveSignal(
+                strategy="smc_session",
+                pair=symbol,
+                direction="LONG" if sig.side == "long" else "SHORT",
+                entry_price=sig.entry,
+                sl_price=sig.stop_loss,
+                tp_price=sig.take_profit,
+                session=sig.session,
+                timestamp=ts_str,
+                reason=sig.reason,
+                metadata={
+                    "risk_pips": sig.risk_pips,
+                    "reward_pips": sig.reward_pips,
+                    "rr": sig.rr,
+                    "liquidity_swept": True,  # sweep is a precondition in SA
+                    "structure_confirmed": True,  # CHoCH+BOS+displacement required
+                },
+            )
+        )
 
     return results
 

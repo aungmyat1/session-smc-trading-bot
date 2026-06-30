@@ -22,13 +22,13 @@ import math
 from datetime import datetime, timezone
 from pathlib import Path
 
-_ROOT       = Path(__file__).resolve().parent.parent
-_MODEL      = _ROOT / "research" / "cost_model.json"
-_YAML_OUT   = _ROOT / "research" / "recommended_spread_limits.yaml"
+_ROOT = Path(__file__).resolve().parent.parent
+_MODEL = _ROOT / "research" / "cost_model.json"
+_YAML_OUT = _ROOT / "research" / "recommended_spread_limits.yaml"
 _COSTS_JSON = _ROOT / "config" / "costs.json"
 
 STRATEGY_SYMBOLS = ["EURUSD", "GBPUSD"]
-CEIL_INCREMENT   = 0.05  # round P95 up to next 0.05 pip
+CEIL_INCREMENT = 0.05  # round P95 up to next 0.05 pip
 
 
 def _ceil_to(value, increment):
@@ -58,12 +58,12 @@ def main():
         stress2x = round(standard * 2, 4)
 
         recommendations[sym] = {
-            "killzone_n":      kz["n"],
-            "killzone_avg":    kz["avg"],
+            "killzone_n": kz["n"],
+            "killzone_avg": kz["avg"],
             "killzone_median": kz["median"],
-            "killzone_p95":    kz["p95"],
-            "standard":        standard,
-            "stress2x":        stress2x,
+            "killzone_p95": kz["p95"],
+            "standard": standard,
+            "stress2x": stress2x,
         }
 
     if not recommendations:
@@ -118,7 +118,9 @@ def main():
     print(f"    active_profile → vantage_measured")
 
     # Print summary
-    print(f"\n{'Symbol':<10} {'KZ_avg':>8} {'KZ_p95':>8} {'standard':>10} {'stress2x':>10}")
+    print(
+        f"\n{'Symbol':<10} {'KZ_avg':>8} {'KZ_p95':>8} {'standard':>10} {'stress2x':>10}"
+    )
     print("-" * 52)
     for sym, d in recommendations.items():
         placeholder = {"EURUSD": 1.4, "GBPUSD": 1.8}.get(sym, "?")

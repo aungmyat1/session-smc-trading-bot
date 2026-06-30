@@ -8,6 +8,7 @@ Usage:
 Prints: session coverage, sample counts, current averages, and collection health.
 Read-only — does not modify any files.
 """
+
 import csv
 import statistics
 import subprocess
@@ -54,12 +55,16 @@ def main() -> None:
     # Poll interval health
     parsed = [datetime.fromisoformat(t) for t in times]
     if len(parsed) > 1:
-        gaps = [(parsed[i] - parsed[i - 1]).total_seconds() for i in range(1, len(parsed))]
+        gaps = [
+            (parsed[i] - parsed[i - 1]).total_seconds() for i in range(1, len(parsed))
+        ]
         avg_gap = statistics.mean(gaps)
         max_gap = max(gaps)
         bad = sum(1 for g in gaps if g > 90)
-        print(f"  Poll interval: avg={avg_gap:.0f}s  max={max_gap:.0f}s  "
-              f"gaps>90s: {bad} {'✅' if bad == 0 else '⚠️'}")
+        print(
+            f"  Poll interval: avg={avg_gap:.0f}s  max={max_gap:.0f}s  "
+            f"gaps>90s: {bad} {'✅' if bad == 0 else '⚠️'}"
+        )
 
     print()
 
@@ -76,7 +81,9 @@ def main() -> None:
     print(f"  Session coverage:")
     print(f"    London:   {london_n}/5  {sorted(sess_days['london'])}")
     print(f"    New York: {ny_n}/5  {sorted(sess_days['new_york'])}")
-    print(f"    Gate (5+5): {'✅ MET' if gate_met else f'⏳ {5 - london_n}L + {5 - ny_n}NY remaining'}")
+    print(
+        f"    Gate (5+5): {'✅ MET' if gate_met else f'⏳ {5 - london_n}L + {5 - ny_n}NY remaining'}"
+    )
     print()
 
     # ── Spread averages by symbol/session ─────────────────────────────────────
@@ -90,8 +97,10 @@ def main() -> None:
     sessions = ["london", "new_york"]
 
     print("  Killzone spread averages (pip):")
-    print(f"  {'Symbol':<8} {'Session':<10} {'n':>5} {'Avg':>6} {'Med':>6} "
-          f"{'P95':>6} {'Max':>6}  vs placeholder")
+    print(
+        f"  {'Symbol':<8} {'Session':<10} {'n':>5} {'Avg':>6} {'Med':>6} "
+        f"{'P95':>6} {'Max':>6}  vs placeholder"
+    )
     for sym in symbols:
         for sess in sessions:
             vals = agg.get((sym, sess), [])
@@ -106,8 +115,10 @@ def main() -> None:
             if ph_std is not None:
                 delta = avg - ph_std
                 note = f"ph={ph_std:.2f}  Δ={delta:+.2f} {'✅' if delta < 0 else '⚠️'}"
-            print(f"  {sym:<8} {sess:<10} {len(vals):>5} {avg:>6.2f} {med:>6.2f} "
-                  f"{p95:>6.2f} {mx:>6.2f}  {note}")
+            print(
+                f"  {sym:<8} {sess:<10} {len(vals):>5} {avg:>6.2f} {med:>6.2f} "
+                f"{p95:>6.2f} {mx:>6.2f}  {note}"
+            )
 
     print()
 
@@ -126,17 +137,23 @@ def main() -> None:
         est_pf_2x = pf_std - drag_ph * ratio
         tag = "✅ projected PASS" if est_pf_2x >= 1.0 else "❌ projected FAIL"
         print(f"  PF_2x projection (linear approx, preliminary):")
-        print(f"    Measured EURUSD avg: {eur_avg:.2f}pip  GBPUSD avg: {gbp_avg:.2f}pip")
+        print(
+            f"    Measured EURUSD avg: {eur_avg:.2f}pip  GBPUSD avg: {gbp_avg:.2f}pip"
+        )
         print(f"    Weighted 2× cost: measured={meas_w:.3f}  placeholder=3.103")
         print(f"    Estimated PF_2x: {est_pf_2x:.3f}  {tag}")
-        print(f"    {'⚠️  PRELIMINARY — do not update costs.json until gate met (5+5 sessions)' if not gate_met else '✅ Gate met — ready for full analysis'}")
+        print(
+            f"    {'⚠️  PRELIMINARY — do not update costs.json until gate met (5+5 sessions)' if not gate_met else '✅ Gate met — ready for full analysis'}"
+        )
         print()
 
     # ── Expected completion ───────────────────────────────────────────────────
     if not gate_met:
         sessions_left = max(5 - london_n, 5 - ny_n)
         print(f"  Estimated gate completion: ~{sessions_left} more trading day(s)")
-        print(f"  No action needed. Run: python3 scripts/spread_status.py each morning.")
+        print(
+            f"  No action needed. Run: python3 scripts/spread_status.py each morning."
+        )
 
 
 if __name__ == "__main__":

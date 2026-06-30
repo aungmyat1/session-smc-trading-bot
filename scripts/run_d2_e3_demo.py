@@ -15,6 +15,7 @@ Env vars (from .env):
 Run:
     python3 scripts/run_d2_e3_demo.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -51,30 +52,30 @@ log = logging.getLogger("d2e3")
 # ── Config ────────────────────────────────────────────────────────────────────
 
 METAAPI_TOKEN = os.getenv("METAAPI_TOKEN", "")
-ACCOUNT_ID    = os.getenv("VANTAGE_DEMO_METAAPI_ID", "")
-TG_TOKEN      = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TG_CHAT       = os.getenv("TELEGRAM_CHAT_ID", "")
+ACCOUNT_ID = os.getenv("VANTAGE_DEMO_METAAPI_ID", "")
+TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TG_CHAT = os.getenv("TELEGRAM_CHAT_ID", "")
 
 # DEMO_LIVE=true  → orders sent to Vantage demo MT5 (paper money)
 # DEMO_LIVE=false → dry-run only (no MetaAPI order calls)
-DEMO_LIVE    = os.getenv("DEMO_LIVE", "false").lower() == "true"
+DEMO_LIVE = os.getenv("DEMO_LIVE", "false").lower() == "true"
 LIVE_TRADING = os.getenv("LIVE_TRADING", "false").lower() == "true"
 
-SYMBOLS       = ["EURUSD", "GBPUSD"]
-MAGIC         = {"EURUSD": 31001, "GBPUSD": 31002}  # distinct from ST-A2 (21001/21002)
-RISK_PCT      = 0.005   # 0.5% per trade
-PIP_VALUE     = {"EURUSD": 10.0, "GBPUSD": 10.0}   # USD/pip at 1.0 lot
-PIP           = {"EURUSD": 0.0001, "GBPUSD": 0.0001}
-MIN_LOT       = 0.01
-POLL_INTERVAL = 60      # seconds
+SYMBOLS = ["EURUSD", "GBPUSD"]
+MAGIC = {"EURUSD": 31001, "GBPUSD": 31002}  # distinct from ST-A2 (21001/21002)
+RISK_PCT = 0.005  # 0.5% per trade
+PIP_VALUE = {"EURUSD": 10.0, "GBPUSD": 10.0}  # USD/pip at 1.0 lot
+PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001}
+MIN_LOT = 0.01
+POLL_INTERVAL = 60  # seconds
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from execution.metaapi_client import MetaAPIClient
-from execution.trade_logger import TradeLogger
-from strategy.d2_e3.signal_engine import D2E3Engine, D2E3Params
-
+from execution.metaapi_client import MetaAPIClient  # noqa: E402
+from execution.trade_logger import TradeLogger  # noqa: E402
+from strategy.d2_e3.signal_engine import D2E3Engine, D2E3Params  # noqa: E402
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _lot(balance: float, stop_pips: float, symbol: str) -> float:
     risk_usd = balance * RISK_PCT
@@ -87,6 +88,7 @@ async def _tg(msg: str) -> None:
         return
     try:
         import aiohttp
+
         async with aiohttp.ClientSession() as s:
             await s.post(
                 f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage",
@@ -136,9 +138,10 @@ def _holdout_passed() -> tuple[bool, str]:
 
 # ── Per-symbol state ──────────────────────────────────────────────────────────
 
+
 class _SymState:
     def __init__(self):
-        self.active_limit_id: str | None = None   # MetaAPI pending order ID
+        self.active_limit_id: str | None = None  # MetaAPI pending order ID
         self.open_position_id: str | None = None  # MetaAPI position ID
         self.pending_lot: float = 0.0
         self.pending_entry: float = 0.0
@@ -216,6 +219,7 @@ def _log_fill(
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
+
 async def run() -> None:
     if LIVE_TRADING:
         log.error("LIVE_TRADING=true — this script is demo-only. Abort.")
@@ -230,8 +234,12 @@ async def run() -> None:
             await _tg(f"[D2E3-DEMO] DEMO_LIVE blocked: {reason}")
             return
 
-    log.info("D2E3 demo starting (DEMO_LIVE=%s, account=…%s)", DEMO_LIVE, ACCOUNT_ID[-6:])
-    await _tg(f"[D2E3-DEMO] Started DEMO_LIVE={DEMO_LIVE}  pairs={SYMBOLS}  risk={RISK_PCT*100}%")
+    log.info(
+        "D2E3 demo starting (DEMO_LIVE=%s, account=…%s)", DEMO_LIVE, ACCOUNT_ID[-6:]
+    )
+    await _tg(
+        f"[D2E3-DEMO] Started DEMO_LIVE={DEMO_LIVE}  pairs={SYMBOLS}  risk={RISK_PCT*100}%"
+    )
 
     client = MetaAPIClient(METAAPI_TOKEN, ACCOUNT_ID)
     trade_logger = TradeLogger(Path("logs") / "d2e3_trades.jsonl")
@@ -247,7 +255,9 @@ async def run() -> None:
             now = datetime.now(timezone.utc)
 
             if not _in_session(now):
-                secs_to_open = ((8 - now.hour) % 24) * 3600 - now.minute * 60 - now.second
+                secs_to_open = (
+                    ((8 - now.hour) % 24) * 3600 - now.minute * 60 - now.second
+                )
                 log.info("Off-session. Next open in %ds", secs_to_open)
                 await asyncio.sleep(min(max(secs_to_open, 60), 1800))
                 continue
@@ -262,7 +272,9 @@ async def run() -> None:
 
             for sym in SYMBOLS:
                 try:
-                    await _scan(sym, balance, client, engines[sym], sym_state[sym], trade_logger)
+                    await _scan(
+                        sym, balance, client, engines[sym], sym_state[sym], trade_logger
+                    )
                 except Exception as e:
                     log.exception("[%s] error: %s", sym, e)
 
@@ -276,6 +288,7 @@ async def run() -> None:
 
 
 # ── Per-symbol scan ───────────────────────────────────────────────────────────
+
 
 async def _scan(
     sym: str,
@@ -291,9 +304,17 @@ async def _scan(
 
     signals = engine.process_bars(bars)
     for sig in signals:
-        log.info("[%s] %s dir=%s entry=%.5f stop=%.5f tgt=%.5f r=%+.2f %s",
-                 sym, sig.type, sig.direction, sig.entry, sig.stop,
-                 sig.target, sig.r, sig.exit_reason or sig.detail)
+        log.info(
+            "[%s] %s dir=%s entry=%.5f stop=%.5f tgt=%.5f r=%+.2f %s",
+            sym,
+            sig.type,
+            sig.direction,
+            sig.entry,
+            sig.stop,
+            sig.target,
+            sig.r,
+            sig.exit_reason or sig.detail,
+        )
 
         if sig.type == "setup_detected":
             _log_signal(trade_logger, sym, sig, reason=sig.detail or sig.type)
@@ -324,10 +345,14 @@ async def _scan(
             if DEMO_LIVE and not state.active_limit_id:
                 try:
                     res = await client.place_limit_order(
-                        symbol=sym, direction=sig.direction,
-                        volume=lot, price=sig.entry,
-                        sl=sig.stop, tp=sig.target,
-                        magic=MAGIC[sym], comment="D2E3-demo",
+                        symbol=sym,
+                        direction=sig.direction,
+                        volume=lot,
+                        price=sig.entry,
+                        sl=sig.stop,
+                        tp=sig.target,
+                        magic=MAGIC[sym],
+                        comment="D2E3-demo",
                     )
                     state.active_limit_id = res.order_id
                 except Exception as e:
@@ -335,8 +360,15 @@ async def _scan(
                     trade_logger.order_rejected(sym, f"ORDER_FAILED:{e}", sig.direction)
                     await _tg(f"[D2E3] {sym} limit order ERROR: {e}")
             else:
-                log.info("[%s] DRY-RUN limit %s @ %.5f  SL=%.5f  TP=%.5f  lot=%.2f",
-                         sym, side.upper(), sig.entry, sig.stop, sig.target, lot)
+                log.info(
+                    "[%s] DRY-RUN limit %s @ %.5f  SL=%.5f  TP=%.5f  lot=%.2f",
+                    sym,
+                    side.upper(),
+                    sig.entry,
+                    sig.stop,
+                    sig.target,
+                    lot,
+                )
 
             await _tg(
                 f"[D2E3{'|DEMO_LIVE' if DEMO_LIVE else '|DRY-RUN'}] "
@@ -345,13 +377,18 @@ async def _scan(
             )
 
         elif sig.type == "entry_filled":
-            order_id = state.active_limit_id or state.open_position_id or f"{sym}:{sig.bar_time}"
+            order_id = (
+                state.active_limit_id
+                or state.open_position_id
+                or f"{sym}:{sig.bar_time}"
+            )
             _log_fill(
                 trade_logger,
                 sym,
                 order_id=order_id,
                 entry=sig.entry,
-                lot=state.pending_lot or _lot(balance, abs(sig.entry - sig.stop) / PIP[sym], sym),
+                lot=state.pending_lot
+                or _lot(balance, abs(sig.entry - sig.stop) / PIP[sym], sym),
                 stop=sig.stop,
                 target=sig.target,
                 dry_run=not DEMO_LIVE,

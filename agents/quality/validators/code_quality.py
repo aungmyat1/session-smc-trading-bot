@@ -1,4 +1,5 @@
 """Code quality validator — runs ruff, mypy, and optionally pylint/black/isort."""
+
 from __future__ import annotations
 
 import logging
@@ -49,7 +50,9 @@ class CodeQualityValidator:
         warnings += ruff_warns
 
         # --- mypy (scoped to canonical typed paths, matching CI pyproject.toml) ---
-        mypy_dirs = [self._root / d for d in self._mypy_dirs if (self._root / d).exists()]
+        mypy_dirs = [
+            self._root / d for d in self._mypy_dirs if (self._root / d).exists()
+        ]
         mypy_score, mypy_errs, mypy_warns, mypy_det = self._run_mypy(mypy_dirs)
         tool_scores["mypy"] = mypy_score
         tool_details["mypy"] = mypy_det
@@ -69,9 +72,7 @@ class CodeQualityValidator:
         warnings += isort_warns
 
         # Weighted score
-        composite = sum(
-            tool_scores.get(t, 100.0) * w for t, w in self._weights.items()
-        )
+        composite = sum(tool_scores.get(t, 100.0) * w for t, w in self._weights.items())
         score = round(composite, 1)
         status = Status.FAIL if score < self._min_score else Status.PASS
 
@@ -79,7 +80,11 @@ class CodeQualityValidator:
             name="code_quality",
             status=status,
             score=score,
-            details={"tool_scores": tool_scores, "tool_details": tool_details, "source_dirs": [str(d) for d in source_dirs]},
+            details={
+                "tool_scores": tool_scores,
+                "tool_details": tool_details,
+                "source_dirs": [str(d) for d in source_dirs],
+            },
             errors=errors,
             warnings=warnings,
         )
@@ -89,15 +94,28 @@ class CodeQualityValidator:
     def _resolve_source_dirs(self) -> list[Path]:
         return [self._root / d for d in _SOURCE_DIRS if (self._root / d).exists()]
 
-    def _run_ruff(self, dirs: list[Path]) -> tuple[float, list[str], list[str], dict[str, Any]]:
+    def _run_ruff(
+        self, dirs: list[Path]
+    ) -> tuple[float, list[str], list[str], dict[str, Any]]:
         if not dirs:
             return 100.0, [], [], {"skipped": True}
-        cmd = ["python", "-m", "ruff", "check", "--output-format=concise", *[str(d) for d in dirs]]
+        cmd = [
+            "python",
+            "-m",
+            "ruff",
+            "check",
+            "--output-format=concise",
+            *[str(d) for d in dirs],
+        ]
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
         raw_lines = [ln for ln in proc.stdout.splitlines() if ln.strip()]
         # Exclude ruff summary lines — only keep actual violation lines (path:line:col: CODE msg).
         _SUMMARY_PREFIXES = ("Found", "All checks passed", "No fixes", "[*]")
-        error_lines = [ln for ln in raw_lines if not any(ln.startswith(p) for p in _SUMMARY_PREFIXES)]
+        error_lines = [
+            ln
+            for ln in raw_lines
+            if not any(ln.startswith(p) for p in _SUMMARY_PREFIXES)
+        ]
         count = len(error_lines)
         score = max(0.0, round(100.0 - min(count, 100) * 1.0, 1))
         errors = [f"ruff: {ln}" for ln in error_lines[:20]]
@@ -105,15 +123,24 @@ class CodeQualityValidator:
             errors.append(f"ruff: … {count - 20} more issues")
         return score, errors, [], {"violation_count": count}
 
-    def _run_mypy(self, dirs: list[Path]) -> tuple[float, list[str], list[str], dict[str, Any]]:
+    def _run_mypy(
+        self, dirs: list[Path]
+    ) -> tuple[float, list[str], list[str], dict[str, Any]]:
         # Only run mypy on dirs that actually exist.
         if not dirs:
             return 100.0, [], [], {"skipped": True}
         # --follow-imports=skip limits checking to the explicitly named paths only.
         # Without this flag mypy crawls all transitive imports, producing noise from
         # modules that are intentionally outside the typed scope.
-        cmd = ["python", "-m", "mypy", "--ignore-missing-imports", "--follow-imports=skip",
-               "--no-error-summary", *[str(d) for d in dirs]]
+        cmd = [
+            "python",
+            "-m",
+            "mypy",
+            "--ignore-missing-imports",
+            "--follow-imports=skip",
+            "--no-error-summary",
+            *[str(d) for d in dirs],
+        ]
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
         error_pat = re.compile(r"error:")
         errors_found = [ln for ln in proc.stdout.splitlines() if error_pat.search(ln)]
@@ -126,22 +153,55 @@ class CodeQualityValidator:
             errors.append(f"mypy: … {count - 15} more type errors")
         return score, errors, [], {"error_count": count}
 
-    def _run_black_check(self, dirs: list[Path]) -> tuple[float, list[str], dict[str, Any]]:
+    def _run_black_check(
+        self, dirs: list[Path]
+    ) -> tuple[float, list[str], dict[str, Any]]:
         if not dirs:
             return 100.0, [], {"skipped": True}
         cmd = ["python", "-m", "black", "--check", "--quiet", *[str(d) for d in dirs]]
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
         reformattable = proc.stderr.count("would reformat")
-        score = 100.0 if proc.returncode == 0 else max(0.0, round(100.0 - reformattable * 5.0, 1))
-        warns = [f"black: {reformattable} file(s) need reformatting"] if reformattable else []
-        return score, warns, {"reformattable": reformattable, "returncode": proc.returncode}
+        score = (
+            100.0
+            if proc.returncode == 0
+            else max(0.0, round(100.0 - reformattable * 5.0, 1))
+        )
+        warns = (
+            [f"black: {reformattable} file(s) need reformatting"]
+            if reformattable
+            else []
+        )
+        return (
+            score,
+            warns,
+            {"reformattable": reformattable, "returncode": proc.returncode},
+        )
 
-    def _run_isort_check(self, dirs: list[Path]) -> tuple[float, list[str], dict[str, Any]]:
+    def _run_isort_check(
+        self, dirs: list[Path]
+    ) -> tuple[float, list[str], dict[str, Any]]:
         if not dirs:
             return 100.0, [], {"skipped": True}
-        cmd = ["python", "-m", "isort", "--check-only", "--quiet", *[str(d) for d in dirs]]
+        cmd = [
+            "python",
+            "-m",
+            "isort",
+            "--check-only",
+            "--quiet",
+            *[str(d) for d in dirs],
+        ]
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
-        unsorted = len([ln for ln in proc.stdout.splitlines() if "ERROR" in ln or ln.strip()])
-        score = 100.0 if proc.returncode == 0 else max(0.0, round(100.0 - unsorted * 5.0, 1))
-        warns = [f"isort: {unsorted} file(s) have unsorted imports"] if proc.returncode != 0 else []
+        unsorted = len(
+            [ln for ln in proc.stdout.splitlines() if "ERROR" in ln or ln.strip()]
+        )
+        score = (
+            100.0
+            if proc.returncode == 0
+            else max(0.0, round(100.0 - unsorted * 5.0, 1))
+        )
+        warns = (
+            [f"isort: {unsorted} file(s) have unsorted imports"]
+            if proc.returncode != 0
+            else []
+        )
         return score, warns, {"returncode": proc.returncode}

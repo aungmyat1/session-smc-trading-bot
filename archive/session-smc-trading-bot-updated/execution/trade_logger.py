@@ -22,14 +22,16 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_LOG_FILE = Path("logs/trades.jsonl")
 
-_VALID_EVENTS = frozenset({
-    "SIGNAL_CREATED",
-    "ORDER_SUBMITTED",
-    "ORDER_FILLED",
-    "ORDER_REJECTED",
-    "POSITION_CLOSED",
-    "ERROR",
-})
+_VALID_EVENTS = frozenset(
+    {
+        "SIGNAL_CREATED",
+        "ORDER_SUBMITTED",
+        "ORDER_FILLED",
+        "ORDER_REJECTED",
+        "POSITION_CLOSED",
+        "ERROR",
+    }
+)
 
 
 class TradeLogger:
@@ -61,57 +63,118 @@ class TradeLogger:
     # ── Public event methods ──────────────────────────────────────────────────
 
     def signal_created(
-        self, symbol: str, session: str, side: str,
-        entry: float, sl: float, tp: float,
-        sl_pips: float, reason: str = "",
+        self,
+        symbol: str,
+        session: str,
+        side: str,
+        entry: float,
+        sl: float,
+        tp: float,
+        sl_pips: float,
+        reason: str = "",
     ) -> None:
-        self._write("SIGNAL_CREATED", {
-            "symbol": symbol, "session": session, "side": side,
-            "entry": entry, "sl": sl, "tp": tp,
-            "sl_pips": sl_pips, "reason": reason,
-        })
+        self._write(
+            "SIGNAL_CREATED",
+            {
+                "symbol": symbol,
+                "session": session,
+                "side": side,
+                "entry": entry,
+                "sl": sl,
+                "tp": tp,
+                "sl_pips": sl_pips,
+                "reason": reason,
+            },
+        )
 
     def order_submitted(
-        self, symbol: str, session: str, direction: str,
-        volume: float, sl: float, tp: float,
-        lots: float, equity: float, risk_pct: float,
+        self,
+        symbol: str,
+        session: str,
+        direction: str,
+        volume: float,
+        sl: float,
+        tp: float,
+        lots: float,
+        equity: float,
+        risk_pct: float,
         dry_run: bool = False,
     ) -> None:
-        self._write("ORDER_SUBMITTED", {
-            "symbol": symbol, "session": session, "direction": direction,
-            "volume": volume, "sl": sl, "tp": tp,
-            "lots": lots, "equity": equity, "risk_pct": risk_pct,
-            "dry_run": dry_run,
-        })
+        self._write(
+            "ORDER_SUBMITTED",
+            {
+                "symbol": symbol,
+                "session": session,
+                "direction": direction,
+                "volume": volume,
+                "sl": sl,
+                "tp": tp,
+                "lots": lots,
+                "equity": equity,
+                "risk_pct": risk_pct,
+                "dry_run": dry_run,
+            },
+        )
 
     def order_filled(
-        self, symbol: str, order_id: str, entry_price: float,
-        volume: float, sl: float, tp: float, dry_run: bool = False,
+        self,
+        symbol: str,
+        order_id: str,
+        entry_price: float,
+        volume: float,
+        sl: float,
+        tp: float,
+        dry_run: bool = False,
     ) -> None:
-        self._write("ORDER_FILLED", {
-            "symbol": symbol, "order_id": order_id,
-            "entry_price": entry_price, "volume": volume,
-            "sl": sl, "tp": tp, "dry_run": dry_run,
-        })
+        self._write(
+            "ORDER_FILLED",
+            {
+                "symbol": symbol,
+                "order_id": order_id,
+                "entry_price": entry_price,
+                "volume": volume,
+                "sl": sl,
+                "tp": tp,
+                "dry_run": dry_run,
+            },
+        )
 
     def order_rejected(self, symbol: str, reason: str, side: str = "") -> None:
-        self._write("ORDER_REJECTED", {
-            "symbol": symbol, "reason": reason, "side": side,
-        })
+        self._write(
+            "ORDER_REJECTED",
+            {
+                "symbol": symbol,
+                "reason": reason,
+                "side": side,
+            },
+        )
 
     def position_closed(
-        self, symbol: str, position_id: str,
-        result_r: float, exit_reason: str,
+        self,
+        symbol: str,
+        position_id: str,
+        result_r: float,
+        exit_reason: str,
     ) -> None:
-        self._write("POSITION_CLOSED", {
-            "symbol": symbol, "position_id": position_id,
-            "result_r": result_r, "exit_reason": exit_reason,
-        })
+        self._write(
+            "POSITION_CLOSED",
+            {
+                "symbol": symbol,
+                "position_id": position_id,
+                "result_r": result_r,
+                "exit_reason": exit_reason,
+            },
+        )
 
     def error(self, symbol: str, error_msg: str, context: str = "") -> None:
-        self._write("ERROR", {
-            "symbol": symbol, "error": error_msg, "context": context,
-        })
+        self._write(
+            "ERROR",
+            {
+                "symbol": symbol,
+                "error": error_msg,
+                "context": context,
+            },
+        )
 
     # ── Read-back (tests + reporting) ─────────────────────────────────────────
 

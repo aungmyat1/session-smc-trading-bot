@@ -23,6 +23,7 @@ _VALID_SESSIONS = frozenset({"london", "new_york", "overlap", "newyork"})
 
 # ── Signal contract (execution layer reads exactly these fields) ───────────────
 
+
 @dataclass
 class Signal:
     """
@@ -34,20 +35,22 @@ class Signal:
     Backtest extras:
         risk_pips, reward_pips, rr
     """
-    side: str            # 'long' | 'short'
+
+    side: str  # 'long' | 'short'
     entry: float
     stop_loss: float
     take_profit: float
-    risk_pips: float     # sl_distance / 0.0001
-    reward_pips: float   # risk_pips × rr
+    risk_pips: float  # sl_distance / 0.0001
+    reward_pips: float  # risk_pips × rr
     rr: float
 
-    session: str         # 'london' | 'new_york'
+    session: str  # 'london' | 'new_york'
     timestamp: datetime  # UTC, bar-close time of displacement candle
     reason: str
 
 
 # ── Entry engine ──────────────────────────────────────────────────────────────
+
 
 def build_signal(
     candle: dict,
@@ -136,7 +139,7 @@ def build_signal(
     else:
         take_profit = entry - risk * rr
 
-    risk_pips   = risk / _PIP
+    risk_pips = risk / _PIP
     reward_pips = risk_pips * rr
 
     # ── Timestamp ─────────────────────────────────────────────────────────────

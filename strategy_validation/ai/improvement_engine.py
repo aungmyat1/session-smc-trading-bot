@@ -6,7 +6,9 @@ from ..models import ValidationRecommendation, ValidatorResult
 class SpecificationImprovementEngine:
     """Deterministic recommendation aggregator for weak specifications."""
 
-    def build_recommendations(self, results: list[ValidatorResult]) -> list[ValidationRecommendation]:
+    def build_recommendations(
+        self, results: list[ValidatorResult]
+    ) -> list[ValidationRecommendation]:
         merged: list[ValidationRecommendation] = []
         seen: set[tuple[str, str, str]] = set()
         for result in results:

@@ -73,4 +73,3 @@ class AuditReport:
         payload = asdict(self)
         payload["module_results"] = [item.to_dict() for item in self.module_results]
         return payload
-

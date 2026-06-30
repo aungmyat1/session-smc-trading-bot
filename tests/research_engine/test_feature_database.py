@@ -86,7 +86,9 @@ def test_structure_sweep_ob_and_fvg_annotations():
 
     assert bool(fvgs["bos"].any()) is True
     assert bool(fvgs["choch"].any()) is True
-    assert bool(fvgs["sweep_high"].any()) is True or bool(fvgs["sweep_low"].any()) is True
+    assert (
+        bool(fvgs["sweep_high"].any()) is True or bool(fvgs["sweep_low"].any()) is True
+    )
     assert bool(fvgs["has_order_block"].any()) is True
     assert bool(fvgs["has_fvg"].any()) is True
 
@@ -103,7 +105,9 @@ def test_build_feature_database_writes_outputs(tmp_path: Path):
 
     outputs = build_feature_database(
         ["EURUSD"],
-        paths=FeatureDatabasePaths(raw_root=raw_root, processed_root=processed_root, output_root=output_root),
+        paths=FeatureDatabasePaths(
+            raw_root=raw_root, processed_root=processed_root, output_root=output_root
+        ),
         swing_lookback=1,
     )
 

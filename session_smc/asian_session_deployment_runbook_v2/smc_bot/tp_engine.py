@@ -16,4 +16,3 @@ def build_plan(entry: float, sl: float, target_r: float = 5.0) -> dict:
         "tp": round(tp, 6),
         "plan": [],
     }
-

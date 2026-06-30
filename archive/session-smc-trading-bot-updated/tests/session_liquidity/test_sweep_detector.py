@@ -29,7 +29,7 @@ from strategy.session_liquidity.sweep_detector import SweepResult, detect_sweep
 # Shared test levels
 # ─────────────────────────────────────────────────────────────────────────────
 ASIAN_HIGH = 1.0920
-ASIAN_LOW  = 1.0880
+ASIAN_LOW = 1.0880
 
 
 def _candle(high: float, low: float, close: float, open_: float = None) -> dict:
@@ -367,6 +367,7 @@ class TestSweepResultFields(unittest.TestCase):
 
     def test_sweep_result_is_dataclass(self):
         from dataclasses import fields
+
         f_names = {f.name for f in fields(SweepResult)}
         self.assertEqual(f_names, {"detected", "side", "sweep_price", "reason"})
 

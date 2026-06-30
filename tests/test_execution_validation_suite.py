@@ -9,13 +9,15 @@ from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrok
 from execution_simulator.replay_engine.event_stream import MarketEvent
 from models.order import Order
 
-
 UTC = timezone.utc
 
 
-def _tick(offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD") -> MarketEvent:
+def _tick(
+    offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD"
+) -> MarketEvent:
     return MarketEvent(
-        timestamp=datetime(2026, 6, 27, 9, 30, tzinfo=UTC) + timedelta(minutes=offset_minutes),
+        timestamp=datetime(2026, 6, 27, 9, 30, tzinfo=UTC)
+        + timedelta(minutes=offset_minutes),
         symbol=symbol,
         bid=bid,
         ask=ask,

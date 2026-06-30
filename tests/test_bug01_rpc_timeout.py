@@ -15,8 +15,8 @@ import pytest
 
 from execution.metaapi_client import MetaAPIClient, RPC_TIMEOUT_S
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _connected_client() -> MetaAPIClient:
     """MetaAPIClient with _connected=True and a fake SDK connection."""
@@ -33,6 +33,7 @@ async def _hang(*_args, **_kwargs):
 
 
 # ── Category 1: _rpc() timeout mechanics ─────────────────────────────────────
+
 
 class TestRPCTimeoutMechanics:
 
@@ -62,10 +63,16 @@ class TestRPCTimeoutMechanics:
     async def test_rpc_fast_call_not_affected(self):
         """_rpc() passes through without interference when the call returns quickly."""
         client = _connected_client()
-        client._connection.get_account_information = AsyncMock(return_value={
-            "balance": 500.0, "equity": 510.0, "margin": 0.0,
-            "freeMargin": 510.0, "leverage": 100, "currency": "USD",
-        })
+        client._connection.get_account_information = AsyncMock(
+            return_value={
+                "balance": 500.0,
+                "equity": 510.0,
+                "margin": 0.0,
+                "freeMargin": 510.0,
+                "leverage": 100,
+                "currency": "USD",
+            }
+        )
 
         info = await client.get_account_info()
         assert info.balance == 500.0
@@ -107,7 +114,9 @@ class TestRPCTimeoutMechanics:
             side_effect=FakeMetaApiTimeout("socket client failed to connect")
         )
 
-        with patch("execution.metaapi_client.MetaAPITimeoutException", FakeMetaApiTimeout):
+        with patch(
+            "execution.metaapi_client.MetaAPITimeoutException", FakeMetaApiTimeout
+        ):
             with pytest.raises(asyncio.TimeoutError):
                 await client.get_account_info()
 
@@ -141,6 +150,7 @@ class TestRPCTimeoutMechanics:
 
 
 # ── Category 2: Heartbeat survives RPC timeout ───────────────────────────────
+
 
 class TestHeartbeatSurvivesTimeout:
 
@@ -235,6 +245,7 @@ class TestHeartbeatSurvivesTimeout:
 
 # ── Category 3: Reconnect path ────────────────────────────────────────────────
 
+
 class TestReconnectPath:
 
     @pytest.mark.asyncio
@@ -308,6 +319,7 @@ class TestReconnectPath:
 
 # ── Category 4: Watchdog task ─────────────────────────────────────────────────
 
+
 class TestWatchdog:
 
     @pytest.mark.asyncio
@@ -377,6 +389,7 @@ class TestWatchdog:
     def test_watchdog_timeout_constant_is_600(self):
         """WATCHDOG_TIMEOUT_S must be exactly 600 seconds (10 minutes)."""
         from bot import WATCHDOG_TIMEOUT_S
+
         assert WATCHDOG_TIMEOUT_S == 600
 
     def test_rpc_timeout_constant_is_30(self):

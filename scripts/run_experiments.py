@@ -76,19 +76,21 @@ def load_trades(trades_csv, run_id):
                 continue
             m = re.search(r"2x_net_r=([-\d.]+)", row.get("notes", ""))
             net_r_2x = float(m.group(1)) if m else float(row["net_r"])
-            rows.append({
-                "sym": row["symbol"],
-                "session": row["session"],
-                "rr": float(row["rr"]),
-                "sl_pips": float(row["sl_pips"]),
-                "asian_range_pips": float(row["asian_range_pips"]),
-                "gross_r": float(row["gross_r"]),
-                "net_r_std": float(row["net_r"]),
-                "net_r_2x": net_r_2x,
-                "bars_held": int(row["bars_held"]),
-                "exit_reason": row["exit_reason"],
-                "year": row["timestamp_utc"][:4],
-            })
+            rows.append(
+                {
+                    "sym": row["symbol"],
+                    "session": row["session"],
+                    "rr": float(row["rr"]),
+                    "sl_pips": float(row["sl_pips"]),
+                    "asian_range_pips": float(row["asian_range_pips"]),
+                    "gross_r": float(row["gross_r"]),
+                    "net_r_std": float(row["net_r"]),
+                    "net_r_2x": net_r_2x,
+                    "bars_held": int(row["bars_held"]),
+                    "exit_reason": row["exit_reason"],
+                    "year": row["timestamp_utc"][:4],
+                }
+            )
     return rows
 
 
@@ -161,14 +163,16 @@ def run_all_experiments(trades):
                 rr_trades = [t for t in trades if t["rr"] == rr]
                 filtered = apply_filter(rr_trades, variant["fn"])
                 m = compute_metrics(filtered)
-                results.append({
-                    "exp_id": exp["id"],
-                    "exp_name": exp["name"],
-                    "variant": variant["label"],
-                    "rr": rr,
-                    **m,
-                    "gate": gate_check(m),
-                })
+                results.append(
+                    {
+                        "exp_id": exp["id"],
+                        "exp_name": exp["name"],
+                        "variant": variant["label"],
+                        "rr": rr,
+                        **m,
+                        "gate": gate_check(m),
+                    }
+                )
     return results
 
 
@@ -257,11 +261,14 @@ def write_report(results, today_utc):
     for exp in EXPERIMENTS:
         lines += [f"## {exp['id']} - {exp['name']}", ""]
         lines += [f"*Hypothesis:* {exp['hypothesis']}", ""]
-        exp_variants = list(dict.fromkeys(r["variant"] for r in results if r["exp_id"] == exp["id"]))
+        exp_variants = list(
+            dict.fromkeys(r["variant"] for r in results if r["exp_id"] == exp["id"])
+        )
 
         for variant_label in exp_variants:
             variant_rows = [
-                r for r in results
+                r
+                for r in results
                 if r["exp_id"] == exp["id"] and r["variant"] == variant_label
             ]
             variant_rows.sort(key=lambda r: r["rr"])
@@ -344,7 +351,9 @@ def main():
     today_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     trades_csv = _ROOT / "research" / "trades.csv"
     if not trades_csv.exists():
-        print(f"ERROR: {trades_csv} not found - run backtest_session_liquidity.py first")
+        print(
+            f"ERROR: {trades_csv} not found - run backtest_session_liquidity.py first"
+        )
         sys.exit(1)
 
     print(f"[+] Loading trades (run={BASE_RUN_ID}) ...")
@@ -363,12 +372,16 @@ def main():
     for r in results:
         groups.setdefault((r["exp_id"], r["variant"]), []).append(r)
 
-    print(f"\n{'Exp':<8} {'Variant':<16} {'RR':<4} {'n':>5} {'PF std':>8} {'PF 2x':>8} {'Gate'}")
+    print(
+        f"\n{'Exp':<8} {'Variant':<16} {'RR':<4} {'n':>5} {'PF std':>8} {'PF 2x':>8} {'Gate'}"
+    )
     print("-" * 70)
     for (eid, vl), rows in sorted(groups.items()):
         best = _best_rr(rows)
         gate = "PASS" if best["gate"] else "fail"
-        print(f"{eid:<8} {vl:<16} RR{best['rr']:.0f}  {best['n']:>5}  {best['net_pf_std']:>7.3f}  {best['net_pf_2x']:>7.3f}  {gate}")
+        print(
+            f"{eid:<8} {vl:<16} RR{best['rr']:.0f}  {best['n']:>5}  {best['net_pf_std']:>7.3f}  {best['net_pf_2x']:>7.3f}  {gate}"
+        )
 
     print()
     write_report(results, today_utc)

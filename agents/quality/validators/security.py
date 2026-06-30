@@ -1,4 +1,5 @@
 """Security validator — runs bandit, pip-audit and checks for hardcoded secrets."""
+
 from __future__ import annotations
 
 import json
@@ -14,11 +15,26 @@ logger = logging.getLogger(__name__)
 
 # Patterns that indicate hardcoded secrets (case-insensitive, applied to .py files).
 _SECRET_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("hardcoded_api_key", re.compile(r'(?i)(api_key|apikey)\s*=\s*["\'][^"\']{8,}["\']')),
-    ("hardcoded_password", re.compile(r'(?i)(password|passwd|pwd)\s*=\s*["\'][^"\']{4,}["\']')),
-    ("hardcoded_token", re.compile(r'(?i)(token|secret|credential)\s*=\s*["\'][^"\']{8,}["\']')),
-    ("hardcoded_metaapi", re.compile(r'(?i)(METAAPI|VANTAGE)[A-Z_]*\s*=\s*["\'][^"\']{10,}["\']')),
-    ("hardcoded_telegram", re.compile(r'(?i)(TELEGRAM)[A-Z_]*\s*=\s*["\'][^"\']{10,}["\']')),
+    (
+        "hardcoded_api_key",
+        re.compile(r'(?i)(api_key|apikey)\s*=\s*["\'][^"\']{8,}["\']'),
+    ),
+    (
+        "hardcoded_password",
+        re.compile(r'(?i)(password|passwd|pwd)\s*=\s*["\'][^"\']{4,}["\']'),
+    ),
+    (
+        "hardcoded_token",
+        re.compile(r'(?i)(token|secret|credential)\s*=\s*["\'][^"\']{8,}["\']'),
+    ),
+    (
+        "hardcoded_metaapi",
+        re.compile(r'(?i)(METAAPI|VANTAGE)[A-Z_]*\s*=\s*["\'][^"\']{10,}["\']'),
+    ),
+    (
+        "hardcoded_telegram",
+        re.compile(r'(?i)(TELEGRAM)[A-Z_]*\s*=\s*["\'][^"\']{10,}["\']'),
+    ),
 ]
 
 # Files that should never contain raw secrets (we skip .env* and tests/).
@@ -80,7 +96,9 @@ class SecurityValidator:
     # -------------------------------------------------------------------------
 
     def _run_bandit(self) -> tuple[float, list[str], list[str], dict[str, Any]]:
-        scan_dirs = [str(self._root / d) for d in _SCAN_DIRS if (self._root / d).exists()]
+        scan_dirs = [
+            str(self._root / d) for d in _SCAN_DIRS if (self._root / d).exists()
+        ]
         if not scan_dirs:
             return 100.0, [], [], {"skipped": "no source dirs"}
 
@@ -90,7 +108,12 @@ class SecurityValidator:
         # bandit exits non-zero even when only producing warnings; check output.
         if not proc.stdout.strip():
             logger.info("bandit not installed or produced no output")
-            return 100.0, [], ["bandit not available — install bandit for security scanning"], {"skipped": "not available"}
+            return (
+                100.0,
+                [],
+                ["bandit not available — install bandit for security scanning"],
+                {"skipped": "not available"},
+            )
 
         try:
             data = json.loads(proc.stdout)
@@ -104,31 +127,61 @@ class SecurityValidator:
         errors: list[str] = []
         for r in high[:10]:
             loc = f"{r.get('filename', '?')}:{r.get('line_number', '?')}"
-            errors.append(f"bandit HIGH {r.get('test_id', '')}: {r.get('issue_text', '')[:80]} @ {loc}")
+            errors.append(
+                f"bandit HIGH {r.get('test_id', '')}: {r.get('issue_text', '')[:80]} @ {loc}"
+            )
 
         warns: list[str] = [
-            f"bandit MEDIUM {r.get('test_id', '')}: {r.get('issue_text', '')[:60]}" for r in medium[:5]
+            f"bandit MEDIUM {r.get('test_id', '')}: {r.get('issue_text', '')[:60]}"
+            for r in medium[:5]
         ]
 
         score = max(0.0, round(100.0 - len(high) * 10.0 - len(medium) * 2.0, 1))
-        return score, errors, warns, {"high": len(high), "medium": len(medium), "total": len(results)}
+        return (
+            score,
+            errors,
+            warns,
+            {"high": len(high), "medium": len(medium), "total": len(results)},
+        )
 
     def _run_pip_audit(self) -> tuple[float, list[str], list[str], dict[str, Any]]:
-        cmd = ["python", "-m", "pip_audit", "--format", "json", "--progress-spinner", "off"]
+        cmd = [
+            "python",
+            "-m",
+            "pip_audit",
+            "--format",
+            "json",
+            "--progress-spinner",
+            "off",
+        ]
         proc = subprocess.run(cmd, cwd=self._root, capture_output=True, text=True)
 
         if proc.returncode not in (0, 1) and not proc.stdout.strip():
-            return 100.0, [], ["pip-audit not installed — install pip-audit for dependency audit"], {"skipped": True}
+            return (
+                100.0,
+                [],
+                ["pip-audit not installed — install pip-audit for dependency audit"],
+                {"skipped": True},
+            )
 
         try:
             data = json.loads(proc.stdout)
         except json.JSONDecodeError:
             return 95.0, [], ["pip-audit output unparseable"], {}
 
-        vulnerabilities = data.get("vulnerabilities", data) if isinstance(data, dict) else data
+        vulnerabilities = (
+            data.get("vulnerabilities", data) if isinstance(data, dict) else data
+        )
         if isinstance(vulnerabilities, list):
-            critical = [v for v in vulnerabilities if isinstance(v, dict) and v.get("fix_versions")]
-            errors = [f"pip-audit: {v.get('name', '?')} {v.get('version', '?')} — {v.get('id', '')}" for v in critical[:10]]
+            critical = [
+                v
+                for v in vulnerabilities
+                if isinstance(v, dict) and v.get("fix_versions")
+            ]
+            errors = [
+                f"pip-audit: {v.get('name', '?')} {v.get('version', '?')} — {v.get('id', '')}"
+                for v in critical[:10]
+            ]
             score = max(0.0, round(100.0 - len(critical) * 15.0, 1))
             return score, errors, [], {"vulnerable_packages": len(critical)}
 
@@ -148,14 +201,18 @@ class SecurityValidator:
                     for pattern_name, pat in _SECRET_PATTERNS:
                         match = pat.search(content)
                         if match:
-                            findings.append({
-                                "file": str(py_file.relative_to(self._root)),
-                                "pattern": pattern_name,
-                                "snippet": match.group(0)[:60],
-                            })
+                            findings.append(
+                                {
+                                    "file": str(py_file.relative_to(self._root)),
+                                    "pattern": pattern_name,
+                                    "snippet": match.group(0)[:60],
+                                }
+                            )
                 except OSError:
                     pass
 
-        errors = [f"SECRET {f['pattern']} in {f['file']}: {f['snippet']}" for f in findings]
+        errors = [
+            f"SECRET {f['pattern']} in {f['file']}: {f['snippet']}" for f in findings
+        ]
         score = 0.0 if findings else 100.0
         return score, errors, {"findings": len(findings)}

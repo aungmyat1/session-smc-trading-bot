@@ -48,7 +48,10 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from session_smc.confirmation_entry import generate_signal_A, DEFAULT_CONFIG
+from session_smc.confirmation_entry import (
+    generate_signal_A,
+    DEFAULT_CONFIG,
+)  # noqa: E402
 
 REPORTS = ROOT / "reports"
 REPORTS.mkdir(exist_ok=True)
@@ -59,19 +62,28 @@ COSTS = {
     "GBPUSD": {"standard": 1.8, "stress2x": 3.6},
 }
 PIP = 0.0001
-SESSION_BARS_DEFAULT = 48   # 12h window — minimum needed for CHoCH+BOS+FVG to complete
-SESSION_ADVANCE = 12        # advance by one 3h session (12 bars) so each session is evaluated independently
+SESSION_BARS_DEFAULT = 48  # 12h window — minimum needed for CHoCH+BOS+FVG to complete
+SESSION_ADVANCE = (
+    12  # advance by one 3h session (12 bars) so each session is evaluated independently
+)
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
 
-def load_parquet(symbol: str, tf: str, start: str = None, end: str = None) -> list[dict]:
+
+def load_parquet(
+    symbol: str, tf: str, start: str = None, end: str = None
+) -> list[dict]:
     path = DATA_PROC / symbol / f"{tf}.parquet"
     if not path.exists():
         print(f"  [MISSING] {path}")
         return []
-    df = pd.read_parquet(path, columns=["timestamp_utc", "open", "high", "low", "close", "volume"])
-    df["time"] = pd.to_datetime(df["timestamp_utc"], utc=True).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    df = pd.read_parquet(
+        path, columns=["timestamp_utc", "open", "high", "low", "close", "volume"]
+    )
+    df["time"] = pd.to_datetime(df["timestamp_utc"], utc=True).dt.strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     if start:
         df = df[df["time"] >= start]
     if end:
@@ -80,6 +92,7 @@ def load_parquet(symbol: str, tf: str, start: str = None, end: str = None) -> li
 
 
 # ── Trade representation ──────────────────────────────────────────────────────
+
 
 @dataclass
 class Trade:
@@ -93,7 +106,7 @@ class Trade:
     entry_time: str
     exit_price: float = 0.0
     exit_time: str = ""
-    exit_reason: str = ""   # "TP1" | "SL" | "SESSION_END"
+    exit_reason: str = ""  # "TP1" | "SL" | "SESSION_END"
     gross_r: float = 0.0
     net_r_standard: float = 0.0
     net_r_stress: float = 0.0
@@ -107,21 +120,25 @@ class Trade:
 
 # ── Replay core (mirrors backtest.py logic exactly) ───────────────────────────
 
+
 def _weekday(time_str: str) -> int:
     return datetime.fromisoformat(time_str.replace("Z", "+00:00")).weekday()
 
 
-def _closed_slice(sorted_bars: list[dict], before_time: str, bar_hours: int, count: int) -> list[dict]:
-    cutoff_dt = (
-        datetime.fromisoformat(before_time.replace("Z", "+00:00"))
-        - timedelta(hours=bar_hours)
+def _closed_slice(
+    sorted_bars: list[dict], before_time: str, bar_hours: int, count: int
+) -> list[dict]:
+    cutoff_dt = datetime.fromisoformat(before_time.replace("Z", "+00:00")) - timedelta(
+        hours=bar_hours
     )
     cutoff = cutoff_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     result = [c for c in sorted_bars if c["time"] <= cutoff]
     return result[-count:] if result else []
 
 
-def _simulate(sig, session_candles: list[dict], symbol: str, session: str) -> "Trade | None":
+def _simulate(
+    sig, session_candles: list[dict], symbol: str, session: str
+) -> "Trade | None":
     ri = sig.retest_idx
     if ri >= len(session_candles):
         return None
@@ -129,17 +146,22 @@ def _simulate(sig, session_candles: list[dict], symbol: str, session: str) -> "T
     entry_bar = session_candles[ri]
     entry_price = float(entry_bar["close"])
 
-    cost_std    = COSTS.get(symbol, {}).get("standard", 1.4)
+    cost_std = COSTS.get(symbol, {}).get("standard", 1.4)
     cost_stress = COSTS.get(symbol, {}).get("stress2x", 2.8)
 
     t = Trade(
-        symbol=symbol, session=session,
+        symbol=symbol,
+        session=session,
         direction=sig.direction,
-        entry=entry_price, sl=float(sig.sl), tp1=float(sig.tp1),
+        entry=entry_price,
+        sl=float(sig.sl),
+        tp1=float(sig.tp1),
         sl_pips=float(sig.sl_pips),
         entry_time=entry_bar["time"],
-        sweep_idx=sig.sweep_idx, choch_idx=sig.choch_idx,
-        bos_idx=sig.bos_idx, disp_idx=sig.displacement_idx,
+        sweep_idx=sig.sweep_idx,
+        choch_idx=sig.choch_idx,
+        bos_idx=sig.bos_idx,
+        disp_idx=sig.displacement_idx,
         retest_idx=ri,
     )
 
@@ -162,19 +184,31 @@ def _simulate(sig, session_candles: list[dict], symbol: str, session: str) -> "T
                 t.exit_price, t.exit_reason, t.exit_time = sig.tp1, "TP1", bar["time"]
                 break
         if is_last:
-            t.exit_price, t.exit_reason, t.exit_time = float(bar["close"]), "SESSION_END", bar["time"]
+            t.exit_price, t.exit_reason, t.exit_time = (
+                float(bar["close"]),
+                "SESSION_END",
+                bar["time"],
+            )
 
     if not t.exit_time:
         last = session_candles[-1]
-        t.exit_price, t.exit_reason, t.exit_time = float(last["close"]), "SESSION_END", last["time"]
+        t.exit_price, t.exit_reason, t.exit_time = (
+            float(last["close"]),
+            "SESSION_END",
+            last["time"],
+        )
 
     if t.sl_pips <= 0:
         return None
 
-    gross_pips = (t.exit_price - entry_price) / PIP if is_long else (entry_price - t.exit_price) / PIP
-    t.gross_r           = gross_pips / t.sl_pips
-    t.net_r_standard    = t.gross_r - cost_std / t.sl_pips
-    t.net_r_stress      = t.gross_r - cost_stress / t.sl_pips
+    gross_pips = (
+        (t.exit_price - entry_price) / PIP
+        if is_long
+        else (entry_price - t.exit_price) / PIP
+    )
+    t.gross_r = gross_pips / t.sl_pips
+    t.net_r_standard = t.gross_r - cost_std / t.sl_pips
+    t.net_r_stress = t.gross_r - cost_stress / t.sl_pips
     return t
 
 
@@ -205,7 +239,7 @@ def run_symbol(
     while i < n:
         bar = m15[i]
         t = bar["time"]
-        hour   = int(t[11:13])
+        hour = int(t[11:13])
         minute = int(t[14:16])
 
         if _weekday(t) >= 5:
@@ -232,7 +266,11 @@ def run_symbol(
             continue
 
         ctx_4h = _closed_slice(h4s, t, bar_hours=4, count=200)
-        ctx_1h = _closed_slice(h1s, t, bar_hours=1, count=200) if h1s else m15[max(0, i - 200):i]
+        ctx_1h = (
+            _closed_slice(h1s, t, bar_hours=1, count=200)
+            if h1s
+            else m15[max(0, i - 200) : i]
+        )
 
         if not ctx_4h or not ctx_1h:
             i += SESSION_ADVANCE
@@ -260,11 +298,19 @@ def run_symbol(
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 def _metrics(trades: list[Trade], field: str) -> dict:
     if not trades:
-        return {"n": 0, "pf": 0.0, "win_rate": 0.0, "avg_r": 0.0, "max_dd": 0.0, "total_r": 0.0}
-    vals   = [getattr(t, field) for t in trades]
-    wins   = [v for v in vals if v > 0]
+        return {
+            "n": 0,
+            "pf": 0.0,
+            "win_rate": 0.0,
+            "avg_r": 0.0,
+            "max_dd": 0.0,
+            "total_r": 0.0,
+        }
+    vals = [getattr(t, field) for t in trades]
+    wins = [v for v in vals if v > 0]
     losses = [v for v in vals if v <= 0]
     gw = sum(wins)
     gl = abs(sum(losses))
@@ -275,7 +321,8 @@ def _metrics(trades: list[Trade], field: str) -> dict:
         peak = max(peak, eq)
         mdd = max(mdd, peak - eq)
     return {
-        "n": len(trades), "pf": round(pf, 3),
+        "n": len(trades),
+        "pf": round(pf, 3),
         "win_rate": round(len(wins) / len(trades) * 100, 1),
         "avg_r": round(sum(vals) / len(trades), 4),
         "max_dd": round(mdd, 2),
@@ -285,28 +332,40 @@ def _metrics(trades: list[Trade], field: str) -> dict:
 
 # ── Report writers ────────────────────────────────────────────────────────────
 
+
 def _pf(v: float) -> str:
     return "∞" if v == float("inf") else f"{v:.3f}"
 
 
-def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: str, d2_on: bool, session_bars: int = 48) -> None:
-    std    = _metrics(trades, "net_r_standard")
+def print_and_write_report(
+    symbol: str,
+    trades: list[Trade],
+    start: str,
+    end: str,
+    d2_on: bool,
+    session_bars: int = 48,
+) -> None:
+    std = _metrics(trades, "net_r_standard")
     stress = _metrics(trades, "net_r_stress")
-    gross  = _metrics(trades, "gross_r")
+    gross = _metrics(trades, "gross_r")
 
     gate = std["n"] >= 50 and std["pf"] > 1.0 and stress["pf"] > 1.0
     status = "✅ PASS" if gate else "❌ FAIL"
 
     by_month: dict[str, list] = {}
-    by_sess:  dict[str, list] = {}
-    by_exit:  dict[str, int]  = {}
+    by_sess: dict[str, list] = {}
+    by_exit: dict[str, int] = {}
     for t in trades:
         mo = t.entry_time[:7]
         by_month.setdefault(mo, []).append(t)
         by_sess.setdefault(t.session, []).append(t)
         by_exit[t.exit_reason] = by_exit.get(t.exit_reason, 0) + 1
 
-    d2_label = "ON (d2_structure + d2_location + d2_poi)" if d2_on else "OFF (pure 11-phase baseline)"
+    d2_label = (
+        "ON (d2_structure + d2_location + d2_poi)"
+        if d2_on
+        else "OFF (pure 11-phase baseline)"
+    )
     win_h = session_bars * 15 // 60
     win_m = session_bars * 15 % 60
 
@@ -337,7 +396,9 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
     ]
     for mo in sorted(by_month):
         m = _metrics(by_month[mo], "net_r_standard")
-        lines.append(f"| {mo} | {m['n']} | {m['win_rate']}% | {_pf(m['pf'])} | {m['total_r']:+.3f}R |")
+        lines.append(
+            f"| {mo} | {m['n']} | {m['win_rate']}% | {_pf(m['pf'])} | {m['total_r']:+.3f}R |"
+        )
 
     lines += [
         "",
@@ -348,7 +409,9 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
     ]
     for sess in sorted(by_sess):
         m = _metrics(by_sess[sess], "net_r_standard")
-        lines.append(f"| {sess} | {m['n']} | {m['win_rate']}% | {_pf(m['pf'])} | {m['total_r']:+.3f}R | {m['max_dd']:.2f}R |")
+        lines.append(
+            f"| {sess} | {m['n']} | {m['win_rate']}% | {_pf(m['pf'])} | {m['total_r']:+.3f}R | {m['max_dd']:.2f}R |"
+        )
 
     lines += [
         "",
@@ -360,7 +423,13 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
     for ex, cnt in sorted(by_exit.items()):
         lines.append(f"| {ex} | {cnt} |")
 
-    lines += ["", "## Trade Ledger", "", "| # | Date | Time UTC | Session | Dir | SL pip | Gross R | Net R | Exit |", "|---|---|---|---|---|---|---|---|---|"]
+    lines += [
+        "",
+        "## Trade Ledger",
+        "",
+        "| # | Date | Time UTC | Session | Dir | SL pip | Gross R | Net R | Exit |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
     for i, t in enumerate(trades, 1):
         lines.append(
             f"| {i} | {t.entry_time[:10]} | {t.entry_time[11:16]} | {t.session} | {t.direction} "
@@ -374,10 +443,16 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
     # Console summary
     print(f"\n{'─'*60}")
     print(f"  {symbol} | Setup A 11-phase | {start} → {end}")
-    print(f"  Window: {session_bars} bars ({win_h}h{win_m:02d}m) | D2 gates: {d2_label}")
+    print(
+        f"  Window: {session_bars} bars ({win_h}h{win_m:02d}m) | D2 gates: {d2_label}"
+    )
     print(f"{'─'*60}")
-    print(f"  n={std['n']}  WR={std['win_rate']}%  PF_std={_pf(std['pf'])}  PF_2x={_pf(stress['pf'])}")
-    print(f"  AvgR={std['avg_r']:+.4f}  TotalR={std['total_r']:+.3f}  MaxDD={std['max_dd']:.2f}R")
+    print(
+        f"  n={std['n']}  WR={std['win_rate']}%  PF_std={_pf(std['pf'])}  PF_2x={_pf(stress['pf'])}"
+    )
+    print(
+        f"  AvgR={std['avg_r']:+.4f}  TotalR={std['total_r']:+.3f}  MaxDD={std['max_dd']:.2f}R"
+    )
     print(f"  Exit breakdown: {by_exit}")
     print(f"  Gate (n≥50 AND PF>1.0 std AND 2×): {status}")
     print(f"{'─'*60}")
@@ -385,22 +460,34 @@ def print_and_write_report(symbol: str, trades: list[Trade], start: str, end: st
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main():
-    parser = argparse.ArgumentParser(description="11-phase Setup A replay on Dukascopy Parquet")
-    parser.add_argument("--symbol",    default="EURUSD")
-    parser.add_argument("--start",     default="2024-01-01")
-    parser.add_argument("--end",       default="2024-12-31")
-    parser.add_argument("--session-bars", type=int, default=SESSION_BARS_DEFAULT,
-                        help=f"Bars per session window (default {SESSION_BARS_DEFAULT} = 12h). "
-                             "CHoCH+BOS+FVG needs ≥ 32 bars (8h) to complete. "
-                             "Original backtest.py used 20 (5h) which produces 0 signals.")
-    parser.add_argument("--d2-gates",  action="store_true",
-                        help="Enable D2 context gates (structure + location + POI). Default: off.")
+    parser = argparse.ArgumentParser(
+        description="11-phase Setup A replay on Dukascopy Parquet"
+    )
+    parser.add_argument("--symbol", default="EURUSD")
+    parser.add_argument("--start", default="2024-01-01")
+    parser.add_argument("--end", default="2024-12-31")
+    parser.add_argument(
+        "--session-bars",
+        type=int,
+        default=SESSION_BARS_DEFAULT,
+        help=f"Bars per session window (default {SESSION_BARS_DEFAULT} = 12h). "
+        "CHoCH+BOS+FVG needs ≥ 32 bars (8h) to complete. "
+        "Original backtest.py used 20 (5h) which produces 0 signals.",
+    )
+    parser.add_argument(
+        "--d2-gates",
+        action="store_true",
+        help="Enable D2 context gates (structure + location + POI). Default: off.",
+    )
     args = parser.parse_args()
 
     sym = args.symbol
     print(f"\n[Setup A Parquet Replay]  {sym}  {args.start} → {args.end}")
-    print(f"  Session window: {args.session_bars} bars ({args.session_bars*15//60}h{args.session_bars*15%60:02d}m)")
+    print(
+        f"  Session window: {args.session_bars} bars ({args.session_bars*15//60}h{args.session_bars*15%60:02d}m)"
+    )
     print(f"  D2 gates: {'ON' if args.d2_gates else 'OFF'}")
 
     # Load data — H4 and H1 context start from a year before so bias has warmup
@@ -409,9 +496,9 @@ def main():
     print(f"  Loading M15 (ctx from {ctx_start}) …")
     m15 = load_parquet(sym, "M15", ctx_start, args.end)
     print("  Loading H4 …")
-    h4  = load_parquet(sym, "H4", None, args.end)
+    h4 = load_parquet(sym, "H4", None, args.end)
     print("  Loading H1 …")
-    h1  = load_parquet(sym, "H1", None, args.end)
+    h1 = load_parquet(sym, "H1", None, args.end)
 
     if not m15 or not h4:
         print("  ERROR: M15 or H4 data missing — run build_timeframes.py first")
@@ -422,11 +509,11 @@ def main():
 
     cfg = {
         **DEFAULT_CONFIG,
-        "atr_period":  14,
-        "swing_n":     3,
+        "atr_period": 14,
+        "swing_n": 3,
         "d2_structure_gate": args.d2_gates,
-        "d2_location_gate":  args.d2_gates,
-        "d2_poi_gate":       args.d2_gates,
+        "d2_location_gate": args.d2_gates,
+        "d2_poi_gate": args.d2_gates,
     }
 
     # Filter M15 to requested date range only (H4/H1 load full history for bias context)
@@ -436,7 +523,9 @@ def main():
     trades = run_symbol(sym, m15_range, h4, h1, cfg, session_bars=args.session_bars)
     print(f"  Trades generated: {len(trades)}")
 
-    print_and_write_report(sym, trades, args.start, args.end, args.d2_gates, session_bars=args.session_bars)
+    print_and_write_report(
+        sym, trades, args.start, args.end, args.d2_gates, session_bars=args.session_bars
+    )
 
 
 if __name__ == "__main__":

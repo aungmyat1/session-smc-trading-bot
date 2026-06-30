@@ -38,4 +38,3 @@ class ReplayRunner:
             self.errors.append(str(exc))
             raise
         return self
-

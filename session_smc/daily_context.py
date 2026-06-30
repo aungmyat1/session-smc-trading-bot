@@ -26,6 +26,7 @@ Usage
     if not ok:
         continue   # D1 gate blocked the trade
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ _UTC = timezone.utc
 
 # ── Dataclass ─────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class DailyContext:
     """
@@ -61,6 +63,7 @@ class DailyContext:
     daily_target       : 'draw_to_highs' | 'draw_to_lows' | 'none'
     daily_target_level : price of the next likely liquidity draw (or None)
     """
+
     pdh: float
     pdl: float
     daily_mid: float
@@ -72,6 +75,7 @@ class DailyContext:
 
 
 # ── Builder ───────────────────────────────────────────────────────────────────
+
 
 def build_d1_context(
     candles_4h: list[Candle],
@@ -172,6 +176,7 @@ def build_d1_context(
 
 # ── Gate evaluator ────────────────────────────────────────────────────────────
 
+
 def apply_d1_gates(
     ctx: DailyContext,
     htf_bias: str,
@@ -214,9 +219,15 @@ def apply_d1_gates(
     if c.get("d1_location_filter", True):
         loc = classify_location(session_open_price, ctx.pdh, ctx.pdl)
         if htf_bias == "bullish" and loc == "premium":
-            return False, "gate_B_location: bullish but price above D1 midpoint (premium)"
+            return (
+                False,
+                "gate_B_location: bullish but price above D1 midpoint (premium)",
+            )
         if htf_bias == "bearish" and loc == "discount":
-            return False, "gate_B_location: bearish but price below D1 midpoint (discount)"
+            return (
+                False,
+                "gate_B_location: bearish but price below D1 midpoint (discount)",
+            )
 
     # ── Gate C: POI proximity — ARCHITECTURE STUB ─────────────────────────────
     # Reserved for TRIAL_ST_A2_D1_POI_001. Never enable in TRIAL_ST_A2_D1_001.

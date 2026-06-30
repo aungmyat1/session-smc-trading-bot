@@ -84,5 +84,8 @@ class ReportGenerator:
         paths["json"].write_text(self.build_json(report), encoding="utf-8")
         paths["markdown"].write_text(self.build_markdown(report), encoding="utf-8")
         paths["html"].write_text(self.build_html(report), encoding="utf-8")
-        paths["audit_log"].write_text(json.dumps([item.to_dict() for item in report.audit_log], indent=2), encoding="utf-8")
+        paths["audit_log"].write_text(
+            json.dumps([item.to_dict() for item in report.audit_log], indent=2),
+            encoding="utf-8",
+        )
         return paths

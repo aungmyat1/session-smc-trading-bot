@@ -45,14 +45,15 @@ _SNAP = _ROOT / "research" / "e6_dataset_snapshot"
 
 SOURCES = {
     "spread_samples.csv": _ROOT / "research" / "spread_samples.csv",
-    "cost_model.json":    _ROOT / "research" / "cost_model.json",
-    "costs.json":         _ROOT / "config" / "costs.json",
+    "cost_model.json": _ROOT / "research" / "cost_model.json",
+    "costs.json": _ROOT / "config" / "costs.json",
 }
 
 KILLZONE_SESSIONS = {"london", "new_york"}
 
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
+
 
 def _sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -66,7 +67,8 @@ def _gate_status():
     """Run check_phase2_completion.py and return (exit_code, summary_text)."""
     r = subprocess.run(
         [sys.executable, str(_ROOT / "scripts" / "check_phase2_completion.py")],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     output = (r.stdout + r.stderr).strip()
     return r.returncode, output
@@ -80,9 +82,9 @@ def _scan_samples(path: Path):
         total_rows, symbols, session_info, earliest, latest
         session_info: { session: { "dates": sorted list, "count": int } }
     """
-    symbols      = set()
-    session_rows = defaultdict(list)          # session → [date_str]
-    sym_sess_n   = defaultdict(int)           # (sym, sess) → count
+    symbols = set()
+    session_rows = defaultdict(list)  # session → [date_str]
+    sym_sess_n = defaultdict(int)  # (sym, sess) → count
     earliest = latest = None
 
     with path.open(newline="", encoding="utf-8") as f:
@@ -90,8 +92,8 @@ def _scan_samples(path: Path):
         total = 0
         for row in reader:
             total += 1
-            ts   = row.get("time_utc", "")
-            sym  = row.get("symbol", "").strip()
+            ts = row.get("time_utc", "")
+            sym = row.get("symbol", "").strip()
             sess = row.get("session", "").strip()
             if sym:
                 symbols.add(sym)
@@ -113,6 +115,7 @@ def _scan_samples(path: Path):
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main():
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -169,7 +172,7 @@ def main():
 
     kz_sessions = {s: d for s, d in session_info.items() if s in KILLZONE_SESSIONS}
     london_days = len(kz_sessions.get("london", {}).get("dates", []))
-    ny_days     = len(kz_sessions.get("new_york", {}).get("dates", []))
+    ny_days = len(kz_sessions.get("new_york", {}).get("dates", []))
 
     print(f"  Rows:          {total:,}")
     print(f"  Symbols:       {symbols}")
@@ -178,8 +181,10 @@ def main():
     print(f"  London days:   {london_days}")
     print(f"  NY days:       {ny_days}")
     for sess, info in sorted(session_info.items()):
-        print(f"  {sess:<12}: {info['count']:,} rows  "
-              f"({len(info['dates'])} session days)")
+        print(
+            f"  {sess:<12}: {info['count']:,} rows  "
+            f"({len(info['dates'])} session days)"
+        )
 
     # ── Step 4: Compute SHA256 hashes ─────────────────────────────────────────
     print()
@@ -199,7 +204,9 @@ def main():
         existing_manifest = _SNAP / "dataset_manifest.json"
         if existing_manifest.exists():
             prev = json.loads(existing_manifest.read_text())
-            print(f"  ⚠️   Overwriting existing snapshot (created {prev.get('created_at', '?')})")
+            print(
+                f"  ⚠️   Overwriting existing snapshot (created {prev.get('created_at', '?')})"
+            )
         shutil.rmtree(_SNAP)
 
     _SNAP.mkdir(parents=True)
@@ -232,37 +239,37 @@ def main():
         session_manifest[sess] = entry
 
     manifest = {
-        "created_at":        now_str,
-        "freeze_version":    "1",
+        "created_at": now_str,
+        "freeze_version": "1",
         "gate_status": {
             "collection_complete": gate_met,
-            "exit_code":           gate_exit,
-            "summary":             gate_output,
+            "exit_code": gate_exit,
+            "summary": gate_output,
         },
         "source_files": {
             "spread_samples.csv": {
-                "sha256":     hashes["spread_samples.csv"],
-                "rows":       total,
+                "sha256": hashes["spread_samples.csv"],
+                "rows": total,
                 "size_bytes": SOURCES["spread_samples.csv"].stat().st_size,
             },
             "cost_model.json": {
-                "sha256":     hashes["cost_model.json"],
+                "sha256": hashes["cost_model.json"],
                 "size_bytes": SOURCES["cost_model.json"].stat().st_size,
             },
             "costs.json": {
-                "sha256":         hashes["costs.json"],
+                "sha256": hashes["costs.json"],
                 "active_profile": costs.get("active_profile"),
-                "size_bytes":     SOURCES["costs.json"].stat().st_size,
+                "size_bytes": SOURCES["costs.json"].stat().st_size,
             },
         },
         "coverage": {
-            "symbols":           symbols,
-            "total_samples":     total,
+            "symbols": symbols,
+            "total_samples": total,
             "earliest_timestamp": (earliest or "")[:19] + "Z" if earliest else None,
-            "latest_timestamp":   (latest or "")[:19] + "Z" if latest else None,
-            "london_sessions":   london_days,
-            "ny_sessions":       ny_days,
-            "sessions":          session_manifest,
+            "latest_timestamp": (latest or "")[:19] + "Z" if latest else None,
+            "london_sessions": london_days,
+            "ny_sessions": ny_days,
+            "sessions": session_manifest,
             "killzone_samples_by_symbol": sym_kz_n,
         },
     }
@@ -298,13 +305,17 @@ def main():
     print(f"  Symbols:    {', '.join(symbols)}")
     print(f"  London:     {london_days}/5 sessions")
     print(f"  NY:         {ny_days}/5 sessions")
-    print(f"  Gate:       {'✅ READY' if gate_met else '⚠️  NOT YET MET (partial snapshot)'}")
+    print(
+        f"  Gate:       {'✅ READY' if gate_met else '⚠️  NOT YET MET (partial snapshot)'}"
+    )
     print()
 
     if gate_met:
         print("  Next step: bash scripts/run_e6_revalidation.sh")
     else:
-        print("  Next step: continue collecting until gate opens, then re-run this script.")
+        print(
+            "  Next step: continue collecting until gate opens, then re-run this script."
+        )
         print("             Gate check: python3 scripts/check_phase2_completion.py")
 
     print()

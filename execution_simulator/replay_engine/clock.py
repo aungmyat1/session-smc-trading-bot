@@ -11,7 +11,9 @@ class ReplayClock:
 
     replay_speed: float = 100.0
     origin_replay_time: datetime | None = None
-    origin_wall_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    origin_wall_time: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
     current_replay_time: datetime | None = None
 
     def attach(self, replay_time: datetime, wall_time: datetime | None = None) -> None:
@@ -44,4 +46,3 @@ class ReplayClock:
         delay = (target_wall - datetime.now(timezone.utc)).total_seconds()
         if delay > 0:
             await asyncio.sleep(delay)
-

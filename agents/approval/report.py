@@ -1,4 +1,5 @@
 """Approval Agent report — JSON and Markdown production readiness output."""
+
 from __future__ import annotations
 
 import json
@@ -55,7 +56,11 @@ class ApprovalReport:
     def write_markdown(self, path: Path) -> None:
         r = self._r
         d = self.to_dict()
-        icon = "✅ APPROVED" if r.release_status == ReleaseStatus.APPROVED else "❌ REJECTED"
+        icon = (
+            "✅ APPROVED"
+            if r.release_status == ReleaseStatus.APPROVED
+            else "❌ REJECTED"
+        )
         if r.release_status.value == "INCOMPLETE":
             icon = "⚠️ INCOMPLETE"
 
@@ -82,14 +87,20 @@ class ApprovalReport:
         ]
 
         for rr in r.rule_results:
-            o_icon = {"PASS": "✅", "FAIL": "❌", "SKIP": "⏭"}.get(rr.outcome.value, "?")
+            o_icon = {"PASS": "✅", "FAIL": "❌", "SKIP": "⏭"}.get(
+                rr.outcome.value, "?"
+            )
             m_icon = "🔒" if rr.mandatory else "—"
-            lines.append(f"| `{rr.rule_id}` | {rr.description} | {m_icon} | {o_icon} {rr.outcome.value} |")
+            lines.append(
+                f"| `{rr.rule_id}` | {rr.description} | {m_icon} | {o_icon} {rr.outcome.value} |"
+            )
 
         if r.failed_mandatory_rules:
             lines += ["", "## Failed Mandatory Rules", ""]
             for rule_id in r.failed_mandatory_rules:
-                rule = next((rr for rr in r.rule_results if rr.rule_id == rule_id), None)
+                rule = next(
+                    (rr for rr in r.rule_results if rr.rule_id == rule_id), None
+                )
                 detail = rule.detail if rule else ""
                 lines.append(f"- **{rule_id}**: {detail}")
 
@@ -99,9 +110,19 @@ class ApprovalReport:
                 lines.append(f"- ⚠️ {w}")
 
         if r.release_status == ReleaseStatus.APPROVED:
-            lines += ["", "---", "", "> ✅ All mandatory governance gates passed. Release is approved for promotion."]
+            lines += [
+                "",
+                "---",
+                "",
+                "> ✅ All mandatory governance gates passed. Release is approved for promotion.",
+            ]
         else:
-            lines += ["", "---", "", "> ❌ Mandatory governance gates failed. Release is BLOCKED. Fix all ❌ mandatory rules before re-approval."]
+            lines += [
+                "",
+                "---",
+                "",
+                "> ❌ Mandatory governance gates failed. Release is BLOCKED. Fix all ❌ mandatory rules before re-approval.",
+            ]
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines) + "\n")

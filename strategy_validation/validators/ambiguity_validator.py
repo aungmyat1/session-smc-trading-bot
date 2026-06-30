@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
+from ..models import (
+    StrategyDocument,
+    ValidationFinding,
+    ValidationRecommendation,
+    ValidatorResult,
+    ValidationStatus,
+)
 from ..module_base import BaseValidator
 
 
@@ -48,7 +54,9 @@ class AmbiguityValidator(BaseValidator):
                 )
 
         score = round(max(0.0, 100.0 - len(findings) * 18.0), 2)
-        status: ValidationStatus = "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
+        status: ValidationStatus = (
+            "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,

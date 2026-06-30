@@ -3,11 +3,23 @@
 import pytest
 from core.base_strategy import BaseStrategy
 from core.strategy_registry import (
-    register_strategy, get_strategy, list_strategies, clear_registry,
-    load_strategy_catalog, get_strategy_manifest, list_catalog_strategies,
-    strategy_lifecycle_status, strategy_lifecycle_rank, is_strategy_approved,
-    can_deploy_strategy, get_current_strategy_name, get_current_strategy_manifest,
-    DirectCatalogMutationError, get_strategy_spec_path, get_strategy_spec_text, set_current_strategy,
+    register_strategy,
+    get_strategy,
+    list_strategies,
+    clear_registry,
+    load_strategy_catalog,
+    get_strategy_manifest,
+    list_catalog_strategies,
+    strategy_lifecycle_status,
+    strategy_lifecycle_rank,
+    is_strategy_approved,
+    can_deploy_strategy,
+    get_current_strategy_name,
+    get_current_strategy_manifest,
+    DirectCatalogMutationError,
+    get_strategy_spec_path,
+    get_strategy_spec_text,
+    set_current_strategy,
 )
 
 
@@ -145,15 +157,22 @@ strategies:
             encoding="utf-8",
         )
         assert is_strategy_approved("ApprovedStrat", fixture) is True
-        assert can_deploy_strategy("ApprovedStrat", target_stage="walk_forward", path=fixture) is True
-        assert can_deploy_strategy("DraftStrat", target_stage="demo", path=fixture) is False
+        assert (
+            can_deploy_strategy(
+                "ApprovedStrat", target_stage="walk_forward", path=fixture
+            )
+            is True
+        )
+        assert (
+            can_deploy_strategy("DraftStrat", target_stage="demo", path=fixture)
+            is False
+        )
 
     def test_catalog_can_be_loaded_from_custom_path(self, tmp_path):
         spec = tmp_path / "spec.md"
         spec.write_text("# Custom Strategy\n", encoding="utf-8")
         custom = tmp_path / "strategy_catalog.yaml"
-        custom.write_text(
-            """
+        custom.write_text("""
 current_strategy: TestStrategy
 strategies:
   TestStrategy:
@@ -161,8 +180,7 @@ strategies:
     approved: true
     version: "1.0"
     strategy_spec_path: spec.md
-""".strip()
-        )
+""".strip())
         catalog = load_strategy_catalog(custom)
         assert catalog["TestStrategy"]["status"] == "demo"
         assert get_strategy_manifest("TestStrategy", custom)["approved"] is True
@@ -172,8 +190,7 @@ strategies:
 
     def test_set_current_strategy_fails_closed(self, tmp_path):
         custom = tmp_path / "strategy_catalog.yaml"
-        custom.write_text(
-            """
+        custom.write_text("""
 current_strategy: OldStrategy
 strategies:
   OldStrategy:
@@ -184,8 +201,7 @@ strategies:
     status: demo
     approved: true
     version: "1.0"
-""".strip()
-        )
+""".strip())
         with pytest.raises(DirectCatalogMutationError):
             set_current_strategy("NewStrategy", custom)
         assert get_current_strategy_name(custom) == "OldStrategy"

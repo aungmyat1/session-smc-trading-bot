@@ -45,68 +45,104 @@ from simulator.forward_test import (
 
 _UTC = timezone.utc
 TRADE_DATE = date(2024, 1, 15)
-DISP_TIME  = "2024-01-15T07:30:00Z"
+DISP_TIME = "2024-01-15T07:30:00Z"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixture helpers (mirror test_session_strategy.py conventions)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _bar(t: datetime, high: float, low: float,
-         open_: float | None = None, close: float | None = None) -> dict:
+
+def _bar(
+    t: datetime,
+    high: float,
+    low: float,
+    open_: float | None = None,
+    close: float | None = None,
+) -> dict:
     mid = round((high + low) / 2, 6)
     return {
-        "time":  t.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "open":  open_ if open_ is not None else mid,
-        "high":  high,
-        "low":   low,
+        "time": t.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "open": open_ if open_ is not None else mid,
+        "high": high,
+        "low": low,
         "close": close if close is not None else mid,
     }
 
 
-def _asian_bars(trade_date: date = TRADE_DATE,
-                high: float = 1.0750, low: float = 1.0700,
-                n: int = 32) -> list[dict]:
-    prev  = datetime(trade_date.year, trade_date.month, trade_date.day,
-                     tzinfo=_UTC) - timedelta(days=1)
+def _asian_bars(
+    trade_date: date = TRADE_DATE,
+    high: float = 1.0750,
+    low: float = 1.0700,
+    n: int = 32,
+) -> list[dict]:
+    prev = datetime(
+        trade_date.year, trade_date.month, trade_date.day, tzinfo=_UTC
+    ) - timedelta(days=1)
     start = prev.replace(hour=23, minute=0)
     return [_bar(start + timedelta(minutes=15 * i), high, low) for i in range(n)]
 
 
 def _h4_bullish(trade_date: date = TRADE_DATE) -> list[dict]:
     highs = [1, 2, 5, 2, 1, 2, 3, 3, 2, 1, 8, 2, 1]
-    lows  = [0.5, 1, 0.8, 0.5, 0.2, 0.8, 0.5, 0.8, 0.5, 0.3, 1.5, 0.5, 0.2]
-    base  = datetime(2024, 1, 12, 0, 0, tzinfo=_UTC)
+    lows = [0.5, 1, 0.8, 0.5, 0.2, 0.8, 0.5, 0.8, 0.5, 0.3, 1.5, 0.5, 0.2]
+    base = datetime(2024, 1, 12, 0, 0, tzinfo=_UTC)
     return [
         _bar(base + timedelta(hours=4 * i), float(h), float(l))
         for i, (h, l) in enumerate(zip(highs, lows))
     ]
 
 
-def _london(hour: int, minute: int,
-            high: float, low: float,
-            open_: float | None = None, close: float | None = None,
-            trade_date: date = TRADE_DATE) -> dict:
-    t = datetime(trade_date.year, trade_date.month, trade_date.day,
-                 hour, minute, tzinfo=_UTC)
+def _london(
+    hour: int,
+    minute: int,
+    high: float,
+    low: float,
+    open_: float | None = None,
+    close: float | None = None,
+    trade_date: date = TRADE_DATE,
+) -> dict:
+    t = datetime(
+        trade_date.year, trade_date.month, trade_date.day, hour, minute, tzinfo=_UTC
+    )
     return _bar(t, high, low, open_, close)
 
 
 def _full_day(trade_date: date = TRADE_DATE) -> list[dict]:
     """32 Asian bars + normal bar + sweep + displacement for one day."""
     bars = _asian_bars(trade_date)
-    bars.append(_london(7, 0,  high=1.0740, low=1.0710, close=1.0730,
-                        trade_date=trade_date))
-    bars.append(_london(7, 15, high=1.0748, low=1.0682,
-                        open_=1.0725, close=1.0720, trade_date=trade_date))
-    bars.append(_london(7, 30, high=1.0800, low=1.0695,
-                        open_=1.0700, close=1.0790, trade_date=trade_date))
+    bars.append(
+        _london(7, 0, high=1.0740, low=1.0710, close=1.0730, trade_date=trade_date)
+    )
+    bars.append(
+        _london(
+            7,
+            15,
+            high=1.0748,
+            low=1.0682,
+            open_=1.0725,
+            close=1.0720,
+            trade_date=trade_date,
+        )
+    )
+    bars.append(
+        _london(
+            7,
+            30,
+            high=1.0800,
+            low=1.0695,
+            open_=1.0700,
+            close=1.0790,
+            trade_date=trade_date,
+        )
+    )
     return bars
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Cat 1 — Sequential candle feeding
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSequentialFeeding(unittest.TestCase):
 
@@ -117,6 +153,7 @@ class TestSequentialFeeding(unittest.TestCase):
         """Sequential feed produces the same number of signals as batch."""
         bars, h4 = self._all_bars(), _h4_bullish()
         from strategy.session_liquidity.session_strategy import run_strategy
+
         bt = run_strategy(bars, h4, "EURUSD")
         sim = ForwardTestSimulator("EURUSD", h4_candles=h4)
         fw = sim.feed_all(bars)
@@ -126,6 +163,7 @@ class TestSequentialFeeding(unittest.TestCase):
         """Sequential feed: all signal timestamps equal the batch run."""
         bars, h4 = self._all_bars(), _h4_bullish()
         from strategy.session_liquidity.session_strategy import run_strategy
+
         bt = run_strategy(bars, h4, "EURUSD")
         sim = ForwardTestSimulator("EURUSD", h4_candles=h4)
         fw = sim.feed_all(bars)
@@ -150,16 +188,15 @@ class TestSequentialFeeding(unittest.TestCase):
 # Cat 2 — No future candle access (validation rule A / B / C)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestNoFutureAccess(unittest.TestCase):
 
     def setUp(self):
-        self.asian  = _asian_bars()
-        self.normal = _london(7, 0,  high=1.0740, low=1.0710, close=1.0730)
-        self.sweep  = _london(7, 15, high=1.0748, low=1.0682,
-                              open_=1.0725, close=1.0720)
-        self.disp   = _london(7, 30, high=1.0800, low=1.0695,
-                              open_=1.0700, close=1.0790)
-        self.h4     = _h4_bullish()
+        self.asian = _asian_bars()
+        self.normal = _london(7, 0, high=1.0740, low=1.0710, close=1.0730)
+        self.sweep = _london(7, 15, high=1.0748, low=1.0682, open_=1.0725, close=1.0720)
+        self.disp = _london(7, 30, high=1.0800, low=1.0695, open_=1.0700, close=1.0790)
+        self.h4 = _h4_bullish()
 
     def test_no_signal_after_asian_only(self):
         """Rule B/C: no signal before sweep or displacement."""
@@ -178,7 +215,7 @@ class TestNoFutureAccess(unittest.TestCase):
         """Rule C: signal fires exactly when displacement candle is fed."""
         sim = ForwardTestSimulator("EURUSD", h4_candles=self.h4)
         sim.feed_all(self.asian + [self.normal, self.sweep])
-        new = sim.feed(self.disp)    # displacement bar
+        new = sim.feed(self.disp)  # displacement bar
         self.assertEqual(len(new), 1)
 
     def test_signal_timestamp_not_in_future(self):
@@ -199,6 +236,7 @@ class TestNoFutureAccess(unittest.TestCase):
 # ─────────────────────────────────────────────────────────────────────────────
 # Cat 3 — Signal emitted only once (rule D)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSignalOnce(unittest.TestCase):
 
@@ -232,11 +270,12 @@ class TestSignalOnce(unittest.TestCase):
 # Cat 4 — Signal emitted at correct candle (rule A)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSignalTiming(unittest.TestCase):
 
     def setUp(self):
         bars = _full_day()
-        h4   = _h4_bullish()
+        h4 = _h4_bullish()
         self.sim = ForwardTestSimulator("EURUSD", h4_candles=h4)
         self.sim.feed_all(bars)
 
@@ -263,6 +302,7 @@ class TestSignalTiming(unittest.TestCase):
 # ─────────────────────────────────────────────────────────────────────────────
 # Cat 5 — Multi-day replay
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestMultiDay(unittest.TestCase):
 
@@ -306,6 +346,7 @@ class TestMultiDay(unittest.TestCase):
 # Cat 6 — Empty dataset
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestEmptyDataset(unittest.TestCase):
 
     def test_feed_no_candles_produces_no_signals(self):
@@ -332,12 +373,13 @@ class TestEmptyDataset(unittest.TestCase):
 # Cat 7 — Missing H4 data
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestMissingH4(unittest.TestCase):
 
     def test_no_signals_without_h4(self):
         """Without H4 bars, htf_bias returns neutral → no signals."""
         bars = _full_day()
-        sim  = ForwardTestSimulator("EURUSD", h4_candles=[])
+        sim = ForwardTestSimulator("EURUSD", h4_candles=[])
         sigs = sim.feed_all(bars)
         self.assertEqual(len(sigs), 0)
 
@@ -353,11 +395,12 @@ class TestMissingH4(unittest.TestCase):
 # Cat 8 — Replay output correctness (rule replay_day / format_replay)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestReplayOutput(unittest.TestCase):
 
     def setUp(self):
         self.bars = _full_day()
-        self.h4   = _h4_bullish()
+        self.h4 = _h4_bullish()
         self.timeline = replay_day(TRADE_DATE, "EURUSD", self.bars, self.h4)
 
     def test_timeline_is_list_of_replay_events(self):
@@ -387,7 +430,7 @@ class TestReplayOutput(unittest.TestCase):
     def test_sweep_event_before_signal_event(self):
         """Sweep must appear before the signal in the timeline."""
         types = [ev.event for ev in self.timeline]
-        sweep_idx  = types.index("SWEEP")
+        sweep_idx = types.index("SWEEP")
         signal_idx = types.index("SIGNAL")
         self.assertLess(sweep_idx, signal_idx)
 
@@ -407,12 +450,13 @@ class TestReplayOutput(unittest.TestCase):
 # Cat 9 — ST-A2 min_sl_pips still enforced in forward mode
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestSTA2FilterForward(unittest.TestCase):
 
     def test_default_config_enforces_5pip_floor(self):
         """Default config (min_sl_pips=5.0) passes the 110-pip SL test signal."""
         bars = _full_day()
-        sim  = ForwardTestSimulator("EURUSD", h4_candles=_h4_bullish())
+        sim = ForwardTestSimulator("EURUSD", h4_candles=_h4_bullish())
         sigs = sim.feed_all(bars)
         self.assertEqual(len(sigs), 1)
         self.assertGreaterEqual(sigs[0].risk_pips, 5.0)
@@ -420,7 +464,7 @@ class TestSTA2FilterForward(unittest.TestCase):
     def test_high_min_sl_blocks_signal(self):
         """min_sl_pips=200.0 rejects the 110-pip-SL test signal."""
         bars = _full_day()
-        sim  = ForwardTestSimulator(
+        sim = ForwardTestSimulator(
             "EURUSD",
             config={"min_sl_pips": 200.0},
             h4_candles=_h4_bullish(),
@@ -431,7 +475,7 @@ class TestSTA2FilterForward(unittest.TestCase):
     def test_zero_min_sl_still_yields_signal(self):
         """min_sl_pips=0.0 disables filter — backward compat."""
         bars = _full_day()
-        sim  = ForwardTestSimulator(
+        sim = ForwardTestSimulator(
             "EURUSD",
             config={"min_sl_pips": 0.0},
             h4_candles=_h4_bullish(),
@@ -443,7 +487,9 @@ class TestSTA2FilterForward(unittest.TestCase):
         """Forward and backtest agree when min_sl_pips=200.0 filters everything."""
         bars = _full_day()
         result = compare_with_backtest(
-            "EURUSD", bars, _h4_bullish(),
+            "EURUSD",
+            bars,
+            _h4_bullish(),
             config={"min_sl_pips": 200.0},
         )
         self.assertTrue(result["match"])
@@ -453,6 +499,7 @@ class TestSTA2FilterForward(unittest.TestCase):
 # ─────────────────────────────────────────────────────────────────────────────
 # Cat 10 — Debug timeline generation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDebugTimeline(unittest.TestCase):
 
@@ -475,7 +522,7 @@ class TestDebugTimeline(unittest.TestCase):
 
     def test_format_replay_contains_all_event_types(self):
         timeline = replay_day(TRADE_DATE, "EURUSD", _full_day(), _h4_bullish())
-        output   = format_replay(timeline)
+        output = format_replay(timeline)
         self.assertIn("ASIAN_RANGE", output)
         self.assertIn("SWEEP", output)
         self.assertIn("SIGNAL", output)

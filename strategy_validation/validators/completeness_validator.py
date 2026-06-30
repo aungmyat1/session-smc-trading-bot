@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
+from ..models import (
+    StrategyDocument,
+    ValidationFinding,
+    ValidationRecommendation,
+    ValidatorResult,
+    ValidationStatus,
+)
 from ..module_base import BaseValidator
 
 
@@ -21,7 +27,9 @@ class RuleCompletenessValidator(BaseValidator):
             filter(
                 None,
                 [
-                    document.sections.get("Signal Chain (phase-by-phase, in execution order)", ""),
+                    document.sections.get(
+                        "Signal Chain (phase-by-phase, in execution order)", ""
+                    ),
                     document.extracted_fields.get("entry_rules", ""),
                     document.extracted_fields.get("exit_rules", ""),
                     document.sections.get("Confirmation Rules", ""),
@@ -53,13 +61,22 @@ class RuleCompletenessValidator(BaseValidator):
                     )
                 )
 
-        score = round(((len(self.QUESTIONS) - len(missing_dimensions)) / len(self.QUESTIONS)) * 100.0, 2)
-        status: ValidationStatus = "PASS" if not missing_dimensions else "PARTIAL" if score >= 66 else "FAIL"
+        score = round(
+            ((len(self.QUESTIONS) - len(missing_dimensions)) / len(self.QUESTIONS))
+            * 100.0,
+            2,
+        )
+        status: ValidationStatus = (
+            "PASS" if not missing_dimensions else "PARTIAL" if score >= 66 else "FAIL"
+        )
         return ValidatorResult(
             validator_name=self.name,
             score=score,
             status=status,
             findings=findings,
             recommendations=recommendations,
-            metadata={"missing_dimensions": missing_dimensions, "rule_completeness_score": score},
+            metadata={
+                "missing_dimensions": missing_dimensions,
+                "rule_completeness_score": score,
+            },
         )

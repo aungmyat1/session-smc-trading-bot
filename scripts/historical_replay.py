@@ -8,6 +8,7 @@ This is the deterministic execution check:
 
 It does not answer profitability. Use the backtest scripts for that.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,8 +20,8 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scripts.replay_parquet import load_h4, load_m15
-from simulator.historical_replay import (
+from scripts.replay_parquet import load_h4, load_m15  # noqa: E402
+from simulator.historical_replay import (  # noqa: E402
     render_report,
     report_to_dict,
     run_historical_replay,

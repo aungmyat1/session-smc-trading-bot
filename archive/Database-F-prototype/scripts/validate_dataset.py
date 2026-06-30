@@ -32,7 +32,9 @@ def validate_pair(pair: str) -> dict:
             "rows": len(df),
             "date_range": f"{df['timestamp'].min()} → {df['timestamp'].max()}",
             "nulls": df.isnull().sum().sum(),
-            "avg_spread": round(df["spread"].mean(), 5) if "spread" in df.columns else "N/A"
+            "avg_spread": (
+                round(df["spread"].mean(), 5) if "spread" in df.columns else "N/A"
+            ),
         }
 
     return results
@@ -53,7 +55,9 @@ def generate_report():
             if data["status"] == "MISSING":
                 report.append(f"- **{tf}**: ❌ MISSING")
             else:
-                report.append(f"- **{tf}**: ✅ {data['rows']:,} bars | {data['date_range']} | Avg spread: {data['avg_spread']}")
+                report.append(
+                    f"- **{tf}**: ✅ {data['rows']:,} bars | {data['date_range']} | Avg spread: {data['avg_spread']}"
+                )
         report.append("")
 
     with open(REPORT_PATH, "w") as f:

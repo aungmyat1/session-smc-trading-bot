@@ -35,15 +35,18 @@ _UTC = timezone.utc
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ReplayEvent:
     """One event in a bar-by-bar replay timeline."""
-    time: str     # "HH:MM UTC" extracted from debug event, or "—"
-    event: str    # e.g. "ASIAN_RANGE", "SWEEP", "SIGNAL", "SIGNAL_REJECTED"
-    detail: str   # remainder of the debug detail string
+
+    time: str  # "HH:MM UTC" extracted from debug event, or "—"
+    event: str  # e.g. "ASIAN_RANGE", "SWEEP", "SIGNAL", "SIGNAL_REJECTED"
+    detail: str  # remainder of the debug detail string
 
 
 # ── Core simulator ────────────────────────────────────────────────────────────
+
 
 class ForwardTestSimulator:
     """
@@ -139,6 +142,7 @@ class ForwardTestSimulator:
 
 # ── Replay ────────────────────────────────────────────────────────────────────
 
+
 def replay_day(
     trade_date,
     symbol: str,
@@ -165,7 +169,11 @@ def replay_day(
     """
     merged = {**DEFAULT_CONFIG, **(config or {})}
     _, events = run_strategy(
-        m15_candles, h4_candles, symbol, config=merged, debug=True,
+        m15_candles,
+        h4_candles,
+        symbol,
+        config=merged,
+        debug=True,
     )
 
     date_str = str(trade_date)
@@ -182,7 +190,7 @@ def replay_day(
             bracket_end = detail.find("]")
             if bracket_end > 0:
                 time_str = detail[1:bracket_end]
-                detail = detail[bracket_end + 2:].strip()
+                detail = detail[bracket_end + 2 :].strip()
 
         timeline.append(ReplayEvent(time=time_str, event=ev["event"], detail=detail))
 
@@ -212,6 +220,7 @@ def format_replay(timeline: "list[ReplayEvent]", title: str = "") -> str:
 
 
 # ── Backtest comparison ───────────────────────────────────────────────────────
+
 
 def compare_with_backtest(
     symbol: str,
@@ -257,25 +266,19 @@ def compare_with_backtest(
                 f"vs {fw.timestamp.isoformat()}"
             )
         if abs(bt.entry - fw.entry) > 1e-7:
-            mismatches.append(
-                f"[{i}] entry: {bt.entry:.5f} vs {fw.entry:.5f}"
-            )
+            mismatches.append(f"[{i}] entry: {bt.entry:.5f} vs {fw.entry:.5f}")
         if abs(bt.stop_loss - fw.stop_loss) > 1e-7:
             mismatches.append(
                 f"[{i}] stop_loss: {bt.stop_loss:.5f} vs {fw.stop_loss:.5f}"
             )
         if bt.side != fw.side:
-            mismatches.append(
-                f"[{i}] side: {bt.side} vs {fw.side}"
-            )
+            mismatches.append(f"[{i}] side: {bt.side} vs {fw.side}")
         if bt.session != fw.session:
-            mismatches.append(
-                f"[{i}] session: {bt.session} vs {fw.session}"
-            )
+            mismatches.append(f"[{i}] session: {bt.session} vs {fw.session}")
 
     return {
         "match": len(mismatches) == 0,
         "backtest_count": len(bt_signals),
-        "forward_count":  len(fw_signals),
-        "mismatches":     mismatches,
+        "forward_count": len(fw_signals),
+        "mismatches": mismatches,
     }

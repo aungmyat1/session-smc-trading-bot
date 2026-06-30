@@ -117,10 +117,18 @@ def create_tables(conn: sqlite3.Connection):
     # ====================== INDEXES ======================
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_pair ON trades(pair);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_session ON trades(session);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades(strategy);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_trades_open_time ON trades(open_time);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_smc_events_pair_time ON smc_events(pair, timestamp);")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_smc_events_type ON smc_events(event_type);")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_trades_strategy ON trades(strategy);"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_trades_open_time ON trades(open_time);"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_smc_events_pair_time ON smc_events(pair, timestamp);"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_smc_events_type ON smc_events(event_type);"
+    )
 
     conn.commit()
     print("✅ All tables created successfully.")
@@ -132,18 +140,49 @@ def insert_sample_data(conn: sqlite3.Connection):
 
     # Sample trades
     sample_trades = [
-        ("T001", "London_Sweep_OB", "EURUSD", "London", "2024-06-12 09:15:00", "2024-06-12 10:45:00",
-         "LONG", 1.0850, 1.0820, 1.0910, 2.0, 2.4, 240.0, "TP_HIT"),
-        ("T002", "NY_Breakout", "GBPUSD", "NewYork", "2024-06-13 14:30:00", "2024-06-13 15:50:00",
-         "SHORT", 1.2700, 1.2740, 1.2620, 2.0, -1.8, -180.0, "SL_HIT"),
+        (
+            "T001",
+            "London_Sweep_OB",
+            "EURUSD",
+            "London",
+            "2024-06-12 09:15:00",
+            "2024-06-12 10:45:00",
+            "LONG",
+            1.0850,
+            1.0820,
+            1.0910,
+            2.0,
+            2.4,
+            240.0,
+            "TP_HIT",
+        ),
+        (
+            "T002",
+            "NY_Breakout",
+            "GBPUSD",
+            "NewYork",
+            "2024-06-13 14:30:00",
+            "2024-06-13 15:50:00",
+            "SHORT",
+            1.2700,
+            1.2740,
+            1.2620,
+            2.0,
+            -1.8,
+            -180.0,
+            "SL_HIT",
+        ),
     ]
 
-    cursor.executemany("""
+    cursor.executemany(
+        """
         INSERT OR IGNORE INTO trades 
         (trade_id, strategy, pair, session, open_time, close_time, direction, 
          entry_price, stop_price, take_profit, risk_reward, result_r, pnl, exit_reason)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, sample_trades)
+    """,
+        sample_trades,
+    )
 
     # Sample SMC events
     sample_events = [
@@ -152,10 +191,13 @@ def insert_sample_data(conn: sqlite3.Connection):
         ("2024-06-12 09:14:00", "EURUSD", "M5", "FVG", 1.0835),
     ]
 
-    cursor.executemany("""
+    cursor.executemany(
+        """
         INSERT INTO smc_events (timestamp, pair, timeframe, event_type, price)
         VALUES (?, ?, ?, ?, ?)
-    """, sample_events)
+    """,
+        sample_events,
+    )
 
     conn.commit()
     print("✅ Sample data inserted.")

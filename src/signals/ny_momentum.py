@@ -85,7 +85,10 @@ def generate_ny_momentum_signals(
             (day["timestamp"].dt.hour >= cfg.london_session_start_hour)
             & (day["timestamp"].dt.hour < cfg.ny_session_start_hour)
         ].copy()
-        ny = day[(day["timestamp"].dt.hour >= cfg.ny_session_start_hour) & (day["timestamp"].dt.hour < cfg.ny_session_end_hour)].copy()
+        ny = day[
+            (day["timestamp"].dt.hour >= cfg.ny_session_start_hour)
+            & (day["timestamp"].dt.hour < cfg.ny_session_end_hour)
+        ].copy()
         if london.empty or ny.empty:
             continue
 
@@ -107,12 +110,20 @@ def generate_ny_momentum_signals(
             high = float(candle["high"])
             low = float(candle["low"])
 
-            if not swept_long and high > london_high + cfg.sweep_buffer_pips * pip and close > london_high:
+            if (
+                not swept_long
+                and high > london_high + cfg.sweep_buffer_pips * pip
+                and close > london_high
+            ):
                 swept_long = True
                 awaiting_long = True
                 _long_sweep_idx = ts
 
-            if not swept_short and low < london_low - cfg.sweep_buffer_pips * pip and close < london_low:
+            if (
+                not swept_short
+                and low < london_low - cfg.sweep_buffer_pips * pip
+                and close < london_low
+            ):
                 swept_short = True
                 awaiting_short = True
                 _short_sweep_idx = ts
@@ -150,7 +161,10 @@ def generate_ny_momentum_signals(
             if awaiting_short:
                 retest_top = london_low + cfg.retest_tolerance_pips * pip
                 retest_bot = london_low - cfg.retest_tolerance_pips * pip
-                if retest_bot <= high <= retest_top or retest_bot <= close <= retest_top:
+                if (
+                    retest_bot <= high <= retest_top
+                    or retest_bot <= close <= retest_top
+                ):
                     entry = close
                     stop_loss = london_high + cfg.stop_buffer_pips * pip
                     risk = stop_loss - entry
@@ -200,6 +214,8 @@ def generate_ny_momentum_signals(
     out = out.sort_values(["pair", "timestamp"]).reset_index(drop=True)
     if cfg.max_signals_per_day > 0:
         out["date"] = out["timestamp"].dt.floor("D")
-        out = out.groupby(["pair", "date"], group_keys=False).head(cfg.max_signals_per_day)
+        out = out.groupby(["pair", "date"], group_keys=False).head(
+            cfg.max_signals_per_day
+        )
         out = out.drop(columns=["date"]).reset_index(drop=True)
     return out

@@ -56,9 +56,15 @@ def main() -> int:
 
     print(f"Phase 2 Completion Check — {now.strftime('%Y-%m-%d %H:%M UTC')}")
     print()
-    print(f"  London sessions:  {london_days}/{MIN_LONDON_SESSIONS}  {'PASS' if gate_london else 'FAIL'}")
-    print(f"  NY sessions:      {ny_days}/{MIN_NY_SESSIONS}  {'PASS' if gate_ny else 'FAIL'}")
-    print(f"  Total rows:       {total:,}/{MIN_ROWS:,}  {'PASS' if gate_rows else 'FAIL'}")
+    print(
+        f"  London sessions:  {london_days}/{MIN_LONDON_SESSIONS}  {'PASS' if gate_london else 'FAIL'}"
+    )
+    print(
+        f"  NY sessions:      {ny_days}/{MIN_NY_SESSIONS}  {'PASS' if gate_ny else 'FAIL'}"
+    )
+    print(
+        f"  Total rows:       {total:,}/{MIN_ROWS:,}  {'PASS' if gate_rows else 'FAIL'}"
+    )
     print()
 
     if ready:
@@ -73,7 +79,9 @@ def main() -> int:
 
     remaining = []
     if not gate_london:
-        remaining.append(f"{max(0, MIN_LONDON_SESSIONS - london_days)} more London session(s)")
+        remaining.append(
+            f"{max(0, MIN_LONDON_SESSIONS - london_days)} more London session(s)"
+        )
     if not gate_ny:
         remaining.append(f"{max(0, MIN_NY_SESSIONS - ny_days)} more NY session(s)")
     if not gate_rows:

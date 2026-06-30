@@ -25,24 +25,27 @@ _log = logging.getLogger("portfolio.circuit_breaker")
 
 _DEFAULTS = {
     "max_signals_hour": 6,
-    "max_trades_day":   4,
-    "max_losses":       4,
-    "cooldown_hours":   4,
+    "max_trades_day": 4,
+    "max_losses": 4,
+    "cooldown_hours": 4,
 }
 
 
 class _StrategyState:
     __slots__ = (
-        "signal_times", "trades_today", "consecutive_losses",
-        "cooldown_until", "last_reset",
+        "signal_times",
+        "trades_today",
+        "consecutive_losses",
+        "cooldown_until",
+        "last_reset",
     )
 
     def __init__(self) -> None:
-        self.signal_times:       list[datetime] = []
-        self.trades_today:       int            = 0
-        self.consecutive_losses: int            = 0
-        self.cooldown_until:     Optional[datetime] = None
-        self.last_reset:         str            = ""
+        self.signal_times: list[datetime] = []
+        self.trades_today: int = 0
+        self.consecutive_losses: int = 0
+        self.cooldown_until: Optional[datetime] = None
+        self.last_reset: str = ""
 
 
 class CircuitBreaker:
@@ -56,10 +59,10 @@ class CircuitBreaker:
         st = self._state[name]
         today = date.today().isoformat()
         if st.last_reset != today:
-            st.trades_today       = 0
+            st.trades_today = 0
             st.consecutive_losses = 0
-            st.cooldown_until     = None
-            st.last_reset         = today
+            st.cooldown_until = None
+            st.last_reset = today
         return st
 
     def _cfg_for(self, name: str) -> dict:
@@ -70,7 +73,7 @@ class CircuitBreaker:
     def check(self, strategy_name: str) -> tuple[bool, str]:
         """Return (approved, reason). Call before routing a signal."""
         now = datetime.now(timezone.utc)
-        st  = self._state_for(strategy_name)
+        st = self._state_for(strategy_name)
         cfg = self._cfg_for(strategy_name)
 
         # Cooldown
@@ -93,7 +96,11 @@ class CircuitBreaker:
             cooldown = timedelta(hours=cfg["cooldown_hours"])
             st.cooldown_until = now + cooldown
             st.consecutive_losses = 0
-            _log.warning("%s: max losses hit → cooldown %sh", strategy_name, cfg["cooldown_hours"])
+            _log.warning(
+                "%s: max losses hit → cooldown %sh",
+                strategy_name,
+                cfg["cooldown_hours"],
+            )
             return False, f"max consecutive losses → cooldown {cfg['cooldown_hours']}h"
 
         return True, ""
@@ -121,11 +128,12 @@ class CircuitBreaker:
         now = datetime.now(timezone.utc)
         return {
             name: {
-                "signals_last_hour":   len([t for t in st.signal_times
-                                            if t > now - timedelta(hours=1)]),
-                "trades_today":        st.trades_today,
-                "consecutive_losses":  st.consecutive_losses,
-                "in_cooldown":         bool(st.cooldown_until and now < st.cooldown_until),
+                "signals_last_hour": len(
+                    [t for t in st.signal_times if t > now - timedelta(hours=1)]
+                ),
+                "trades_today": st.trades_today,
+                "consecutive_losses": st.consecutive_losses,
+                "in_cooldown": bool(st.cooldown_until and now < st.cooldown_until),
             }
             for name, st in self._state.items()
         }

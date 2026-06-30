@@ -29,9 +29,9 @@ def _cfg(**overrides) -> dict:
         },
         "correlation_groups": [["EURUSD", "GBPUSD"]],
         "strategies": {
-            "ST-A2":          {"enabled": True,  "risk": 0.25, "min_confidence": 0.7},
-            "LondonBreakout": {"enabled": True,  "risk": 0.25, "min_confidence": 0.6},
-            "NYMomentum":     {"enabled": False, "risk": 0.25, "min_confidence": 0.6},
+            "ST-A2": {"enabled": True, "risk": 0.25, "min_confidence": 0.7},
+            "LondonBreakout": {"enabled": True, "risk": 0.25, "min_confidence": 0.6},
+            "NYMomentum": {"enabled": False, "risk": 0.25, "min_confidence": 0.6},
         },
     }
     base["portfolio"].update(overrides)
@@ -69,38 +69,46 @@ class TestPortfolioManager:
     def test_correlation_filter_same_direction_keeps_highest(self):
         pm = PortfolioManager(_cfg())
         eur = _sig(symbol="EURUSD", action="BUY", confidence=0.9)
-        gbp = _sig(strategy="LondonBreakout", symbol="GBPUSD", action="BUY", confidence=0.75)
+        gbp = _sig(
+            strategy="LondonBreakout", symbol="GBPUSD", action="BUY", confidence=0.75
+        )
         result = pm.evaluate([gbp, eur])
         assert len(result) == 1
-        assert result[0].symbol == "EURUSD"   # higher confidence wins
+        assert result[0].symbol == "EURUSD"  # higher confidence wins
 
     def test_correlation_filter_opposite_directions_both_pass(self):
         pm = PortfolioManager(_cfg())
-        eur = _sig(symbol="EURUSD", action="BUY",  confidence=0.9)
-        gbp = _sig(strategy="LondonBreakout", symbol="GBPUSD", action="SELL", confidence=0.8)
+        eur = _sig(symbol="EURUSD", action="BUY", confidence=0.9)
+        gbp = _sig(
+            strategy="LondonBreakout", symbol="GBPUSD", action="SELL", confidence=0.8
+        )
         result = pm.evaluate([eur, gbp])
         assert len(result) == 2
 
     def test_max_daily_trades_cap(self):
         from datetime import date
+
         pm = PortfolioManager(_cfg(max_trades_per_day=2))
         pm._trades_today = 2
-        pm._last_reset   = date.today().isoformat()   # prevent reset clearing counter
+        pm._last_reset = date.today().isoformat()  # prevent reset clearing counter
         result = pm.evaluate([_sig()])
         assert result == []
 
     def test_max_open_positions_cap(self):
         from datetime import date
+
         pm = PortfolioManager(_cfg(max_open_positions=1))
         pm._open_symbols = {"EURUSD"}
-        pm._last_reset   = date.today().isoformat()
+        pm._last_reset = date.today().isoformat()
         result = pm.evaluate([_sig(symbol="GBPUSD", strategy="LondonBreakout")])
         assert result == []
 
     def test_sorted_by_confidence_desc(self):
         pm = PortfolioManager(_cfg())
-        s1 = _sig(strategy="ST-A2",          symbol="EURUSD", action="BUY",  confidence=0.9)
-        s2 = _sig(strategy="LondonBreakout", symbol="GBPUSD", action="SELL", confidence=0.75)
+        s1 = _sig(strategy="ST-A2", symbol="EURUSD", action="BUY", confidence=0.9)
+        s2 = _sig(
+            strategy="LondonBreakout", symbol="GBPUSD", action="SELL", confidence=0.75
+        )
         result = pm.evaluate([s2, s1])
         assert result[0].confidence > result[1].confidence
 
@@ -118,7 +126,7 @@ class TestPortfolioManager:
 
     def test_daily_loss_limit(self):
         pm = PortfolioManager(_cfg())
-        pm._daily_pnl_pct = -0.016    # 1.6% loss > 1.5% limit
+        pm._daily_pnl_pct = -0.016  # 1.6% loss > 1.5% limit
         assert pm.is_daily_loss_hit()
 
     def test_stats_output(self):

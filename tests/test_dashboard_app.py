@@ -58,8 +58,7 @@ strategies:
     last_svos_promoted_stage: backtest
     last_svos_verification_ready: true
     deployment_target: execution
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "config" / "validation.yaml",
@@ -71,16 +70,14 @@ promotion_map:
   walk_forward: shadow
   shadow: demo
   demo: live
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "config" / "research_engine.yaml",
         """
 analytics:
   duckdb_path: research.db
-""".strip()
-        + "\n",
+""".strip() + "\n",
     )
     _write(
         tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md",
@@ -95,7 +92,12 @@ analytics:
         json.dumps({"status": "PASS", "strategy": "ST-A2"}),
     )
     _write(
-        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "index.json",
+        tmp_path
+        / "reports"
+        / "current_strategy_svos"
+        / "ST-A2"
+        / "stages"
+        / "index.json",
         json.dumps(
             {
                 "strategy": "ST-A2",
@@ -103,39 +105,115 @@ analytics:
                 "promoted_stage": "backtest",
                 "updated_at": "2026-06-28T04:05:00+00:00",
                 "stages": [
-                    {"phase": 0, "stage": "intake", "status": "PASS", "can_promote": True, "next_stage": "audit", "created_at": "2026-06-28T04:00:00+00:00"},
-                    {"phase": 1, "stage": "audit", "status": "PASS", "can_promote": True, "next_stage": "enhancement", "created_at": "2026-06-28T04:01:00+00:00"},
-                    {"phase": 2, "stage": "enhancement", "status": "PASS", "can_promote": True, "next_stage": "replay", "created_at": "2026-06-28T04:02:00+00:00"},
-                    {"phase": 3, "stage": "replay", "status": "PASS", "can_promote": True, "next_stage": "backtest", "created_at": "2026-06-28T04:03:00+00:00"},
-                    {"phase": 4, "stage": "backtest", "status": "PASS", "can_promote": True, "next_stage": "robustness", "created_at": "2026-06-28T04:04:00+00:00"},
+                    {
+                        "phase": 0,
+                        "stage": "intake",
+                        "status": "PASS",
+                        "can_promote": True,
+                        "next_stage": "audit",
+                        "created_at": "2026-06-28T04:00:00+00:00",
+                    },
+                    {
+                        "phase": 1,
+                        "stage": "audit",
+                        "status": "PASS",
+                        "can_promote": True,
+                        "next_stage": "enhancement",
+                        "created_at": "2026-06-28T04:01:00+00:00",
+                    },
+                    {
+                        "phase": 2,
+                        "stage": "enhancement",
+                        "status": "PASS",
+                        "can_promote": True,
+                        "next_stage": "replay",
+                        "created_at": "2026-06-28T04:02:00+00:00",
+                    },
+                    {
+                        "phase": 3,
+                        "stage": "replay",
+                        "status": "PASS",
+                        "can_promote": True,
+                        "next_stage": "backtest",
+                        "created_at": "2026-06-28T04:03:00+00:00",
+                    },
+                    {
+                        "phase": 4,
+                        "stage": "backtest",
+                        "status": "PASS",
+                        "can_promote": True,
+                        "next_stage": "robustness",
+                        "created_at": "2026-06-28T04:04:00+00:00",
+                    },
                 ],
             }
         ),
     )
     _write(
-        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "01_audit.md",
+        tmp_path
+        / "reports"
+        / "current_strategy_svos"
+        / "ST-A2"
+        / "stages"
+        / "01_audit.md",
         "# SVOS Audit Stage\n\n- Status: `PASS`\n- Notes: Strategy spec is complete.\n",
     )
     _write(
-        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "01_audit.json",
-        json.dumps({"strategy": "ST-A2", "current_stage": {"stage": "audit", "status": "PASS"}}),
+        tmp_path
+        / "reports"
+        / "current_strategy_svos"
+        / "ST-A2"
+        / "stages"
+        / "01_audit.json",
+        json.dumps(
+            {"strategy": "ST-A2", "current_stage": {"stage": "audit", "status": "PASS"}}
+        ),
     )
     _write(
-        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "03_replay.md",
+        tmp_path
+        / "reports"
+        / "current_strategy_svos"
+        / "ST-A2"
+        / "stages"
+        / "03_replay.md",
         "# SVOS Replay Stage\n\n- Status: `PASS`\n",
     )
     _write(
-        tmp_path / "reports" / "current_strategy_svos" / "ST-A2" / "stages" / "03_replay.json",
-        json.dumps({"strategy": "ST-A2", "current_stage": {"stage": "replay", "status": "PASS"}}),
+        tmp_path
+        / "reports"
+        / "current_strategy_svos"
+        / "ST-A2"
+        / "stages"
+        / "03_replay.json",
+        json.dumps(
+            {
+                "strategy": "ST-A2",
+                "current_stage": {"stage": "replay", "status": "PASS"},
+            }
+        ),
     )
     canonical_dir = tmp_path / "reports" / "svos" / "ST-A2" / "2.1" / "run-001"
     canonical_stages = [
         ("strategy_audit", "Strategy Audit", "01_strategy_audit", "PASS", 96.0, True),
-        ("historical_replay", "Historical Replay", "02_historical_replay", "PASS", 100.0, True),
+        (
+            "historical_replay",
+            "Historical Replay",
+            "02_historical_replay",
+            "PASS",
+            100.0,
+            True,
+        ),
         ("backtest", "Backtest", "03_backtest", "PASS", 100.0, True),
         ("robustness", "Robustness Tests", "04_robustness", "PASS", 100.0, True),
         ("virtual_demo", "Virtual Demo", "05_virtual_demo", "BLOCKED", 75.0, False),
-        ("production_approval", "Production Approval", "06_production_approval", "BLOCKED", None, False),
+        (
+            "production_approval",
+            "Production Approval",
+            "06_production_approval",
+            "BLOCKED",
+            None,
+            False,
+        ),
     ]
     summary_stages = []
     for stage, label, stem, status, score, promotion_allowed in canonical_stages:
@@ -160,10 +238,23 @@ analytics:
                     "score": score,
                     "metrics": metrics,
                     "thresholds": {},
-                    "findings": [{"severity": "HIGH", "message": "Virtual Demo evidence is incomplete."}] if stage == "virtual_demo" else [],
+                    "findings": (
+                        [
+                            {
+                                "severity": "HIGH",
+                                "message": "Virtual Demo evidence is incomplete.",
+                            }
+                        ]
+                        if stage == "virtual_demo"
+                        else []
+                    ),
                     "remediation": {
                         "route": "research" if stage == "virtual_demo" else stage,
-                        "actions": ["Complete the Virtual Demo observation window."] if stage == "virtual_demo" else [],
+                        "actions": (
+                            ["Complete the Virtual Demo observation window."]
+                            if stage == "virtual_demo"
+                            else []
+                        ),
                     },
                 }
             ),
@@ -199,9 +290,16 @@ analytics:
             }
         ),
     )
-    _write(canonical_dir / "run_summary.md", "# SVOS Run Summary\n\n- Overall Status: **BLOCKED**\n")
     _write(
-        tmp_path / "execution_validation" / "reports" / "run1" / "validation_report.json",
+        canonical_dir / "run_summary.md",
+        "# SVOS Run Summary\n\n- Overall Status: **BLOCKED**\n",
+    )
+    _write(
+        tmp_path
+        / "execution_validation"
+        / "reports"
+        / "run1"
+        / "validation_report.json",
         json.dumps(
             {
                 "strategy": "ST-A2",
@@ -220,13 +318,34 @@ analytics:
         tmp_path / "logs" / "trades.jsonl",
         "\n".join(
             [
-                json.dumps({"timestamp": "2026-06-28T04:00:00+00:00", "symbol": "EURUSD", "direction": "buy", "entry": 1.1, "strategy": "ST-A2", "result_r": 1.2}),
-                json.dumps({"timestamp": "2026-06-28T05:00:00+00:00", "symbol": "GBPUSD", "direction": "sell", "entry": 1.25, "strategy": "ST-A2", "result_r": -0.5}),
+                json.dumps(
+                    {
+                        "timestamp": "2026-06-28T04:00:00+00:00",
+                        "symbol": "EURUSD",
+                        "direction": "buy",
+                        "entry": 1.1,
+                        "strategy": "ST-A2",
+                        "result_r": 1.2,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "timestamp": "2026-06-28T05:00:00+00:00",
+                        "symbol": "GBPUSD",
+                        "direction": "sell",
+                        "entry": 1.25,
+                        "strategy": "ST-A2",
+                        "result_r": -0.5,
+                    }
+                ),
             ]
         )
         + "\n",
     )
-    _write(tmp_path / "logs" / "st_a2_runner.log", "2026-06-28 05:00:00 INFO runner alive\n")
+    _write(
+        tmp_path / "logs" / "st_a2_runner.log",
+        "2026-06-28 05:00:00 INFO runner alive\n",
+    )
     _write(
         tmp_path / "logs" / "bot.log",
         "\n".join(
@@ -237,47 +356,132 @@ analytics:
         )
         + "\n",
     )
-    _write(tmp_path / "logs" / "bot_state.json", json.dumps({"halted": False, "halt_reason": "", "consecutive_losses": 1, "daily_loss_pct": 0.001}))
-    _write(tmp_path / "reports" / "daily" / "daily_report_2026-06-28.md", "# Daily Trading Report\n\n- Final recommendation: `CONTINUE`\n")
-    _write(tmp_path / "reports" / "strategy" / "strategy_report_2026-06-28_000000.md", "# Strategy Performance Report\n")
-    _write(tmp_path / "reports" / "risk" / "risk_report_2026-06-28_000000.md", "# Risk Report\n")
-    _write(tmp_path / "reports" / "execution" / "execution_report_2026-06-28_000000.md", "# Execution Quality Report\n")
-    _write(tmp_path / "reports" / "system_health" / "system_health_report_2026-06-28_000000.md", "# System Health Report\n")
-    _write(tmp_path / "reports" / "live_readiness" / "live_readiness_report_2026-06-28_000000.md", "# Live Readiness Report\n\n- Final verdict: `DEMO_READY`\n")
-    _write(tmp_path / "reports" / "index.json", json.dumps({"generated_at": "", "latest": {}, "reports": []}))
+    _write(
+        tmp_path / "logs" / "bot_state.json",
+        json.dumps(
+            {
+                "halted": False,
+                "halt_reason": "",
+                "consecutive_losses": 1,
+                "daily_loss_pct": 0.001,
+            }
+        ),
+    )
+    _write(
+        tmp_path / "reports" / "daily" / "daily_report_2026-06-28.md",
+        "# Daily Trading Report\n\n- Final recommendation: `CONTINUE`\n",
+    )
+    _write(
+        tmp_path / "reports" / "strategy" / "strategy_report_2026-06-28_000000.md",
+        "# Strategy Performance Report\n",
+    )
+    _write(
+        tmp_path / "reports" / "risk" / "risk_report_2026-06-28_000000.md",
+        "# Risk Report\n",
+    )
+    _write(
+        tmp_path / "reports" / "execution" / "execution_report_2026-06-28_000000.md",
+        "# Execution Quality Report\n",
+    )
+    _write(
+        tmp_path
+        / "reports"
+        / "system_health"
+        / "system_health_report_2026-06-28_000000.md",
+        "# System Health Report\n",
+    )
+    _write(
+        tmp_path
+        / "reports"
+        / "live_readiness"
+        / "live_readiness_report_2026-06-28_000000.md",
+        "# Live Readiness Report\n\n- Final verdict: `DEMO_READY`\n",
+    )
+    _write(
+        tmp_path / "reports" / "index.json",
+        json.dumps({"generated_at": "", "latest": {}, "reports": []}),
+    )
 
     monkeypatch.setenv("DB_BACKEND", "duckdb")
     monkeypatch.setenv("LIVE_TRADING", "false")
     monkeypatch.setattr(dashboard_app, "_ROOT", tmp_path)
-    monkeypatch.setattr(dashboard_app, "_CATALOG_PATH", tmp_path / "config" / "strategy_catalog.yaml")
-    monkeypatch.setattr(dashboard_app, "_EVF_REPORTS_DIR", tmp_path / "execution_validation" / "reports")
-    monkeypatch.setattr(dashboard_app, "_SVOS_REPORTS_DIR", tmp_path / "reports" / "current_strategy_svos")
-    monkeypatch.setattr(dashboard_app, "_SVOS_CANONICAL_REPORTS_DIR", tmp_path / "reports" / "svos")
-    monkeypatch.setattr(dashboard_app, "_JOURNAL_PATHS", [tmp_path / "logs" / "trades.jsonl"])
-    monkeypatch.setattr(dashboard_app, "_ARCHITECTURE_PATH", tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md")
+    monkeypatch.setattr(
+        dashboard_app, "_CATALOG_PATH", tmp_path / "config" / "strategy_catalog.yaml"
+    )
+    monkeypatch.setattr(
+        dashboard_app, "_EVF_REPORTS_DIR", tmp_path / "execution_validation" / "reports"
+    )
+    monkeypatch.setattr(
+        dashboard_app,
+        "_SVOS_REPORTS_DIR",
+        tmp_path / "reports" / "current_strategy_svos",
+    )
+    monkeypatch.setattr(
+        dashboard_app, "_SVOS_CANONICAL_REPORTS_DIR", tmp_path / "reports" / "svos"
+    )
+    monkeypatch.setattr(
+        dashboard_app, "_JOURNAL_PATHS", [tmp_path / "logs" / "trades.jsonl"]
+    )
+    monkeypatch.setattr(
+        dashboard_app,
+        "_ARCHITECTURE_PATH",
+        tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md",
+    )
     monkeypatch.setattr(dashboard_app, "_BOT_LOG", tmp_path / "logs" / "bot.log")
-    monkeypatch.setattr(dashboard_app, "_RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
+    monkeypatch.setattr(
+        dashboard_app, "_RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log"
+    )
 
     monkeypatch.setattr(audit_log, "ROOT", tmp_path)
-    monkeypatch.setattr(audit_log, "AUDIT_LOG_PATH", tmp_path / "logs" / "dashboard_audit.jsonl")
+    monkeypatch.setattr(
+        audit_log, "AUDIT_LOG_PATH", tmp_path / "logs" / "dashboard_audit.jsonl"
+    )
     monkeypatch.setattr(control_state, "ROOT", tmp_path)
-    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setattr(
+        control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json"
+    )
     monkeypatch.setattr(report_service, "ROOT", tmp_path)
     monkeypatch.setattr(report_service, "REPORTS_ROOT", tmp_path / "reports")
-    monkeypatch.setattr(report_service, "REPORT_INDEX_PATH", tmp_path / "reports" / "index.json")
+    monkeypatch.setattr(
+        report_service, "REPORT_INDEX_PATH", tmp_path / "reports" / "index.json"
+    )
 
     monkeypatch.setattr(generate_reports, "ROOT", tmp_path)
-    monkeypatch.setattr(generate_reports, "TRADE_EVENT_LOG", tmp_path / "logs" / "trades.jsonl")
+    monkeypatch.setattr(
+        generate_reports, "TRADE_EVENT_LOG", tmp_path / "logs" / "trades.jsonl"
+    )
     monkeypatch.setattr(generate_reports, "BOT_LOG", tmp_path / "logs" / "bot.log")
-    monkeypatch.setattr(generate_reports, "RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
-    monkeypatch.setattr(generate_reports, "DEMO_JOURNALS", [tmp_path / "logs" / "trades.jsonl"])
-    monkeypatch.setattr(generate_reports, "TRADE_DB", tmp_path / "data" / "trade_journal.db")
-    monkeypatch.setattr(generate_reports, "BOT_STATE", tmp_path / "logs" / "bot_state.json")
-    monkeypatch.setattr(generate_reports, "EXECUTION_DAILY", tmp_path / "logs" / "execution_summary_daily.json")
-    monkeypatch.setattr(generate_reports, "EXECUTION_WEEKLY", tmp_path / "logs" / "execution_summary_weekly.json")
-    monkeypatch.setattr(generate_reports, "CATALOG", tmp_path / "config" / "strategy_catalog.yaml")
-    monkeypatch.setattr(generate_reports, "DEMO_CONFIG", tmp_path / "config" / "demo.yaml")
-    monkeypatch.setattr(generate_reports, "VALIDATION_CONFIG", tmp_path / "config" / "validation.yaml")
+    monkeypatch.setattr(
+        generate_reports, "RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log"
+    )
+    monkeypatch.setattr(
+        generate_reports, "DEMO_JOURNALS", [tmp_path / "logs" / "trades.jsonl"]
+    )
+    monkeypatch.setattr(
+        generate_reports, "TRADE_DB", tmp_path / "data" / "trade_journal.db"
+    )
+    monkeypatch.setattr(
+        generate_reports, "BOT_STATE", tmp_path / "logs" / "bot_state.json"
+    )
+    monkeypatch.setattr(
+        generate_reports,
+        "EXECUTION_DAILY",
+        tmp_path / "logs" / "execution_summary_daily.json",
+    )
+    monkeypatch.setattr(
+        generate_reports,
+        "EXECUTION_WEEKLY",
+        tmp_path / "logs" / "execution_summary_weekly.json",
+    )
+    monkeypatch.setattr(
+        generate_reports, "CATALOG", tmp_path / "config" / "strategy_catalog.yaml"
+    )
+    monkeypatch.setattr(
+        generate_reports, "DEMO_CONFIG", tmp_path / "config" / "demo.yaml"
+    )
+    monkeypatch.setattr(
+        generate_reports, "VALIDATION_CONFIG", tmp_path / "config" / "validation.yaml"
+    )
     monkeypatch.setattr(generate_reports.health_check, "_ROOT", tmp_path)
     _write(tmp_path / "config" / "demo.yaml", "execution:\n  mode: demo\n")
 
@@ -298,7 +502,9 @@ analytics:
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     _setup_dashboard_repo(tmp_path, monkeypatch)
-    dashboard_app.app.config.update(TESTING=True, SVOS_OPERATOR_TOKEN="unit-test-operator-token")
+    dashboard_app.app.config.update(
+        TESTING=True, SVOS_OPERATOR_TOKEN="unit-test-operator-token"
+    )
     test_client = dashboard_app.app.test_client()
     test_client.environ_base.update(
         {
@@ -377,9 +583,14 @@ def test_svos_endpoint_exposes_stage_reports(client):
 
     assert response.status_code == 200
     assert payload["stage_reports"]
-    audit_stage = next(item for item in payload["stage_reports"] if item["stage"] == "audit")
+    audit_stage = next(
+        item for item in payload["stage_reports"] if item["stage"] == "audit"
+    )
     assert audit_stage["has_markdown"] is True
-    assert audit_stage["markdown_report_id"] == "reports__current_strategy_svos__ST-A2__stages__01_audit.md"
+    assert (
+        audit_stage["markdown_report_id"]
+        == "reports__current_strategy_svos__ST-A2__stages__01_audit.md"
+    )
 
     detail = client.get(f"/api/reports/{audit_stage['markdown_report_id']}")
     assert detail.status_code == 200
@@ -400,7 +611,9 @@ def test_svos_endpoint_exposes_canonical_six_stage_run(client):
     assert canonical["active_blocker"] == "virtual_demo"
     assert len(canonical["stages"]) == 6
 
-    virtual_demo = next(stage for stage in canonical["stages"] if stage["stage"] == "virtual_demo")
+    virtual_demo = next(
+        stage for stage in canonical["stages"] if stage["stage"] == "virtual_demo"
+    )
     assert virtual_demo["score"] == 75.0
     assert virtual_demo["promotion_allowed"] is False
     assert virtual_demo["remediation_route"] == "research"
@@ -422,7 +635,10 @@ def test_dashboard_uses_operational_nine_stage_svos_view(client):
     assert response.status_code == 200
     assert "SVOS Control Panel" in page
     assert "SVOS Research and Verification" in page
-    assert "const STAGES = ['intake','audit','enhancement','replay','backtest','robustness','verification_ready','virtual_demo','production_approval']" in page
+    assert (
+        "const STAGES = ['intake','audit','enhancement','replay','backtest','robustness','verification_ready','virtual_demo','production_approval']"
+        in page
+    )
     assert "Immutable Version" in page
     assert "Active Blocker" in page
     assert "Strategy Enhancement" in page
@@ -445,7 +661,9 @@ def test_reports_include_strategy_audit_loop_report(client):
     assert "AI edits specification" in detail_payload["content"]
 
 
-def test_reports_generate_is_read_only_and_does_not_call_live_broker_checks(client, monkeypatch):
+def test_reports_generate_is_read_only_and_does_not_call_live_broker_checks(
+    client, monkeypatch
+):
     def _forbidden(*args, **kwargs):
         raise AssertionError("live broker checks must not run during report generation")
 
@@ -482,7 +700,10 @@ def test_emergency_stop_can_be_cleared_with_confirm_token(client):
 
     clear_response = client.post(
         "/api/emergency-stop/clear",
-        json={"reason": "review complete", "confirm_token": "CONFIRM-CLEAR-EMERGENCY-STOP"},
+        json={
+            "reason": "review complete",
+            "confirm_token": "CONFIRM-CLEAR-EMERGENCY-STOP",
+        },
     )
     assert clear_response.status_code == 200
     payload = clear_response.get_json()
@@ -492,8 +713,13 @@ def test_emergency_stop_can_be_cleared_with_confirm_token(client):
 
     smo_response = client.get("/api/smo")
     smo_payload = smo_response.get_json()
-    assert any(entry["action"] == "emergency_stop" for entry in smo_payload["control_timeline"])
-    assert any(entry["action"] == "emergency_stop_clear" for entry in smo_payload["control_timeline"])
+    assert any(
+        entry["action"] == "emergency_stop" for entry in smo_payload["control_timeline"]
+    )
+    assert any(
+        entry["action"] == "emergency_stop_clear"
+        for entry in smo_payload["control_timeline"]
+    )
 
 
 def test_incident_acknowledgment_marks_incident_reviewed(client):
@@ -503,14 +729,18 @@ def test_incident_acknowledgment_marks_incident_reviewed(client):
     incident = smo_payload["recent_incidents"][0]
     assert incident["acknowledged"] is False
 
-    ack_response = client.post("/api/incidents/ack", json={"incident_id": incident["id"]})
+    ack_response = client.post(
+        "/api/incidents/ack", json={"incident_id": incident["id"]}
+    )
     assert ack_response.status_code == 200
     ack_payload = ack_response.get_json()
     assert ack_payload["incident_id"] == incident["id"]
     assert ack_payload["reviewed_at"]
 
     updated = client.get("/api/smo").get_json()
-    reviewed = next(item for item in updated["recent_incidents"] if item["id"] == incident["id"])
+    reviewed = next(
+        item for item in updated["recent_incidents"] if item["id"] == incident["id"]
+    )
     assert reviewed["acknowledged"] is True
 
 
@@ -527,7 +757,10 @@ def test_smo_ignores_benign_engineio_shutdown_noise(client, tmp_path):
     )
 
     payload = client.get("/api/smo").get_json()
-    assert all("packet queue is empty, aborting" not in item["text"] for item in payload["recent_incidents"])
+    assert all(
+        "packet queue is empty, aborting" not in item["text"]
+        for item in payload["recent_incidents"]
+    )
 
 
 def test_incident_acknowledgment_requires_incident_id(client):

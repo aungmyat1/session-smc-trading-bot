@@ -46,12 +46,16 @@ def generate_distillation_report():
             f.write(f"- **{row['feature']}**: {row['importance_score']}\n")
 
         f.write("\n## 3. Best Session Behavior\n\n")
-        session_perf = df.group_by("session").agg(pl.col("result_r").mean().alias("avg_r"))
+        session_perf = df.group_by("session").agg(
+            pl.col("result_r").mean().alias("avg_r")
+        )
         for row in session_perf.sort("avg_r", descending=True).iter_rows(named=True):
             f.write(f"- {row['session']}: {row['avg_r']:.2f}R\n")
 
         f.write("\n## 4. Market Laws Discovered\n\n")
-        f.write("**LAW 1**: Sweep + OB in London session → Strong positive expectancy\n")
+        f.write(
+            "**LAW 1**: Sweep + OB in London session → Strong positive expectancy\n"
+        )
         f.write("**LAW 2**: No sweep setups → Negative expectancy (avoid)\n")
         f.write("**LAW 3**: FVG alone shows weak statistical edge\n")
         f.write("**LAW 4**: High volatility regimes increase variance significantly\n")

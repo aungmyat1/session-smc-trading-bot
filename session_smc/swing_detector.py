@@ -15,6 +15,7 @@ Practical consequence for callers
 All helpers respect this by operating on whatever slice they are given.  The
 caller is responsible for slicing to the correct bar horizon before calling.
 """
+
 from __future__ import annotations
 from typing import Optional
 
@@ -22,6 +23,7 @@ Candle = dict
 
 
 # ── Core detectors ────────────────────────────────────────────────────────────
+
 
 def swing_highs(candles: list[Candle], n: int = 3) -> list[int]:
     """Return indices of confirmed swing highs.  Uses strict inequality."""
@@ -31,8 +33,9 @@ def swing_highs(candles: list[Candle], n: int = 3) -> list[int]:
     result: list[int] = []
     for i in range(n, len(highs) - n):
         h = highs[i]
-        if (all(highs[i - j] < h for j in range(1, n + 1)) and
-                all(highs[i + j] < h for j in range(1, n + 1))):
+        if all(highs[i - j] < h for j in range(1, n + 1)) and all(
+            highs[i + j] < h for j in range(1, n + 1)
+        ):
             result.append(i)
     return result
 
@@ -45,13 +48,15 @@ def swing_lows(candles: list[Candle], n: int = 3) -> list[int]:
     result: list[int] = []
     for i in range(n, len(lows) - n):
         lo = lows[i]
-        if (all(lows[i - j] > lo for j in range(1, n + 1)) and
-                all(lows[i + j] > lo for j in range(1, n + 1))):
+        if all(lows[i - j] > lo for j in range(1, n + 1)) and all(
+            lows[i + j] > lo for j in range(1, n + 1)
+        ):
             result.append(i)
     return result
 
 
 # ── Convenience look-ups ─────────────────────────────────────────────────────
+
 
 def last_swing_high(
     candles: list[Candle],
@@ -89,6 +94,7 @@ def last_swing_low(
 
 
 # ── Structure classification ─────────────────────────────────────────────────
+
 
 def classify_structure(
     candles: list[Candle],

@@ -16,21 +16,18 @@ TIMEFRAMES = {
     "M15": "15min",
     "H1": "1H",
     "H4": "4H",
-    "D1": "1D"
+    "D1": "1D",
 }
 
 RAW_TICK_DIR = Path("data/processed")
 OUTPUT_DIR = Path("data/processed")
 
+
 def resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     """Resample tick data into OHLCV with bid/ask/spread."""
     df = df.set_index("timestamp")
 
-    resampled = df.resample(rule).agg({
-        "bid": "ohlc",
-        "ask": "ohlc",
-        "volume": "sum"
-    })
+    resampled = df.resample(rule).agg({"bid": "ohlc", "ask": "ohlc", "volume": "sum"})
 
     # Flatten multi-level columns
     resampled.columns = ["_".join(col).strip() for col in resampled.columns.values]
@@ -39,12 +36,14 @@ def resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
     resampled["spread"] = resampled["ask_close"] - resampled["bid_close"]
 
     # Rename columns to standard OHLCV
-    resampled = resampled.rename(columns={
-        "bid_open": "open",
-        "bid_high": "high",
-        "bid_low": "low",
-        "bid_close": "close",
-    })
+    resampled = resampled.rename(
+        columns={
+            "bid_open": "open",
+            "bid_high": "high",
+            "bid_low": "low",
+            "bid_close": "close",
+        }
+    )
 
     return resampled.reset_index()
 

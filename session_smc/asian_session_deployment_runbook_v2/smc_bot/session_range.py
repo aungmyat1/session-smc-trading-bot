@@ -127,17 +127,24 @@ def detect_sweep(
     )
 
     for _, candle in post_session.iterrows():
-        if candle["high"] >= box.box_high + threshold and candle["close"] <= box.box_high:
+        if (
+            candle["high"] >= box.box_high + threshold
+            and candle["close"] <= box.box_high
+        ):
             log.info(
                 "[%s] HIGH sweep detected at %.5f (box_high=%.5f)",
-                box.instrument, candle["high"], box.box_high,
+                box.instrument,
+                candle["high"],
+                box.box_high,
             )
             return SweepEvent(direction="high", candle=candle)
 
         if candle["low"] <= box.box_low - threshold and candle["close"] >= box.box_low:
             log.info(
                 "[%s] LOW sweep detected at %.5f (box_low=%.5f)",
-                box.instrument, candle["low"], box.box_low,
+                box.instrument,
+                candle["low"],
+                box.box_low,
             )
             return SweepEvent(direction="low", candle=candle)
 
@@ -219,18 +226,28 @@ def build_session_signal(
     else:
         log.debug(
             "[%s/%s] session_type=%s, no sweep — no signal",
-            instrument, session_name, session_type,
+            instrument,
+            session_name,
+            session_type,
         )
         return None
 
     pip = instr_cfg["pip_size"]
     spread_pips = instr_cfg["spread_allowance_pips"]
-    entry_dist_pips = abs(entry - box.box_low) / pip if side == "long" else abs(box.box_high - entry) / pip
+    entry_dist_pips = (
+        abs(entry - box.box_low) / pip
+        if side == "long"
+        else abs(box.box_high - entry) / pip
+    )
 
     if entry_dist_pips < spread_pips:
         log.info(
             "[%s/%s] Entry %.5f too close to box edge (%.1f pips < %.1f allowance) — skip",
-            instrument, session_name, entry, entry_dist_pips, spread_pips,
+            instrument,
+            session_name,
+            entry,
+            entry_dist_pips,
+            spread_pips,
         )
         return None
 
@@ -246,8 +263,14 @@ def build_session_signal(
 
     log.info(
         "[%s/%s] Signal → %s %s | entry=%.5f sl=%.5f tp=%.5f setup=%s",
-        instrument, session_name, side.upper(), instrument,
-        entry, sl, tp, setup,
+        instrument,
+        session_name,
+        side.upper(),
+        instrument,
+        entry,
+        sl,
+        tp,
+        setup,
     )
 
     return SessionSignal(
@@ -289,15 +312,18 @@ def scan_all(
             if session_name not in instr_cfg.get("sessions", []):
                 log.debug(
                     "[%s/%s] session not in instrument sessions list — skip",
-                    instrument, session_name,
+                    instrument,
+                    session_name,
                 )
                 continue
 
             if utc_now.hour < session_cfg["end_h"]:
                 log.debug(
                     "[%s/%s] session end_h=%d not yet reached (now=%d) — skip",
-                    instrument, session_name,
-                    session_cfg["end_h"], utc_now.hour,
+                    instrument,
+                    session_name,
+                    session_cfg["end_h"],
+                    utc_now.hour,
                 )
                 continue
 
@@ -308,7 +334,10 @@ def scan_all(
             except Exception as e:
                 log.error(
                     "[%s/%s] Unexpected error in build_session_signal: %s",
-                    instrument, session_name, e, exc_info=True,
+                    instrument,
+                    session_name,
+                    e,
+                    exc_info=True,
                 )
 
     signals.sort(key=lambda s: s.signal_weight, reverse=True)
@@ -319,6 +348,7 @@ def scan_all(
 
     log.info(
         "scan_all complete: %d signal(s) at %s UTC",
-        len(signals), utc_now.strftime("%H:%M"),
+        len(signals),
+        utc_now.strftime("%H:%M"),
     )
     return signals

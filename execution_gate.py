@@ -34,7 +34,11 @@ class ExecutionGateResult:
 class ExecutionGate:
     """Deterministic pass/fail gate for execution validation."""
 
-    def __init__(self, config: ExecutionGateConfig | None = None, log_path: str | Path = "execution_validation/execution_validation.sqlite3") -> None:
+    def __init__(
+        self,
+        config: ExecutionGateConfig | None = None,
+        log_path: str | Path = "execution_validation/execution_validation.sqlite3",
+    ) -> None:
         self.config = config or ExecutionGateConfig()
         self.log = ExecutionLog(log_path)
 
@@ -51,7 +55,9 @@ class ExecutionGate:
         details: list[str] = []
         signal_match = (total_orders / total_signals) if total_signals else 0.0
         missing_orders = max(total_signals - total_orders, 0)
-        pf_difference = abs(virtual_pf - backtest_pf) / backtest_pf if backtest_pf else 0.0
+        pf_difference = (
+            abs(virtual_pf - backtest_pf) / backtest_pf if backtest_pf else 0.0
+        )
 
         approved = True
 
@@ -75,7 +81,10 @@ class ExecutionGate:
             details.append(
                 f"PF difference {pf_difference:.2%} above maximum {self.config.maximum_pf_difference:.2%}"
             )
-        if total_signals and (missing_orders / total_signals) > self.config.maximum_missing_orders:
+        if (
+            total_signals
+            and (missing_orders / total_signals) > self.config.maximum_missing_orders
+        ):
             approved = False
             details.append(
                 f"Missing orders {(missing_orders / total_signals):.2%} above maximum {self.config.maximum_missing_orders:.2%}"

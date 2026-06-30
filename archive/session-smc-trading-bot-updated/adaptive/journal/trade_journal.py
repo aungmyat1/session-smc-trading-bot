@@ -40,18 +40,18 @@ class TradeJournal:
         """Record a routing decision (APPROVED or REJECTED)."""
         record = {
             "record_type": "signal",
-            "timestamp":   datetime.now(timezone.utc).isoformat(),
-            "symbol":      signal.pair,
-            "strategy":    signal.strategy,
-            "direction":   signal.direction,
-            "entry":       signal.entry_price,
-            "sl":          signal.sl_price,
-            "tp":          signal.tp_price,
-            "session":     signal.session,
-            "score":       router_result.get("score_result", {}).get("score", -1),
-            "regime":      router_result.get("regime", {}).get("regime", ""),
-            "decision":    router_result.get("decision", ""),
-            "reason":      router_result.get("rejection_reason", ""),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "symbol": signal.pair,
+            "strategy": signal.strategy,
+            "direction": signal.direction,
+            "entry": signal.entry_price,
+            "sl": signal.sl_price,
+            "tp": signal.tp_price,
+            "session": signal.session,
+            "score": router_result.get("score_result", {}).get("score", -1),
+            "regime": router_result.get("regime", {}).get("regime", ""),
+            "decision": router_result.get("decision", ""),
+            "reason": router_result.get("rejection_reason", ""),
         }
         self._append(record)
 
@@ -59,15 +59,15 @@ class TradeJournal:
         """Record a closed paper trade."""
         record = {
             "record_type": "trade",
-            "timestamp":   trade.get("closed_at", datetime.now(timezone.utc).isoformat()),
-            "symbol":      trade.get("pair", ""),
-            "strategy":    trade.get("strategy", ""),
-            "direction":   trade.get("direction", ""),
-            "entry":       trade.get("entry", 0.0),
-            "sl":          trade.get("sl", 0.0),
-            "tp":          trade.get("tp", 0.0),
-            "result":      trade.get("status", ""),
-            "r_multiple":  trade.get("pnl_r", 0.0),
+            "timestamp": trade.get("closed_at", datetime.now(timezone.utc).isoformat()),
+            "symbol": trade.get("pair", ""),
+            "strategy": trade.get("strategy", ""),
+            "direction": trade.get("direction", ""),
+            "entry": trade.get("entry", 0.0),
+            "sl": trade.get("sl", 0.0),
+            "tp": trade.get("tp", 0.0),
+            "result": trade.get("status", ""),
+            "r_multiple": trade.get("pnl_r", 0.0),
         }
         self._append(record)
 

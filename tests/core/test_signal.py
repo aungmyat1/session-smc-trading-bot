@@ -66,9 +66,19 @@ class TestSignalCreation:
     def test_to_dict_contains_all_fields(self):
         s = _make_signal()
         d = s.to_dict()
-        for key in ("timestamp", "strategy_name", "symbol", "action",
-                    "order_type", "entry_price", "stop_loss", "take_profit",
-                    "risk_percent", "confidence", "metadata"):
+        for key in (
+            "timestamp",
+            "strategy_name",
+            "symbol",
+            "action",
+            "order_type",
+            "entry_price",
+            "stop_loss",
+            "take_profit",
+            "risk_percent",
+            "confidence",
+            "metadata",
+        ):
             assert key in d
 
     def test_close_action(self):

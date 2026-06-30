@@ -52,29 +52,29 @@ _PIP = 0.0001
 SYMBOLS = ["EURUSD", "GBPUSD"]
 
 DATA_DIR = ROOT / "data" / "historical"
-OUT_DIR  = ROOT / "research"
+OUT_DIR = ROOT / "research"
 
 _M15 = {"EURUSD": "EUR_USD_M15.csv", "GBPUSD": "GBP_USD_M15.csv"}
-_H4  = {"EURUSD": "EUR_USD_H4.csv",  "GBPUSD": "GBP_USD_H4.csv"}
-_H1  = {"EURUSD": "EUR_USD_H1.csv",  "GBPUSD": "GBP_USD_H1.csv"}
+_H4 = {"EURUSD": "EUR_USD_H4.csv", "GBPUSD": "GBP_USD_H4.csv"}
+_H1 = {"EURUSD": "EUR_USD_H1.csv", "GBPUSD": "GBP_USD_H1.csv"}
 
 SPREAD = {
     "EURUSD": {"standard": 1.4, "2x": 2.8},
     "GBPUSD": {"standard": 1.8, "2x": 3.6},
 }
 
-MAX_SIM_BARS    = 96  # 24 h at M15 — matches existing backtest
-SESSION_BARS    = 20  # session window size
-PRE_SESSION_BARS = 30 # pre-session M15 bars prepended to ctx for CHoCH/BOS lookback
-CHOCH_LOOKBACK  = 8   # matching session_smc.confirmation_entry DEFAULT_CONFIG
-BOS_SWING_N     = 3   # matching session_smc.confirmation_entry DEFAULT_CONFIG
+MAX_SIM_BARS = 96  # 24 h at M15 — matches existing backtest
+SESSION_BARS = 20  # session window size
+PRE_SESSION_BARS = 30  # pre-session M15 bars prepended to ctx for CHoCH/BOS lookback
+CHOCH_LOOKBACK = 8  # matching session_smc.confirmation_entry DEFAULT_CONFIG
+BOS_SWING_N = 3  # matching session_smc.confirmation_entry DEFAULT_CONFIG
 
 # EXP05 §1 targets — all four must hold on the best variant to PASS
 TARGETS: dict = {
-    "pf_2x":    1.25,
+    "pf_2x": 1.25,
     "win_rate": 0.40,
-    "max_dd":   15.0,
-    "n_min":    100,
+    "max_dd": 15.0,
+    "n_min": 100,
 }
 
 # Variant E fee-floor sweep
@@ -83,16 +83,17 @@ FEE_FLOOR_CEILINGS = [0.10, 0.15, 0.20, 0.25, 0.30]
 
 # ── Data loading ──────────────────────────────────────────────────────────────
 
+
 def _load_csv(path: Path) -> list[dict]:
     with open(path, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
     return [
         {
-            "time":   r["time"],
-            "open":   float(r["open"]),
-            "high":   float(r["high"]),
-            "low":    float(r["low"]),
-            "close":  float(r["close"]),
+            "time": r["time"],
+            "open": float(r["open"]),
+            "high": float(r["high"]),
+            "low": float(r["low"]),
+            "close": float(r["close"]),
             "volume": float(r.get("volume", 0) or 0),
         }
         for r in rows
@@ -113,16 +114,18 @@ def _ts(dt: datetime) -> str:
 
 # ── Augmented signal ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class AugSig:
     """Signal with session context needed for post-hoc variant filters."""
-    signal: object        # Signal from run_strategy()
+
+    signal: object  # Signal from run_strategy()
     symbol: str
-    session: str          # 'london' | 'new_york'
-    ctx_m15: list         # PRE_SESSION_BARS + SESSION_BARS bars (for Variant D)
-    sweep_idx: int        # index in ctx_m15 of sweep bar (-1 = not found)
-    h4_before: list       # 4H bars closed before sweep bar (for Variant C)
-    h1_before: list       # 1H bars closed before sweep bar (empty if no H1 data)
+    session: str  # 'london' | 'new_york'
+    ctx_m15: list  # PRE_SESSION_BARS + SESSION_BARS bars (for Variant D)
+    sweep_idx: int  # index in ctx_m15 of sweep bar (-1 = not found)
+    h4_before: list  # 4H bars closed before sweep bar (for Variant C)
+    h1_before: list  # 1H bars closed before sweep bar (empty if no H1 data)
 
 
 def _extract_sweep_times(events: list[dict]) -> dict:
@@ -131,7 +134,7 @@ def _extract_sweep_times(events: list[dict]) -> dict:
     for ev in events:
         if ev["event"] != "SWEEP":
             continue
-        date   = ev["date"]   # "YYYY-MM-DD"
+        date = ev["date"]  # "YYYY-MM-DD"
         detail = ev["detail"]
         m_sess = re.search(r"\] (\w+) side=", detail)
         m_time = re.search(r"\[(\d{2}:\d{2}) UTC\]", detail)
@@ -171,19 +174,23 @@ def _build_aug_signals(
     sweep_times = _extract_sweep_times(events)
 
     sorted_m15 = sorted(all_m15, key=lambda c: c["time"])
-    sorted_4h  = sorted(all_4h,  key=lambda c: c["time"])
-    sorted_1h  = sorted(all_1h,  key=lambda c: c["time"]) if all_1h else []
+    sorted_4h = sorted(all_4h, key=lambda c: c["time"])
+    sorted_1h = sorted(all_1h, key=lambda c: c["time"]) if all_1h else []
 
     m15_idx = {c["time"]: i for i, c in enumerate(sorted_m15)}
 
     result: list[AugSig] = []
     for sig in signals:
-        date_str   = _ts(sig.timestamp)[:10]
-        sweep_iso  = sweep_times.get((date_str, sig.session), "")
+        date_str = _ts(sig.timestamp)[:10]
+        sweep_iso = sweep_times.get((date_str, sig.session), "")
         sweep_bar_global = m15_idx.get(sweep_iso, -1)
 
         # Find session start by scanning back from sweep bar (or signal bar)
-        ref_bar_global = sweep_bar_global if sweep_bar_global >= 0 else m15_idx.get(_ts(sig.timestamp), -1)
+        ref_bar_global = (
+            sweep_bar_global
+            if sweep_bar_global >= 0
+            else m15_idx.get(_ts(sig.timestamp), -1)
+        )
         if ref_bar_global >= 0:
             sess_start = _find_session_start(sorted_m15, ref_bar_global, sig.session)
         else:
@@ -192,8 +199,8 @@ def _build_aug_signals(
         # ctx_m15 = PRE_SESSION_BARS pre-session bars + SESSION_BARS session bars.
         # The extra history gives CHoCH lookback and BOS swing detection enough
         # context when the sweep falls at the very first session bar.
-        ctx_start   = max(0, sess_start - PRE_SESSION_BARS)
-        ctx_m15     = sorted_m15[ctx_start : sess_start + SESSION_BARS]
+        ctx_start = max(0, sess_start - PRE_SESSION_BARS)
+        ctx_m15 = sorted_m15[ctx_start : sess_start + SESSION_BARS]
 
         # Sweep index within ctx_m15
         sweep_idx_local = -1
@@ -214,20 +221,23 @@ def _build_aug_signals(
         else:
             h1_before = []
 
-        result.append(AugSig(
-            signal=sig,
-            symbol=symbol,
-            session=sig.session,
-            ctx_m15=ctx_m15,
-            sweep_idx=sweep_idx_local,
-            h4_before=h4_before,
-            h1_before=h1_before,
-        ))
+        result.append(
+            AugSig(
+                signal=sig,
+                symbol=symbol,
+                session=sig.session,
+                ctx_m15=ctx_m15,
+                sweep_idx=sweep_idx_local,
+                h4_before=h4_before,
+                h1_before=h1_before,
+            )
+        )
 
     return result
 
 
 # ── Variant filters ───────────────────────────────────────────────────────────
+
 
 def _filter_A(sigs: list[AugSig]) -> list[AugSig]:
     """Exclude GBPUSD London."""
@@ -334,6 +344,7 @@ def _filter_E(sigs: list[AugSig], ceiling: float) -> list[AugSig]:
 
 # ── Trade simulation ──────────────────────────────────────────────────────────
 
+
 def _simulate_all(
     aug_sigs: list[AugSig],
     m15_by_sym: dict,
@@ -351,26 +362,26 @@ def _simulate_all(
     for s in aug_sigs:
         sig = s.signal
         sym = s.symbol
-        ts  = _ts(sig.timestamp)
+        ts = _ts(sig.timestamp)
 
         idx = time_idx_by_sym[sym].get(ts)
         if idx is None:
             continue
 
-        bars   = m15_by_sym[sym]
+        bars = m15_by_sym[sym]
         future = bars[idx + 1 : idx + 1 + MAX_SIM_BARS]
-        entry  = float(sig.entry)
-        sl     = float(sig.stop_loss)
-        risk   = abs(entry - sl)
+        entry = float(sig.entry)
+        sl = float(sig.stop_loss)
+        risk = abs(entry - sl)
         if risk == 0:
             continue
         sl_pips = risk / _PIP
         tp = entry + risk * rr if sig.side == "long" else entry - risk * rr
 
-        is_long  = sig.side == "long"
-        gross_r  = 0.0
-        exit_p   = entry
-        exit_t   = ts
+        is_long = sig.side == "long"
+        gross_r = 0.0
+        exit_p = entry
+        exit_t = ts
 
         hit = False
         for bar in future:
@@ -378,56 +389,63 @@ def _simulate_all(
             if is_long:
                 if lo <= sl:
                     gross_r, exit_p, exit_t = -1.0, sl, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
                 if h >= tp:
                     gross_r, exit_p, exit_t = rr, tp, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
             else:
                 if h >= sl:
                     gross_r, exit_p, exit_t = -1.0, sl, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
                 if lo <= tp:
                     gross_r, exit_p, exit_t = rr, tp, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
 
         if not hit and future:
-            last    = future[-1]
-            exit_p  = last["close"]
-            exit_t  = last["time"]
-            delta   = (exit_p - entry) if is_long else (entry - exit_p)
+            last = future[-1]
+            exit_p = last["close"]
+            exit_t = last["time"]
+            delta = (exit_p - entry) if is_long else (entry - exit_p)
             gross_r = delta / risk
 
         sp_std = SPREAD[sym]["standard"]
-        sp_2x  = SPREAD[sym]["2x"]
+        sp_2x = SPREAD[sym]["2x"]
 
-        trades.append({
-            "symbol":    sym,
-            "session":   sig.session,
-            "side":      sig.side,
-            "entry_t":   ts,
-            "exit_t":    exit_t,
-            "gross_r":   gross_r,
-            "net_r_std": gross_r - sp_std / sl_pips,
-            "net_r_2x":  gross_r - sp_2x  / sl_pips,
-            "sl_pips":   sl_pips,
-            "aug":       s,
-        })
+        trades.append(
+            {
+                "symbol": sym,
+                "session": sig.session,
+                "side": sig.side,
+                "entry_t": ts,
+                "exit_t": exit_t,
+                "gross_r": gross_r,
+                "net_r_std": gross_r - sp_std / sl_pips,
+                "net_r_2x": gross_r - sp_2x / sl_pips,
+                "sl_pips": sl_pips,
+                "aug": s,
+            }
+        )
 
     return trades
 
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 
+
 def _metrics(trades: list[dict], r_key: str) -> dict:
     if not trades:
         return {"n": 0, "pf": 0.0, "win_rate": 0.0, "avg_r": 0.0, "max_dd": 0.0}
 
-    rs       = [t[r_key] for t in trades]
-    wins     = [r for r in rs if r > 0]
-    losses   = [r for r in rs if r <= 0]
-    gw       = sum(wins)
-    gl       = abs(sum(losses))
-    pf       = gw / gl if gl > 0 else (float("inf") if gw > 0 else 1.0)
+    rs = [t[r_key] for t in trades]
+    wins = [r for r in rs if r > 0]
+    losses = [r for r in rs if r <= 0]
+    gw = sum(wins)
+    gl = abs(sum(losses))
+    pf = gw / gl if gl > 0 else (float("inf") if gw > 0 else 1.0)
 
     eq = peak = max_dd = 0.0
     for r in rs:
@@ -439,34 +457,35 @@ def _metrics(trades: list[dict], r_key: str) -> dict:
             max_dd = dd
 
     return {
-        "n":        len(trades),
-        "pf":       round(pf, 3),
+        "n": len(trades),
+        "pf": round(pf, 3),
         "win_rate": round(len(wins) / len(trades), 4) if trades else 0.0,
-        "avg_r":    round(sum(rs) / len(trades), 4) if trades else 0.0,
-        "max_dd":   round(max_dd, 2),
+        "avg_r": round(sum(rs) / len(trades), 4) if trades else 0.0,
+        "max_dd": round(max_dd, 2),
     }
 
 
 def _all_targets_pass(m2x: dict, m_std: dict, n_min: int) -> bool:
     return (
-        m2x["pf"]           > TARGETS["pf_2x"]
+        m2x["pf"] > TARGETS["pf_2x"]
         and m_std["win_rate"] >= TARGETS["win_rate"]
-        and m_std["max_dd"]   < TARGETS["max_dd"]
-        and m_std["n"]        >= n_min
+        and m_std["max_dd"] < TARGETS["max_dd"]
+        and m_std["n"] >= n_min
     )
 
 
 def _gates(m2x: dict, m_std: dict, n_min: int) -> dict:
     return {
-        "n":    m_std["n"] >= n_min,
+        "n": m_std["n"] >= n_min,
         "pf2x": m2x["pf"] > TARGETS["pf_2x"],
-        "wr":   m_std["win_rate"] >= TARGETS["win_rate"],
-        "dd":   m_std["max_dd"] < TARGETS["max_dd"],
-        "all":  _all_targets_pass(m2x, m_std, n_min),
+        "wr": m_std["win_rate"] >= TARGETS["win_rate"],
+        "dd": m_std["max_dd"] < TARGETS["max_dd"],
+        "all": _all_targets_pass(m2x, m_std, n_min),
     }
 
 
 # ── Report helpers ────────────────────────────────────────────────────────────
+
 
 def _pf(v: float) -> str:
     return "∞" if v == float("inf") else f"{v:.3f}"
@@ -486,6 +505,7 @@ def _breakdown_table(trades: list[dict], r_key: str, group_key: str) -> list[tup
 
 # ── Per-variant report ────────────────────────────────────────────────────────
 
+
 def _write_variant(
     vid: str,
     trades: list[dict],
@@ -495,11 +515,11 @@ def _write_variant(
     n_min: int,
 ) -> None:
     m_std = _metrics(trades, "net_r_std")
-    m_2x  = _metrics(trades, "net_r_2x")
-    g     = _gates(m_2x, m_std, n_min)
+    m_2x = _metrics(trades, "net_r_2x")
+    g = _gates(m_2x, m_std, n_min)
 
-    wr_pct  = f"{m_std['win_rate'] * 100:.1f}%"
-    tgt_wr  = f"{TARGETS['win_rate'] * 100:.0f}%"
+    wr_pct = f"{m_std['win_rate'] * 100:.1f}%"
+    tgt_wr = f"{TARGETS['win_rate'] * 100:.0f}%"
 
     lines = [
         f"# EXP05_{vid}_RESULTS.md",
@@ -548,10 +568,11 @@ def _write_variant(
 
 # ── Final comparison ──────────────────────────────────────────────────────────
 
+
 def _write_comparison(
     base_trades: list[dict],
-    variant_trades: dict,       # {vid: trades}
-    e_sweep: dict,              # {ceiling: trades}
+    variant_trades: dict,  # {vid: trades}
+    e_sweep: dict,  # {ceiling: trades}
     best_e_seed_vid: str,
     rr: float,
 ) -> None:
@@ -571,7 +592,7 @@ def _write_comparison(
     ]
 
     for vid in ["A", "B", "C", "D", "E"]:
-        t  = variant_trades[vid]
+        t = variant_trades[vid]
         ms = _metrics(t, "net_r_std")
         m2 = _metrics(t, "net_r_2x")
         dn = ms["n"] - bm["n"]
@@ -589,7 +610,9 @@ def _write_comparison(
         "| Ceiling | n removed | n kept | PF (std) | PF (2×) | Win% | Max DD |",
         "|---|---|---|---|---|---|---|",
     ]
-    seed_n = _metrics(variant_trades.get(best_e_seed_vid, base_trades), "net_r_std")["n"]
+    seed_n = _metrics(variant_trades.get(best_e_seed_vid, base_trades), "net_r_std")[
+        "n"
+    ]
     for ceiling, et in sorted(e_sweep.items()):
         ms = _metrics(et, "net_r_std")
         m2 = _metrics(et, "net_r_2x")
@@ -604,9 +627,10 @@ def _write_comparison(
 
 # ── Recommendation ────────────────────────────────────────────────────────────
 
+
 def _write_recommendation(
     base_trades: list[dict],
-    variant_trades: dict,   # {vid: trades}
+    variant_trades: dict,  # {vid: trades}
     rr: float,
     n_min: int,
 ) -> None:
@@ -641,10 +665,10 @@ def _write_recommendation(
 
     passing = []
     for vid in ["A", "B", "C", "D", "E"]:
-        t  = variant_trades[vid]
+        t = variant_trades[vid]
         ms = _metrics(t, "net_r_std")
         m2 = _metrics(t, "net_r_2x")
-        g  = _all_targets_pass(m2, ms, n_min)
+        g = _all_targets_pass(m2, ms, n_min)
         if g:
             passing.append((vid, m2["pf"], ms["n"]))
         lines.append(
@@ -681,15 +705,19 @@ def _write_recommendation(
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="EXP05 optimization runner")
-    parser.add_argument("--rr",         type=float, default=5.0,
-                        help="RR for simulation (default 5.0 — passing ST-A2 RR)")
-    parser.add_argument("--min-trades", type=int,   default=100,
-                        dest="min_trades")
-    args   = parser.parse_args()
-    rr     = args.rr
-    n_min  = args.min_trades
+    parser.add_argument(
+        "--rr",
+        type=float,
+        default=5.0,
+        help="RR for simulation (default 5.0 — passing ST-A2 RR)",
+    )
+    parser.add_argument("--min-trades", type=int, default=100, dest="min_trades")
+    args = parser.parse_args()
+    rr = args.rr
+    n_min = args.min_trades
     TARGETS["n_min"] = n_min
 
     print(f"\n=== EXP05 Optimization Runner | RR={rr} | min-trades={n_min} ===\n")
@@ -711,15 +739,15 @@ def main() -> None:
     # ── Load data ─────────────────────────────────────────────────────────────
     print("[+] Loading data ...")
     m15_by_sym: dict[str, list[dict]] = {}
-    h4_by_sym:  dict[str, list[dict]] = {}
-    h1_by_sym:  dict[str, list[dict]] = {}
-    tidx:       dict[str, dict]       = {}
+    h4_by_sym: dict[str, list[dict]] = {}
+    h1_by_sym: dict[str, list[dict]] = {}
+    tidx: dict[str, dict] = {}
 
     for sym in SYMBOLS:
         m15 = _load_csv(DATA_DIR / _M15[sym])
         m15.sort(key=lambda c: c["time"])
         m15_by_sym[sym] = m15
-        tidx[sym]       = {c["time"]: i for i, c in enumerate(m15)}
+        tidx[sym] = {c["time"]: i for i, c in enumerate(m15)}
 
         h4 = _load_csv(DATA_DIR / _H4[sym])
         h4.sort(key=lambda c: c["time"])
@@ -742,7 +770,9 @@ def main() -> None:
     all_aug: list[AugSig] = []
     for sym in SYMBOLS:
         print(f"    {sym} ...", end=" ", flush=True)
-        aug = _build_aug_signals(sym, m15_by_sym[sym], h4_by_sym[sym], h1_by_sym[sym], rr)
+        aug = _build_aug_signals(
+            sym, m15_by_sym[sym], h4_by_sym[sym], h1_by_sym[sym], rr
+        )
         all_aug.extend(aug)
         print(f"{len(aug)} signals")
     print(f"    Baseline total: {len(all_aug)} signals")
@@ -752,8 +782,10 @@ def main() -> None:
     base_trades = _simulate_all(all_aug, m15_by_sym, tidx, rr)
     bm = _metrics(base_trades, "net_r_std")
     b2 = _metrics(base_trades, "net_r_2x")
-    print(f"    n={bm['n']} | PF_std={_pf(bm['pf'])} | PF_2x={_pf(b2['pf'])} "
-          f"| WR={bm['win_rate']*100:.1f}% | MaxDD={bm['max_dd']:.2f}R")
+    print(
+        f"    n={bm['n']} | PF_std={_pf(bm['pf'])} | PF_2x={_pf(b2['pf'])} "
+        f"| WR={bm['win_rate']*100:.1f}% | MaxDD={bm['max_dd']:.2f}R"
+    )
     print(f"    (Documented baseline: n=169 | PF_2x=1.025 at RR=5)")
 
     # ── Apply variant filters ─────────────────────────────────────────────────
@@ -775,12 +807,19 @@ def main() -> None:
     vc_trades = _simulate_all(vc_sigs, m15_by_sym, tidx, rr)
     vd_trades = _simulate_all(vd_sigs, m15_by_sym, tidx, rr)
 
-    for vid, t in [("A", va_trades), ("B", vb_trades), ("C", vc_trades), ("D", vd_trades)]:
+    for vid, t in [
+        ("A", va_trades),
+        ("B", vb_trades),
+        ("C", vc_trades),
+        ("D", vd_trades),
+    ]:
         ms = _metrics(t, "net_r_std")
         m2 = _metrics(t, "net_r_2x")
-        g  = "✅" if _all_targets_pass(m2, ms, n_min) else "❌"
-        print(f"    {vid}: n={ms['n']:3d} PF_std={_pf(ms['pf'])} PF_2x={_pf(m2['pf'])} "
-              f"WR={ms['win_rate']*100:4.1f}% DD={ms['max_dd']:.2f}R  {g}")
+        g = "✅" if _all_targets_pass(m2, ms, n_min) else "❌"
+        print(
+            f"    {vid}: n={ms['n']:3d} PF_std={_pf(ms['pf'])} PF_2x={_pf(m2['pf'])} "
+            f"WR={ms['win_rate']*100:4.1f}% DD={ms['max_dd']:.2f}R  {g}"
+        )
 
     # ── Variant E: fee-floor sweep on best-PF₂ₓ seed ─────────────────────────
     candidates = {
@@ -791,8 +830,7 @@ def main() -> None:
         "D": (vd_sigs, vd_trades),
     }
     best_seed = max(
-        candidates,
-        key=lambda k: _metrics(candidates[k][1], "net_r_2x")["pf"]
+        candidates, key=lambda k: _metrics(candidates[k][1], "net_r_2x")["pf"]
     )
     seed_sigs = candidates[best_seed][0]
     print(f"\n[+] Variant E seed: {best_seed} (highest PF₂ₓ)")
@@ -803,18 +841,20 @@ def main() -> None:
     best_e_sigs: list[AugSig] = []
 
     for ceiling in FEE_FLOOR_CEILINGS:
-        e_sigs   = _filter_E(seed_sigs, ceiling)
+        e_sigs = _filter_E(seed_sigs, ceiling)
         e_trades = _simulate_all(e_sigs, m15_by_sym, tidx, rr)
         e_sweep[ceiling] = e_trades
         m2 = _metrics(e_trades, "net_r_2x")
         if m2["pf"] > best_e_pf2x:
-            best_e_pf2x    = m2["pf"]
-            best_e_trades  = e_trades
-            best_e_sigs    = e_sigs
+            best_e_pf2x = m2["pf"]
+            best_e_trades = e_trades
+            best_e_sigs = e_sigs
         ms = _metrics(e_trades, "net_r_std")
-        g  = "✅" if _all_targets_pass(m2, ms, n_min) else "❌"
-        print(f"    E ceiling={ceiling:.2f}: n={ms['n']:3d} PF_2x={_pf(m2['pf'])} "
-              f"WR={ms['win_rate']*100:.1f}%  {g}")
+        g = "✅" if _all_targets_pass(m2, ms, n_min) else "❌"
+        print(
+            f"    E ceiling={ceiling:.2f}: n={ms['n']:3d} PF_2x={_pf(m2['pf'])} "
+            f"WR={ms['win_rate']*100:.1f}%  {g}"
+        )
 
     # ── Collect all variants ──────────────────────────────────────────────────
     variant_trades = {
@@ -845,9 +885,12 @@ def main() -> None:
     }
     for vid in ["A", "B", "C", "D", "E"]:
         _write_variant(
-            vid, variant_trades[vid],
-            len(variant_sigs[vid]), len(all_aug),
-            filter_descs[vid], n_min,
+            vid,
+            variant_trades[vid],
+            len(variant_sigs[vid]),
+            len(all_aug),
+            filter_descs[vid],
+            n_min,
         )
 
     _write_comparison(base_trades, variant_trades, e_sweep, best_seed, rr)
@@ -855,22 +898,28 @@ def main() -> None:
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n=== EXP05 Summary ===\n")
-    print(f"  {'Variant':<10} {'n':>5} {'PF (std)':>9} {'PF (2×)':>9} "
-          f"{'WR%':>7} {'MaxDD':>7}  Result")
+    print(
+        f"  {'Variant':<10} {'n':>5} {'PF (std)':>9} {'PF (2×)':>9} "
+        f"{'WR%':>7} {'MaxDD':>7}  Result"
+    )
     print(f"  {'─' * 60}")
 
     bm = _metrics(base_trades, "net_r_std")
     b2 = _metrics(base_trades, "net_r_2x")
-    print(f"  {'Baseline':<10} {bm['n']:>5} {_pf(bm['pf']):>9} {_pf(b2['pf']):>9} "
-          f"{bm['win_rate']*100:>6.1f}% {bm['max_dd']:>7.2f}  (reference)")
+    print(
+        f"  {'Baseline':<10} {bm['n']:>5} {_pf(bm['pf']):>9} {_pf(b2['pf']):>9} "
+        f"{bm['win_rate']*100:>6.1f}% {bm['max_dd']:>7.2f}  (reference)"
+    )
 
     for vid in ["A", "B", "C", "D", "E"]:
-        t  = variant_trades[vid]
+        t = variant_trades[vid]
         ms = _metrics(t, "net_r_std")
         m2 = _metrics(t, "net_r_2x")
-        g  = "✅ PASS" if _all_targets_pass(m2, ms, n_min) else "❌ FAIL"
-        print(f"  {vid:<10} {ms['n']:>5} {_pf(ms['pf']):>9} {_pf(m2['pf']):>9} "
-              f"{ms['win_rate']*100:>6.1f}% {ms['max_dd']:>7.2f}  {g}")
+        g = "✅ PASS" if _all_targets_pass(m2, ms, n_min) else "❌ FAIL"
+        print(
+            f"  {vid:<10} {ms['n']:>5} {_pf(ms['pf']):>9} {_pf(m2['pf']):>9} "
+            f"{ms['win_rate']*100:>6.1f}% {ms['max_dd']:>7.2f}  {g}"
+        )
 
     print(f"\n  Outputs → research/EXP05_*.md\n")
 

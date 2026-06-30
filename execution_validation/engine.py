@@ -27,7 +27,9 @@ _DEFAULT_REPORT_DIR = _ROOT / "execution_validation" / "reports"
 class ExecutionValidationReport:
     strategy: str
     period: str
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     rule_hash: str = ""
     strategy_version: str = ""
     signal_accuracy: float = 0.0
@@ -117,7 +119,11 @@ def _get_value(obj: Any, name: str, default: Any = None) -> Any:
 
 
 def _id_of(item: Any) -> str:
-    return str(_get_value(item, "signal_id", _get_value(item, "order_id", _get_value(item, "id", ""))))
+    return str(
+        _get_value(
+            item, "signal_id", _get_value(item, "order_id", _get_value(item, "id", ""))
+        )
+    )
 
 
 def _metadata_of(item: Any) -> dict[str, Any]:
@@ -173,11 +179,17 @@ def _assess_duplicate_protection(signals: list[Any], orders: list[Any]) -> Check
             "duplicate_signal_ids": duplicate_signal_ids,
             "duplicate_order_ids": duplicate_order_ids,
         },
-        message="No duplicate signal or order IDs" if passed else f"Duplicate IDs detected: {', '.join(duplicate_ids)}",
+        message=(
+            "No duplicate signal or order IDs"
+            if passed
+            else f"Duplicate IDs detected: {', '.join(duplicate_ids)}"
+        ),
     )
 
 
-def _assess_strategy_version_control(signals: list[Any], orders: list[Any], strategy: str, rules: ValidationRules) -> CheckResult:
+def _assess_strategy_version_control(
+    signals: list[Any], orders: list[Any], strategy: str, rules: ValidationRules
+) -> CheckResult:
     versions = set()
     rule_hashes = set()
     for item in [*signals, *orders]:
@@ -207,13 +219,27 @@ def _assess_strategy_version_control(signals: list[Any], orders: list[Any], stra
             "expected_rules_hash": rules.rules_hash,
             "observed_rules_hashes": sorted(rule_hashes),
         },
-        message="Strategy version metadata is consistent" if passed else "Strategy/version metadata mismatch",
+        message=(
+            "Strategy version metadata is consistent"
+            if passed
+            else "Strategy/version metadata mismatch"
+        ),
     )
 
 
-def _assess_exit_management(execution_events: list[ExecutionEvent], fills: list[Any], broker: VirtualBroker | None = None) -> CheckResult:
-    close_events = [ev for ev in execution_events if _event_type_of(ev) in {"POSITION_CLOSED", "ORDER_CLOSED"}]
-    exit_reasons = [str(_event_reason_of(ev) or _event_type_of(ev)) for ev in close_events]
+def _assess_exit_management(
+    execution_events: list[ExecutionEvent],
+    fills: list[Any],
+    broker: VirtualBroker | None = None,
+) -> CheckResult:
+    close_events = [
+        ev
+        for ev in execution_events
+        if _event_type_of(ev) in {"POSITION_CLOSED", "ORDER_CLOSED"}
+    ]
+    exit_reasons = [
+        str(_event_reason_of(ev) or _event_type_of(ev)) for ev in close_events
+    ]
     open_positions = 0
     if broker is not None:
         try:
@@ -239,7 +265,11 @@ def _assess_exit_management(execution_events: list[ExecutionEvent], fills: list[
         passed=passed,
         score=1.0 if passed else 0.0,
         details=details,
-        message="Exit management observed" if passed else "Exit management not fully exercised",
+        message=(
+            "Exit management observed"
+            if passed
+            else "Exit management not fully exercised"
+        ),
     )
 
 
@@ -248,11 +278,20 @@ def _coverage_flag(markers: dict[str, Any], key: str) -> bool:
         return False
     value = markers.get(key)
     if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "y", "covered", "exercised"}
+        return value.strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+            "covered",
+            "exercised",
+        }
     return bool(value)
 
 
-def _has_event_reason(execution_events: list[ExecutionEvent], keywords: tuple[str, ...]) -> bool:
+def _has_event_reason(
+    execution_events: list[ExecutionEvent], keywords: tuple[str, ...]
+) -> bool:
     for ev in execution_events:
         if _event_type_of(ev) not in {"POSITION_CLOSED", "ORDER_CLOSED"}:
             continue
@@ -275,20 +314,40 @@ def _coverage_summary(
 ) -> dict[str, Any]:
     duplicate_signal_ids = _detect_duplicates(signals)
     duplicate_order_ids = _detect_duplicates(orders)
-    broker_rejection_observed = any(not bool(sample.get("expected_allowed", True)) for sample in broker_rule_samples) or any(
-        _event_type_of(ev) == "ORDER_REJECTED" for ev in execution_events
+    broker_rejection_observed = any(
+        not bool(sample.get("expected_allowed", True)) for sample in broker_rule_samples
+    ) or any(_event_type_of(ev) == "ORDER_REJECTED" for ev in execution_events)
+    risk_rejection_observed = any(
+        not bool(sample.get("expected_allowed", True)) for sample in risk_samples
     )
-    risk_rejection_observed = any(not bool(sample.get("expected_allowed", True)) for sample in risk_samples)
-    entry_order_placement = _coverage_flag(coverage_markers, "entry_order_placement") or (bool(signals) and bool(orders))
-    stop_loss_exit = _coverage_flag(coverage_markers, "stop_loss_exit") or _has_event_reason(execution_events, ("stop_loss", "stop loss", "sl"))
-    take_profit_exit = _coverage_flag(coverage_markers, "take_profit_exit") or _has_event_reason(execution_events, ("take_profit", "take profit", "tp"))
-    session_manual_close = _coverage_flag(coverage_markers, "session_manual_close") or _has_event_reason(
+    entry_order_placement = _coverage_flag(
+        coverage_markers, "entry_order_placement"
+    ) or (bool(signals) and bool(orders))
+    stop_loss_exit = _coverage_flag(
+        coverage_markers, "stop_loss_exit"
+    ) or _has_event_reason(execution_events, ("stop_loss", "stop loss", "sl"))
+    take_profit_exit = _coverage_flag(
+        coverage_markers, "take_profit_exit"
+    ) or _has_event_reason(execution_events, ("take_profit", "take profit", "tp"))
+    session_manual_close = _coverage_flag(
+        coverage_markers, "session_manual_close"
+    ) or _has_event_reason(
         execution_events,
         ("manual", "session", "managed", "close"),
     )
-    duplicate_order_protection = _coverage_flag(coverage_markers, "duplicate_order_protection") or bool(duplicate_signal_ids or duplicate_order_ids)
-    broker_rejection = _coverage_flag(coverage_markers, "broker_rejection") or broker_rejection_observed or risk_rejection_observed
-    recovery_restart = _coverage_flag(coverage_markers, "recovery_restart") or recovery_check.passed or bool(recovery_snapshot)
+    duplicate_order_protection = _coverage_flag(
+        coverage_markers, "duplicate_order_protection"
+    ) or bool(duplicate_signal_ids or duplicate_order_ids)
+    broker_rejection = (
+        _coverage_flag(coverage_markers, "broker_rejection")
+        or broker_rejection_observed
+        or risk_rejection_observed
+    )
+    recovery_restart = (
+        _coverage_flag(coverage_markers, "recovery_restart")
+        or recovery_check.passed
+        or bool(recovery_snapshot)
+    )
 
     critical_paths = {
         "entry_order_placement": entry_order_placement,
@@ -299,14 +358,21 @@ def _coverage_summary(
         "broker_rejection": broker_rejection,
         "recovery_restart": recovery_restart,
     }
-    exit_path_exercised = bool(stop_loss_exit or take_profit_exit or session_manual_close)
+    exit_path_exercised = bool(
+        stop_loss_exit or take_profit_exit or session_manual_close
+    )
     return {
-        "paths": {name: {"exercised": exercised} for name, exercised in critical_paths.items()},
+        "paths": {
+            name: {"exercised": exercised} for name, exercised in critical_paths.items()
+        },
         "critical_paths_complete": all(critical_paths.values()),
         "exit_path_exercised": exit_path_exercised,
         "broker_rejection_observed": broker_rejection_observed,
         "risk_rejection_observed": risk_rejection_observed,
-        "duplicate_ids_detected": {"signals": duplicate_signal_ids, "orders": duplicate_order_ids},
+        "duplicate_ids_detected": {
+            "signals": duplicate_signal_ids,
+            "orders": duplicate_order_ids,
+        },
     }
 
 
@@ -320,9 +386,15 @@ def _readiness_status(
 ) -> str:
     if not checks_passed:
         return "BLOCKED"
-    if critical_paths_complete and executed_orders >= rules.minimum_live_executed_orders:
+    if (
+        critical_paths_complete
+        and executed_orders >= rules.minimum_live_executed_orders
+    ):
         return "READY_FOR_LIVE"
-    if critical_paths_complete and executed_orders >= rules.minimum_small_live_executed_orders:
+    if (
+        critical_paths_complete
+        and executed_orders >= rules.minimum_small_live_executed_orders
+    ):
         return "READY_FOR_SMALL_LIVE"
     if exit_path_exercised and executed_orders >= rules.minimum_shadow_executed_orders:
         return "READY_FOR_SHADOW"
@@ -338,7 +410,9 @@ class ExecutionValidationSuite:
         report_dir: Path | str | None = None,
     ) -> None:
         self.rules = rules or load_validation_rules()
-        self.report_dir = Path(report_dir) if report_dir is not None else _DEFAULT_REPORT_DIR
+        self.report_dir = (
+            Path(report_dir) if report_dir is not None else _DEFAULT_REPORT_DIR
+        )
         self.report_dir.mkdir(parents=True, exist_ok=True)
 
     def run(
@@ -359,7 +433,9 @@ class ExecutionValidationSuite:
         virtual_pf: float = 1.0,
         recovery_expected_risk_state: dict[str, Any] | None = None,
     ) -> ExecutionValidationReport:
-        broker = broker or VirtualBroker(config=VirtualBrokerConfig(max_spread_pips=self.rules.max_spread_points))
+        broker = broker or VirtualBroker(
+            config=VirtualBrokerConfig(max_spread_pips=self.rules.max_spread_points)
+        )
         risk_engine = RiskEngine(
             max_spread_pips=self.rules.max_spread_points,
             min_lot=self.rules.minimum_lot,
@@ -371,9 +447,15 @@ class ExecutionValidationSuite:
         order_check = assess_order_execution(orders, fills)
         risk_check = assess_risk_engine(risk_samples, risk_engine)
         broker_check = assess_broker_rules(broker_rule_samples, risk_engine)
-        recovery_check = assess_recovery(recovery_snapshot, recovery_expected_open_positions, recovery_expected_risk_state)
+        recovery_check = assess_recovery(
+            recovery_snapshot,
+            recovery_expected_open_positions,
+            recovery_expected_risk_state,
+        )
         duplicate_check = _assess_duplicate_protection(signals, orders)
-        strategy_check = _assess_strategy_version_control(signals, orders, strategy, self.rules)
+        strategy_check = _assess_strategy_version_control(
+            signals, orders, strategy, self.rules
+        )
         exit_check = _assess_exit_management(execution_events, fills, broker=broker)
 
         slippage_pips = []
@@ -384,7 +466,11 @@ class ExecutionValidationSuite:
             point_size = float(metadata.get("point_size", 0.0001) or 0.0001)
             slippage = float(metadata.get("slippage", 0.0) or 0.0)
             slippage_pips.append(slippage / point_size if point_size else 0.0)
-        delays_ms = [float(_event_metadata_of(ev).get("latency_ms", 0.0)) for ev in execution_events if _event_type_of(ev) == "ORDER_FILLED"]
+        delays_ms = [
+            float(_event_metadata_of(ev).get("latency_ms", 0.0))
+            for ev in execution_events
+            if _event_type_of(ev) == "ORDER_FILLED"
+        ]
         spread_ok = broker_check.passed
 
         slippage_average = _metric_average(slippage_pips)
@@ -393,7 +479,10 @@ class ExecutionValidationSuite:
         delay_average = _metric_average(delays_ms)
         delay_max = max(delays_ms) if delays_ms else 0.0
 
-        slippage_passed = slippage_average <= self.rules.maximum_slippage_pip and slippage_worst <= self.rules.maximum_slippage_pip
+        slippage_passed = (
+            slippage_average <= self.rules.maximum_slippage_pip
+            and slippage_worst <= self.rules.maximum_slippage_pip
+        )
         spread_ok = broker_check.passed
         exit_ok = exit_check.passed
 
@@ -430,19 +519,21 @@ class ExecutionValidationSuite:
             execution_delay_ms_average=delay_average,
             execution_delay_ms_maximum=delay_max,
             final_score=score,
-            status="READY FOR DEMO"
-            if score >= 90
-            and signal_check.passed
-            and order_check.passed
-            and risk_check.passed
-            and duplicate_check.passed
-            and recovery_check.passed
-            and slippage_passed
-            and spread_ok
-            and broker_check.passed
-            and strategy_check.passed
-            and exit_ok
-            else "BLOCKED",
+            status=(
+                "READY FOR DEMO"
+                if score >= 90
+                and signal_check.passed
+                and order_check.passed
+                and risk_check.passed
+                and duplicate_check.passed
+                and recovery_check.passed
+                and slippage_passed
+                and spread_ok
+                and broker_check.passed
+                and strategy_check.passed
+                and exit_ok
+                else "BLOCKED"
+            ),
             checks={
                 "signal_integrity": signal_check,
                 "order_execution": order_check,
@@ -454,8 +545,12 @@ class ExecutionValidationSuite:
                 "recovery": recovery_check,
             },
             metrics={
-                "total_signals": signal_check.details.get("total_signals", len(signals)),
-                "executed_orders": signal_check.details.get("executed_orders", len(orders)),
+                "total_signals": signal_check.details.get(
+                    "total_signals", len(signals)
+                ),
+                "executed_orders": signal_check.details.get(
+                    "executed_orders", len(orders)
+                ),
                 "signal_missed": signal_check.details.get("missed", 0),
                 "signal_matches": signal_check.details.get("matched", 0),
                 "average_slippage_pip": slippage_average,
@@ -474,4 +569,6 @@ class ExecutionValidationSuite:
     def _write_report(self, report: ExecutionValidationReport) -> None:
         payload = report.to_dict()
         path = self.report_dir / "validation_report.json"
-        path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str), encoding="utf-8")
+        path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True, default=str), encoding="utf-8"
+        )

@@ -79,7 +79,9 @@ def load_strategy_catalog(path: Path | str | None = None) -> dict[str, dict[str,
     }
 
 
-def get_strategy_manifest(name: str, path: Path | str | None = None) -> Optional[dict[str, Any]]:
+def get_strategy_manifest(
+    name: str, path: Path | str | None = None
+) -> Optional[dict[str, Any]]:
     """Return the catalog entry for a strategy, or None if it is unknown."""
     return load_strategy_catalog(path).get(_normalize_name(name))
 
@@ -147,7 +149,9 @@ def get_current_strategy_name(path: Path | str | None = None) -> Optional[str]:
     return None
 
 
-def get_current_strategy_manifest(path: Path | str | None = None) -> Optional[dict[str, Any]]:
+def get_current_strategy_manifest(
+    path: Path | str | None = None,
+) -> Optional[dict[str, Any]]:
     """Return the active strategy manifest, if one is set."""
     current = get_current_strategy_name(path)
     if not current:

@@ -1,4 +1,5 @@
 """Validators for the Quality Agent pipeline."""
+
 from agents.quality.validators.code_quality import CodeQualityValidator
 from agents.quality.validators.security import SecurityValidator
 from agents.quality.validators.architecture import ArchitectureValidator

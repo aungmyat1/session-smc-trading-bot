@@ -31,17 +31,17 @@ class PaperExecution:
         """Register a new paper trade. Returns the trade_id."""
         trade_id = str(uuid.uuid4())[:8]
         self._open[trade_id] = {
-            "trade_id":   trade_id,
-            "strategy":   signal.strategy,
-            "pair":       signal.pair,
-            "direction":  signal.direction,
-            "entry":      signal.entry_price,
-            "sl":         signal.sl_price,
-            "tp":         signal.tp_price,
-            "session":    signal.session,
-            "opened_at":  datetime.now(timezone.utc).isoformat(),
-            "status":     "open",
-            "pnl_r":      0.0,
+            "trade_id": trade_id,
+            "strategy": signal.strategy,
+            "pair": signal.pair,
+            "direction": signal.direction,
+            "entry": signal.entry_price,
+            "sl": signal.sl_price,
+            "tp": signal.tp_price,
+            "session": signal.session,
+            "opened_at": datetime.now(timezone.utc).isoformat(),
+            "status": "open",
+            "pnl_r": 0.0,
         }
         return trade_id
 
@@ -55,33 +55,43 @@ class PaperExecution:
             return None
 
         direction = trade["direction"]
-        entry     = trade["entry"]
-        sl        = trade["sl"]
-        tp        = trade["tp"]
-        risk      = abs(entry - sl)
+        entry = trade["entry"]
+        sl = trade["sl"]
+        tp = trade["tp"]
+        risk = abs(entry - sl)
 
-        hit_tp = (direction == "LONG"  and price >= tp) or \
-                 (direction == "SHORT" and price <= tp)
-        hit_sl = (direction == "LONG"  and price <= sl) or \
-                 (direction == "SHORT" and price >= sl)
+        hit_tp = (direction == "LONG" and price >= tp) or (
+            direction == "SHORT" and price <= tp
+        )
+        hit_sl = (direction == "LONG" and price <= sl) or (
+            direction == "SHORT" and price >= sl
+        )
 
         if hit_tp or hit_sl:
             exit_price = tp if hit_tp else sl
-            pnl_r = ((exit_price - entry) / risk) if direction == "LONG" \
-                    else ((entry - exit_price) / risk)
-            trade.update({
-                "status":    "tp" if hit_tp else "sl",
-                "exit":      exit_price,
-                "pnl_r":     round(pnl_r, 3),
-                "closed_at": datetime.now(timezone.utc).isoformat(),
-            })
+            pnl_r = (
+                ((exit_price - entry) / risk)
+                if direction == "LONG"
+                else ((entry - exit_price) / risk)
+            )
+            trade.update(
+                {
+                    "status": "tp" if hit_tp else "sl",
+                    "exit": exit_price,
+                    "pnl_r": round(pnl_r, 3),
+                    "closed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             self._closed.append(trade)
             del self._open[trade_id]
             return trade
 
         # Update unrealised R
-        unrealised = ((price - entry) / risk) if direction == "LONG" \
-                     else ((entry - price) / risk)
+        unrealised = (
+            ((price - entry) / risk)
+            if direction == "LONG"
+            else ((entry - price) / risk)
+        )
         trade["pnl_r"] = round(unrealised, 3)
         return None
 
@@ -89,18 +99,23 @@ class PaperExecution:
         """Force-close all open trades at the given price."""
         closed = []
         for trade_id in list(self._open):
-            trade  = self._open[trade_id]
-            entry  = trade["entry"]
-            sl     = trade["sl"]
-            risk   = abs(entry - sl)
-            pnl_r  = ((price - entry) / risk) if trade["direction"] == "LONG" \
-                     else ((entry - price) / risk)
-            trade.update({
-                "status":    reason,
-                "exit":      price,
-                "pnl_r":     round(pnl_r, 3),
-                "closed_at": datetime.now(timezone.utc).isoformat(),
-            })
+            trade = self._open[trade_id]
+            entry = trade["entry"]
+            sl = trade["sl"]
+            risk = abs(entry - sl)
+            pnl_r = (
+                ((price - entry) / risk)
+                if trade["direction"] == "LONG"
+                else ((entry - price) / risk)
+            )
+            trade.update(
+                {
+                    "status": reason,
+                    "exit": price,
+                    "pnl_r": round(pnl_r, 3),
+                    "closed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             self._closed.append(trade)
             closed.append(trade)
         self._open.clear()

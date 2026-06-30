@@ -16,7 +16,7 @@ from typing import Optional
 
 import pandas as pd
 
-from smc_bot import structure, tp_engine          # internal only — no SDK
+from smc_bot import structure, tp_engine  # internal only — no SDK
 
 log = logging.getLogger(__name__)
 
@@ -25,33 +25,34 @@ log = logging.getLogger(__name__)
 # Dataclasses
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class SessionBox:
-    box_high:   float
-    box_low:    float
-    box_range:  float
-    atr:        float
-    session:    str
+    box_high: float
+    box_low: float
+    box_range: float
+    atr: float
+    session: str
     instrument: str
 
 
 @dataclass
 class SweepEvent:
-    direction: str    # 'high' | 'low'
-    candle:    pd.Series
+    direction: str  # 'high' | 'low'
+    candle: pd.Series
 
 
 @dataclass
 class SessionSignal:
-    instrument:   str           # 'EURUSD' | 'GBPUSD' | 'XAUUSD'
-    session:      str           # 'asian' | 'london' | 'overlap' | 'newyork'
-    setup:        str           # 'sweep' | 'range' | 'trend'
-    side:         str           # 'long' | 'short'
-    entry:        float
-    sl:           float
-    tp:           float
-    box_high:     float
-    box_low:      float
+    instrument: str  # 'EURUSD' | 'GBPUSD' | 'XAUUSD'
+    session: str  # 'asian' | 'london' | 'overlap' | 'newyork'
+    setup: str  # 'sweep' | 'range' | 'trend'
+    side: str  # 'long' | 'short'
+    entry: float
+    sl: float
+    tp: float
+    box_high: float
+    box_low: float
     signal_weight: float = 1.0
     mgmt: dict = field(default_factory=dict)
     # mgmt keys: first_close_pct, first_close_target, trail_remainder
@@ -60,6 +61,7 @@ class SessionSignal:
 # ─────────────────────────────────────────────────────────────────────────────
 # A. Session box builder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_session_box(
     df_1h: pd.DataFrame,
@@ -81,9 +83,9 @@ def build_session_box(
     elif df.index.tz is None:
         df.index = df.index.tz_localize("UTC")
 
-    session_df = df[
-        (df.index.hour >= start_h) & (df.index.hour < end_h)
-    ].tail(24)  # last 24h window to avoid stale sessions
+    session_df = df[(df.index.hour >= start_h) & (df.index.hour < end_h)].tail(
+        24
+    )  # last 24h window to avoid stale sessions
 
     if len(session_df) < 3:
         raise ValueError(
@@ -91,14 +93,14 @@ def build_session_box(
             f"{start_h:02d}:00–{end_h:02d}:00 UTC — session not yet complete."
         )
 
-    box_high  = session_df["high"].max()
-    box_low   = session_df["low"].min()
+    box_high = session_df["high"].max()
+    box_low = session_df["low"].min()
     box_range = box_high - box_low
 
     # ATR(14) on full series
-    high_low   = df["high"] - df["low"]
+    high_low = df["high"] - df["low"]
     high_close = (df["high"] - df["close"].shift()).abs()
-    low_close  = (df["low"]  - df["close"].shift()).abs()
+    low_close = (df["low"] - df["close"].shift()).abs()
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     atr = tr.rolling(14).mean().iloc[-1]
 
@@ -115,6 +117,7 @@ def build_session_box(
 # ─────────────────────────────────────────────────────────────────────────────
 # B. Session classifier
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def classify_session(box: SessionBox, session_cfg: dict) -> str:
     """
@@ -138,6 +141,7 @@ def classify_session(box: SessionBox, session_cfg: dict) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # C. Sweep detector
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def detect_sweep(
     df_1h: pd.DataFrame,
@@ -174,18 +178,19 @@ def detect_sweep(
         ):
             log.info(
                 "[%s] HIGH sweep detected at %.5f (box_high=%.5f)",
-                box.instrument, candle["high"], box.box_high,
+                box.instrument,
+                candle["high"],
+                box.box_high,
             )
             return SweepEvent(direction="high", candle=candle)
 
         # LOW sweep: wick below box_low, close back inside
-        if (
-            candle["low"] <= box.box_low - threshold
-            and candle["close"] >= box.box_low
-        ):
+        if candle["low"] <= box.box_low - threshold and candle["close"] >= box.box_low:
             log.info(
                 "[%s] LOW sweep detected at %.5f (box_low=%.5f)",
-                box.instrument, candle["low"], box.box_low,
+                box.instrument,
+                candle["low"],
+                box.box_low,
             )
             return SweepEvent(direction="low", candle=candle)
 
@@ -195,6 +200,7 @@ def detect_sweep(
 # ─────────────────────────────────────────────────────────────────────────────
 # D. Master signal builder
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def build_session_signal(
     df_4h: pd.DataFrame,
@@ -207,11 +213,11 @@ def build_session_signal(
     Full signal pipeline for one instrument × session combination.
     Returns SessionSignal or None if no valid setup found.
     """
-    instr_cfg   = cfg["instruments"][instrument]
+    instr_cfg = cfg["instruments"][instrument]
     session_cfg = cfg["sessions"][session_name]
-    start_h     = session_cfg["start_h"]
-    end_h       = session_cfg["end_h"]
-    target_r    = cfg.get("asian", {}).get("target_r", 5.0)
+    start_h = session_cfg["start_h"]
+    end_h = session_cfg["end_h"]
+    target_r = cfg.get("asian", {}).get("target_r", 5.0)
 
     # ── 1. HTF bias gate ──────────────────────────────────────────────────
     bias = structure.get_bias(df_4h)
@@ -242,83 +248,98 @@ def build_session_signal(
     if sweep is not None:
         # SWEEP setup: bias direction confirmed by sweep direction
         if sweep.direction == "high":
-            side  = "short"
+            side = "short"
             entry = float(sweep.candle["close"])
-            sl    = box.box_high + sl_dist
-            tp    = entry - (sl - entry) * target_r
+            sl = box.box_high + sl_dist
+            tp = entry - (sl - entry) * target_r
         else:
-            side  = "long"
+            side = "long"
             entry = float(sweep.candle["close"])
-            sl    = box.box_low - sl_dist
-            tp    = entry + (entry - sl) * target_r
+            sl = box.box_low - sl_dist
+            tp = entry + (entry - sl) * target_r
         setup = "sweep"
 
     elif session_type == "range":
         # RANGE setup: fade box extremes in HTF bias direction
         if bias == "bullish":
-            side  = "long"
+            side = "long"
             entry = box.box_low
-            sl    = box.box_low - sl_dist
-            tp    = entry + (entry - sl) * target_r
+            sl = box.box_low - sl_dist
+            tp = entry + (entry - sl) * target_r
         else:
-            side  = "short"
+            side = "short"
             entry = box.box_high
-            sl    = box.box_high + sl_dist
-            tp    = entry - (sl - entry) * target_r
+            sl = box.box_high + sl_dist
+            tp = entry - (sl - entry) * target_r
         setup = "range"
 
     elif session_type == "trend":
         # TREND setup: midpoint pullback entry
         midpoint = (box.box_high + box.box_low) / 2
         if bias == "bullish":
-            side  = "long"
+            side = "long"
             entry = midpoint
-            sl    = box.box_low - sl_dist
-            tp    = entry + (entry - sl) * target_r
+            sl = box.box_low - sl_dist
+            tp = entry + (entry - sl) * target_r
         else:
-            side  = "short"
+            side = "short"
             entry = midpoint
-            sl    = box.box_high + sl_dist
-            tp    = entry - (sl - entry) * target_r
+            sl = box.box_high + sl_dist
+            tp = entry - (sl - entry) * target_r
         setup = "trend"
 
     else:
         # neutral + no sweep → no trade
         log.debug(
             "[%s/%s] session_type=%s, no sweep — no signal",
-            instrument, session_name, session_type,
+            instrument,
+            session_name,
+            session_type,
         )
         return None
 
     # ── 6. Spread validation ──────────────────────────────────────────────
     pip = instr_cfg["pip_size"]
     spread_pips = instr_cfg["spread_allowance_pips"]
-    entry_dist_pips = abs(entry - box.box_low) / pip if side == "long" \
+    entry_dist_pips = (
+        abs(entry - box.box_low) / pip
+        if side == "long"
         else abs(box.box_high - entry) / pip
+    )
 
     if entry_dist_pips < spread_pips:
         log.info(
             "[%s/%s] Entry %.5f too close to box edge (%.1f pips < %.1f allowance) — skip",
-            instrument, session_name, entry, entry_dist_pips, spread_pips,
+            instrument,
+            session_name,
+            entry,
+            entry_dist_pips,
+            spread_pips,
         )
         return None
 
     # ── 7. Build mgmt dict ────────────────────────────────────────────────
     mgmt = {
-        "first_close_pct":    session_cfg["first_close_pct"],
+        "first_close_pct": session_cfg["first_close_pct"],
         "first_close_target": session_cfg["first_close_target"],
-        "trail_remainder":    session_cfg["trail_remainder"],
-        "first_close_done":   False,
+        "trail_remainder": session_cfg["trail_remainder"],
+        "first_close_done": False,
     }
 
     # ── 8. R-plan via tp_engine ───────────────────────────────────────────
     plan = tp_engine.build_plan(entry=entry, sl=sl, target_r=target_r)
-    tp   = plan["tp"]  # use tp_engine output for consistency
+    tp = plan["tp"]  # use tp_engine output for consistency
 
     log.info(
         "[%s/%s] Signal → %s %s | entry=%.5f sl=%.5f tp=%.5f setup=%s",
-        instrument, session_name, side.upper(), instrument,
-        entry, sl, tp, setup,
+        instrument,
+        session_name,
+        side.upper(),
+        instrument,
+        entry,
+        sl,
+        tp,
+        setup,
     )
 
     return SessionSignal(
@@ -339,6 +360,7 @@ def build_session_signal(
 # ─────────────────────────────────────────────────────────────────────────────
 # E. Multi-instrument scanner
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def scan_all(
     data: dict,
@@ -380,7 +402,8 @@ def scan_all(
             if session_name not in instr_cfg.get("sessions", []):
                 log.debug(
                     "[%s/%s] session not in instrument sessions list — skip",
-                    instrument, session_name,
+                    instrument,
+                    session_name,
                 )
                 continue
 
@@ -388,21 +411,24 @@ def scan_all(
             if utc_now.hour < session_cfg["end_h"]:
                 log.debug(
                     "[%s/%s] session end_h=%d not yet reached (now=%d) — skip",
-                    instrument, session_name,
-                    session_cfg["end_h"], utc_now.hour,
+                    instrument,
+                    session_name,
+                    session_cfg["end_h"],
+                    utc_now.hour,
                 )
                 continue
 
             try:
-                sig = build_session_signal(
-                    df_4h, df_1h, instrument, session_name, cfg
-                )
+                sig = build_session_signal(df_4h, df_1h, instrument, session_name, cfg)
                 if sig is not None:
                     signals.append(sig)
             except Exception as e:
                 log.error(
                     "[%s/%s] Unexpected error in build_session_signal: %s",
-                    instrument, session_name, e, exc_info=True,
+                    instrument,
+                    session_name,
+                    e,
+                    exc_info=True,
                 )
 
     # Sort by signal_weight descending, cap at max_concurrent_signals
@@ -414,6 +440,7 @@ def scan_all(
 
     log.info(
         "scan_all complete: %d signal(s) at %s UTC",
-        len(signals), utc_now.strftime("%H:%M"),
+        len(signals),
+        utc_now.strftime("%H:%M"),
     )
     return signals

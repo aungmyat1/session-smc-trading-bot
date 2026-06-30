@@ -30,12 +30,12 @@ _PIP_SIZE: dict[str, float] = {
 }
 
 LONDON_START = 6
-LONDON_END   = 9   # inclusive
-NY_START     = 11
-NY_END       = 15  # inclusive
+LONDON_END = 9  # inclusive
+NY_START = 11
+NY_END = 15  # inclusive
 
-TP_RR          = 2.0
-SWEEP_BUFFER   = 1   # pips — how much beyond the level counts as a sweep
+TP_RR = 2.0
+SWEEP_BUFFER = 1  # pips — how much beyond the level counts as a sweep
 
 
 def _utc_hour(candle: dict) -> int:
@@ -55,7 +55,7 @@ def _build_london_levels(candles: list[dict]) -> dict | None:
         return None
     return {
         "high": max(c["high"] for c in bars),
-        "low":  min(c["low"]  for c in bars),
+        "low": min(c["low"] for c in bars),
     }
 
 
@@ -83,9 +83,9 @@ def generate_signals(
     lh, ll = london["high"], london["low"]
     signals: list[AdaptiveSignal] = []
 
-    swept_long:  bool = False
+    swept_long: bool = False
     swept_short: bool = False
-    awaiting_retest_long:  bool = False
+    awaiting_retest_long: bool = False
     awaiting_retest_short: bool = False
 
     for candle in candles_m15:
@@ -94,10 +94,14 @@ def generate_signals(
             continue
 
         close = candle["close"]
-        high  = candle["high"]
-        low   = candle["low"]
+        high = candle["high"]
+        low = candle["low"]
         t = candle.get("time", "")
-        ts_str = t if isinstance(t, str) else t.isoformat() if hasattr(t, "isoformat") else str(t)
+        ts_str = (
+            t
+            if isinstance(t, str)
+            else t.isoformat() if hasattr(t, "isoformat") else str(t)
+        )
 
         # ── Sweep detection ──────────────────────────────────────────────────
         if not swept_long and not awaiting_retest_long:
@@ -117,27 +121,29 @@ def generate_signals(
             retest_bot = lh - 1 * pip
             if retest_bot <= low <= retest_top or retest_bot <= close <= retest_top:
                 entry = close
-                sl    = ll - pip           # below London Low
-                risk  = entry - sl
+                sl = ll - pip  # below London Low
+                risk = entry - sl
                 if risk > 0:
                     tp = entry + risk * TP_RR
-                    signals.append(AdaptiveSignal(
-                        strategy    = "ny_momentum",
-                        pair        = symbol,
-                        direction   = "LONG",
-                        entry_price = entry,
-                        sl_price    = sl,
-                        tp_price    = tp,
-                        session     = "new_york",
-                        timestamp   = ts_str,
-                        reason      = "NY sweep London High + retest LONG",
-                        metadata    = {
-                            "london_high":         lh,
-                            "london_low":          ll,
-                            "liquidity_swept":     True,
-                            "structure_confirmed": True,
-                        },
-                    ))
+                    signals.append(
+                        AdaptiveSignal(
+                            strategy="ny_momentum",
+                            pair=symbol,
+                            direction="LONG",
+                            entry_price=entry,
+                            sl_price=sl,
+                            tp_price=tp,
+                            session="new_york",
+                            timestamp=ts_str,
+                            reason="NY sweep London High + retest LONG",
+                            metadata={
+                                "london_high": lh,
+                                "london_low": ll,
+                                "liquidity_swept": True,
+                                "structure_confirmed": True,
+                            },
+                        )
+                    )
                 awaiting_retest_long = False
 
         if awaiting_retest_short:
@@ -145,27 +151,29 @@ def generate_signals(
             retest_bot = ll - 2 * pip
             if retest_bot <= high <= retest_top or retest_bot <= close <= retest_top:
                 entry = close
-                sl    = lh + pip           # above London High
-                risk  = sl - entry
+                sl = lh + pip  # above London High
+                risk = sl - entry
                 if risk > 0:
                     tp = entry - risk * TP_RR
-                    signals.append(AdaptiveSignal(
-                        strategy    = "ny_momentum",
-                        pair        = symbol,
-                        direction   = "SHORT",
-                        entry_price = entry,
-                        sl_price    = sl,
-                        tp_price    = tp,
-                        session     = "new_york",
-                        timestamp   = ts_str,
-                        reason      = "NY sweep London Low + retest SHORT",
-                        metadata    = {
-                            "london_high":         lh,
-                            "london_low":          ll,
-                            "liquidity_swept":     True,
-                            "structure_confirmed": True,
-                        },
-                    ))
+                    signals.append(
+                        AdaptiveSignal(
+                            strategy="ny_momentum",
+                            pair=symbol,
+                            direction="SHORT",
+                            entry_price=entry,
+                            sl_price=sl,
+                            tp_price=tp,
+                            session="new_york",
+                            timestamp=ts_str,
+                            reason="NY sweep London Low + retest SHORT",
+                            metadata={
+                                "london_high": lh,
+                                "london_low": ll,
+                                "liquidity_swept": True,
+                                "structure_confirmed": True,
+                            },
+                        )
+                    )
                 awaiting_retest_short = False
 
     return signals

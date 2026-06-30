@@ -20,22 +20,39 @@ from smc_bot.risk import (
 )
 from smc_bot.session_range import SessionSignal
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
 CFG = {
     "instruments": {
-        "EURUSD": {"pip_size": 0.0001, "sl_pct_of_range": 0.25, "signal_weight": 1.0,
-                   "sessions": ["asian", "london"], "sweep_beyond_pct": 0.008,
-                   "atr_period": 14, "spread_allowance_pips": 1.0},
-        "GBPUSD": {"pip_size": 0.0001, "sl_pct_of_range": 0.25, "signal_weight": 0.9,
-                   "sessions": ["london"], "sweep_beyond_pct": 0.010,
-                   "atr_period": 14, "spread_allowance_pips": 1.5},
-        "XAUUSD": {"pip_size": 0.01,   "sl_pct_of_range": 0.20, "signal_weight": 1.0,
-                   "sessions": ["london"], "sweep_beyond_pct": 0.005,
-                   "atr_period": 14, "spread_allowance_pips": 3.0},
+        "EURUSD": {
+            "pip_size": 0.0001,
+            "sl_pct_of_range": 0.25,
+            "signal_weight": 1.0,
+            "sessions": ["asian", "london"],
+            "sweep_beyond_pct": 0.008,
+            "atr_period": 14,
+            "spread_allowance_pips": 1.0,
+        },
+        "GBPUSD": {
+            "pip_size": 0.0001,
+            "sl_pct_of_range": 0.25,
+            "signal_weight": 0.9,
+            "sessions": ["london"],
+            "sweep_beyond_pct": 0.010,
+            "atr_period": 14,
+            "spread_allowance_pips": 1.5,
+        },
+        "XAUUSD": {
+            "pip_size": 0.01,
+            "sl_pct_of_range": 0.20,
+            "signal_weight": 1.0,
+            "sessions": ["london"],
+            "sweep_beyond_pct": 0.005,
+            "atr_period": 14,
+            "spread_allowance_pips": 3.0,
+        },
     },
     "risk": {
         "risk_usd": 100.0,
@@ -49,19 +66,28 @@ CFG = {
 
 def _sig(instrument, entry, sl):
     return SessionSignal(
-        instrument=instrument, session="london", setup="sweep",
+        instrument=instrument,
+        session="london",
+        setup="sweep",
         side="long" if entry > sl else "short",
-        entry=entry, sl=sl, tp=entry + abs(entry - sl) * 5,
-        box_high=entry + 0.005, box_low=sl - 0.001,
+        entry=entry,
+        sl=sl,
+        tp=entry + abs(entry - sl) * 5,
+        box_high=entry + 0.005,
+        box_low=sl - 0.001,
         signal_weight=1.0,
-        mgmt={"first_close_pct": 0.75, "first_close_target": "opposite_box_edge",
-              "trail_remainder": False},
+        mgmt={
+            "first_close_pct": 0.75,
+            "first_close_target": "opposite_box_edge",
+            "trail_remainder": False,
+        },
     )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # calc_qty — EURUSD
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestCalcQtyEURUSD:
 
@@ -97,6 +123,7 @@ class TestCalcQtyEURUSD:
 # calc_qty — GBPUSD
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestCalcQtyGBPUSD:
 
     def test_gbpusd_25pip_sl(self):
@@ -109,18 +136,19 @@ class TestCalcQtyGBPUSD:
         # Ensure rounding is always DOWN (floor), never up
         sig = _sig("GBPUSD", entry=1.2700, sl=1.2657)  # 43 pips → raw=0.2325...
         lots = calc_qty(sig, CFG, account_balance=10_000)
-        assert lots == 0.23   # floor to 2 dp
+        assert lots == 0.23  # floor to 2 dp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # calc_qty — XAUUSD
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestCalcQtyXAUUSD:
 
     def test_xauusd_200point_sl(self):
         # SL=200 points ($2.00), risk=$100, point_value=$1/lot → 100/(200*1) = 0.50
-        sig = _sig("XAUUSD", entry=1920.00, sl=1918.00)   # $2 SL = 200 points
+        sig = _sig("XAUUSD", entry=1920.00, sl=1918.00)  # $2 SL = 200 points
         lots = calc_qty(sig, CFG, account_balance=10_000)
         assert lots == pytest.approx(0.50, rel=0.05)
 
@@ -131,12 +159,12 @@ class TestCalcQtyXAUUSD:
         assert lots == pytest.approx(0.20, rel=0.05)
 
     def test_xauusd_caps_at_max_lots(self):
-        sig = _sig("XAUUSD", entry=1920.00, sl=1919.99)   # 1 point SL → huge raw lots
+        sig = _sig("XAUUSD", entry=1920.00, sl=1919.99)  # 1 point SL → huge raw lots
         lots = calc_qty(sig, CFG, account_balance=10_000)
         assert lots <= CFG["risk"]["max_lots_per_symbol"]
 
     def test_xauusd_zero_sl_returns_zero(self):
-        sig = _sig("XAUUSD", entry=1920.00, sl=1920.00)   # zero SL
+        sig = _sig("XAUUSD", entry=1920.00, sl=1920.00)  # zero SL
         lots = calc_qty(sig, CFG, account_balance=10_000)
         assert lots == 0.0
 
@@ -144,6 +172,7 @@ class TestCalcQtyXAUUSD:
 # ─────────────────────────────────────────────────────────────────────────────
 # Daily loss limit
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDailyLossLimit:
 
@@ -164,6 +193,7 @@ class TestDailyLossLimit:
 # Max open positions
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestMaxOpenPositions:
 
     def test_under_limit(self):
@@ -182,6 +212,7 @@ class TestMaxOpenPositions:
 # ─────────────────────────────────────────────────────────────────────────────
 # Symbol already open (one-position-per-instrument rule)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSymbolAlreadyOpen:
 

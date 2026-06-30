@@ -2,8 +2,14 @@
 
 import pytest
 from execution.demo_risk_manager import (
-    calculate_lots, new_state, check_limits, record_result, reset_daily,
-    LIMITS, _MIN_LOT, _MAX_LOT,
+    calculate_lots,
+    new_state,
+    check_limits,
+    record_result,
+    reset_daily,
+    LIMITS,
+    _MIN_LOT,
+    _MAX_LOT,
 )
 
 

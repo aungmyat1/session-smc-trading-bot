@@ -46,7 +46,7 @@ class TestShadowNoExecution:
         path = tmp_path / "shadow.jsonl"
         tracker = ShadowTracker(path)
         result = tracker.track(_sig())
-        assert result is None   # track() always returns None
+        assert result is None  # track() always returns None
 
     def test_summary_counts_by_strategy(self, tmp_path):
         path = tmp_path / "shadow.jsonl"
@@ -71,18 +71,22 @@ class TestStrategyFailureIsolation:
 
     class _GoodStrategy(BaseStrategy):
         @property
-        def name(self): return "GOOD"
+        def name(self):
+            return "GOOD"
+
         def generate_signal(self, data):
             return _sig(strategy="GOOD")
 
     class _BrokenStrategy(BaseStrategy):
         @property
-        def name(self): return "BROKEN"
+        def name(self):
+            return "BROKEN"
+
         def generate_signal(self, data):
             raise RuntimeError("strategy crashed")
 
     def test_broken_strategy_isolated(self):
-        good   = self._GoodStrategy()
+        good = self._GoodStrategy()
         broken = self._BrokenStrategy()
 
         results = []
@@ -92,7 +96,7 @@ class TestStrategyFailureIsolation:
                 if sig:
                     results.append(sig)
             except Exception:
-                pass   # isolated — other strategies continue
+                pass  # isolated — other strategies continue
 
         assert len(results) == 1
         assert results[0].strategy_name == "GOOD"

@@ -3,6 +3,7 @@
 Processes M15 bars in order, maintains per-symbol state across polls.
 Mirrors optimize_d2_rules.py logic exactly (session 08-16, liq_or_rr target).
 """
+
 from __future__ import annotations
 
 import math
@@ -16,22 +17,22 @@ _PIVOT_LB = 12  # bars for rolling swing H/L used in MSS check
 
 @dataclass
 class D2E3Params:
-    session_start: int = 8       # UTC hour (inclusive)
-    session_end: int = 16        # UTC hour (exclusive)
-    confirm_bars: int = 12       # max bars after sweep to wait for MSS
-    entry_wait_bars: int = 3     # max bars after MSS to wait for limit fill
+    session_start: int = 8  # UTC hour (inclusive)
+    session_end: int = 16  # UTC hour (exclusive)
+    confirm_bars: int = 12  # max bars after sweep to wait for MSS
+    entry_wait_bars: int = 3  # max bars after MSS to wait for limit fill
     min_stop_pips: float = 2.0
     max_stop_pips: float = 25.0
-    rr: float = 2.0              # fallback fixed RR when liq target < 1.2R
+    rr: float = 2.0  # fallback fixed RR when liq target < 1.2R
     cooldown_bars: int = 3
-    max_hold_bars: int = 32      # 8 h at M15
+    max_hold_bars: int = 32  # 8 h at M15
 
 
 @dataclass
 class Signal:
-    type: str          # setup_detected | mss_confirmed | entry_filled | trade_closed | setup_expired
+    type: str  # setup_detected | mss_confirmed | entry_filled | trade_closed | setup_expired
     symbol: str
-    direction: str     # long | short
+    direction: str  # long | short
     entry: float = 0.0
     stop: float = 0.0
     target: float = 0.0
@@ -128,13 +129,25 @@ class D2E3Engine:
 
             if exit_price is not None:
                 risk = abs(ot["entry"] - ot["stop"])
-                r = ((exit_price - ot["entry"]) / risk if ot["direction"] == "long"
-                     else (ot["entry"] - exit_price) / risk)
-                sigs.append(Signal(type="trade_closed", symbol=self.symbol,
-                    direction=ot["direction"], entry=ot["entry"],
-                    stop=ot["stop"], target=ot["target"],
-                    exit_price=exit_price, exit_reason=exit_reason,
-                    r=round(r, 3), bar_time=t))
+                r = (
+                    (exit_price - ot["entry"]) / risk
+                    if ot["direction"] == "long"
+                    else (ot["entry"] - exit_price) / risk
+                )
+                sigs.append(
+                    Signal(
+                        type="trade_closed",
+                        symbol=self.symbol,
+                        direction=ot["direction"],
+                        entry=ot["entry"],
+                        stop=ot["stop"],
+                        target=ot["target"],
+                        exit_price=exit_price,
+                        exit_reason=exit_reason,
+                        r=round(r, 3),
+                        bar_time=t,
+                    )
+                )
                 self.open_trade = None
                 self.pending = None
                 self.cooldown_until_bar = i + self.p.cooldown_bars
@@ -146,8 +159,14 @@ class D2E3Engine:
             age = i - pd["sweep_bar_i"]
 
             if age > self.p.confirm_bars + self.p.entry_wait_bars + 2:
-                sigs.append(Signal(type="setup_expired", symbol=self.symbol,
-                    direction=pd["direction"], bar_time=t))
+                sigs.append(
+                    Signal(
+                        type="setup_expired",
+                        symbol=self.symbol,
+                        direction=pd["direction"],
+                        bar_time=t,
+                    )
+                )
                 self.pending = None
                 return sigs
 
@@ -161,33 +180,65 @@ class D2E3Engine:
                     if mss:
                         entry = (h + lo) / 2.0
                         stop = self._stop(pd, entry)
-                        pd.update(confirmed=True, entry=entry,
-                                  fill_deadline_bar=i + self.p.entry_wait_bars)
-                        sigs.append(Signal(type="mss_confirmed", symbol=self.symbol,
-                            direction=pd["direction"], entry=entry,
-                            stop=stop, target=self._target(pd, entry, stop),
-                            bar_time=t))
+                        pd.update(
+                            confirmed=True,
+                            entry=entry,
+                            fill_deadline_bar=i + self.p.entry_wait_bars,
+                        )
+                        sigs.append(
+                            Signal(
+                                type="mss_confirmed",
+                                symbol=self.symbol,
+                                direction=pd["direction"],
+                                entry=entry,
+                                stop=stop,
+                                target=self._target(pd, entry, stop),
+                                bar_time=t,
+                            )
+                        )
                 else:
-                    sigs.append(Signal(type="setup_expired", symbol=self.symbol,
-                        direction=pd["direction"], bar_time=t, detail="no_mss"))
+                    sigs.append(
+                        Signal(
+                            type="setup_expired",
+                            symbol=self.symbol,
+                            direction=pd["direction"],
+                            bar_time=t,
+                            detail="no_mss",
+                        )
+                    )
                     self.pending = None
             else:
                 # Waiting for limit fill
                 if i <= pd["fill_deadline_bar"]:
                     entry = pd["entry"]
-                    filled = (h >= entry if pd["direction"] == "short" else lo <= entry)
+                    filled = h >= entry if pd["direction"] == "short" else lo <= entry
                     if filled:
                         ot = self._make_trade(pd, i)
                         if ot:
                             self.open_trade = ot
-                            sigs.append(Signal(type="entry_filled", symbol=self.symbol,
-                                direction=ot["direction"], entry=ot["entry"],
-                                stop=ot["stop"], target=ot["target"], bar_time=t))
+                            sigs.append(
+                                Signal(
+                                    type="entry_filled",
+                                    symbol=self.symbol,
+                                    direction=ot["direction"],
+                                    entry=ot["entry"],
+                                    stop=ot["stop"],
+                                    target=ot["target"],
+                                    bar_time=t,
+                                )
+                            )
                         else:
                             self.pending = None
                 else:
-                    sigs.append(Signal(type="setup_expired", symbol=self.symbol,
-                        direction=pd["direction"], bar_time=t, detail="fill_expired"))
+                    sigs.append(
+                        Signal(
+                            type="setup_expired",
+                            symbol=self.symbol,
+                            direction=pd["direction"],
+                            bar_time=t,
+                            detail="fill_expired",
+                        )
+                    )
                     self.pending = None
             return sigs
 
@@ -207,16 +258,27 @@ class D2E3Engine:
             return sigs
 
         self.pending = {
-            "symbol": self.symbol, "direction": direction,
-            "sweep_bar_i": i, "sweep_time": t,
-            "sweep_high": h, "sweep_low": lo,
-            "pdh": pdh, "pdl": pdl, "extreme": extreme,
+            "symbol": self.symbol,
+            "direction": direction,
+            "sweep_bar_i": i,
+            "sweep_time": t,
+            "sweep_high": h,
+            "sweep_low": lo,
+            "pdh": pdh,
+            "pdl": pdl,
+            "extreme": extreme,
             "confirmed": False,
         }
         lvl = "PDH" if direction == "short" else "PDL"
-        sigs.append(Signal(type="setup_detected", symbol=self.symbol,
-            direction=direction, bar_time=t,
-            detail=f"{lvl} sweep at {extreme:.5f}"))
+        sigs.append(
+            Signal(
+                type="setup_detected",
+                symbol=self.symbol,
+                direction=direction,
+                bar_time=t,
+                detail=f"{lvl} sweep at {extreme:.5f}",
+            )
+        )
         return sigs
 
     def _stop(self, pd: dict, entry: float) -> float:
@@ -257,6 +319,7 @@ class D2E3Engine:
 
 # ── Context builder (PDH/PDL + rolling pivot H/L) ────────────────────────────
 
+
 def _build_context(bars: list[dict]) -> list[dict]:
     """Add pdh, pdl, phl (rolling pivot high), pll (rolling pivot low) to each bar."""
     _n = len(bars)
@@ -293,7 +356,7 @@ def _build_context(bars: list[dict]) -> list[dict]:
         lo = max(0, i - _PIVOT_LB)
         if i >= 3:
             phl = max(bars[j]["high"] for j in range(lo, i))
-            pll = min(bars[j]["low"]  for j in range(lo, i))
+            pll = min(bars[j]["low"] for j in range(lo, i))
         else:
             phl = pll = float("nan")
 

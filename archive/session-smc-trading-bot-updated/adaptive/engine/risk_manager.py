@@ -21,9 +21,9 @@ from adaptive.strategies import AdaptiveSignal
 # ── Defaults (overridden by config/adaptive_engine.yaml at runtime) ──────────
 
 DEFAULT_CONFIG = {
-    "risk_per_trade":         0.005,   # 0.5% of account
-    "daily_loss_limit":       0.015,   # 1.5%
-    "max_trades_per_day":     6,
+    "risk_per_trade": 0.005,  # 0.5% of account
+    "daily_loss_limit": 0.015,  # 1.5%
+    "max_trades_per_day": 6,
     "max_consecutive_losses": 3,
     # Correlated pairs: LONG on both simultaneously is blocked
     "correlated_pairs": [
@@ -32,24 +32,28 @@ DEFAULT_CONFIG = {
 }
 
 # Correlated direction pairs (both LONG or both SHORT are correlated)
-_SAME_DIRECTION_BLOCKED = {"LONG"}   # LONG EURUSD + LONG GBPUSD blocked
+_SAME_DIRECTION_BLOCKED = {"LONG"}  # LONG EURUSD + LONG GBPUSD blocked
 
 
 def new_state() -> dict:
     """Return a fresh intra-day risk state."""
     return {
-        "daily_loss_pct":        0.0,
-        "trades_today":          0,
-        "consecutive_losses":    0,
-        "open_positions":        [],   # list of {"pair": str, "direction": str}
-        "halted":                False,
-        "halt_reason":           "",
+        "daily_loss_pct": 0.0,
+        "trades_today": 0,
+        "consecutive_losses": 0,
+        "open_positions": [],  # list of {"pair": str, "direction": str}
+        "halted": False,
+        "halt_reason": "",
     }
 
 
-def _correlated(signal: AdaptiveSignal, open_positions: list[dict], config: dict) -> bool:
+def _correlated(
+    signal: AdaptiveSignal, open_positions: list[dict], config: dict
+) -> bool:
     """True if adding this signal would create a correlated position."""
-    corr_groups: list[tuple] = config.get("correlated_pairs", DEFAULT_CONFIG["correlated_pairs"])
+    corr_groups: list[tuple] = config.get(
+        "correlated_pairs", DEFAULT_CONFIG["correlated_pairs"]
+    )
     for open_pos in open_positions:
         if open_pos["direction"] != signal.direction:
             continue
@@ -107,9 +111,9 @@ def check_risk(signal: AdaptiveSignal, state: dict, config: dict | None = None) 
         rejection_reason = "RISK_BLOCKED: " + ", ".join(failed)
 
     return {
-        "approved":         approved,
+        "approved": approved,
         "rejection_reason": rejection_reason,
-        "checks":           checks,
+        "checks": checks,
     }
 
 
@@ -135,8 +139,10 @@ def record_trade(result: dict, state: dict, config: dict | None = None) -> dict:
     pnl = result.get("pnl_pct", 0.0)
     outcome = result.get("outcome", "LOSS")
 
-    state["daily_loss_pct"] = state.get("daily_loss_pct", 0.0) + (-pnl if pnl < 0 else 0.0)
-    state["trades_today"]   = state.get("trades_today", 0) + 1
+    state["daily_loss_pct"] = state.get("daily_loss_pct", 0.0) + (
+        -pnl if pnl < 0 else 0.0
+    )
+    state["trades_today"] = state.get("trades_today", 0) + 1
 
     if outcome == "LOSS":
         state["consecutive_losses"] = state.get("consecutive_losses", 0) + 1
@@ -148,8 +154,7 @@ def record_trade(result: dict, state: dict, config: dict | None = None) -> dict:
     direction = result.get("direction", "")
     open_pos = state.get("open_positions", [])
     state["open_positions"] = [
-        p for p in open_pos
-        if not (p["pair"] == pair and p["direction"] == direction)
+        p for p in open_pos if not (p["pair"] == pair and p["direction"] == direction)
     ]
 
     # Engage halt if thresholds breached
@@ -165,18 +170,20 @@ def record_trade(result: dict, state: dict, config: dict | None = None) -> dict:
 
 def register_open_position(signal: AdaptiveSignal, state: dict) -> dict:
     """Record that a position was opened (after approval). Returns updated state."""
-    state.setdefault("open_positions", []).append({
-        "pair":      signal.pair,
-        "direction": signal.direction,
-    })
+    state.setdefault("open_positions", []).append(
+        {
+            "pair": signal.pair,
+            "direction": signal.direction,
+        }
+    )
     return state
 
 
 def reset_daily(state: dict) -> dict:
     """Reset intra-day counters at the start of a new trading day."""
-    state["daily_loss_pct"]     = 0.0
-    state["trades_today"]       = 0
+    state["daily_loss_pct"] = 0.0
+    state["trades_today"] = 0
     state["consecutive_losses"] = 0
-    state["halted"]             = False
-    state["halt_reason"]        = ""
+    state["halted"] = False
+    state["halt_reason"] = ""
     return state

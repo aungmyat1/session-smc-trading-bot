@@ -58,7 +58,10 @@ class TradeJournal:
             f.write(json.dumps(record) + "\n")
         logger.info(
             "Trade logged: %s %s r=%.2f dry=%s",
-            direction.upper(), symbol, result_r or 0.0, dry_run,
+            direction.upper(),
+            symbol,
+            result_r or 0.0,
+            dry_run,
         )
 
     def get_all_trades(self) -> list[dict]:
@@ -78,7 +81,11 @@ class TradeJournal:
     def get_daily_stats(self, date_str: Optional[str] = None) -> dict:
         """Compute stats for a given date (YYYY-MM-DD). Defaults to today UTC."""
         date_str = date_str or datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        trades = [t for t in self.get_all_trades() if t.get("timestamp", "").startswith(date_str)]
+        trades = [
+            t
+            for t in self.get_all_trades()
+            if t.get("timestamp", "").startswith(date_str)
+        ]
         return self._compute_stats(trades)
 
     def get_all_stats(self) -> dict:
@@ -87,7 +94,14 @@ class TradeJournal:
     def _compute_stats(self, trades: list[dict]) -> dict:
         closed = [t for t in trades if t.get("result_r") is not None]
         if not closed:
-            return {"trades": 0, "wins": 0, "losses": 0, "win_rate": 0.0, "total_r": 0.0, "avg_r": 0.0}
+            return {
+                "trades": 0,
+                "wins": 0,
+                "losses": 0,
+                "win_rate": 0.0,
+                "total_r": 0.0,
+                "avg_r": 0.0,
+            }
 
         wins = [t for t in closed if t["result_r"] >= 0]
         losses = [t for t in closed if t["result_r"] < 0]

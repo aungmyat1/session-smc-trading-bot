@@ -20,14 +20,18 @@ class DuckDBStore:
         with self.connect() as conn:
             for name, frame in tables.items():
                 conn.register(f"tmp_{name}", frame)
-                conn.execute(f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM tmp_{name}")
+                conn.execute(
+                    f"CREATE OR REPLACE TABLE {name} AS SELECT * FROM tmp_{name}"
+                )
                 conn.unregister(f"tmp_{name}")
 
     def register_parquet(self, table: str, path: str | Path) -> None:
         with self.connect() as conn:
-            conn.execute(f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM read_parquet(?)", [str(path)])
+            conn.execute(
+                f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM read_parquet(?)",
+                [str(path)],
+            )
 
     def query(self, sql: str, params: list[Any] | None = None) -> pd.DataFrame:
         with self.connect() as conn:
             return conn.execute(sql, params or []).fetchdf()
-

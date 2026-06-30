@@ -24,12 +24,30 @@ def _discover_default_symbols(raw_root: Path, processed_root: Path) -> list[str]
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build the M1 research feature database")
-    parser.add_argument("--symbols", nargs="+", default=None, help="Symbols to include, e.g. EURUSD GBPUSD XAUUSD")
-    parser.add_argument("--swing-lookback", type=int, default=5, help="Centered swing lookback on each side")
+    parser = argparse.ArgumentParser(
+        description="Build the M1 research feature database"
+    )
+    parser.add_argument(
+        "--symbols",
+        nargs="+",
+        default=None,
+        help="Symbols to include, e.g. EURUSD GBPUSD XAUUSD",
+    )
+    parser.add_argument(
+        "--swing-lookback",
+        type=int,
+        default=5,
+        help="Centered swing lookback on each side",
+    )
     parser.add_argument("--raw-root", default="data/raw", help="Input raw data root")
-    parser.add_argument("--processed-root", default="data/processed", help="Fallback processed data root")
-    parser.add_argument("--output-root", default="research_db", help="Output research database root")
+    parser.add_argument(
+        "--processed-root",
+        default="data/processed",
+        help="Fallback processed data root",
+    )
+    parser.add_argument(
+        "--output-root", default="research_db", help="Output research database root"
+    )
     args = parser.parse_args()
 
     paths = FeatureDatabasePaths(
@@ -37,8 +55,12 @@ def main() -> None:
         processed_root=Path(args.processed_root),
         output_root=Path(args.output_root),
     )
-    symbols = args.symbols or _discover_default_symbols(paths.raw_root, paths.processed_root)
-    outputs = build_feature_database(symbols, paths=paths, swing_lookback=args.swing_lookback)
+    symbols = args.symbols or _discover_default_symbols(
+        paths.raw_root, paths.processed_root
+    )
+    outputs = build_feature_database(
+        symbols, paths=paths, swing_lookback=args.swing_lookback
+    )
 
     print("Built feature database")
     for name, frame in outputs.items():
@@ -49,4 +71,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

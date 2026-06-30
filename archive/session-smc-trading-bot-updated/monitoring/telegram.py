@@ -48,10 +48,14 @@ class TelegramAlerter:
         if parse_mode:
             payload["parse_mode"] = parse_mode
         try:
-            async with self._session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with self._session.post(
+                url, json=payload, timeout=aiohttp.ClientTimeout(total=10)
+            ) as resp:
                 if resp.status != 200:
                     body = await resp.text()
-                    logger.warning("Telegram send failed %d: %s", resp.status, body[:200])
+                    logger.warning(
+                        "Telegram send failed %d: %s", resp.status, body[:200]
+                    )
         except Exception as e:
             logger.warning("Telegram send error: %s", e)
 

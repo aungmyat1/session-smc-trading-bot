@@ -43,7 +43,9 @@ def main() -> int:
     print()
 
     try:
-        result = subprocess.run(["tmux", "ls"], capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            ["tmux", "ls"], capture_output=True, text=True, check=False
+        )
         running = "spreads" in result.stdout
     except FileNotFoundError:
         running = False
@@ -63,7 +65,9 @@ def main() -> int:
 
     parsed = [datetime.fromisoformat(t) for t in times]
     if len(parsed) > 1:
-        gaps = [(parsed[i] - parsed[i - 1]).total_seconds() for i in range(1, len(parsed))]
+        gaps = [
+            (parsed[i] - parsed[i - 1]).total_seconds() for i in range(1, len(parsed))
+        ]
         print(
             f"  Poll interval: avg={statistics.mean(gaps):.0f}s  "
             f"max={max(gaps):.0f}s  gaps>90s: {sum(1 for g in gaps if g > 90)}"
@@ -94,14 +98,18 @@ def main() -> int:
             continue
 
     print("  Killzone spread averages (pip):")
-    print(f"  {'Symbol':<8} {'Session':<10} {'n':>5} {'Avg':>6} {'Med':>6} {'P95':>6} {'Max':>6}")
+    print(
+        f"  {'Symbol':<8} {'Session':<10} {'n':>5} {'Avg':>6} {'Med':>6} {'P95':>6} {'Max':>6}"
+    )
     for symbol in ("EURUSD", "GBPUSD", "USDJPY", "AUDUSD"):
         for session in ("london", "new_york"):
             values = spreads.get((symbol, session), [])
             if not values:
                 continue
             values_sorted = sorted(values)
-            p95 = values_sorted[max(0, min(len(values_sorted) - 1, int(len(values_sorted) * 0.95)))]
+            p95 = values_sorted[
+                max(0, min(len(values_sorted) - 1, int(len(values_sorted) * 0.95)))
+            ]
             print(
                 f"  {symbol:<8} {session:<10} {len(values):>5} "
                 f"{statistics.mean(values):>6.2f} {statistics.median(values):>6.2f} "

@@ -187,6 +187,9 @@ class OrderManager:
         logger.info(
             "Order %s: %s %s  vol=%.2f  id=%s",
             "DRY_RUN" if result.dry_run else "FILLED",
-            signal.side.upper(), symbol, result.volume, result.order_id,
+            signal.side.upper(),
+            symbol,
+            result.volume,
+            result.order_id,
         )
         return True, result.order_id

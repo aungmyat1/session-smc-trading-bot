@@ -25,7 +25,6 @@ from typing import Any
 
 from svos.shared.support import now_iso, stable_manifest_hash
 
-
 _SCHEMA_VERSION = "1.0"
 
 
@@ -75,7 +74,13 @@ class IntakeReportBuilder:
             "catalog": catalog or {},
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -83,7 +88,9 @@ class IntakeReportBuilder:
         json_path = dest_dir / f"intake_{report_id[:16]}.json"
         md_path = dest_dir / f"intake_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_intake_md(payload), encoding="utf-8")
 
         return json_path
@@ -116,7 +123,9 @@ def _render_intake_md(report: dict[str, Any]) -> str:
         for f in findings:
             sev = f.get("severity", "INFO")
             prefix = "🔴" if sev == "ERROR" else "🟡" if sev == "WARN" else "ℹ️"
-            sections.append(f"- {prefix} **[{f.get('code', '')}]** {f.get('message', '')}")
+            sections.append(
+                f"- {prefix} **[{f.get('code', '')}]** {f.get('message', '')}"
+            )
 
     catalog = report.get("catalog", {})
     if catalog:
@@ -179,7 +188,13 @@ class AuditReportBuilder:
             "validator_results": validator_results,
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -187,7 +202,9 @@ class AuditReportBuilder:
         json_path = dest_dir / f"audit_{report_id[:16]}.json"
         md_path = dest_dir / f"audit_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_audit_md(payload), encoding="utf-8")
 
         return json_path
@@ -232,9 +249,17 @@ def _render_audit_md(report: dict[str, Any]) -> str:
             sections.append(f"- 🟡 {w}")
 
     if validators:
-        sections += ["", "## Validator Results", "", "| Validator | Score | Status |", "|-----------|-------|--------|"]
+        sections += [
+            "",
+            "## Validator Results",
+            "",
+            "| Validator | Score | Status |",
+            "|-----------|-------|--------|",
+        ]
         for v in validators:
-            sections.append(f"| {v.get('validator_name', '')} | {v.get('score', 0):.1f}% | {v.get('status', '')} |")
+            sections.append(
+                f"| {v.get('validator_name', '')} | {v.get('score', 0):.1f}% | {v.get('status', '')} |"
+            )
 
     if recommendations:
         sections += ["", "## Recommendations", ""]
@@ -292,7 +317,13 @@ class ReplayReportBuilder:
             "replay_summary": replay_summary or {},
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -300,7 +331,9 @@ class ReplayReportBuilder:
         json_path = dest_dir / f"replay_{report_id[:16]}.json"
         md_path = dest_dir / f"replay_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_replay_md(payload), encoding="utf-8")
         return json_path
 
@@ -324,7 +357,13 @@ def _render_replay_md(report: dict[str, Any]) -> str:
         f"- Checks failed: {summary.get('failed_checks', 0)}",
     ]
     if checks:
-        sections += ["", "## Checks", "", "| Check | Status | Message |", "|-------|--------|---------|"]
+        sections += [
+            "",
+            "## Checks",
+            "",
+            "| Check | Status | Message |",
+            "|-------|--------|---------|",
+        ]
         for c in checks:
             s = "PASS" if c.get("passed") else "FAIL"
             msg = str(c.get("message", "")).replace("|", "\\|")
@@ -385,7 +424,13 @@ class BacktestReportBuilder:
             "checks": checks,
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -393,7 +438,9 @@ class BacktestReportBuilder:
         json_path = dest_dir / f"backtest_{report_id[:16]}.json"
         md_path = dest_dir / f"backtest_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_backtest_md(payload), encoding="utf-8")
         return json_path
 
@@ -422,7 +469,13 @@ def _render_backtest_md(report: dict[str, Any]) -> str:
         f"| Win rate | {s.get('win_rate', 0):.1%} |",
     ]
     if checks:
-        sections += ["", "## Gate Checks", "", "| Check | Status | Message |", "|-------|--------|---------|"]
+        sections += [
+            "",
+            "## Gate Checks",
+            "",
+            "| Check | Status | Message |",
+            "|-------|--------|---------|",
+        ]
         for c in checks:
             s2 = "PASS" if c.get("passed") else "FAIL"
             msg = str(c.get("message", "")).replace("|", "\\|")
@@ -463,7 +516,11 @@ class RobustnessReportBuilder:
             "regime_analysis": regime or {},
         }
         component_statuses = {
-            name: ("PASS" if (data.get("passed") or data.get("status") == "PASS") else "FAIL")
+            name: (
+                "PASS"
+                if (data.get("passed") or data.get("status") == "PASS")
+                else "FAIL"
+            )
             for name, data in components.items()
             if data
         }
@@ -477,14 +534,24 @@ class RobustnessReportBuilder:
             "generated_at": generated_at,
             "summary": {
                 "component_count": len([d for d in components.values() if d]),
-                "components_passed": sum(1 for s in component_statuses.values() if s == "PASS"),
-                "components_failed": sum(1 for s in component_statuses.values() if s == "FAIL"),
+                "components_passed": sum(
+                    1 for s in component_statuses.values() if s == "PASS"
+                ),
+                "components_failed": sum(
+                    1 for s in component_statuses.values() if s == "FAIL"
+                ),
             },
             "component_statuses": component_statuses,
             "components": components,
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -492,7 +559,9 @@ class RobustnessReportBuilder:
         json_path = dest_dir / f"robustness_{report_id[:16]}.json"
         md_path = dest_dir / f"robustness_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_robustness_md(payload), encoding="utf-8")
         return json_path
 
@@ -527,7 +596,13 @@ class VirtualDemoReportBuilder:
             "summary": summary,
             "run_manifest": manifest or {},
         }
-        report_id = stable_manifest_hash({"strategy": strategy, "version_id": version_id, "generated_at": generated_at})
+        report_id = stable_manifest_hash(
+            {
+                "strategy": strategy,
+                "version_id": version_id,
+                "generated_at": generated_at,
+            }
+        )
         payload["report_id"] = report_id
 
         dest_dir = self.reports_root / strategy
@@ -535,7 +610,9 @@ class VirtualDemoReportBuilder:
         json_path = dest_dir / f"virtual_demo_{report_id[:16]}.json"
         md_path = dest_dir / f"virtual_demo_{report_id[:16]}.md"
 
-        json_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        json_path.write_text(
+            json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
+        )
         md_path.write_text(_render_virtual_demo_md(payload), encoding="utf-8")
         return json_path
 
@@ -559,7 +636,13 @@ def _render_robustness_md(report: dict[str, Any]) -> str:
         f"- Failed: {s.get('components_failed', 0)}",
     ]
     if comp_statuses:
-        sections += ["", "## Component Results", "", "| Component | Status |", "|-----------|--------|"]
+        sections += [
+            "",
+            "## Component Results",
+            "",
+            "| Component | Status |",
+            "|-----------|--------|",
+        ]
         for name, cs in comp_statuses.items():
             cs_icon = "✅" if cs == "PASS" else "❌"
             sections.append(f"| {name.replace('_', ' ').title()} | {cs_icon} {cs} |")
@@ -573,7 +656,9 @@ def _render_virtual_demo_md(report: dict[str, Any]) -> str:
     s = report.get("summary", {})
     checks = report.get("drift_checks", [])
     fill_rate = s.get("fill_rate", 0)
-    fill_pct = f"{fill_rate:.1%}" if isinstance(fill_rate, (int, float)) else str(fill_rate)
+    fill_pct = (
+        f"{fill_rate:.1%}" if isinstance(fill_rate, (int, float)) else str(fill_rate)
+    )
     sections = [
         f"# Virtual Demo Report — {report['strategy']}",
         "",
@@ -590,8 +675,13 @@ def _render_virtual_demo_md(report: dict[str, Any]) -> str:
         f"- Expected profit factor: {s.get('expected_pf') or 'N/A'}",
     ]
     if checks:
-        sections += ["", "## Drift Checks", "", "| Check | Pass | Expected | Actual | Delta % |",
-                     "|-------|------|----------|--------|---------|"]
+        sections += [
+            "",
+            "## Drift Checks",
+            "",
+            "| Check | Pass | Expected | Actual | Delta % |",
+            "|-------|------|----------|--------|---------|",
+        ]
         for c in checks:
             ok = "✅" if c.get("passed") else "❌"
             sections.append(

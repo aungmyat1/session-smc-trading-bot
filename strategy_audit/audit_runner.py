@@ -11,9 +11,17 @@ from .report_builder import write_reports
 
 
 class StrategyAuditRunner:
-    def __init__(self, engine: StrategyAuditEngine | None = None, output_dir: Path | str | None = None) -> None:
+    def __init__(
+        self,
+        engine: StrategyAuditEngine | None = None,
+        output_dir: Path | str | None = None,
+    ) -> None:
         self.engine = engine or StrategyAuditEngine()
-        self.output_dir = Path(output_dir) if output_dir is not None else Path("reports/strategy_audit")
+        self.output_dir = (
+            Path(output_dir)
+            if output_dir is not None
+            else Path("reports/strategy_audit")
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.validation_config = load_validation_config()
 
@@ -24,7 +32,9 @@ class StrategyAuditRunner:
 
     def from_payload(self, payload: dict[str, Any]) -> AuditReport:
         context = AuditContext(
-            strategy_name=str(payload.get("strategy_name", payload.get("strategy", "UNKNOWN"))),
+            strategy_name=str(
+                payload.get("strategy_name", payload.get("strategy", "UNKNOWN"))
+            ),
             strategy_text=str(payload.get("strategy_text", "")),
             candles=list(payload.get("candles", [])),
             trades=list(payload.get("trades", [])),

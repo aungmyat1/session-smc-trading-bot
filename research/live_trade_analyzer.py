@@ -55,6 +55,7 @@ _PIP_MUL: dict = {"EURUSD": 10_000.0, "GBPUSD": 10_000.0}
 
 # ── JSONL loading ─────────────────────────────────────────────────────────────
 
+
 def load_events(log_file: Path = _TRADE_LOG) -> list:
     """
     Load all events from trades.jsonl, sorted by timestamp.
@@ -79,6 +80,7 @@ def load_events(log_file: Path = _TRADE_LOG) -> list:
 
 # ── Trade lifecycle correlation ───────────────────────────────────────────────
 
+
 def build_trades(events: list) -> list:
     """
     Correlate SIGNAL_CREATED → ORDER_FILLED → POSITION_CLOSED into trade records.
@@ -93,8 +95,10 @@ def build_trades(events: list) -> list:
         entry_signal, entry_fill, sl, tp, sl_pips, lots, order_id,
         result_r, exit_reason, hold_minutes, slippage_pips
     """
-    last_signal: dict = {}             # symbol → most recent SIGNAL_CREATED event
-    open_fills: dict = defaultdict(list)  # symbol → [trade dicts awaiting POSITION_CLOSED]
+    last_signal: dict = {}  # symbol → most recent SIGNAL_CREATED event
+    open_fills: dict = defaultdict(
+        list
+    )  # symbol → [trade dicts awaiting POSITION_CLOSED]
     trades: list = []
 
     for ev in events:
@@ -129,7 +133,9 @@ def build_trades(events: list) -> list:
                 ),
             }
             open_fills[sym].append(trade)
-            last_signal.pop(sym, None)   # consumed — next signal for this symbol is fresh
+            last_signal.pop(
+                sym, None
+            )  # consumed — next signal for this symbol is fresh
 
         elif etype == "POSITION_CLOSED":
             if open_fills[sym]:
@@ -167,6 +173,7 @@ def _compute_slippage_pips(
 
 # ── Period filtering ──────────────────────────────────────────────────────────
 
+
 def filter_period(
     all_trades: list,
     all_events: list,
@@ -176,6 +183,7 @@ def filter_period(
     """
     Filter trades by fill_ts and events by ts to the half-open interval [start, end).
     """
+
     def _in(ts: Optional[datetime]) -> bool:
         return ts is not None and start <= ts < end
 
@@ -198,6 +206,7 @@ def weekly_window(now: datetime) -> tuple:
 
 # ── Metric helpers ────────────────────────────────────────────────────────────
 
+
 def _mean(values: list) -> Optional[float]:
     return round(statistics.mean(values), 4) if values else None
 
@@ -215,6 +224,7 @@ def _pf(r_values: list) -> Optional[float]:
 
 
 # ── Breakdown builders ────────────────────────────────────────────────────────
+
 
 def session_breakdown(trades: list, events: list) -> dict:
     """
@@ -263,9 +273,9 @@ def symbol_breakdown(trades: list, events: list) -> dict:
         if ev.get("event") == "SIGNAL_CREATED":
             sig_counts[ev.get("symbol", "unknown")] += 1
 
-    agg: dict = defaultdict(lambda: {
-        "fills": 0, "wins": 0, "losses": 0, "R": [], "slippage": []
-    })
+    agg: dict = defaultdict(
+        lambda: {"fills": 0, "wins": 0, "losses": 0, "R": [], "slippage": []}
+    )
     for t in trades:
         sym = t.get("symbol") or "unknown"
         agg[sym]["fills"] += 1
@@ -316,7 +326,9 @@ def rejection_breakdown(events: list) -> dict:
         if reason.startswith("SPREAD_TOO_WIDE:"):
             counts["SPREAD_TOO_WIDE"] += 1
             try:
-                spread_pips.append(float(reason.split(":")[1].replace("pip", "").strip()))
+                spread_pips.append(
+                    float(reason.split(":")[1].replace("pip", "").strip())
+                )
             except (IndexError, ValueError):
                 pass
         else:
@@ -393,6 +405,7 @@ def spread_at_entry_summary(events: list) -> dict:
 
 # ── Summary assembler ─────────────────────────────────────────────────────────
 
+
 def compute_summary(
     trades: list,
     events: list,
@@ -410,7 +423,9 @@ def compute_summary(
     r_vals = [t["result_r"] for t in closed]
     wins = [r for r in r_vals if r > 0]
     losses = [r for r in r_vals if r < 0]
-    hold_times = [t["hold_minutes"] for t in closed if t.get("hold_minutes") is not None]
+    hold_times = [
+        t["hold_minutes"] for t in closed if t.get("hold_minutes") is not None
+    ]
     n = len(closed)
 
     signals_total = sum(1 for e in events if e.get("event") == "SIGNAL_CREATED")
@@ -422,7 +437,6 @@ def compute_summary(
         "generated_at": now.isoformat(),
         "period": period,
         "label": label,
-
         # Signal pipeline
         "signals_generated": signals_total,
         "orders_filled": fills_total,
@@ -430,7 +444,6 @@ def compute_summary(
         "errors": errors_total,
         "trades_closed": len(closed),
         "trades_still_open": len(still_open),
-
         # Performance (from POSITION_CLOSED events)
         "trade_count": n,
         "wins": len(wins),
@@ -441,36 +454,35 @@ def compute_summary(
         "PF": _pf(r_vals),
         "best_trade_R": round(max(r_vals), 4) if r_vals else None,
         "worst_trade_R": round(min(r_vals), 4) if r_vals else None,
-
         # Execution: hold time
         "average_hold_time_minutes": _mean(hold_times),
         "min_hold_time_minutes": round(min(hold_times), 1) if hold_times else None,
         "max_hold_time_minutes": round(max(hold_times), 1) if hold_times else None,
-
         # Execution: slippage
         "slippage": slippage_summary(trades),
-
         # Execution: spread (partially recovered)
         "spread_at_entry": spread_at_entry_summary(events),
-
         # Breakdowns
         "session_breakdown": session_breakdown(trades, events),
         "symbol_breakdown": symbol_breakdown(trades, events),
-
         # Rejection analysis
         "rejection_reasons": rejection_breakdown(events),
-
         # Meta
         "data_source": str(_TRADE_LOG),
         "total_events_in_period": len(events),
         "low_sample_warning": (
-            "ST-A2 expected frequency: ~34 trades/yr (~3/month). "
-            "win_rate and PF are not statistically meaningful until n≥30."
-        ) if n < 30 else None,
+            (
+                "ST-A2 expected frequency: ~34 trades/yr (~3/month). "
+                "win_rate and PF are not statistically meaningful until n≥30."
+            )
+            if n < 30
+            else None
+        ),
     }
 
 
 # ── Console output ────────────────────────────────────────────────────────────
+
 
 def _f(v: Optional[float], d: int = 3) -> str:
     return f"{v:.{d}f}" if v is not None else "—"
@@ -500,7 +512,9 @@ def print_summary(s: dict) -> None:
     print()
     print("  [Performance]")
     print(f"  trade_count        : {s['trade_count']}")
-    print(f"  win_rate           : {_pct(s['win_rate'])}  ({s['wins']}W / {s['losses']}L)")
+    print(
+        f"  win_rate           : {_pct(s['win_rate'])}  ({s['wins']}W / {s['losses']}L)"
+    )
     print(f"  average_R          : {_f(s['average_R'])}")
     print(f"  total_R            : {_f(s['total_R'])}")
     pf_str = _f(s["PF"]) if s["PF"] is not None else "— (no losses yet)"
@@ -528,7 +542,9 @@ def print_summary(s: dict) -> None:
     spread = s.get("spread_at_entry", {})
     print(f"  spread_at_entry    : {spread.get('status', 'unknown')}")
     for sym, d in (spread.get("rejected_spreads_by_symbol") or {}).items():
-        print(f"    [{sym}] {d['count']} rejections  avg={d['avg_pip']} pip  max={d['max_pip']} pip")
+        print(
+            f"    [{sym}] {d['count']} rejections  avg={d['avg_pip']} pip  max={d['max_pip']} pip"
+        )
 
     print()
     print("  [Session Breakdown]")
@@ -544,7 +560,8 @@ def print_summary(s: dict) -> None:
     for sym, d in (s.get("symbol_breakdown") or {}).items():
         slip_str = (
             f"  slip={_f(d['slippage_avg_pips'], 1)}pip"
-            if (d.get("slippage_samples") or 0) > 0 else ""
+            if (d.get("slippage_samples") or 0) > 0
+            else ""
         )
         print(
             f"    {sym:<10}  sigs={d['signals']}  fills={d['fills']}  "
@@ -553,8 +570,11 @@ def print_summary(s: dict) -> None:
         )
 
     rej = s.get("rejection_reasons") or {}
-    display_rej = {k: v for k, v in rej.items()
-                   if not k.endswith(("_avg_pip", "_max_pip", "_values"))}
+    display_rej = {
+        k: v
+        for k, v in rej.items()
+        if not k.endswith(("_avg_pip", "_max_pip", "_values"))
+    }
     if display_rej:
         print()
         print("  [Rejection Reasons]")
@@ -569,6 +589,7 @@ def print_summary(s: dict) -> None:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def run(
     write_daily: bool = True,
@@ -593,9 +614,13 @@ def run(
     if write_daily:
         d_start, d_end = daily_window(now)
         d_trades, d_events = filter_period(all_trades, events, d_start, d_end)
-        daily = compute_summary(d_trades, d_events, "daily", now.strftime("%Y-%m-%d"), now)
+        daily = compute_summary(
+            d_trades, d_events, "daily", now.strftime("%Y-%m-%d"), now
+        )
         _DAILY_SUMMARY.parent.mkdir(parents=True, exist_ok=True)
-        _DAILY_SUMMARY.write_text(json.dumps(daily, indent=2, default=str), encoding="utf-8")
+        _DAILY_SUMMARY.write_text(
+            json.dumps(daily, indent=2, default=str), encoding="utf-8"
+        )
         if not quiet:
             print_summary(daily)
             print(f"→ {_DAILY_SUMMARY}")
@@ -608,7 +633,9 @@ def run(
             w_trades, w_events, "weekly", f"{iso_year}-W{iso_week:02d}", now
         )
         _WEEKLY_SUMMARY.parent.mkdir(parents=True, exist_ok=True)
-        _WEEKLY_SUMMARY.write_text(json.dumps(weekly, indent=2, default=str), encoding="utf-8")
+        _WEEKLY_SUMMARY.write_text(
+            json.dumps(weekly, indent=2, default=str), encoding="utf-8"
+        )
         if not quiet:
             print_summary(weekly)
             print(f"→ {_WEEKLY_SUMMARY}")
@@ -620,8 +647,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OPS-03 Live Trade Analyzer")
     parser.add_argument("--daily", action="store_true", help="Daily summary only")
     parser.add_argument("--weekly", action="store_true", help="Weekly summary only")
-    parser.add_argument("--log", type=Path, default=_TRADE_LOG, metavar="PATH",
-                        help="JSONL log file (default: logs/trades.jsonl)")
+    parser.add_argument(
+        "--log",
+        type=Path,
+        default=_TRADE_LOG,
+        metavar="PATH",
+        help="JSONL log file (default: logs/trades.jsonl)",
+    )
     parser.add_argument("--quiet", action="store_true", help="Suppress console output")
     args = parser.parse_args()
 

@@ -8,7 +8,6 @@ All times are UTC. Weekends are always blocked.
 from datetime import datetime, time, timezone
 from typing import Optional
 
-
 SESSIONS = {
     "london": (time(7, 0), time(10, 0)),
     "newyork": (time(13, 0), time(16, 0)),
@@ -53,7 +52,10 @@ def seconds_to_next_session(dt: Optional[datetime] = None) -> int:
             continue
         for session_name, (start, _end) in SESSIONS.items():
             session_open = candidate_day.replace(
-                hour=start.hour, minute=start.minute, second=0, microsecond=0,
+                hour=start.hour,
+                minute=start.minute,
+                second=0,
+                microsecond=0,
                 tzinfo=timezone.utc,
             )
             if session_open > dt:

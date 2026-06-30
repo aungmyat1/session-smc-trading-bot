@@ -9,6 +9,7 @@ Usage:
     python3 scripts/bootstrap_svos.py
     python3 scripts/bootstrap_svos.py --root /path/to/project
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,12 +19,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from svos.orchestration.service import SVOSPlatform
+from svos.orchestration.service import SVOSPlatform  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bootstrap SVOS JSONL registry")
-    parser.add_argument("--root", default=str(ROOT), help="Project root (default: repo root)")
+    parser.add_argument(
+        "--root", default=str(ROOT), help="Project root (default: repo root)"
+    )
     args = parser.parse_args()
 
     root = Path(args.root)
@@ -55,13 +58,17 @@ def main() -> None:
         status = "OK" if (state_ok and versions_ok) else "MISSING"
         if not (state_ok and versions_ok):
             all_ok = False
-        print(f"  {name:<25} state.json={'yes' if state_ok else 'NO'} versions.jsonl={'yes' if versions_ok else 'NO'}  [{status}]")
+        print(
+            f"  {name:<25} state.json={'yes' if state_ok else 'NO'} versions.jsonl={'yes' if versions_ok else 'NO'}  [{status}]"
+        )
 
     print()
     if all_ok:
         print("PASS: all JSONL registry files written.")
     else:
-        print("FAIL: some registry files missing — check errors above.", file=sys.stderr)
+        print(
+            "FAIL: some registry files missing — check errors above.", file=sys.stderr
+        )
         sys.exit(1)
 
 

@@ -1,6 +1,11 @@
 """Tests for session_smc/liquidity_detector.py"""
+
 import pytest
-from session_smc.liquidity_detector import build_session_range, classify_session, detect_sweep
+from session_smc.liquidity_detector import (
+    build_session_range,
+    classify_session,
+    detect_sweep,
+)
 
 
 def c(o, h, lo, cl):
@@ -8,6 +13,7 @@ def c(o, h, lo, cl):
 
 
 # ── build_session_range ───────────────────────────────────────────────────────
+
 
 class TestBuildSessionRange:
     def _range_candles(self):
@@ -48,8 +54,9 @@ class TestBuildSessionRange:
 
     def test_custom_range_bars(self):
         # Only first 4 bars used
-        candles = [c(1.09, 1.10, 1.08, 1.09)] * 4 + \
-                  [c(1.09, 1.20, 1.00, 1.09)] * 4  # extreme bars shouldn't count
+        candles = [c(1.09, 1.10, 1.08, 1.09)] * 4 + [
+            c(1.09, 1.20, 1.00, 1.09)
+        ] * 4  # extreme bars shouldn't count
         r = build_session_range(candles, range_bars=4, min_range_pips=5.0)
         assert r is not None
         assert r["high"] == pytest.approx(1.10)
@@ -57,6 +64,7 @@ class TestBuildSessionRange:
 
 
 # ── classify_session ──────────────────────────────────────────────────────────
+
 
 class TestClassifySession:
     def test_range_session(self):
@@ -87,6 +95,7 @@ class TestClassifySession:
 
 # ── detect_sweep ─────────────────────────────────────────────────────────────
 
+
 class TestDetectSweep:
     def _basic_range(self):
         return {"high": 1.0920, "low": 1.0900}
@@ -94,8 +103,9 @@ class TestDetectSweep:
     def test_bullish_sweep_detected(self):
         sess_range = self._basic_range()
         # Build: 8 range bars, then one sweep bar (low < 1.0900, close > 1.0900)
-        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + \
-                  [c(1.0905, 1.0910, 1.0895, 1.0908)]  # wick below, close inside
+        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + [
+            c(1.0905, 1.0910, 1.0895, 1.0908)
+        ]  # wick below, close inside
         result = detect_sweep(candles, sess_range, "bullish", from_idx=8)
         assert result is not None
         assert result["index"] == 8
@@ -104,8 +114,9 @@ class TestDetectSweep:
 
     def test_bearish_sweep_detected(self):
         sess_range = self._basic_range()
-        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + \
-                  [c(1.0915, 1.0925, 1.0905, 1.0912)]  # wick above 1.0920, close below
+        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + [
+            c(1.0915, 1.0925, 1.0905, 1.0912)
+        ]  # wick above 1.0920, close below
         result = detect_sweep(candles, sess_range, "bearish", from_idx=8)
         assert result is not None
         assert result["wick_extreme"] == pytest.approx(1.0925)
@@ -113,8 +124,9 @@ class TestDetectSweep:
     def test_no_sweep_when_close_stays_outside(self):
         # Bullish: bar breaks below session low but close also below → no sweep
         sess_range = self._basic_range()
-        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + \
-                  [c(1.089, 1.090, 1.088, 1.0895)]  # close < 1.0900
+        candles = [c(1.091, 1.092, 1.090, 1.091)] * 8 + [
+            c(1.089, 1.090, 1.088, 1.0895)
+        ]  # close < 1.0900
         result = detect_sweep(candles, sess_range, "bullish", from_idx=8)
         assert result is None
 
@@ -128,9 +140,11 @@ class TestDetectSweep:
     def test_from_idx_respected(self):
         # Sweep bar is at index 5 but from_idx=8 → should not be found
         sess_range = self._basic_range()
-        candles = [c(1.091, 1.092, 1.090, 1.091)] * 5 + \
-                  [c(1.0905, 1.0910, 1.0895, 1.0908)] + \
-                  [c(1.091, 1.092, 1.090, 1.091)] * 6
+        candles = (
+            [c(1.091, 1.092, 1.090, 1.091)] * 5
+            + [c(1.0905, 1.0910, 1.0895, 1.0908)]
+            + [c(1.091, 1.092, 1.090, 1.091)] * 6
+        )
         result = detect_sweep(candles, sess_range, "bullish", from_idx=8)
         assert result is None or result["index"] >= 8
 

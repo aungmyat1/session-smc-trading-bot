@@ -30,7 +30,7 @@ class NYMomentumAdapter(BaseStrategy):
         except ImportError:
             return None
 
-        m15    = data.get("m15", [])
+        m15 = data.get("m15", [])
         symbol = data.get("symbol", "")
 
         if len(m15) < 30:
@@ -43,10 +43,10 @@ class NYMomentumAdapter(BaseStrategy):
         raw = raw_list[-1]
         action = "BUY" if raw.direction == "LONG" else "SELL"
 
-        pip     = _PIP.get(symbol, 0.0001)
+        pip = _PIP.get(symbol, 0.0001)
         sl_pips = abs(raw.entry_price - raw.sl_price) / pip
         tp_pips = abs(raw.tp_price - raw.entry_price) / pip
-        rr      = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
+        rr = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
 
         return Signal(
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -58,12 +58,12 @@ class NYMomentumAdapter(BaseStrategy):
             stop_loss=float(raw.sl_price),
             take_profit=float(raw.tp_price),
             risk_percent=0.25,
-            confidence=min(1.0, rr / 2.5),   # 2R → 0.8, 2.5R+ → 1.0
+            confidence=min(1.0, rr / 2.5),  # 2R → 0.8, 2.5R+ → 1.0
             metadata={
-                "session":     raw.session,
-                "reason":      raw.reason,
-                "risk_pips":   round(sl_pips, 1),
+                "session": raw.session,
+                "reason": raw.reason,
+                "risk_pips": round(sl_pips, 1),
                 "reward_pips": round(tp_pips, 1),
-                "rr":          rr,
+                "rr": rr,
             },
         )

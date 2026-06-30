@@ -1,6 +1,5 @@
 """Tests for the validation gate and regression engines."""
 
-
 from core.strategy_registry import get_strategy_manifest
 
 
@@ -19,8 +18,10 @@ strategies:
     symbols: [EURUSD, GBPUSD]
     timeframes: [M15, H4]
 """.strip() + "\n"
-from research.regression.engine import RegressionEngine
-from research.validation.engine import (
+
+
+from research.regression.engine import RegressionEngine  # noqa: E402
+from research.validation.engine import (  # noqa: E402
     BacktestValidationInput,
     ReplayTrade,
     ReplayValidationInput,
@@ -45,7 +46,13 @@ def _valid_replay() -> ReplayValidationInput:
                 required_features=["sweep", "bias"],
             )
         ],
-        state_transitions=[("IDLE", "SETUP"), ("SETUP", "CONFIRMED"), ("CONFIRMED", "ORDER_PLACED"), ("ORDER_PLACED", "FILLED"), ("FILLED", "CLOSED")],
+        state_transitions=[
+            ("IDLE", "SETUP"),
+            ("SETUP", "CONFIRMED"),
+            ("CONFIRMED", "ORDER_PLACED"),
+            ("ORDER_PLACED", "FILLED"),
+            ("FILLED", "CLOSED"),
+        ],
         required_features=["sweep", "bias"],
         available_features=["sweep", "bias"],
     )
@@ -81,7 +88,10 @@ def test_replay_validation_failure_duplicate_trade_id():
     payload.trades.append(payload.trades[0])
     result = ValidationGate().validate_replay(payload)
     assert result.status == "FAIL"
-    assert any(check.name == "no_duplicate_trade_ids" and not check.passed for check in result.checks)
+    assert any(
+        check.name == "no_duplicate_trade_ids" and not check.passed
+        for check in result.checks
+    )
 
 
 def test_backtest_validation_success():
@@ -95,7 +105,9 @@ def test_backtest_validation_failure_low_pf():
     payload.profit_factor = 0.9
     result = ValidationGate().validate_backtest(payload)
     assert result.status == "FAIL"
-    assert any(check.name == "profit_factor" and not check.passed for check in result.checks)
+    assert any(
+        check.name == "profit_factor" and not check.passed for check in result.checks
+    )
 
 
 def test_regression_detection_warning_and_fail():
@@ -106,13 +118,41 @@ def test_regression_detection_warning_and_fail():
         }
     )
     warn = engine.compare(
-        {"profit_factor": 1.12, "win_rate": 0.34, "expectancy": 0.10, "max_drawdown": 5.0, "trade_count": 110, "net_return": 11.0},
-        {"profit_factor": 1.16, "win_rate": 0.35, "expectancy": 0.11, "max_drawdown": 4.7, "trade_count": 112, "net_return": 11.5},
+        {
+            "profit_factor": 1.12,
+            "win_rate": 0.34,
+            "expectancy": 0.10,
+            "max_drawdown": 5.0,
+            "trade_count": 110,
+            "net_return": 11.0,
+        },
+        {
+            "profit_factor": 1.16,
+            "win_rate": 0.35,
+            "expectancy": 0.11,
+            "max_drawdown": 4.7,
+            "trade_count": 112,
+            "net_return": 11.5,
+        },
     )
     assert warn.status in {"WARNING", "PASS"}
     fail = engine.compare(
-        {"profit_factor": 0.95, "win_rate": 0.30, "expectancy": 0.05, "max_drawdown": 8.0, "trade_count": 80, "net_return": 4.0},
-        {"profit_factor": 1.20, "win_rate": 0.35, "expectancy": 0.10, "max_drawdown": 4.0, "trade_count": 120, "net_return": 12.0},
+        {
+            "profit_factor": 0.95,
+            "win_rate": 0.30,
+            "expectancy": 0.05,
+            "max_drawdown": 8.0,
+            "trade_count": 80,
+            "net_return": 4.0,
+        },
+        {
+            "profit_factor": 1.20,
+            "win_rate": 0.35,
+            "expectancy": 0.10,
+            "max_drawdown": 4.0,
+            "trade_count": 120,
+            "net_return": 12.0,
+        },
     )
     assert fail.status == "FAIL"
 
@@ -127,8 +167,22 @@ def test_validation_reports_do_not_mutate_lifecycle(tmp_path):
     bundle = runner.run(
         _valid_replay(),
         _valid_backtest(),
-        {"profit_factor": 1.25, "win_rate": 0.35, "expectancy": 0.12, "max_drawdown": 4.5, "trade_count": 120, "net_return": 12.0},
-        previous_metrics={"profit_factor": 1.20, "win_rate": 0.34, "expectancy": 0.11, "max_drawdown": 4.8, "trade_count": 118, "net_return": 11.0},
+        {
+            "profit_factor": 1.25,
+            "win_rate": 0.35,
+            "expectancy": 0.12,
+            "max_drawdown": 4.5,
+            "trade_count": 120,
+            "net_return": 12.0,
+        },
+        previous_metrics={
+            "profit_factor": 1.20,
+            "win_rate": 0.34,
+            "expectancy": 0.11,
+            "max_drawdown": 4.8,
+            "trade_count": 118,
+            "net_return": 11.0,
+        },
         current_stage="backtest",
     )
     assert bundle.overall_status == "PASS"
@@ -150,8 +204,22 @@ def test_validation_runner_can_skip_promotion(tmp_path):
     bundle = runner.run(
         _valid_replay(),
         _valid_backtest(),
-        {"profit_factor": 1.25, "win_rate": 0.35, "expectancy": 0.12, "max_drawdown": 4.5, "trade_count": 120, "net_return": 12.0},
-        previous_metrics={"profit_factor": 1.20, "win_rate": 0.34, "expectancy": 0.11, "max_drawdown": 4.8, "trade_count": 118, "net_return": 11.0},
+        {
+            "profit_factor": 1.25,
+            "win_rate": 0.35,
+            "expectancy": 0.12,
+            "max_drawdown": 4.5,
+            "trade_count": 120,
+            "net_return": 12.0,
+        },
+        previous_metrics={
+            "profit_factor": 1.20,
+            "win_rate": 0.34,
+            "expectancy": 0.11,
+            "max_drawdown": 4.8,
+            "trade_count": 118,
+            "net_return": 11.0,
+        },
         current_stage="demo",
         promote=False,
     )

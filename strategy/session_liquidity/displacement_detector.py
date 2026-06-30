@@ -46,6 +46,7 @@ class DisplacementResult:
         reason          — descriptor; 'bullish_displacement' | 'bearish_displacement'
                           when detected, rejection detail otherwise
     """
+
     detected: bool
     side: "str | None"
     body_size: float
@@ -55,6 +56,7 @@ class DisplacementResult:
 
 
 # ── ATR ───────────────────────────────────────────────────────────────────────
+
 
 def wilder_atr(candles: list[dict], period: int = 14) -> "list[float | None]":
     """
@@ -104,6 +106,7 @@ def wilder_atr(candles: list[dict], period: int = 14) -> "list[float | None]":
 
 # ── Displacement gate ─────────────────────────────────────────────────────────
 
+
 def detect_displacement(
     candle: dict,
     atr: "float | None",
@@ -130,26 +133,38 @@ def detect_displacement(
     """
     # ── 1. Validate candle ───────────────────────────────────────────────────
     try:
-        high  = float(candle["high"])
-        low   = float(candle["low"])
+        high = float(candle["high"])
+        low = float(candle["low"])
         open_ = float(candle["open"])
         close = float(candle["close"])
     except (KeyError, TypeError, ValueError):
         return DisplacementResult(
-            detected=False, side=None, body_size=0.0,
-            atr=atr, close_position=None, reason="invalid_candle",
+            detected=False,
+            side=None,
+            body_size=0.0,
+            atr=atr,
+            close_position=None,
+            reason="invalid_candle",
         )
 
     # ── 2. ATR availability ──────────────────────────────────────────────────
     if atr is None:
         return DisplacementResult(
-            detected=False, side=None, body_size=abs(close - open_),
-            atr=None, close_position=None, reason="atr_unavailable",
+            detected=False,
+            side=None,
+            body_size=abs(close - open_),
+            atr=None,
+            close_position=None,
+            reason="atr_unavailable",
         )
     if atr <= 0:
         return DisplacementResult(
-            detected=False, side=None, body_size=abs(close - open_),
-            atr=atr, close_position=None, reason="atr_zero",
+            detected=False,
+            side=None,
+            body_size=abs(close - open_),
+            atr=atr,
+            close_position=None,
+            reason="atr_zero",
         )
 
     # ── 3. Zero-range guard ──────────────────────────────────────────────────
@@ -157,8 +172,12 @@ def detect_displacement(
     if candle_range <= 0:
         body_zr = abs(close - open_)
         return DisplacementResult(
-            detected=False, side=None, body_size=body_zr,
-            atr=atr, close_position=None, reason="zero_range_candle",
+            detected=False,
+            side=None,
+            body_size=body_zr,
+            atr=atr,
+            close_position=None,
+            reason="zero_range_candle",
         )
 
     # ── 4. Body gate (strict >) ───────────────────────────────────────────────
@@ -167,8 +186,11 @@ def detect_displacement(
 
     if body <= threshold:
         return DisplacementResult(
-            detected=False, side=None, body_size=body,
-            atr=atr, close_position=None,
+            detected=False,
+            side=None,
+            body_size=body,
+            atr=atr,
+            close_position=None,
             reason=f"body({body:.5f}) ≤ {mult}×ATR({threshold:.5f})",
         )
 
@@ -178,32 +200,47 @@ def detect_displacement(
     if direction == "long":
         if close_pos > 0.75:
             return DisplacementResult(
-                detected=True, side="long", body_size=body,
-                atr=atr, close_position=close_pos,
+                detected=True,
+                side="long",
+                body_size=body,
+                atr=atr,
+                close_position=close_pos,
                 reason="bullish_displacement",
             )
         return DisplacementResult(
-            detected=False, side=None, body_size=body,
-            atr=atr, close_position=close_pos,
+            detected=False,
+            side=None,
+            body_size=body,
+            atr=atr,
+            close_position=close_pos,
             reason=f"close_pos({close_pos:.2%}) ≤ 75% (bullish quartile)",
         )
 
     if direction == "short":
         if close_pos < 0.25:
             return DisplacementResult(
-                detected=True, side="short", body_size=body,
-                atr=atr, close_position=close_pos,
+                detected=True,
+                side="short",
+                body_size=body,
+                atr=atr,
+                close_position=close_pos,
                 reason="bearish_displacement",
             )
         return DisplacementResult(
-            detected=False, side=None, body_size=body,
-            atr=atr, close_position=close_pos,
+            detected=False,
+            side=None,
+            body_size=body,
+            atr=atr,
+            close_position=close_pos,
             reason=f"close_pos({close_pos:.2%}) ≥ 25% (bearish quartile)",
         )
 
     # ── 6. Unknown direction ──────────────────────────────────────────────────
     return DisplacementResult(
-        detected=False, side=None, body_size=body,
-        atr=atr, close_position=close_pos,
+        detected=False,
+        side=None,
+        body_size=body,
+        atr=atr,
+        close_position=close_pos,
         reason=f"unknown_direction: {direction!r}",
     )

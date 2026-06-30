@@ -4,16 +4,25 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from execution_simulator import ExecutionLog, EventStream, MarketEvent, MarketFeed, ReplayClock, VirtualBroker
+from execution_simulator import (
+    ExecutionLog,
+    EventStream,
+    MarketEvent,
+    MarketFeed,
+    ReplayClock,
+    VirtualBroker,
+)
 from execution_simulator.broker.virtual_broker import VirtualBrokerConfig
-
 
 UTC = timezone.utc
 
 
-def _event(offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD") -> MarketEvent:
+def _event(
+    offset_minutes: int, bid: float, ask: float, symbol: str = "EURUSD"
+) -> MarketEvent:
     return MarketEvent(
-        timestamp=datetime(2026, 6, 27, 8, 0, tzinfo=UTC) + timedelta(minutes=offset_minutes),
+        timestamp=datetime(2026, 6, 27, 8, 0, tzinfo=UTC)
+        + timedelta(minutes=offset_minutes),
         symbol=symbol,
         bid=bid,
         ask=ask,
@@ -40,7 +49,9 @@ def test_market_feed_returns_events_in_order():
 @pytest.mark.asyncio
 async def test_virtual_broker_places_and_closes_order(tmp_path, monkeypatch):
     log = ExecutionLog(tmp_path / "execution.sqlite3")
-    feed = MarketFeed(EventStream([_event(0, 1.0999, 1.1001), _event(1, 1.1002, 1.1004)]))
+    feed = MarketFeed(
+        EventStream([_event(0, 1.0999, 1.1001), _event(1, 1.1002, 1.1004)])
+    )
     broker = VirtualBroker(
         feed=feed,
         config=VirtualBrokerConfig(balance=1_000.0, max_spread_pips={"EURUSD": 5.0}),
@@ -68,12 +79,19 @@ async def test_virtual_broker_places_and_closes_order(tmp_path, monkeypatch):
     next_tick = feed.get_tick()
     assert next_tick is not None
     broker.on_market_event(next_tick)
-    assert await broker.close_position(broker._positions.open_positions()[0].position_id, reason="TEST")
+    assert await broker.close_position(
+        broker._positions.open_positions()[0].position_id, reason="TEST"
+    )
     summary = broker.execution_summary()
     assert summary["orders"] == 1
     assert summary["positions"] == 1
     event_types = [event.event_type for event in broker.execution_events()]
-    assert event_types[:4] == ["ORDER_RECEIVED", "ORDER_VALIDATED", "ORDER_FILLED", "POSITION_OPENED"]
+    assert event_types[:4] == [
+        "ORDER_RECEIVED",
+        "ORDER_VALIDATED",
+        "ORDER_FILLED",
+        "POSITION_OPENED",
+    ]
     assert "POSITION_CLOSED" in event_types
 
 
@@ -99,5 +117,10 @@ def test_execution_log_records_comparisons(tmp_path):
         latency_ms=150,
         verdict="PASS",
     )
-    assert log.summary() == {"orders": 1, "positions": 0, "fills": 0, "signal_comparison": 1}
+    assert log.summary() == {
+        "orders": 1,
+        "positions": 0,
+        "fills": 0,
+        "signal_comparison": 1,
+    }
     assert len(log.fetch("orders")) == 1

@@ -13,6 +13,7 @@ Coverage:
   - reconnect_if_needed(): reconnect attempted on !is_connected
   - shutdown: stop_event causes loop to exit promptly
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,6 +45,7 @@ _UTC = timezone.utc
 # ═══════════════════════════════════════════════════════════════════════════════
 #  session_label — DST-aware (uses session_builder.classify_session internally)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestSessionLabel:
     # Winter (EST = UTC-5): London 07:00–10:00 UTC, NY 12:00–15:00 UTC
@@ -142,6 +144,7 @@ class TestSessionLabel:
 #  spread_pips — pip-size-corrected
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestSpreadPips:
     def test_eurusd_standard(self):
         # bid=1.10000, ask=1.10014 → 1.4 pip
@@ -170,6 +173,7 @@ class TestSpreadPips:
 
     def test_pip_size_table_covers_all_default_pairs(self):
         from scripts.capture_spreads import PAIRS
+
         for p in PAIRS:
             assert p in PIP_SIZE, f"{p} missing from PIP_SIZE"
 
@@ -177,6 +181,7 @@ class TestSpreadPips:
 # ═══════════════════════════════════════════════════════════════════════════════
 #  csv_row — schema matches CSV_HEADER
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestCsvRow:
     def test_row_length_matches_header(self):
@@ -190,8 +195,8 @@ class TestCsvRow:
         # time_utc, symbol, session, hour, minute, spread_pips
         assert row[1] == "EURUSD"
         assert row[2] == "london"
-        assert row[3] == 8       # hour
-        assert row[4] == 30      # minute
+        assert row[3] == 8  # hour
+        assert row[4] == 30  # minute
         assert row[5] == pytest.approx(1.4, abs=0.001)
 
     def test_time_utc_is_iso_string(self):
@@ -215,6 +220,7 @@ class TestCsvRow:
 # ═══════════════════════════════════════════════════════════════════════════════
 #  update_agg — aggregation correctness
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestUpdateAgg:
     def test_initial_accumulation(self):
@@ -255,6 +261,7 @@ class TestUpdateAgg:
 #  build_summary — report formatting and commission arithmetic
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestBuildSummary:
     def _make_agg(self, entries):
         """Helper: build agg dict from list of (sym, sess, total, count)."""
@@ -279,10 +286,12 @@ class TestBuildSummary:
         assert "4.00" in lines[0] or "4.0" in lines[0]
 
     def test_multiple_sessions_averaged(self):
-        agg = self._make_agg([
-            ("EURUSD", "london", 7.0, 5),      # avg 1.4
-            ("EURUSD", "new_york", 9.0, 5),    # avg 1.8
-        ])
+        agg = self._make_agg(
+            [
+                ("EURUSD", "london", 7.0, 5),  # avg 1.4
+                ("EURUSD", "new_york", 9.0, 5),  # avg 1.8
+            ]
+        )
         # combined avg = (7+9)/(5+5) = 1.6
         lines = build_summary(agg, 0.0, ["EURUSD"])
         assert "1.60" in lines[0] or "1.6" in lines[0]
@@ -293,10 +302,12 @@ class TestBuildSummary:
         assert "no killzone samples" in lines[0]
 
     def test_multiple_pairs(self):
-        agg = self._make_agg([
-            ("EURUSD", "london", 7.0, 5),
-            ("GBPUSD", "london", 9.0, 5),
-        ])
+        agg = self._make_agg(
+            [
+                ("EURUSD", "london", 7.0, 5),
+                ("GBPUSD", "london", 9.0, 5),
+            ]
+        )
         lines = build_summary(agg, 0.0, ["EURUSD", "GBPUSD"])
         assert len(lines) == 2
         assert any("EURUSD" in line for line in lines)
@@ -320,8 +331,11 @@ class TestBuildSummary:
 #  reconnect_if_needed — broker reconnect logic
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestReconnectIfNeeded:
-    def _make_client(self, *, is_connected: bool, reconnect_returns: bool = True) -> MagicMock:
+    def _make_client(
+        self, *, is_connected: bool, reconnect_returns: bool = True
+    ) -> MagicMock:
         client = MagicMock()
         client.is_connected = is_connected
         client.reconnect = AsyncMock(return_value=reconnect_returns)
@@ -364,12 +378,14 @@ class TestReconnectIfNeeded:
 #  shutdown — stop_event exits promptly
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestShutdownBehavior:
     def test_stop_event_breaks_wait(self):
         """
         Verify that setting stop_event causes asyncio.wait_for(stop_event.wait())
         to return immediately rather than waiting the full interval.
         """
+
         async def _run():
             stop_event = asyncio.Event()
 
@@ -394,6 +410,7 @@ class TestShutdownBehavior:
         """
         If stop_event is set before the wait, the loop exits immediately.
         """
+
         async def _run():
             stop_event = asyncio.Event()
             stop_event.set()  # set before waiting
@@ -411,10 +428,11 @@ class TestShutdownBehavior:
 #  Integration: session_label + spread_pips + csv_row produce consistent data
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestEndToEndRowProduction:
     def test_london_sample_row_round_trips(self):
         """A sample row captured during London has the correct session tag."""
-        dt = datetime(2024, 1, 15, 8, 0, tzinfo=_UTC)   # winter, 03:00 EST → london
+        dt = datetime(2024, 1, 15, 8, 0, tzinfo=_UTC)  # winter, 03:00 EST → london
         sess = session_label(dt)
         sp = spread_pips(1.10000, 1.10014, "EURUSD")
         row = csv_row(dt, "EURUSD", sess, sp)

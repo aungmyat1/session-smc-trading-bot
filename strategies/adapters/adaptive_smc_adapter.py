@@ -31,29 +31,29 @@ class AdaptiveSMCAdapter(BaseStrategy):
         except ImportError:
             return None
 
-        m15    = data.get("m15", [])
-        h4     = data.get("h4", [])
+        m15 = data.get("m15", [])
+        h4 = data.get("h4", [])
         symbol = data.get("symbol", "")
 
         if len(m15) < 50:
             return None
 
-        strategy  = SMCSessionStrategy()
-        raw_list  = strategy.generate_signals(m15, h4, symbol)
+        strategy = SMCSessionStrategy()
+        raw_list = strategy.generate_signals(m15, h4, symbol)
 
         if not raw_list:
             return None
 
-        raw    = raw_list[-1]
+        raw = raw_list[-1]
         action = "BUY" if raw.direction == "LONG" else "SELL"
 
-        pip     = _PIP.get(symbol, 0.0001)
+        pip = _PIP.get(symbol, 0.0001)
         sl_pips = abs(raw.entry_price - raw.sl_price) / pip
         tp_pips = abs(raw.tp_price - raw.entry_price) / pip
-        rr      = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
+        rr = round(tp_pips / sl_pips, 2) if sl_pips else 0.0
 
         # Adaptive SMC requires both liquidity swept + structure confirmed
-        liquidity_swept    = raw.metadata.get("liquidity_swept", False)
+        liquidity_swept = raw.metadata.get("liquidity_swept", False)
         structure_confirmed = raw.metadata.get("structure_confirmed", False)
         confidence = 0.6
         if liquidity_swept:
@@ -73,12 +73,12 @@ class AdaptiveSMCAdapter(BaseStrategy):
             risk_percent=0.25,
             confidence=round(confidence, 2),
             metadata={
-                "session":              raw.session,
-                "reason":               raw.reason,
-                "risk_pips":            round(sl_pips, 1),
-                "reward_pips":          round(tp_pips, 1),
-                "rr":                   rr,
-                "liquidity_swept":      liquidity_swept,
-                "structure_confirmed":  structure_confirmed,
+                "session": raw.session,
+                "reason": raw.reason,
+                "risk_pips": round(sl_pips, 1),
+                "reward_pips": round(tp_pips, 1),
+                "rr": rr,
+                "liquidity_swept": liquidity_swept,
+                "structure_confirmed": structure_confirmed,
             },
         )
