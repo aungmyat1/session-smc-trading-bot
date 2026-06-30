@@ -53,13 +53,9 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import shared helpers from live_trade_analyzer (same research package)
-from research.live_trade_analyzer import (
-    load_events,
-    build_trades,
-    filter_period,
-    daily_window,
-    weekly_window,
-)
+from research.live_trade_analyzer import (build_trades, daily_window,
+                                          filter_period, load_events,
+                                          weekly_window)
 
 _ROOT = Path(__file__).parent.parent
 _TRADE_LOG = _ROOT / "logs" / "trades.jsonl"

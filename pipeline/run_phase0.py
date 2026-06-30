@@ -24,12 +24,8 @@ import polars as pl
 
 from core.strategy_registry import get_strategy_manifest
 from db.runtime import resolve_database_url
-from .config import (
-    FEATURES_DIR,
-    SPREAD_STANDARD,
-    SPREAD_STRESS_2X,
-    SYMBOLS,
-)
+
+from .config import FEATURES_DIR, SPREAD_STANDARD, SPREAD_STRESS_2X, SYMBOLS
 from .pipeline_02_build_features import process_symbol as build_symbol_features
 from .pipeline_03_replay_engine import evaluate_gate, replay_symbol
 from .pipeline_04_write_db import write_all

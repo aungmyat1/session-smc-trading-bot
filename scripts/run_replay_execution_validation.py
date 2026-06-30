@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import argparse
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -12,9 +12,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from execution_validation.replay_bridge import (
-    run_replay_validation_from_candles,
-)  # noqa: E402
+from execution_validation.replay_bridge import \
+    run_replay_validation_from_candles  # noqa: E402
 
 
 def _load_json(path: str | None) -> dict:

@@ -10,9 +10,10 @@ Entry point:
     python3 scripts/run_replay.py
 """
 
-from replay.engine import ReplayEngine, ReplayConfig, ReplayTrade, ReplayResult
-from replay.metrics import compute_metrics, gate_check, print_summary, GateResult
+from replay.engine import ReplayConfig, ReplayEngine, ReplayResult, ReplayTrade
 from replay.exporter import export_csv, export_report, export_smoke_test
+from replay.metrics import (GateResult, compute_metrics, gate_check,
+                            print_summary)
 
 __all__ = [
     "ReplayEngine",

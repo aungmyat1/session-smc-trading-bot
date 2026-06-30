@@ -24,19 +24,9 @@ from typing import Any, Callable, Optional
 
 import polars as pl
 
-from .config import (
-    DATA_DIR,
-    FEATURES_DIR,
-    PHASE0_MIN_NET_PF,
-    PHASE0_MIN_TRADES,
-    PIP,
-    SESSIONS,
-    SIGNAL_CONFIG,
-    SPREAD_STANDARD,
-    SPREAD_STRESS_2X,
-    SYMBOLS,
-    SpreadConfig,
-)
+from .config import (DATA_DIR, FEATURES_DIR, PHASE0_MIN_NET_PF,
+                     PHASE0_MIN_TRADES, PIP, SESSIONS, SIGNAL_CONFIG,
+                     SPREAD_STANDARD, SPREAD_STRESS_2X, SYMBOLS, SpreadConfig)
 
 _UTC = timezone.utc
 

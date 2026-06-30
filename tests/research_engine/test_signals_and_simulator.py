@@ -10,15 +10,12 @@ from src.features.sessions import label_sessions
 from src.features.structure import build_structure
 from src.features.swings import detect_swings
 from src.signals.generator import SignalGenerator
-from src.signals.london_breakout import (
-    LondonBreakoutConfig,
-    generate_london_breakout_signals,
-)
-from src.signals.ny_momentum import NYMomentumConfig, generate_ny_momentum_signals
+from src.signals.london_breakout import (LondonBreakoutConfig,
+                                         generate_london_breakout_signals)
+from src.signals.ny_momentum import (NYMomentumConfig,
+                                     generate_ny_momentum_signals)
 from src.signals.vwap_mean_reversion import (
-    VWAPMeanReversionConfig,
-    generate_vwap_mean_reversion_signals,
-)
+    VWAPMeanReversionConfig, generate_vwap_mean_reversion_signals)
 
 
 def _candles() -> pd.DataFrame:

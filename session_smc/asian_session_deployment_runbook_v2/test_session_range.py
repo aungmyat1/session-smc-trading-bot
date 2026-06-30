@@ -29,16 +29,9 @@ import pytest
 # ── Add project root to path ─────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from smc_bot.session_range import (
-    SessionBox,
-    SessionSignal,
-    SweepEvent,
-    build_session_box,
-    build_session_signal,
-    classify_session,
-    detect_sweep,
-    scan_all,
-)
+from smc_bot.session_range import (SessionBox, SessionSignal, SweepEvent,
+                                   build_session_box, build_session_signal,
+                                   classify_session, detect_sweep, scan_all)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures & helpers

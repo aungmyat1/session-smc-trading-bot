@@ -1,6 +1,7 @@
 """Tests: signal expiry, conflict resolution, duplicate blocking."""
 
 from datetime import datetime, timedelta, timezone
+
 from core.signal import Signal
 from core.signal_router import SignalRouter
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.research_feature_database import FeatureDatabasePaths, build_feature_database
+from src.research_feature_database import (FeatureDatabasePaths,
+                                           build_feature_database)
 
 
 def _discover_default_symbols(raw_root: Path, processed_root: Path) -> list[str]:

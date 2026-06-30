@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 load_dotenv(_ROOT / ".env", override=False)
 
-from execution.metaapi_client import MetaAPIClient, LIVE_TRADING
+from execution.metaapi_client import LIVE_TRADING, MetaAPIClient
 
 _UTC = timezone.utc
 _DOCS = _ROOT / "docs"

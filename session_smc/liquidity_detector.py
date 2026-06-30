@@ -7,6 +7,7 @@ with different pip sizes are added, pass pip_size as a parameter.
 """
 
 from __future__ import annotations
+
 from typing import Optional
 
 from .structure_detector import atr as compute_atr

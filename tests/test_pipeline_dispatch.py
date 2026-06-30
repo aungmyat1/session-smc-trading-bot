@@ -19,12 +19,9 @@ from unittest.mock import patch
 
 import polars as pl
 
-from pipeline.pipeline_03_replay_engine import (
-    _get_signal_func,
-    _stub_signal,
-    _trade_feature_flags,
-    replay_symbol,
-)
+from pipeline.pipeline_03_replay_engine import (_get_signal_func, _stub_signal,
+                                                _trade_feature_flags,
+                                                replay_symbol)
 from pipeline.pipeline_04_write_db import write_all
 
 # ── Signal dispatch ──────────────────────────────────────────────────────────

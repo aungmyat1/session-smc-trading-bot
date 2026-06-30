@@ -12,11 +12,10 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from execution_validation import (
-    ExecutionValidationSuite,
-    load_validation_rules,
-)  # noqa: E402
-from execution_simulator.replay_engine.event_stream import MarketEvent  # noqa: E402
+from execution_simulator.replay_engine.event_stream import \
+    MarketEvent  # noqa: E402
+from execution_validation import (ExecutionValidationSuite,  # noqa: E402
+                                  load_validation_rules)
 
 
 def _load_json(path: str | None) -> dict:

@@ -30,22 +30,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    CheckConstraint,
-    Column,
-    Date,
-    DateTime,
-    ForeignKey,
-    Integer,
-    JSON,
-    Numeric,
-    String,
-    Text,
-    UniqueConstraint,
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+
+from sqlalchemy import (JSON, BigInteger, Boolean, CheckConstraint, Column,
+                        Date, DateTime, ForeignKey, Integer, Numeric, String,
+                        Text, UniqueConstraint)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+
 from .connection import Base
 
 # ═══════════════════════════════════════════════════════════════════════════

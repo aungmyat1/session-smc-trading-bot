@@ -21,20 +21,17 @@ TP1: entry ± 4 R.   TP2: entry ± 5 R.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional
 
-from .structure_detector import (
-    atr,
-    detect_choch,
-    detect_bos,
-    detect_displacement,
-    htf_bias,
-)
-from .liquidity_detector import build_session_range, classify_session, detect_sweep
-from .poi_detector import find_fvg, check_fvg_retest
-from .swing_detector import last_swing_high, last_swing_low
 from .daily_bias import build_daily_context, classify_location
+from .liquidity_detector import (build_session_range, classify_session,
+                                 detect_sweep)
+from .poi_detector import check_fvg_retest, find_fvg
+from .structure_detector import (atr, detect_bos, detect_choch,
+                                 detect_displacement, htf_bias)
+from .swing_detector import last_swing_high, last_swing_low
 
 Candle = dict
 PIP: float = 0.0001

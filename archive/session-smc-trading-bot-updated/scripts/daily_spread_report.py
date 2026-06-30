@@ -13,7 +13,7 @@ import csv
 import subprocess
 import sys
 from collections import defaultdict
-from datetime import datetime, date, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent

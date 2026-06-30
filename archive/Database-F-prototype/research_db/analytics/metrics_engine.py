@@ -4,6 +4,7 @@ Core reusable analytics functions for the trading system.
 """
 
 from pathlib import Path
+
 import polars as pl
 
 TRADES_PATH = Path("research_db/trades/trades.parquet")

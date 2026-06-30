@@ -18,8 +18,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import logging
+import math
 import uuid
 from collections import defaultdict
 from datetime import datetime, timezone

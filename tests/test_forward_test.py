@@ -35,13 +35,9 @@ Dataset conventions:
 import unittest
 from datetime import date, datetime, timedelta, timezone
 
-from simulator.forward_test import (
-    ForwardTestSimulator,
-    ReplayEvent,
-    compare_with_backtest,
-    format_replay,
-    replay_day,
-)
+from simulator.forward_test import (ForwardTestSimulator, ReplayEvent,
+                                    compare_with_backtest, format_replay,
+                                    replay_day)
 
 _UTC = timezone.utc
 TRADE_DATE = date(2024, 1, 15)

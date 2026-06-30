@@ -4,10 +4,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from core.strategy_registry import (
-    get_current_strategy_manifest,
-    get_current_strategy_name,
-)
+from core.strategy_registry import (get_current_strategy_manifest,
+                                    get_current_strategy_name)
 
 
 class DeploymentStatusService:

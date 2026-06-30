@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
-from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
+from core.strategy_registry import (get_strategy_manifest,
+                                    list_catalog_strategies)
 from svos.governance.service import GovernanceService
 from svos.lifecycle.manager import StrategyLifecycleManager
 from svos.registry.service import StrategyRegistryService
@@ -27,6 +28,7 @@ def _build_pg_backends(
 ) -> tuple[PostgresControlPlane, PostgresEvidenceRepository]:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
     from db.control_plane import PostgresControlPlane
     from db.evidence_repository import PostgresEvidenceRepository
 
@@ -98,6 +100,7 @@ class SVOSPlatform:
 
     def _bootstrap_pg(self) -> dict[str, Any]:
         from sqlalchemy import select
+
         from db.models import StageState, StrategyEntity, StrategyVersion
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]
@@ -321,6 +324,7 @@ class SVOSPlatform:
 
     def _pg_current_state(self, strategy: str) -> tuple[Any, Any]:
         from sqlalchemy import select
+
         from db.models import StageState, StrategyEntity
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]
@@ -349,6 +353,7 @@ class SVOSPlatform:
         if stage in _PG_NO_EVIDENCE_SOURCES:
             return ()
         from sqlalchemy import select
+
         from db.models import ArtifactBinding
 
         sf = self.pg_control_plane.session_factory  # type: ignore[union-attr]

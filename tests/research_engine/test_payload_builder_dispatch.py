@@ -6,7 +6,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 from core.strategy_registry import get_backtest_script
 from research.svos import payload_builder
 from research.svos.payload_builder import _no_backtest_summary

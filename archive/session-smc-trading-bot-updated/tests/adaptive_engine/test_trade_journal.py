@@ -1,10 +1,12 @@
 """Tests for adaptive/journal/trade_journal.py"""
 
 import json
-import pytest
 from pathlib import Path
-from adaptive.strategies import AdaptiveSignal
+
+import pytest
+
 from adaptive.journal.trade_journal import TradeJournal
+from adaptive.strategies import AdaptiveSignal
 
 
 def _signal() -> AdaptiveSignal:

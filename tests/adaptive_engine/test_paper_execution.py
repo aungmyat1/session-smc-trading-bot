@@ -1,8 +1,9 @@
 """Tests for adaptive/simulation/paper_execution.py"""
 
 import pytest
-from adaptive.strategies import AdaptiveSignal
+
 from adaptive.simulation.paper_execution import PaperExecution
+from adaptive.strategies import AdaptiveSignal
 
 
 def _signal(

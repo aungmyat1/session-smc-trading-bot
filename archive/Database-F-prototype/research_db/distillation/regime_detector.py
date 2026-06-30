@@ -4,6 +4,7 @@ Classifies each trade into market regime.
 """
 
 import polars as pl
+
 from .pattern_miner import load_trades
 
 

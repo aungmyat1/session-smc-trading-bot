@@ -8,7 +8,7 @@ DATABASE_URL env var overrides the default (useful for CI or Docker).
 from __future__ import annotations
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from db.runtime import resolve_database_url

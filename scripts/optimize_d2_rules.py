@@ -13,20 +13,14 @@ import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
+
 import numpy as np
 import pandas as pd
-
-from backtest_d2_daily_bias import (
-    OUTDIR as DATA_DIR,
-    add_context,
-    pivot_swings,
-    PIP_SIZE,
-    INITIAL_CAPITAL,
-    RISK_PER_TRADE,
-    SL_BUFFER_PIPS,
-    SPREAD_FILTER_MULT,
-    prepare_data,
-)
+from backtest_d2_daily_bias import INITIAL_CAPITAL
+from backtest_d2_daily_bias import OUTDIR as DATA_DIR
+from backtest_d2_daily_bias import (PIP_SIZE, RISK_PER_TRADE, SL_BUFFER_PIPS,
+                                    SPREAD_FILTER_MULT, add_context,
+                                    pivot_swings, prepare_data)
 
 OUTDIR = Path("backtest_output_d2_optimized")
 OUTDIR.mkdir(exist_ok=True)

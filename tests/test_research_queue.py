@@ -3,13 +3,9 @@
 import json
 from pathlib import Path
 
-from research.research_queue import (
-    ResearchJob,
-    ResearchStep,
-    load_research_queue,
-    run_research_job,
-    run_research_queue,
-)
+from research.research_queue import (ResearchJob, ResearchStep,
+                                     load_research_queue, run_research_job,
+                                     run_research_queue)
 
 
 def test_load_research_queue_reads_jobs(tmp_path):

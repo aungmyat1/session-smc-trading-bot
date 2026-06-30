@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from svos.application.adapter_dispatch import StrategyAdapterRegistry, resolve_adapter
+from svos.application.adapter_dispatch import (StrategyAdapterRegistry,
+                                               resolve_adapter)
 from svos.application.audit import AuditIntegrationService
 from svos.application.backtest import BacktestIntegrationService
 from svos.application.intake import IntakeService

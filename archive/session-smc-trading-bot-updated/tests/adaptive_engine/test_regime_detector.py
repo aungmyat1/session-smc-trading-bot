@@ -1,7 +1,9 @@
 """Tests for bot/engine/regime_detector.py"""
 
 import pytest
-from adaptive.engine.regime_detector import detect_regime, _compute_atr, _compute_adx
+
+from adaptive.engine.regime_detector import (_compute_adx, _compute_atr,
+                                             detect_regime)
 
 
 def _make_candles(

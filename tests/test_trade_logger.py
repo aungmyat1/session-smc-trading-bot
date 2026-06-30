@@ -1,10 +1,11 @@
 """Tests for execution/trade_logger.py — structured JSONL event log."""
 
 import json
-import pytest
 from pathlib import Path
 
-from execution.trade_logger import TradeLogger, _VALID_EVENTS
+import pytest
+
+from execution.trade_logger import _VALID_EVENTS, TradeLogger
 
 
 @pytest.fixture

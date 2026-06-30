@@ -3,20 +3,13 @@ report_generator.py
 Generates a comprehensive performance report.
 """
 
-from .metrics_engine import (
-    load_trades,
-    session_stats,
-    pair_stats,
-    setup_stats,
-    win_rate,
-    calculate_drawdown,
-    edge_score,
-)
-from .session_analysis import run_session_analysis
-from .pair_analysis import run_pair_analysis
-from .setup_analysis import run_setup_analysis
 from .drawdown_analysis import run_drawdown_analysis
 from .edge_score import run_edge_score
+from .metrics_engine import (calculate_drawdown, edge_score, load_trades,
+                             pair_stats, session_stats, setup_stats, win_rate)
+from .pair_analysis import run_pair_analysis
+from .session_analysis import run_session_analysis
+from .setup_analysis import run_setup_analysis
 
 
 def generate_full_report():

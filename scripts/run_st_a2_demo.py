@@ -46,14 +46,14 @@ try:
 except ImportError:
     pass
 
-# ── Strategy plugin layer ─────────────────────────────────────────────────────
-from core.strategy_registry import register_strategy, get_strategy  # noqa: E402
-from strategies.adapters import ADAPTER_TYPES, build_strategy  # noqa: E402
-
-# ── Portfolio control layer ───────────────────────────────────────────────────
-from core.signal_router import SignalRouter  # noqa: E402
 from core.circuit_breaker import CircuitBreaker  # noqa: E402
 from core.portfolio_manager import PortfolioManager  # noqa: E402
+# ── Portfolio control layer ───────────────────────────────────────────────────
+from core.signal_router import SignalRouter  # noqa: E402
+# ── Strategy plugin layer ─────────────────────────────────────────────────────
+from core.strategy_registry import (get_strategy,  # noqa: E402
+                                    register_strategy)
+from strategies.adapters import ADAPTER_TYPES, build_strategy  # noqa: E402
 from strategies.shadow_tracker import ShadowTracker  # noqa: E402
 
 _router = SignalRouter()
@@ -66,17 +66,13 @@ from core.trade_journal_db import TradeJournalDB  # noqa: E402
 
 _journal_db = TradeJournalDB()
 
+from execution.demo_risk_manager import (calculate_lots,  # noqa: E402
+                                         check_limits, new_state, reset_daily)
 # ── Demo execution stack ──────────────────────────────────────────────────────
 from execution.mt5_connector import MT5Connector  # noqa: E402
-from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
-from execution.trade_manager import TradeManager  # noqa: E402
-from execution.demo_risk_manager import (  # noqa: E402
-    calculate_lots,
-    new_state,
-    check_limits,
-    reset_daily,
-)
 from execution.trade_journal import DemoTradeJournal  # noqa: E402
+from execution.trade_manager import TradeManager  # noqa: E402
+from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

@@ -17,16 +17,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date as date_cls, datetime, timezone
+from datetime import date as date_cls
+from datetime import datetime, timezone
 from typing import Iterable
 
-from simulator.forward_test import (
-    ForwardTestSimulator,
-    ReplayEvent,
-    compare_with_backtest,
-    format_replay,
-    replay_day,
-)
+from simulator.forward_test import (ForwardTestSimulator, ReplayEvent,
+                                    compare_with_backtest, format_replay,
+                                    replay_day)
 from strategy.session_liquidity.entry_engine import Signal
 from strategy.session_liquidity.session_strategy import DEFAULT_CONFIG
 

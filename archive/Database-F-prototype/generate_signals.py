@@ -5,6 +5,7 @@ Creates a unified, searchable signal table from all SMC features.
 """
 
 from pathlib import Path
+
 import polars as pl
 
 FEATURES_DIR = Path("features")

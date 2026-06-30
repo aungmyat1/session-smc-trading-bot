@@ -12,12 +12,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from smc_bot.risk import (
-    calc_qty,
-    check_daily_loss_limit,
-    check_max_open_positions,
-    symbol_already_open,
-)
+from smc_bot.risk import (calc_qty, check_daily_loss_limit,
+                          check_max_open_positions, symbol_already_open)
 from smc_bot.session_range import SessionSignal
 
 # ─────────────────────────────────────────────────────────────────────────────

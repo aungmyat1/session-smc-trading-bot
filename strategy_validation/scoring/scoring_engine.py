@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..models import ReadinessStatus, ValidatorResult, ValidationStatus
+from ..models import ReadinessStatus, ValidationStatus, ValidatorResult
 
 
 class ScoringEngine:

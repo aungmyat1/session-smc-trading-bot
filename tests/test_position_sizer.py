@@ -2,7 +2,7 @@
 
 import pytest
 
-from execution.position_sizer import calculate_lots, _MIN_SL_PIPS, _MAX_SL_PIPS
+from execution.position_sizer import _MAX_SL_PIPS, _MIN_SL_PIPS, calculate_lots
 
 # ── Category 1: Standard calculation ─────────────────────────────────────────
 

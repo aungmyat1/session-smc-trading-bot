@@ -4,9 +4,11 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from execution_validation import ExecutionValidationSuite, load_validation_rules
-from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
+from execution_simulator.broker.virtual_broker import (VirtualBroker,
+                                                       VirtualBrokerConfig)
 from execution_simulator.replay_engine.event_stream import MarketEvent
+from execution_validation import (ExecutionValidationSuite,
+                                  load_validation_rules)
 from models.order import Order
 
 UTC = timezone.utc

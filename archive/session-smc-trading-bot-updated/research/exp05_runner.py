@@ -35,14 +35,12 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
-from strategy.session_liquidity.session_builder import classify_session
-from session_smc.structure_detector import (
-    htf_bias as htf_bias_combined,
-    detect_choch,
-    detect_bos,
-)
+from session_smc.structure_detector import detect_bos, detect_choch
+from session_smc.structure_detector import htf_bias as htf_bias_combined
 from session_smc.swing_detector import last_swing_high, last_swing_low
+from strategy.session_liquidity.session_builder import classify_session
+from strategy.session_liquidity.session_strategy import (DEFAULT_CONFIG,
+                                                         run_strategy)
 
 _UTC = timezone.utc
 _PIP = 0.0001

@@ -5,9 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from execution_validation.replay_bridge import (
-    build_validation_payload_from_candles,
-    run_replay_validation_from_candles,
-)
+    build_validation_payload_from_candles, run_replay_validation_from_candles)
 
 UTC = timezone.utc
 TRADE_DATE = date(2024, 1, 15)

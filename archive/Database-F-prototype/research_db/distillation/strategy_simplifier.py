@@ -4,6 +4,7 @@ Converts discovered patterns into simple, readable trading rules.
 """
 
 import polars as pl
+
 from .pattern_miner import load_trades, mine_patterns
 
 

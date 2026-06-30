@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from execution_simulator.replay_engine.clock import ReplayClock
-from execution_simulator.replay_engine.event_stream import EventStream, MarketEvent
+from execution_simulator.replay_engine.event_stream import (EventStream,
+                                                            MarketEvent)
 
 
 @dataclass

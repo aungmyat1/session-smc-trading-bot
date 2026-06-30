@@ -26,7 +26,8 @@ class NYMomentumAdapter(BaseStrategy):
             data: {"symbol": str, "m15": list[dict]}
         """
         try:
-            from adaptive.strategies.ny_momentum_strategy import generate_signals
+            from adaptive.strategies.ny_momentum_strategy import \
+                generate_signals
         except ImportError:
             return None
 

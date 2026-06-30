@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from execution.risk_manager import RiskManager, STATE_FILE
+from execution.risk_manager import STATE_FILE, RiskManager
 
 BASE_CONFIG = {
     "risk": {

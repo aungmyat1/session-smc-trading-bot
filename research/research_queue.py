@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from string import Template
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from string import Template
 from typing import Any, Optional
 
 import yaml

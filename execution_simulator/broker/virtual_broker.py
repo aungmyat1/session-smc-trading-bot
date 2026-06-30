@@ -5,16 +5,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from execution.metaapi_client import (
-    AccountInfo,
-    BrokerPosition,
-    OrderResult,
-    SymbolPrice,
-)
 from core.broker_interface import BrokerInterface
+from execution.metaapi_client import (AccountInfo, BrokerPosition, OrderResult,
+                                      SymbolPrice)
 from execution_events import ExecutionEvent
 from execution_simulator.broker.order_manager import OrderManager, VirtualOrder
-from execution_simulator.broker.position_manager import PositionManager, VirtualPosition
+from execution_simulator.broker.position_manager import (PositionManager,
+                                                         VirtualPosition)
 from execution_simulator.database.execution_log import ExecutionLog
 from execution_simulator.execution.fill_engine import FillEngine
 from execution_simulator.execution.risk_engine import RiskEngine

@@ -1,13 +1,14 @@
 """Tests for execution/order_manager.py — order flow orchestration."""
 
-import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-from execution.order_manager import OrderManager, MAX_OPEN_TRADES
-from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition
+import pytest
+
+from execution.metaapi_client import BrokerPosition, MetaAPIClient, OrderResult
+from execution.order_manager import MAX_OPEN_TRADES, OrderManager
 from execution.risk_manager import RiskManager
 from execution.trade_logger import TradeLogger
 

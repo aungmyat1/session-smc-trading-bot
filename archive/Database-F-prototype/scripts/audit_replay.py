@@ -10,10 +10,11 @@ Performs:
 - Metric recalculation
 """
 
-import polars as pl
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 import numpy as np
+import polars as pl
 
 DATA_PATH = Path("data/raw/EURUSD/EURUSD_M1_raw.parquet")
 REPORT_PATH = Path("reports/ST_A2_REPLAY_AUDIT.md")

@@ -6,6 +6,7 @@ no index beyond len(candles)-1 is read.
 """
 
 from __future__ import annotations
+
 from typing import Optional
 
 from .swing_detector import classify_structure

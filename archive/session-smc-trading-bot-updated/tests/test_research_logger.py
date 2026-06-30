@@ -18,23 +18,12 @@ import unittest
 from pathlib import Path
 
 import research.logger as rl
-from research.logger import (
-    BacktestRun,
-    GateRejection,
-    MarketCondition,
-    SignalRecord,
-    StrategyVersion,
-    TradeRecord,
-    generate_run_id,
-    log_backtest_run,
-    log_market_condition,
-    log_rejection,
-    log_signal,
-    log_strategy_version,
-    log_trade,
-    new_signal_id,
-    new_trade_id,
-)
+from research.logger import (BacktestRun, GateRejection, MarketCondition,
+                             SignalRecord, StrategyVersion, TradeRecord,
+                             generate_run_id, log_backtest_run,
+                             log_market_condition, log_rejection, log_signal,
+                             log_strategy_version, log_trade, new_signal_id,
+                             new_trade_id)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

@@ -24,7 +24,8 @@ class LondonBreakoutAdapter(BaseStrategy):
             data: {"symbol": str, "m15": list[dict], "spread_pips": float}
         """
         try:
-            from adaptive.strategies.london_breakout_strategy import generate_signals
+            from adaptive.strategies.london_breakout_strategy import \
+                generate_signals
         except ImportError:
             return None
 

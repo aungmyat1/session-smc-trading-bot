@@ -240,9 +240,8 @@ def _load_adapters(strategy_names: list[str]):
 
     if "LondonBreakout" in strategy_names:
         try:
-            from strategies.adapters.london_breakout_adapter import (
-                LondonBreakoutAdapter,
-            )
+            from strategies.adapters.london_breakout_adapter import \
+                LondonBreakoutAdapter
 
             adapters["LondonBreakout"] = LondonBreakoutAdapter()
             modes["LondonBreakout"] = "demo"
@@ -251,7 +250,8 @@ def _load_adapters(strategy_names: list[str]):
 
     if "NYMomentum" in strategy_names:
         try:
-            from strategies.adapters.ny_momentum_adapter import NYMomentumAdapter
+            from strategies.adapters.ny_momentum_adapter import \
+                NYMomentumAdapter
 
             adapters["NYMomentum"] = NYMomentumAdapter()
             modes["NYMomentum"] = "demo"
@@ -260,7 +260,8 @@ def _load_adapters(strategy_names: list[str]):
 
     if "AdaptiveSMC" in strategy_names:
         try:
-            from strategies.adapters.adaptive_smc_adapter import AdaptiveSMCAdapter
+            from strategies.adapters.adaptive_smc_adapter import \
+                AdaptiveSMCAdapter
 
             adapters["AdaptiveSMC"] = AdaptiveSMCAdapter()
             modes["AdaptiveSMC"] = "shadow"

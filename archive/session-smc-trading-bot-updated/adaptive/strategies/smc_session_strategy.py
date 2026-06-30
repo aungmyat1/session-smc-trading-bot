@@ -20,7 +20,8 @@ from adaptive.strategies import AdaptiveSignal
 
 # Lazy import to avoid hard dependency if running tests without the full stack.
 try:
-    from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
+    from strategy.session_liquidity.session_strategy import (DEFAULT_CONFIG,
+                                                             run_strategy)
 
     _STRATEGY_AVAILABLE = True
 except ImportError:

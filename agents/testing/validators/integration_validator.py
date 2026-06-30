@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 

@@ -1,11 +1,9 @@
 """Tests for session_smc/liquidity_detector.py"""
 
 import pytest
-from session_smc.liquidity_detector import (
-    build_session_range,
-    classify_session,
-    detect_sweep,
-)
+
+from session_smc.liquidity_detector import (build_session_range,
+                                            classify_session, detect_sweep)
 
 
 def c(o, h, l, cl):

@@ -12,19 +12,11 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from db.control_plane import (
-    ControlPlaneConflict,
-    PostgresControlPlane,
-    TransitionCommand,
-)
+from db.control_plane import (ControlPlaneConflict, PostgresControlPlane,
+                              TransitionCommand)
 from db.evidence_repository import PostgresEvidenceRepository
-from db.models import (
-    ArtifactBinding,
-    ReportRecord,
-    StageState,
-    StrategyEntity,
-    StrategyVersion,
-)
+from db.models import (ArtifactBinding, ReportRecord, StageState,
+                       StrategyEntity, StrategyVersion)
 from svos.orchestration.service import SVOSPlatform
 
 TEST_DATABASE_URL = os.getenv("SVOS_TEST_DATABASE_URL", "")

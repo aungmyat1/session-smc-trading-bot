@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from svos.lifecycle import LifecycleTransitionError, StrategyLifecycleManager
 from svos.governance import GovernanceGateError
+from svos.lifecycle import LifecycleTransitionError, StrategyLifecycleManager
 from svos.orchestration import SVOSPlatform
 from svos.registry import StrategyRegistryService
 

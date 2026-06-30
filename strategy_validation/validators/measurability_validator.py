@@ -2,13 +2,9 @@ from __future__ import annotations
 
 import re
 
-from ..models import (
-    StrategyDocument,
-    ValidationFinding,
-    ValidationRecommendation,
-    ValidatorResult,
-    ValidationStatus,
-)
+from ..models import (StrategyDocument, ValidationFinding,
+                      ValidationRecommendation, ValidationStatus,
+                      ValidatorResult)
 from ..module_base import BaseValidator
 
 

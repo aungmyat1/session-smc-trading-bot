@@ -1,6 +1,7 @@
 """Tests for bot/strategies/ny_momentum_strategy.py"""
 
 import pytest
+
 from adaptive.strategies import AdaptiveSignal
 from adaptive.strategies.ny_momentum_strategy import generate_signals
 

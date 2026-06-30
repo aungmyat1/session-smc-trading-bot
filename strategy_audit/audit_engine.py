@@ -6,17 +6,14 @@ from research.lineage import build_release_metadata
 
 from .data import IntegrityAuditModule
 from .deployment_gate import DeploymentGate
-from .monitoring import StrategyDriftAuditModule
 from .models import AuditContext, AuditReport, AuditResult
+from .monitoring import StrategyDriftAuditModule
 from .regime import RegimeAuditModule
 from .risk import RiskMetricsAuditModule
 from .robustness import ParameterStabilityAuditModule
 from .rules import ExecutionAuditModule, RuleAuditModule
-from .statistics import (
-    MonteCarloAuditModule,
-    PerformanceAuditModule,
-    WalkForwardAuditModule,
-)
+from .statistics import (MonteCarloAuditModule, PerformanceAuditModule,
+                         WalkForwardAuditModule)
 
 DEFAULT_MODULES = [
     RuleAuditModule(),

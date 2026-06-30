@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from statistics import mean
 
-from .module_base import AuditModule
 from .models import AuditContext, AuditResult
+from .module_base import AuditModule
 
 
 class RegimeAuditModule(AuditModule):

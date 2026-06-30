@@ -35,15 +35,9 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
+from research.logger import (BacktestRun, TradeRecord, generate_run_id,
+                             log_backtest_run, log_trade, new_trade_id)
 from strategy.session_liquidity.session_strategy import run_strategy
-from research.logger import (
-    BacktestRun,
-    TradeRecord,
-    log_backtest_run,
-    log_trade,
-    generate_run_id,
-    new_trade_id,
-)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import math
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
-
-import math
-import json
 
 
 def _now() -> str:

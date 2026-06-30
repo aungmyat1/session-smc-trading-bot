@@ -65,11 +65,14 @@ class TestingAgent:
     def run(self) -> TestingAgentResult:
         """Execute all stages and return a consolidated result."""
         # Import here to allow the agent module to load without all validators installed.
-        from agents.testing.validators.unit_validator import UnitValidator
-        from agents.testing.validators.integration_validator import IntegrationValidator
-        from agents.testing.validators.strategy_validator import StrategyValidator
+        from agents.testing.validators.integration_validator import \
+            IntegrationValidator
+        from agents.testing.validators.regression_validator import \
+            RegressionValidator
         from agents.testing.validators.replay_validator import ReplayValidator
-        from agents.testing.validators.regression_validator import RegressionValidator
+        from agents.testing.validators.strategy_validator import \
+            StrategyValidator
+        from agents.testing.validators.unit_validator import UnitValidator
 
         stages: list[tuple[str, Any]] = [
             ("unit_tests", UnitValidator(self._root, self._cfg)),

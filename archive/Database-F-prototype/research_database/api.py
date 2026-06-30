@@ -3,9 +3,11 @@ research_database/api.py
 High-level research database API (save/query functions).
 """
 
-from sqlalchemy.orm import Session
-from .models import Trade, ReplayRun, SmcEvent, StrategyMetric
 from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from .models import ReplayRun, SmcEvent, StrategyMetric, Trade
 
 
 def save_trade(db: Session, trade_data: dict):

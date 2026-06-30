@@ -3,14 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from svos.lifecycle.manager import (
-    LifecycleTransitionError,
-    StrategyLifecycleManager,
-    StrategyStage,
-)
+from svos.lifecycle.manager import (LifecycleTransitionError,
+                                    StrategyLifecycleManager, StrategyStage)
 from svos.registry.service import StrategyRegistryService
 from svos.shared.models import ApprovalRecord, GateDecision, TransitionRecord
-from svos.shared.support import append_jsonl, now_iso, read_jsonl, stable_manifest_hash
+from svos.shared.support import (append_jsonl, now_iso, read_jsonl,
+                                 stable_manifest_hash)
 
 
 class GovernanceGateError(LifecycleTransitionError):

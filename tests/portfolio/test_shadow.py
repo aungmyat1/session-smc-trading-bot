@@ -2,9 +2,9 @@
 
 from datetime import datetime, timezone
 
+from core.base_strategy import BaseStrategy
 from core.signal import Signal
 from core.signal_router import SignalRouter
-from core.base_strategy import BaseStrategy
 from strategies.shadow_tracker import ShadowTracker
 
 

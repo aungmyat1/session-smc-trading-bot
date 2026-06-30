@@ -14,14 +14,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.models import (
-    ArtifactBinding,
-    GateDecision,
-    Outbox,
-    StageState,
-    StageTransition,
-    StrategyEntity,
-)
+from db.models import (ArtifactBinding, GateDecision, Outbox, StageState,
+                       StageTransition, StrategyEntity)
 from svos.lifecycle.manager import StrategyLifecycleManager
 
 

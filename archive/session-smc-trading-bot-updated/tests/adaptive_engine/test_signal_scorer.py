@@ -1,8 +1,9 @@
 """Tests for bot/engine/signal_scorer.py"""
 
 import pytest
+
+from adaptive.engine.signal_scorer import MIN_SCORE, score_signal
 from adaptive.strategies import AdaptiveSignal
-from adaptive.engine.signal_scorer import score_signal, MIN_SCORE
 
 
 def _make_signal(

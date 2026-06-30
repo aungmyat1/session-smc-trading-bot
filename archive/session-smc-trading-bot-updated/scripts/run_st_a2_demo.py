@@ -43,16 +43,16 @@ except ImportError:
     pass
 
 # ── Strategy plugin layer ─────────────────────────────────────────────────────
-from core.strategy_registry import register_strategy, get_strategy
+from core.strategy_registry import get_strategy, register_strategy
 from strategies.adapters.st_a2_adapter import ST2Adapter
 
 _st2 = ST2Adapter()
 register_strategy(_st2)
 
-# ── Portfolio control layer ───────────────────────────────────────────────────
-from core.signal_router import SignalRouter
 from core.circuit_breaker import CircuitBreaker
 from core.portfolio_manager import PortfolioManager
+# ── Portfolio control layer ───────────────────────────────────────────────────
+from core.signal_router import SignalRouter
 from strategies.shadow_tracker import ShadowTracker
 
 _router = SignalRouter()
@@ -65,18 +65,13 @@ from core.trade_journal_db import TradeJournalDB
 
 _journal_db = TradeJournalDB()
 
+from execution.demo_risk_manager import (calculate_lots, check_limits,
+                                         new_state, record_result, reset_daily)
 # ── Demo execution stack ──────────────────────────────────────────────────────
 from execution.mt5_connector import MT5Connector
-from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager import TradeManager
-from execution.demo_risk_manager import (
-    calculate_lots,
-    new_state,
-    check_limits,
-    record_result,
-    reset_daily,
-)
 from execution.trade_journal import DemoTradeJournal
+from execution.trade_manager import TradeManager
+from execution.vantage_demo_executor import VantageDemoExecutor
 
 logging.basicConfig(
     level=logging.INFO,

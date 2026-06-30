@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from agents.quality.agent import Status, StageResult
+from agents.quality.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 

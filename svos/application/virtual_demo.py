@@ -343,9 +343,7 @@ class VirtualDemoIntegrationService:
         initial_balance: float,
     ) -> tuple[int, float, float, float]:
         from execution_simulator.broker.virtual_broker import (
-            VirtualBroker,
-            VirtualBrokerConfig,
-        )
+            VirtualBroker, VirtualBrokerConfig)
         from execution_simulator.replay_engine.event_stream import MarketEvent
 
         config = VirtualBrokerConfig(

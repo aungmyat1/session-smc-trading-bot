@@ -12,9 +12,9 @@ Public API:
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from strategy.session_liquidity.displacement_detector import DisplacementResult
 from strategy.session_liquidity.session_builder import AsianRange
 from strategy.session_liquidity.sweep_detector import SweepResult
-from strategy.session_liquidity.displacement_detector import DisplacementResult
 
 _UTC = timezone.utc
 _PIP = 0.0001

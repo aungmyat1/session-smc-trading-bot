@@ -11,10 +11,8 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.validation.engine import (  # noqa: E402
-    ValidationRunner,
-    load_validation_config,
-)
+from research.validation.engine import (ValidationRunner,  # noqa: E402
+                                        load_validation_config)
 
 
 def _load_json(path: str | None) -> dict:

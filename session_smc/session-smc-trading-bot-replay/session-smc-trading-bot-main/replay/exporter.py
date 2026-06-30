@@ -14,12 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from replay.engine import ReplayResult
-from replay.metrics import (
-    GateResult,
-    compute_metrics,
-    year_report,
-    session_report,
-)
+from replay.metrics import (GateResult, compute_metrics, session_report,
+                            year_report)
 
 _RESULTS_DIR = Path(__file__).parent / "results"
 

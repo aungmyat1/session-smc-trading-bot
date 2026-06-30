@@ -86,18 +86,18 @@ _CONNECT_RETRY_BASE_S: int = 5
 
 # ── Imports ───────────────────────────────────────────────────────────────────
 
-from data.session_filter import (
-    get_active_session,
-    seconds_to_next_session,
-)  # noqa: E402
 from core.broker_interface import BrokerInterface  # noqa: E402
+from data.session_filter import (get_active_session,  # noqa: E402
+                                 seconds_to_next_session)
 from execution.metaapi_client import MetaAPIClient  # noqa: E402
 from execution.order_manager import OrderManager  # noqa: E402
 from execution.risk_manager import RiskManager  # noqa: E402
 from execution.trade_logger import TradeLogger  # noqa: E402
-from execution_simulator.broker.virtual_broker import VirtualBroker  # noqa: E402
+from execution_simulator.broker.virtual_broker import \
+    VirtualBroker  # noqa: E402
 from monitoring.telegram import TelegramAlerter  # noqa: E402
-from strategy.session_liquidity.session_strategy import run_strategy  # noqa: E402
+from strategy.session_liquidity.session_strategy import \
+    run_strategy  # noqa: E402
 
 # ── Broker wiring ───────────────────────────────────────────────────────────
 

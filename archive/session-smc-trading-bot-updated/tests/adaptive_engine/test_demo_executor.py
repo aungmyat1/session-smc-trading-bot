@@ -1,8 +1,9 @@
 """Tests for adaptive/execution/demo_executor.py"""
 
 import pytest
-from adaptive.strategies import AdaptiveSignal
+
 from adaptive.execution.demo_executor import DemoExecutor
+from adaptive.strategies import AdaptiveSignal
 
 
 def _signal() -> AdaptiveSignal:

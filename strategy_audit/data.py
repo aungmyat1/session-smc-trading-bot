@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Any
 
 from ._helpers import _clean_text
-from .module_base import AuditModule
 from .models import AuditContext, AuditResult
+from .module_base import AuditModule
 
 
 def _parse_ts(value: Any) -> datetime | None:

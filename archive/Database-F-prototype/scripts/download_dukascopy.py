@@ -11,11 +11,12 @@ Usage examples:
 """
 
 import argparse
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
+
 import pandas as pd
-import shutil
 
 OUTPUT_DIR = Path("data/raw_ticks")
 PROCESSED_DIR = Path("data/processed")

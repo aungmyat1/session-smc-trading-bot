@@ -1,9 +1,10 @@
 """Tests: daily trade limit, daily/weekly/monthly loss limits, circuit breaker."""
 
 from datetime import date, datetime, timezone
-from core.signal import Signal
-from core.portfolio_manager import PortfolioManager
+
 from core.circuit_breaker import CircuitBreaker
+from core.portfolio_manager import PortfolioManager
+from core.signal import Signal
 
 
 def _sig(strategy="ST-A2", symbol="EURUSD", action="BUY", confidence=0.9) -> Signal:

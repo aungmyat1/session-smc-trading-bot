@@ -10,10 +10,11 @@ their own test modules).
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import asyncio
+
 import pytest
 
 _ROOT = Path(__file__).parent.parent.parent
@@ -420,7 +421,7 @@ class TestAutoReconnect:
             patch("scripts.run_portfolio._shadow", MagicMock()),
             patch("scripts.run_portfolio._jdb", MagicMock()),
         ):
-            from scripts.run_portfolio import _tick, _MAX_FETCH_FAIL
+            from scripts.run_portfolio import _MAX_FETCH_FAIL, _tick
 
             risk_state = {"_fetch_fails": _MAX_FETCH_FAIL - 1}
             asyncio.run(

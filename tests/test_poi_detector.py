@@ -1,7 +1,8 @@
 """Tests for session_smc/poi_detector.py"""
 
 import pytest
-from session_smc.poi_detector import find_fvg, check_fvg_retest
+
+from session_smc.poi_detector import check_fvg_retest, find_fvg
 
 
 def c(o, h, lo, cl):

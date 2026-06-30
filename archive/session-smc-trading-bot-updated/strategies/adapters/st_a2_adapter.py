@@ -36,9 +36,7 @@ class ST_A2Adapter(BaseStrategy):
         """
         try:
             from strategy.session_liquidity.session_strategy import (
-                run_strategy,
-                DEFAULT_CONFIG,
-            )
+                DEFAULT_CONFIG, run_strategy)
         except ImportError:
             return None
 

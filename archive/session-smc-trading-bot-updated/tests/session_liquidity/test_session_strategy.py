@@ -23,7 +23,8 @@ Dataset conventions used throughout:
 import unittest
 from datetime import date, datetime, timedelta, timezone
 
-from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
+from strategy.session_liquidity.session_strategy import (DEFAULT_CONFIG,
+                                                         run_strategy)
 
 _UTC = timezone.utc
 TRADE_DATE = date(2024, 1, 15)

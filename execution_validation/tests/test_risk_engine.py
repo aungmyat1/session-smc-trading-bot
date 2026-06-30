@@ -4,8 +4,8 @@ __test__ = False
 
 from typing import Any
 
-from execution_validation.common import CheckResult
 from execution_simulator.execution.risk_engine import RiskEngine
+from execution_validation.common import CheckResult
 
 
 def assess_risk_engine(

@@ -4,12 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from execution_validation.engine import (
-    ExecutionValidationReport,
-    ExecutionValidationSuite,
-)
-from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
+from execution_simulator.broker.virtual_broker import (VirtualBroker,
+                                                       VirtualBrokerConfig)
 from execution_simulator.replay_engine.event_stream import MarketEvent
+from execution_validation.engine import (ExecutionValidationReport,
+                                         ExecutionValidationSuite)
 from simulator.forward_test import ForwardTestSimulator
 
 _UTC = timezone.utc

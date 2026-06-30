@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from strategies.adapters.smc_ob_fvg_session_adapter import (
-    SMCOrderBlockFVGSessionAdapter,
-)
+from strategies.adapters.smc_ob_fvg_session_adapter import \
+    SMCOrderBlockFVGSessionAdapter
 
 
 def _ts(hour: int, minute: int) -> str:

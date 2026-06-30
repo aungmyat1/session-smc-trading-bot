@@ -22,15 +22,11 @@ import yaml
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
+from core.strategy_registry import (get_current_strategy_name,  # noqa: E402
+                                    get_strategy_manifest)
 from db.runtime import normalize_database_url  # noqa: E402
-from core.strategy_registry import (  # noqa: E402
-    get_current_strategy_name,
-    get_strategy_manifest,
-)
-from research.validation.engine import (
-    ValidationRunner,
-    load_validation_config,
-)  # noqa: E402
+from research.validation.engine import (ValidationRunner,  # noqa: E402
+                                        load_validation_config)
 
 try:
     import psycopg2

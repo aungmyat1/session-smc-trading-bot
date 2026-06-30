@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from strategies.adapters.vwap_adapter import (
-    VWAPBreakoutAdapter,
-    VWAPMeanReversionAdapter,
-)
+from strategies.adapters.vwap_adapter import (VWAPBreakoutAdapter,
+                                              VWAPMeanReversionAdapter)
 
 
 def _ts(hour: int, minute: int = 0) -> str:

@@ -19,13 +19,13 @@ import argparse
 import csv
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Ensure project root on path so session_smc imports work
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from session_smc.confirmation_entry import generate_signal_A, DEFAULT_CONFIG
+from session_smc.confirmation_entry import DEFAULT_CONFIG, generate_signal_A
 
 # ── Cost model (VT Markets Standard) ─────────────────────────────────────────
 

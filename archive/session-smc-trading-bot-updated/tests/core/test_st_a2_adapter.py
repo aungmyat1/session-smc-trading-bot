@@ -1,8 +1,9 @@
 """Tests for ST-A2 adapter — no live broker, no real candles."""
 
 from unittest.mock import MagicMock, patch
-from strategies.adapters.st_a2_adapter import ST2Adapter
+
 from core.signal import Signal
+from strategies.adapters.st_a2_adapter import ST2Adapter
 
 
 def _make_raw_signal(

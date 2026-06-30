@@ -14,25 +14,21 @@ Data note: M15 bars used as proxy (no 5M data).
 """
 
 from __future__ import annotations
+
 import json
 import math
-from pathlib import Path
-import pandas as pd
-
 import sys
+from pathlib import Path
+
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backtest_d2_daily_bias import (
-    OUTDIR as DATA_DIR,
-    add_context,
-    pivot_swings,
-    PIP_SIZE,
-    INITIAL_CAPITAL,
-    RISK_PER_TRADE,
-    prepare_data,
-)
-from optimize_d2_rules import backtest, Params
+from backtest_d2_daily_bias import INITIAL_CAPITAL
+from backtest_d2_daily_bias import OUTDIR as DATA_DIR
+from backtest_d2_daily_bias import (PIP_SIZE, RISK_PER_TRADE, add_context,
+                                    pivot_swings, prepare_data)
+from optimize_d2_rules import Params, backtest
 
 OUTDIR = Path("backtest_output_d2_holdout")
 OUTDIR.mkdir(exist_ok=True)

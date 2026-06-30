@@ -1,13 +1,9 @@
 """Tests for session_smc/structure_detector.py"""
 
 import math
-from session_smc.structure_detector import (
-    atr,
-    htf_bias,
-    detect_choch,
-    detect_bos,
-    detect_displacement,
-)
+
+from session_smc.structure_detector import (atr, detect_bos, detect_choch,
+                                            detect_displacement, htf_bias)
 
 
 def c(o, h, lo, cl):

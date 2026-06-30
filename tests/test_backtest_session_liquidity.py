@@ -9,14 +9,10 @@ from pathlib import Path
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from scripts.backtest_session_liquidity import (  # noqa: E402
-    simulate_trade,
-    spread_cost_r,
-    compute_metrics,
-    max_drawdown,
-    extract_contexts,
-    build_time_index,
-)
+from scripts.backtest_session_liquidity import (build_time_index,  # noqa: E402
+                                                compute_metrics,
+                                                extract_contexts, max_drawdown,
+                                                simulate_trade, spread_cost_r)
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

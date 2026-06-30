@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 
 from strategy_validation.cli import main
-from strategy_validation.pipeline.strategy_validation_pipeline import (
-    StrategyValidationPipeline,
-)
+from strategy_validation.pipeline.strategy_validation_pipeline import \
+    StrategyValidationPipeline
 
 
 def _good_spec() -> str:

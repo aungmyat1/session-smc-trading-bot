@@ -4,10 +4,11 @@ scripts/import_parquet.py
 Import Parquet data into PostgreSQL (candles, SMC events, trades).
 """
 
-import pandas as pd
-from sqlalchemy import create_engine
 import os
 from pathlib import Path
+
+import pandas as pd
+from sqlalchemy import create_engine
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",

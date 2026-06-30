@@ -4,7 +4,9 @@ Core logic that converts a signal into a simulated trade.
 """
 
 from typing import Dict, Optional
+
 import polars as pl
+
 from .execution_rules import get_entry_price, get_stop_loss, get_take_profit
 from .risk_model import evaluate_r_multiple
 

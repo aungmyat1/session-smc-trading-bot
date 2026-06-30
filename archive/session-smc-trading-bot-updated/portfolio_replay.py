@@ -11,7 +11,11 @@ Usage:
 """
 
 from __future__ import annotations
-import csv, json, os, sys
+
+import csv
+import json
+import os
+import sys
 from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))

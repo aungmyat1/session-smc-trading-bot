@@ -48,10 +48,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from session_smc.confirmation_entry import (
-    generate_signal_A,
-    DEFAULT_CONFIG,
-)  # noqa: E402
+from session_smc.confirmation_entry import (DEFAULT_CONFIG,  # noqa: E402
+                                            generate_signal_A)
 
 REPORTS = ROOT / "reports"
 REPORTS.mkdir(exist_ok=True)

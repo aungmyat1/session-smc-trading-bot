@@ -3,8 +3,9 @@ performance_ranker.py
 Ranks strategies by multiple metrics.
 """
 
-import polars as pl
 from pathlib import Path
+
+import polars as pl
 
 
 def rank_strategies(trades_df: pl.DataFrame) -> pl.DataFrame:

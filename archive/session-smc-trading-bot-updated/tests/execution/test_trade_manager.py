@@ -1,8 +1,10 @@
 """Tests for execution/trade_manager.py (mocked executor — no broker)"""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from execution.trade_manager import TradeManager, _MAGIC
+
+import pytest
+
+from execution.trade_manager import _MAGIC, TradeManager
 
 
 def _make_manager(simulated=True):

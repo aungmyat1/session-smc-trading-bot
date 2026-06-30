@@ -27,8 +27,9 @@ Lookahead guarantee (by construction):
 from dataclasses import dataclass
 from datetime import timezone
 
-from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
 from strategy.session_liquidity.entry_engine import Signal
+from strategy.session_liquidity.session_strategy import (DEFAULT_CONFIG,
+                                                         run_strategy)
 
 _UTC = timezone.utc
 

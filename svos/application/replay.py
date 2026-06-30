@@ -144,11 +144,9 @@ class ReplayIntegrationService:
         )
 
     def _run_gate(self, trades: list[dict[str, Any]], available_features: list[str]):
-        from research.validation.engine import (
-            ReplayTrade,
-            ReplayValidationInput,
-            ValidationGate,
-        )
+        from research.validation.engine import (ReplayTrade,
+                                                ReplayValidationInput,
+                                                ValidationGate)
 
         replay_trades = [
             ReplayTrade(

@@ -6,8 +6,9 @@ Timeframe Builder — Resamples tick data into M1, M5, M15, H1, H4, D1
 Preserves: bid, ask, spread, volume
 """
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
 TIMEFRAMES = {

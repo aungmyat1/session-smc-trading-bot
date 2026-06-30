@@ -3,11 +3,8 @@
 from datetime import datetime, timezone
 
 import scripts.d2e3_journal_to_db as sync_db
-from scripts.d2e3_journal_to_db import (
-    build_daily_equity,
-    build_metrics,
-    build_trade_records,
-)
+from scripts.d2e3_journal_to_db import (build_daily_equity, build_metrics,
+                                        build_trade_records)
 
 
 def _ts(value: str) -> str:

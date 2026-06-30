@@ -21,7 +21,7 @@ Usage:
 import argparse
 import csv
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data" / "historical"

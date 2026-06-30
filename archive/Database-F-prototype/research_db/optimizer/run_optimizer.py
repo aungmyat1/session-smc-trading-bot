@@ -4,13 +4,13 @@ run_optimizer.py
 Main Stage 6 Strategy Optimizer runner.
 """
 
-from pathlib import Path
 import json
-import polars as pl
+from pathlib import Path
 
-from strategy_generator import generate_strategies
-from performance_ranker import rank_strategies
+import polars as pl
 from elimination_engine import eliminate_bad_strategies
+from performance_ranker import rank_strategies
+from strategy_generator import generate_strategies
 
 TRADES_PATH = Path("research_db/trades/trades.parquet")
 EXPERIMENTS_DIR = Path("research_db/experiments")

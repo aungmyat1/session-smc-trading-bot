@@ -9,11 +9,9 @@ Covers:
 import unittest
 from datetime import date, datetime, timezone
 
-from strategy.session_liquidity.session_builder import (
-    AsianRange,
-    build_asian_range,
-    classify_session,
-)
+from strategy.session_liquidity.session_builder import (AsianRange,
+                                                        build_asian_range,
+                                                        classify_session)
 
 UTC = timezone.utc
 

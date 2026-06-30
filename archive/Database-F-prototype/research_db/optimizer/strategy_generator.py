@@ -6,6 +6,7 @@ Generates a population of strategies from the parameter grid.
 import itertools
 import json
 from pathlib import Path
+
 from .parameter_grid import PARAMETERS
 
 EXPERIMENTS_DIR = Path("research_db/experiments")

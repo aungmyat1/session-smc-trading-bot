@@ -2,22 +2,13 @@ from __future__ import annotations
 
 from statistics import mean
 
-from research.robustness import (
-    monte_carlo_resampling,
-    walk_forward_analysis,
-    parameter_sensitivity,
-)
+from research.robustness import (monte_carlo_resampling, parameter_sensitivity,
+                                 walk_forward_analysis)
 
-from ._helpers import (
-    _expectancy,
-    _max_drawdown,
-    _profit_factor,
-    _sharpe,
-    _sortino,
-    _numbers,
-)
-from .module_base import AuditModule
+from ._helpers import (_expectancy, _max_drawdown, _numbers, _profit_factor,
+                       _sharpe, _sortino)
 from .models import AuditContext, AuditResult
+from .module_base import AuditModule
 
 
 def _returns(context: AuditContext) -> list[float]:

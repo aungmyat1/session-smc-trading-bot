@@ -3,7 +3,7 @@ drawdown_analysis.py
 Risk stability and drawdown analysis.
 """
 
-from .metrics_engine import load_trades, calculate_drawdown
+from .metrics_engine import calculate_drawdown, load_trades
 
 
 def run_drawdown_analysis():

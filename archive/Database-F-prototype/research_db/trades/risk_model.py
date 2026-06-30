@@ -4,6 +4,7 @@ Calculates R-multiple outcome for a trade.
 """
 
 from typing import Dict, List, Optional
+
 import polars as pl
 
 

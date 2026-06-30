@@ -31,7 +31,8 @@ class AdaptiveSMCAdapter(BaseStrategy):
                    "spread_pips": float, "htf_bias": str}
         """
         try:
-            from adaptive.strategies.smc_session_strategy import generate_signals
+            from adaptive.strategies.smc_session_strategy import \
+                generate_signals
         except ImportError:
             return None
 

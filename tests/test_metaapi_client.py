@@ -1,9 +1,10 @@
 """Tests for execution/metaapi_client.py — broker connectivity wrapper."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from execution.metaapi_client import MetaAPIClient, AccountInfo, OrderResult
+import pytest
+
+from execution.metaapi_client import AccountInfo, MetaAPIClient, OrderResult
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

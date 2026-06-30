@@ -21,16 +21,11 @@ from typing import Optional
 
 import polars as pl
 
-from .config import (
-    ASIAN_WINDOW,
-    DATA_DIR,
-    FEATURES_DIR,
-    PIP,
-    SESSIONS,
-    SIGNAL_CONFIG,
-    SYMBOLS,
-)
-from session_smc.liquidity_detector import build_session_range, classify_session
+from session_smc.liquidity_detector import (build_session_range,
+                                            classify_session)
+
+from .config import (ASIAN_WINDOW, DATA_DIR, FEATURES_DIR, PIP, SESSIONS,
+                     SIGNAL_CONFIG, SYMBOLS)
 
 _UTC = timezone.utc
 

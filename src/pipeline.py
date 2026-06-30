@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.analytics.duckdb_store import DuckDBStore
 from src.analytics.queries import ResearchQueries
-from src.backtest.simulator import TradeSimulator, TradeSimulationConfig
+from src.backtest.simulator import TradeSimulationConfig, TradeSimulator
 from src.data.layered_store import LayeredResearchStore
 from src.data.loader import load_symbol_history
 from src.data.validator import validate_candles
@@ -17,16 +17,13 @@ from src.features.order_blocks import detect_order_blocks
 from src.features.sessions import label_sessions
 from src.features.structure import build_structure
 from src.features.swings import detect_swings
-from src.signals.generator import SignalGenerator, SignalConfig
-from src.signals.london_breakout import (
-    LondonBreakoutConfig,
-    generate_london_breakout_signals,
-)
-from src.signals.ny_momentum import NYMomentumConfig, generate_ny_momentum_signals
+from src.signals.generator import SignalConfig, SignalGenerator
+from src.signals.london_breakout import (LondonBreakoutConfig,
+                                         generate_london_breakout_signals)
+from src.signals.ny_momentum import (NYMomentumConfig,
+                                     generate_ny_momentum_signals)
 from src.signals.vwap_mean_reversion import (
-    VWAPMeanReversionConfig,
-    generate_vwap_mean_reversion_signals,
-)
+    VWAPMeanReversionConfig, generate_vwap_mean_reversion_signals)
 
 
 @dataclass

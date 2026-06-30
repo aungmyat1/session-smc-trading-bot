@@ -61,11 +61,13 @@ class QualityAgent:
 
     def run(self) -> QualityAgentResult:
         """Execute all quality stages and return a consolidated result."""
+        from agents.quality.validators.architecture import \
+            ArchitectureValidator
         from agents.quality.validators.code_quality import CodeQualityValidator
-        from agents.quality.validators.security import SecurityValidator
-        from agents.quality.validators.architecture import ArchitectureValidator
         from agents.quality.validators.dependency import DependencyValidator
-        from agents.quality.validators.documentation import DocumentationValidator
+        from agents.quality.validators.documentation import \
+            DocumentationValidator
+        from agents.quality.validators.security import SecurityValidator
 
         stages: list[tuple[str, Any]] = [
             ("code_quality", CodeQualityValidator(self._root, self._cfg)),

@@ -6,16 +6,11 @@ from ..ai.improvement_engine import SpecificationImprovementEngine
 from ..models import AuditLogEntry, StrategyDocument, ValidationReport, utc_now
 from ..reports.report_generator import ReportGenerator
 from ..scoring.scoring_engine import ScoringEngine
-from ..validators import (
-    AmbiguityValidator,
-    InputValidator,
-    InstitutionalRuleValidator,
-    LogicalConsistencyValidator,
-    MeasurabilityValidator,
-    RiskValidationValidator,
-    RuleCompletenessValidator,
-    TestabilityValidator,
-)
+from ..validators import (AmbiguityValidator, InputValidator,
+                          InstitutionalRuleValidator,
+                          LogicalConsistencyValidator, MeasurabilityValidator,
+                          RiskValidationValidator, RuleCompletenessValidator,
+                          TestabilityValidator)
 
 
 class StrategyValidationPipeline:

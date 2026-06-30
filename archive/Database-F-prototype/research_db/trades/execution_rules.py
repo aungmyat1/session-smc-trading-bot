@@ -4,6 +4,7 @@ Defines entry, stop loss, and take profit logic.
 """
 
 from typing import Dict, Optional
+
 import polars as pl
 
 

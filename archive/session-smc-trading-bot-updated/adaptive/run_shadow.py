@@ -33,17 +33,19 @@ try:
 except ImportError:
     pass
 
+from adaptive.engine.risk_manager import register_open_position
+from adaptive.engine.trade_router import route_signal
+from adaptive.filters.news_filter import NewsFilter
+from adaptive.journal.trade_journal import TradeJournal
+from adaptive.simulation.paper_execution import PaperExecution
 # ── adaptive imports ──────────────────────────────────────────────────────────
 from adaptive.state.state_store import StateStore
-from adaptive.filters.news_filter import NewsFilter
-from adaptive.simulation.paper_execution import PaperExecution
-from adaptive.journal.trade_journal import TradeJournal
-from adaptive.engine.trade_router import route_signal
-from adaptive.engine.risk_manager import register_open_position
-
-from adaptive.strategies.london_breakout_strategy import generate_signals as lb_signals
-from adaptive.strategies.ny_momentum_strategy import generate_signals as ny_signals
-from adaptive.strategies.smc_session_strategy import generate_signals as smc_signals
+from adaptive.strategies.london_breakout_strategy import \
+    generate_signals as lb_signals
+from adaptive.strategies.ny_momentum_strategy import \
+    generate_signals as ny_signals
+from adaptive.strategies.smc_session_strategy import \
+    generate_signals as smc_signals
 
 # ── logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -64,8 +66,8 @@ DEFAULT_INTERVAL = 60  # seconds
 
 
 async def _build_feed(executor):
-    from data.forex_data import ForexData
     from adaptive.data.market_feed import MarketFeed
+    from data.forex_data import ForexData
 
     return MarketFeed(ForexData(executor))
 

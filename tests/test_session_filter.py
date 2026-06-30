@@ -2,12 +2,8 @@
 
 from datetime import datetime, timezone
 
-
-from data.session_filter import (
-    get_active_session,
-    is_trading_allowed,
-    seconds_to_next_session,
-)
+from data.session_filter import (get_active_session, is_trading_allowed,
+                                 seconds_to_next_session)
 
 
 def utc(year, month, day, hour, minute=0) -> datetime:

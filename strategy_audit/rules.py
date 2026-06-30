@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-
 from research.svos.engine import audit_strategy_text
 
-from .module_base import AuditModule
 from .models import AuditContext, AuditResult
+from .module_base import AuditModule
 
 
 class RuleAuditModule(AuditModule):

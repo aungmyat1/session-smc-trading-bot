@@ -1,13 +1,10 @@
 """Tests for bot/engine/risk_manager.py (Adaptive Engine — isolated from execution/)"""
 
 import pytest
+
+from adaptive.engine.risk_manager import (check_risk, new_state, record_trade,
+                                          reset_daily)
 from adaptive.strategies import AdaptiveSignal
-from adaptive.engine.risk_manager import (
-    new_state,
-    check_risk,
-    record_trade,
-    reset_daily,
-)
 
 
 def _signal(pair: str = "EURUSD", direction: str = "LONG") -> AdaptiveSignal:

@@ -1,13 +1,10 @@
 """Tests for session_smc/swing_detector.py"""
 
 import pytest
-from session_smc.swing_detector import (
-    swing_highs,
-    swing_lows,
-    last_swing_high,
-    last_swing_low,
-    classify_structure,
-)
+
+from session_smc.swing_detector import (classify_structure, last_swing_high,
+                                        last_swing_low, swing_highs,
+                                        swing_lows)
 
 
 def c(h, l, o=None, cl=None):

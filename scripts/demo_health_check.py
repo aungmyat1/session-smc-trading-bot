@@ -23,9 +23,9 @@ except ImportError:
     pass
 
 from execution.mt5_connector import MT5Connector  # noqa: E402
-from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
-from execution.trade_manager import TradeManager  # noqa: E402
 from execution.trade_journal import DemoTradeJournal  # noqa: E402
+from execution.trade_manager import TradeManager  # noqa: E402
+from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
 
 _JOURNAL_CANDIDATES = [
     _ROOT / "logs" / "strategy_demo_trades.jsonl",

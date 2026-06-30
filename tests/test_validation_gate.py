@@ -21,14 +21,10 @@ strategies:
 
 
 from research.regression.engine import RegressionEngine  # noqa: E402
-from research.validation.engine import (  # noqa: E402
-    BacktestValidationInput,
-    ReplayTrade,
-    ReplayValidationInput,
-    ValidationGate,
-    ValidationRunner,
-    load_validation_config,
-)
+from research.validation.engine import (BacktestValidationInput,  # noqa: E402
+                                        ReplayTrade, ReplayValidationInput,
+                                        ValidationGate, ValidationRunner,
+                                        load_validation_config)
 
 
 def _valid_replay() -> ReplayValidationInput:

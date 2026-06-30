@@ -53,7 +53,7 @@ from dotenv import load_dotenv
 load_dotenv(_ROOT / ".env", override=False)  # override=False: our forced "false" wins
 
 # Now import execution layer — LIVE_TRADING module-level variable will be False
-from execution.metaapi_client import MetaAPIClient, LIVE_TRADING
+from execution.metaapi_client import LIVE_TRADING, MetaAPIClient
 from execution.trade_logger import TradeLogger
 
 _UTC = timezone.utc

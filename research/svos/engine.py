@@ -14,30 +14,23 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
 
-from core.strategy_registry import (
-    DirectCatalogMutationError,
-    can_deploy_strategy,
-    get_strategy_manifest,
-)
+from core.strategy_registry import (DirectCatalogMutationError,
+                                    can_deploy_strategy, get_strategy_manifest)
 from execution_validation.engine import ExecutionValidationReport
-from research.regression.engine import RegressionEngine
-from research.validation.engine import (
-    BacktestValidationInput,
-    ReplayValidationInput,
-    ValidationGate,
-    ValidationResult,
-    load_validation_config,
-)
 from research.lineage import build_release_metadata
+from research.regression.engine import RegressionEngine
+from research.validation.engine import (BacktestValidationInput,
+                                        ReplayValidationInput, ValidationGate,
+                                        ValidationResult,
+                                        load_validation_config)
 from strategy_validation.ai.editor_engine import StrategyEditorEngine
-from strategy_validation.models import StrategyDocument as ValidationStrategyDocument
-from strategy_validation.models import (
-    ValidationRecommendation,
-    ValidationReport as StrategyValidationReport,
-)
-from strategy_validation.pipeline.strategy_validation_pipeline import (
-    StrategyValidationPipeline,
-)
+from strategy_validation.models import \
+    StrategyDocument as ValidationStrategyDocument
+from strategy_validation.models import ValidationRecommendation
+from strategy_validation.models import \
+    ValidationReport as StrategyValidationReport
+from strategy_validation.pipeline.strategy_validation_pipeline import \
+    StrategyValidationPipeline
 from svos.orchestration import SVOSPlatform
 from svos.registry import StrategyRegistryService
 from svos.reports.stage_package import write_stage_report_package

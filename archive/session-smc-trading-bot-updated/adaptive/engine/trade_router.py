@@ -19,10 +19,10 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from adaptive.strategies import AdaptiveSignal
+from adaptive.engine import risk_manager as _rm
 from adaptive.engine.regime_detector import detect_regime
 from adaptive.engine.signal_scorer import score_signal
-from adaptive.engine import risk_manager as _rm
+from adaptive.strategies import AdaptiveSignal
 
 _LOG_FILE = Path("logs/adaptive_engine.log")
 _logger = logging.getLogger("adaptive_engine.router")

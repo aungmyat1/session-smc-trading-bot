@@ -8,7 +8,7 @@ fully-auto V2 runbook more closely.
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Mapping, Any
+from typing import Any, Mapping
 from zoneinfo import ZoneInfo
 
 _EST = ZoneInfo("America/New_York")

@@ -24,10 +24,7 @@ import unittest
 from dataclasses import fields
 
 from strategy.session_liquidity.displacement_detector import (
-    DisplacementResult,
-    detect_displacement,
-    wilder_atr,
-)
+    DisplacementResult, detect_displacement, wilder_atr)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared test constants

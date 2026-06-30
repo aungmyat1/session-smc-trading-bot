@@ -13,14 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from core.strategy_registry import get_backtest_script, get_strategy_manifest
+from execution_validation.replay_bridge import \
+    run_replay_validation_from_candles
 from research.lineage import build_lineage_metadata
-from research.robustness import (
-    monte_carlo_resampling,
-    parameter_sensitivity,
-    regime_analysis,
-    walk_forward_analysis,
-)
-from execution_validation.replay_bridge import run_replay_validation_from_candles
+from research.robustness import (monte_carlo_resampling, parameter_sensitivity,
+                                 regime_analysis, walk_forward_analysis)
 from scripts.replay_parquet import load_h4, load_m15
 from simulator.historical_replay import run_historical_replay
 

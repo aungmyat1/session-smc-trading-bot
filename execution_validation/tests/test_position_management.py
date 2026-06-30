@@ -4,8 +4,8 @@ __test__ = False
 
 from typing import Any
 
-from execution_validation.common import CheckResult
 from execution_simulator.broker.virtual_broker import VirtualBroker
+from execution_validation.common import CheckResult
 
 
 def assess_position_management(

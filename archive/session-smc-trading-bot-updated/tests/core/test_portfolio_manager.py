@@ -1,8 +1,9 @@
 """Tests for core.PortfolioManager."""
 
 import pytest
-from core.signal import Signal
+
 from core.portfolio_manager import PortfolioManager
+from core.signal import Signal
 
 
 def _sig(strategy="ST-A2", symbol="EURUSD", action="BUY", confidence=0.9) -> Signal:

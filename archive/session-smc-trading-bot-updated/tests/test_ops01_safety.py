@@ -6,16 +6,17 @@ state persistence round-trip, no duplicate orders, logging integrity.
 """
 
 import json
-import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from execution.order_manager import OrderManager, MAX_OPEN_TRADES
-from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition
-from execution.risk_manager import RiskManager, BotState, STATE_FILE
-from execution.trade_logger import TradeLogger, _VALID_EVENTS
+import pytest
+
+from execution.metaapi_client import BrokerPosition, MetaAPIClient, OrderResult
+from execution.order_manager import MAX_OPEN_TRADES, OrderManager
+from execution.risk_manager import STATE_FILE, BotState, RiskManager
+from execution.trade_logger import _VALID_EVENTS, TradeLogger
 
 _UTC = timezone.utc
 
@@ -346,12 +347,12 @@ class TestRuntimeSafety:
         assert len(errors) == 1
 
     def test_live_trading_gate(self):
-        import execution.metaapi_client as m
-
         # In test environment, LIVE_TRADING should be False
         # (tests run with no .env or with LIVE_TRADING unset)
         # This asserts the module reads from os.getenv correctly
         import os
+
+        import execution.metaapi_client as m
 
         raw = os.getenv("LIVE_TRADING", "false").lower()
         assert raw in ("false", "true")  # always one of the two

@@ -11,10 +11,11 @@ from pathlib import Path
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
+from datetime import date, datetime
+
 from research_database.database import SessionLocal
-from research_database.models import Trade, ReplayRun, Strategy
-from datetime import datetime, date
+from research_database.models import ReplayRun, Strategy, Trade
+from sqlalchemy import create_engine, text
 
 
 def test_connection():

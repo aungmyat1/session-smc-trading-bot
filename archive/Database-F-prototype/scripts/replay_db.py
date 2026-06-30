@@ -7,13 +7,14 @@ Reads M1 Parquet data and simulates trades into PostgreSQL.
 """
 
 import argparse
-from datetime import datetime, date
+import os
+from datetime import date, datetime
 from pathlib import Path
-import polars as pl
+
 import pandas as pd
+import polars as pl
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
-import os
 
 # Database connection
 DATABASE_URL = os.getenv(

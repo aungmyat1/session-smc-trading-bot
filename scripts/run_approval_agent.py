@@ -11,11 +11,8 @@ if str(_ROOT) not in sys.path:
 import argparse  # noqa: E402
 import logging  # noqa: E402
 
-from agents.approval.agent import (
-    ApprovalAgent,
-    ReleaseStatus,
-    load_config,
-)  # noqa: E402
+from agents.approval.agent import (ApprovalAgent, ReleaseStatus,  # noqa: E402
+                                   load_config)
 from agents.approval.report import ApprovalReport  # noqa: E402
 
 

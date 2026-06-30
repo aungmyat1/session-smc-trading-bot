@@ -4,16 +4,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.research_feature_database import (
-    FeatureDatabasePaths,
-    annotate_fvg,
-    annotate_liquidity_sweeps,
-    annotate_order_blocks,
-    annotate_structure,
-    build_feature_database,
-    detect_swings,
-    label_sessions,
-)
+from src.research_feature_database import (FeatureDatabasePaths, annotate_fvg,
+                                           annotate_liquidity_sweeps,
+                                           annotate_order_blocks,
+                                           annotate_structure,
+                                           build_feature_database,
+                                           detect_swings, label_sessions)
 
 
 def _swing_candles() -> pd.DataFrame:

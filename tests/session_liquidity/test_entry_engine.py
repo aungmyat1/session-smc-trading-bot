@@ -29,10 +29,10 @@ import unittest
 from dataclasses import fields
 from datetime import date, datetime, timezone
 
+from strategy.session_liquidity.displacement_detector import DisplacementResult
 from strategy.session_liquidity.entry_engine import Signal, build_signal
 from strategy.session_liquidity.session_builder import AsianRange
 from strategy.session_liquidity.sweep_detector import SweepResult
-from strategy.session_liquidity.displacement_detector import DisplacementResult
 
 _UTC = timezone.utc
 

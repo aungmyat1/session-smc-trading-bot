@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .module_base import AuditModule
 from .models import AuditContext, AuditResult
+from .module_base import AuditModule
 
 
 class ParameterStabilityAuditModule(AuditModule):

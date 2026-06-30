@@ -24,9 +24,9 @@ except ImportError:
     pass
 
 from execution.mt5_connector import MT5Connector
-from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager import TradeManager
 from execution.trade_journal import DemoTradeJournal
+from execution.trade_manager import TradeManager
+from execution.vantage_demo_executor import VantageDemoExecutor
 
 
 async def _status() -> None:

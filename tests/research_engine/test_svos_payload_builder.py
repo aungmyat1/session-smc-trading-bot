@@ -5,8 +5,8 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from research.svos import payload_builder
 import scripts.run_current_strategy_svos as run_current_strategy_svos
+from research.svos import payload_builder
 
 UTC = timezone.utc
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
-from decimal import Decimal, ROUND_HALF_UP
-import inspect
+from decimal import ROUND_HALF_UP, Decimal
 
 log = logging.getLogger(__name__)
 

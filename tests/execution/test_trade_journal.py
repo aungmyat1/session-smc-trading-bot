@@ -1,6 +1,7 @@
 """Tests for execution/trade_journal.py"""
 
 import pytest
+
 from execution.trade_journal import DemoTradeJournal
 
 

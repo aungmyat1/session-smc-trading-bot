@@ -33,11 +33,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from .daily_bias import (
-    aggregate_to_daily,
-    build_daily_context as _build_d2_ctx,
-    classify_location,
-)
+from .daily_bias import aggregate_to_daily
+from .daily_bias import build_daily_context as _build_d2_ctx
+from .daily_bias import classify_location
 from .swing_detector import swing_highs, swing_lows
 
 Candle = dict

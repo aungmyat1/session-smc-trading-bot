@@ -28,14 +28,14 @@ Run:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
-import hmac
 import subprocess
 import sys
-from functools import wraps
-import hashlib
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
@@ -51,23 +51,17 @@ except ImportError:
     print("Flask not installed. Run: pip install flask flask-cors")
     sys.exit(1)
 
-from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
-from dashboard.audit_log import tail_audit_log, write_audit_log
-from dashboard.control_state import (
-    activate_emergency_stop,
-    clear_emergency_stop,
-    load_control_state,
-    mark_incident_reviewed,
-)
-from dashboard.report_service import generate as generate_reports_payload
-from dashboard.report_service import (
-    latest_reports,
-    load_index,
-    mark_reviewed,
-    read_report,
-)
-from dashboard.status_mapper import health_to_status
 import scripts.health_check as health_check
+from dashboard.audit_log import tail_audit_log, write_audit_log
+from dashboard.control_state import (activate_emergency_stop,
+                                     clear_emergency_stop, load_control_state,
+                                     mark_incident_reviewed)
+from dashboard.report_service import generate as generate_reports_payload
+from dashboard.report_service import (latest_reports, load_index,
+                                      mark_reviewed, read_report)
+from dashboard.runtime import (dashboard_bind_host, dashboard_public_host,
+                               dashboard_url)
+from dashboard.status_mapper import health_to_status
 from svos.api.service import SVOSOperationalAPI
 
 try:

@@ -6,20 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from research.execution_analyzer import (
-    load_bot_log_disconnects,
-    _extract_latency_pairs,
-    compute_signal_to_order_latency,
-    compute_order_to_fill_latency,
-    compute_fill_to_close_duration,
-    compute_slippage_distribution,
-    compute_spread_distribution,
-    compute_execution_failures,
-    compute_reconnect_during_trade,
-    compute_duplicate_signal_attempts,
-    _percentile,
-    run,
-)
+from research.execution_analyzer import (_extract_latency_pairs, _percentile,
+                                         compute_duplicate_signal_attempts,
+                                         compute_execution_failures,
+                                         compute_fill_to_close_duration,
+                                         compute_order_to_fill_latency,
+                                         compute_reconnect_during_trade,
+                                         compute_signal_to_order_latency,
+                                         compute_slippage_distribution,
+                                         compute_spread_distribution,
+                                         load_bot_log_disconnects, run)
 
 _UTC = timezone.utc
 
@@ -714,6 +710,7 @@ class TestRunIntegration:
         self._write_trades_jsonl(trade_log)
 
         from unittest.mock import patch
+
         import research.execution_analyzer as ea
 
         # Run with patched output paths
@@ -757,8 +754,9 @@ class TestRunIntegration:
         daily_out = tmp_path / "ex_daily.json"
         weekly_out = tmp_path / "ex_weekly.json"
 
-        import research.execution_analyzer as ea
         from unittest.mock import patch
+
+        import research.execution_analyzer as ea
 
         now = datetime(2026, 6, 22, 10, 0, 0, tzinfo=_UTC)
         with (

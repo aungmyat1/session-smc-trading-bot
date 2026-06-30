@@ -25,10 +25,10 @@ import logging
 import lzma
 import struct
 import sys
-from datetime import datetime, timezone
-from time import perf_counter
 from calendar import monthrange
+from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
 
 import aiohttp
 import pandas as pd

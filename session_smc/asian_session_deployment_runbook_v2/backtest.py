@@ -25,9 +25,7 @@ import pandas as pd
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from smc_bot.session_range import (
-    build_session_signal,
-)
+from smc_bot.session_range import build_session_signal
 
 logging.basicConfig(
     level=logging.INFO,

@@ -31,9 +31,9 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import socket
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -415,7 +415,7 @@ def check_risk_engine() -> dict:
         except Exception:
             pass
 
-    from execution.demo_risk_manager import check_limits, LIMITS
+    from execution.demo_risk_manager import LIMITS, check_limits
 
     result = check_limits(state)
     if not result["approved"]:

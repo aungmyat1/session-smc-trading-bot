@@ -1,8 +1,9 @@
 """Tests for adaptive/journal/trade_journal.py"""
 
 import pytest
-from adaptive.strategies import AdaptiveSignal
+
 from adaptive.journal.trade_journal import TradeJournal
+from adaptive.strategies import AdaptiveSignal
 
 
 def _signal() -> AdaptiveSignal:

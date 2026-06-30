@@ -1,19 +1,12 @@
 import json
 from pathlib import Path
 
-from research.svos.engine import (
-    DemoValidationInput,
-    RobustnessValidationInput,
-    SVOSRunner,
-    StrategyAuditEngine,
-    StrategyIntakeEngine,
-    audit_strategy_text,
-)
-from research.validation.engine import (
-    BacktestValidationInput,
-    ReplayTrade,
-    ReplayValidationInput,
-)
+from research.svos.engine import (DemoValidationInput,
+                                  RobustnessValidationInput,
+                                  StrategyAuditEngine, StrategyIntakeEngine,
+                                  SVOSRunner, audit_strategy_text)
+from research.validation.engine import (BacktestValidationInput, ReplayTrade,
+                                        ReplayValidationInput)
 
 
 def _fixture_catalog_text() -> str:

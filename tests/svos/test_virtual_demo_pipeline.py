@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 from svos.application.audit import AuditIntegrationService
 from svos.application.backtest import BacktestIntegrationService
 from svos.application.intake import IntakeService

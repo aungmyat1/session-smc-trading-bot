@@ -20,15 +20,14 @@ from typing import Any
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from core.strategy_registry import (  # noqa: E402
-    get_current_strategy_name,
-    get_strategy_manifest,
-    get_strategy_spec_text,
-)
-from research.svos.payload_builder import build_svos_payload_bundle  # noqa: E402
-from research.svos.engine import SVOSRunner  # noqa: E402
-from research.validation.engine import load_validation_config  # noqa: E402
+from core.strategy_registry import (get_current_strategy_name,  # noqa: E402
+                                    get_strategy_manifest,
+                                    get_strategy_spec_text)
 from research.lineage import build_release_metadata  # noqa: E402
+from research.svos.engine import SVOSRunner  # noqa: E402
+from research.svos.payload_builder import \
+    build_svos_payload_bundle  # noqa: E402
+from research.validation.engine import load_validation_config  # noqa: E402
 
 
 def _load_json(path: str | None) -> dict[str, Any]:

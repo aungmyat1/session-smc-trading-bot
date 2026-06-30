@@ -3,8 +3,9 @@ pattern_miner.py
 Discovers statistical patterns in winning vs losing trades.
 """
 
-import polars as pl
 from pathlib import Path
+
+import polars as pl
 
 TRADES_PATH = Path("research_db/trades/trades.parquet")
 

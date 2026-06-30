@@ -16,8 +16,8 @@ Events (all six must be used; add no others):
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Iterator
 from pathlib import Path
+from typing import Iterator
 
 logger = logging.getLogger(__name__)
 

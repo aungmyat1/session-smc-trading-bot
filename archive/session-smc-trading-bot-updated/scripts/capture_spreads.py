@@ -42,9 +42,8 @@ load_dotenv(_ROOT / ".env")
 sys.path.insert(0, str(_ROOT))
 
 from execution.metaapi_client import MetaAPIClient  # noqa: E402
-from strategy.session_liquidity.session_builder import (  # noqa: E402
-    classify_session as _classify_session_builder,
-)
+from strategy.session_liquidity.session_builder import \
+    classify_session as _classify_session_builder  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from execution.metaapi_client import MetaAPIClient, RPC_TIMEOUT_S
+from execution.metaapi_client import RPC_TIMEOUT_S, MetaAPIClient
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

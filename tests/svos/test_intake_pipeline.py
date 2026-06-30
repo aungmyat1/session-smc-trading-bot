@@ -14,9 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
-from svos.application.intake import IntakeService
 from svos.application.audit import AuditIntegrationService
+from svos.application.intake import IntakeService
 from svos.application.run_manifest import RunManifestBuilder
 from svos.orchestration import SVOSPlatform
 

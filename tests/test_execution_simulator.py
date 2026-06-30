@@ -4,14 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from execution_simulator import (
-    ExecutionLog,
-    EventStream,
-    MarketEvent,
-    MarketFeed,
-    ReplayClock,
-    VirtualBroker,
-)
+from execution_simulator import (EventStream, ExecutionLog, MarketEvent,
+                                 MarketFeed, ReplayClock, VirtualBroker)
 from execution_simulator.broker.virtual_broker import VirtualBrokerConfig
 
 UTC = timezone.utc

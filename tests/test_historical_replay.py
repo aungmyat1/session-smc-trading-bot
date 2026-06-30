@@ -2,11 +2,8 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from simulator.historical_replay import (
-    render_report,
-    report_to_dict,
-    run_historical_replay,
-)
+from simulator.historical_replay import (render_report, report_to_dict,
+                                         run_historical_replay)
 
 _UTC = timezone.utc
 TRADE_DATE = date(2024, 1, 15)

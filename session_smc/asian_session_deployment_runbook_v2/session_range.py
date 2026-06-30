@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import pandas as pd
-
 from smc_bot import structure, tp_engine  # internal only — no SDK
 
 log = logging.getLogger(__name__)

@@ -6,11 +6,12 @@ ST-A2 Historical Replay Engine v2 (Statistically Realistic)
 Supports real Dukascopy tick data with automatic source detection.
 """
 
-import polars as pl
-from pathlib import Path
-from datetime import datetime, timedelta
-import numpy as np
 from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import numpy as np
+import polars as pl
 
 PROCESSED_DIR = Path("data/processed")
 RAW_DIR = Path("data/raw")

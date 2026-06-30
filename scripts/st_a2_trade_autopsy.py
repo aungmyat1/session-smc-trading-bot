@@ -37,7 +37,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from strategy.session_liquidity.displacement_detector import wilder_atr  # noqa: E402
+from strategy.session_liquidity.displacement_detector import \
+    wilder_atr  # noqa: E402
 
 TRADES_CSV = ROOT / "research" / "trades.csv"
 REPORT_MD = ROOT / "reports" / "ST_A2_TRADE_AUTOPSY.md"

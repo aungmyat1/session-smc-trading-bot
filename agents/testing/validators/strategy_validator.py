@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from agents.testing.agent import Status, StageResult
+from agents.testing.agent import StageResult, Status
 
 logger = logging.getLogger(__name__)
 

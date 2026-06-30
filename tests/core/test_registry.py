@@ -1,26 +1,21 @@
 """Tests for core.strategy_registry."""
 
 import pytest
+
 from core.base_strategy import BaseStrategy
-from core.strategy_registry import (
-    register_strategy,
-    get_strategy,
-    list_strategies,
-    clear_registry,
-    load_strategy_catalog,
-    get_strategy_manifest,
-    list_catalog_strategies,
-    strategy_lifecycle_status,
-    strategy_lifecycle_rank,
-    is_strategy_approved,
-    can_deploy_strategy,
-    get_current_strategy_name,
-    get_current_strategy_manifest,
-    DirectCatalogMutationError,
-    get_strategy_spec_path,
-    get_strategy_spec_text,
-    set_current_strategy,
-)
+from core.strategy_registry import (DirectCatalogMutationError,
+                                    can_deploy_strategy, clear_registry,
+                                    get_current_strategy_manifest,
+                                    get_current_strategy_name, get_strategy,
+                                    get_strategy_manifest,
+                                    get_strategy_spec_path,
+                                    get_strategy_spec_text,
+                                    is_strategy_approved,
+                                    list_catalog_strategies, list_strategies,
+                                    load_strategy_catalog, register_strategy,
+                                    set_current_strategy,
+                                    strategy_lifecycle_rank,
+                                    strategy_lifecycle_status)
 
 
 class _DummyStrategy(BaseStrategy):

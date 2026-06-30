@@ -28,16 +28,10 @@ import pytest
 # Make scripts importable (project root is one level up)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.capture_spreads import (  # noqa: E402
-    CSV_HEADER,
-    PIP_SIZE,
-    build_summary,
-    csv_row,
-    reconnect_if_needed,
-    session_label,
-    spread_pips,
-    update_agg,
-)
+from scripts.capture_spreads import (CSV_HEADER, PIP_SIZE,  # noqa: E402
+                                     build_summary, csv_row,
+                                     reconnect_if_needed, session_label,
+                                     spread_pips, update_agg)
 
 _UTC = timezone.utc
 

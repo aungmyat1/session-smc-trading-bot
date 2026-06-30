@@ -4,11 +4,12 @@ Generates the final distilled market laws report.
 """
 
 from pathlib import Path
+
 import polars as pl
-from pattern_miner import load_trades, create_winner_loser_pools, mine_patterns
 from feature_importance import compute_feature_importance
-from strategy_simplifier import simplify_strategies
+from pattern_miner import create_winner_loser_pools, load_trades, mine_patterns
 from regime_detector import detect_regime
+from strategy_simplifier import simplify_strategies
 
 
 def generate_distillation_report():

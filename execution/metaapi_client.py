@@ -21,7 +21,8 @@ from core.broker_interface import BrokerInterface
 logger = logging.getLogger(__name__)
 
 try:
-    from metaapi_cloud_sdk.clients.timeout_exception import TimeoutException as MetaAPITimeoutException
+    from metaapi_cloud_sdk.clients.timeout_exception import \
+        TimeoutException as MetaAPITimeoutException
 except Exception:  # pragma: no cover - SDK may not be installed in tests
     MetaAPITimeoutException = None
 
