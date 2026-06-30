@@ -4,7 +4,7 @@ import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from execution.order_manager import OrderManager, MAX_OPEN_TRADES
 from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition

@@ -1,10 +1,6 @@
 """Tests: shadow tracker (no execution) + strategy failure isolation."""
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
-import tempfile
-import pytest
 
 from core.signal import Signal
 from core.signal_router import SignalRouter

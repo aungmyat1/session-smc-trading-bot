@@ -14,10 +14,9 @@ import subprocess
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import polars as pl
-import pytest
 
 from pipeline.pipeline_03_replay_engine import (
     _get_signal_func,
@@ -25,7 +24,7 @@ from pipeline.pipeline_03_replay_engine import (
     _trade_feature_flags,
     replay_symbol,
 )
-from pipeline.pipeline_04_write_db import _compute_metrics, write_all
+from pipeline.pipeline_04_write_db import write_all
 
 
 # ── Signal dispatch ──────────────────────────────────────────────────────────

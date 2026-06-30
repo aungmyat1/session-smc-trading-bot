@@ -1,6 +1,5 @@
 """Tests for the validation gate and regression engines."""
 
-from pathlib import Path
 
 from core.strategy_registry import get_strategy_manifest
 

@@ -18,9 +18,7 @@ Run:
 from __future__ import annotations
 
 import argparse
-import uuid
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Callable, Optional
 
 import polars as pl
@@ -37,7 +35,6 @@ from .config import (
     SPREAD_STRESS_2X,
     SYMBOLS,
     SpreadConfig,
-    SessionWindow,
 )
 
 _UTC = timezone.utc

@@ -19,8 +19,6 @@ Outputs written to reports/:
 """
 
 import csv
-import json
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -185,7 +183,7 @@ def phase1_environment():
 
     lines += ["", "## Strategy Module", "", "| Component | Status |", "|---|---|"]
     try:
-        from strategy.session_liquidity.session_strategy import run_strategy, DEFAULT_CONFIG
+        from strategy.session_liquidity.session_strategy import DEFAULT_CONFIG
         lines.append("| `strategy.session_liquidity.session_strategy` | ✅ importable |")
         lines.append(f"| DEFAULT_CONFIG | `{DEFAULT_CONFIG}` |")
     except ImportError as e:
@@ -253,8 +251,8 @@ def phase2_dataset(m15_bars):
         "",
         "## Coverage",
         "",
-        f"| Item | Value | Status |",
-        f"|---|---|---|",
+        "| Item | Value | Status |",
+        "|---|---|---|",
         f"| M15 bars in 2025 | {len(bars_2025):,} | {'✅' if coverage_ok else '⚠️'} |",
         f"| Expected minimum | {expected_min:,} | — |",
         f"| Date range first | {times[0] if times else 'N/A'} | — |",
@@ -456,8 +454,8 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
         "",
         "## Summary",
         "",
-        f"| Item | Value |",
-        f"|---|---|",
+        "| Item | Value |",
+        "|---|---|",
         f"| Total trades | {len(trades)} |",
         f"| Wins | {len(wins)} |",
         f"| Losses | {len(losses)} |",
@@ -484,7 +482,7 @@ def phase5_trade_ledger(sigs_2025, time_idx, m15_bars):
             st_wins = [r for r in st_rs if r > 0]
             lines.append(f"| {sess} | {len(st)} | {pct(len(st_wins)/len(st))} | {sum(st_rs)/len(st):.3f}R |")
 
-    lines.append(f"\nLedger: `reports/STA2_2025_TRADE_LEDGER.csv`")
+    lines.append("\nLedger: `reports/STA2_2025_TRADE_LEDGER.csv`")
 
     out = REPORTS / "PHASE5_TRADE_SUMMARY.md"
     out.write_text("\n".join(lines))
@@ -607,11 +605,11 @@ def phase7_quality(trades, m_std):
         "",
         "## Trade Frequency",
         "",
-        f"| Metric | Value | Target | Status |",
-        f"|---|---|---|---|",
+        "| Metric | Value | Target | Status |",
+        "|---|---|---|---|",
         f"| Annual trades | {annual} | 50–250 | {'⚠️' if freq_warn else '✅'} |",
         f"| Trades/month avg | {trades_per_month:.1f} | 4–20 | — |",
-        f"| Expected from 5yr rate (~28/yr EURUSD) | ~28 | — | — |",
+        "| Expected from 5yr rate (~28/yr EURUSD) | ~28 | — | — |",
         "",
         "## Monthly Trade Counts",
         "",
@@ -703,7 +701,7 @@ def phase8_comparison(m_std, m_stress):
 
     out = REPORTS / "PHASE8_COMPARISON_REPORT.md"
     out.write_text("\n".join(lines))
-    print(f"[PHASE 8] Comparison written")
+    print("[PHASE 8] Comparison written")
 
 
 # ── Phase 9 — Failure analysis ────────────────────────────────────────────────
@@ -768,7 +766,7 @@ def phase9_failure(trades, m_std, m_stress):
 
     out = REPORTS / "PHASE9_FAILURE_ANALYSIS.md"
     out.write_text("\n".join(lines))
-    print(f"[PHASE 9] Failure analysis written")
+    print("[PHASE 9] Failure analysis written")
 
 
 # ── Phase 10 — Final report ───────────────────────────────────────────────────
@@ -817,11 +815,11 @@ def phase10_final(trades, m_std, m_stress, m_gross):
         "",
         "## Executive Summary",
         "",
-        f"```",
+        "```",
         f"VERDICT: {verdict}",
-        f"",
+        "",
         f"{verdict_note}",
-        f"```",
+        "```",
         "",
         "---",
         "",
@@ -878,7 +876,7 @@ def phase10_final(trades, m_std, m_stress, m_gross):
     if verdict == "INCONCLUSIVE" or (n < 20):
         lines += [
             "**Rationale:** The 2025 EURUSD 1-year window produces a small sample.",
-            f"At ST-A2's historical rate (~28 EURUSD signals/year from 5yr data),",
+            "At ST-A2's historical rate (~28 EURUSD signals/year from 5yr data),",
             f"n={n} is {'within' if n >= 15 else 'below'} the expected range.",
             "The Phase-0 gate (n≥50, 5yr combined) remains the primary validity measure.",
             "This 2025 replay is a single-year window check, not a replacement for Phase-0.",
@@ -960,7 +958,7 @@ def main():
     phase9_failure(trades, m_std, m_stress)
     phase10_final(trades, m_std, m_stress, m_gross)
 
-    print(f"\n=== All reports written to reports/ ===\n")
+    print("\n=== All reports written to reports/ ===\n")
     for f in sorted(REPORTS.iterdir()):
         print(f"  {f.name}")
 

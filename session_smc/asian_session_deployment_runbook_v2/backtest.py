@@ -14,11 +14,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import logging
-import math
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,11 +25,7 @@ import pandas as pd
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from smc_bot import structure, tp_engine
 from smc_bot.session_range import (
-    build_session_box,
-    classify_session,
-    detect_sweep,
     build_session_signal,
 )
 

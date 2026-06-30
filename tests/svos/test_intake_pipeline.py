@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from svos.application.intake import IntakeService
 from svos.application.audit import AuditIntegrationService

@@ -7,7 +7,9 @@ Note: data is M15 bars (not true 5m). confirm_bars represent 15-min multiples.
 """
 from __future__ import annotations
 
-import itertools, json, math
+import itertools
+import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np

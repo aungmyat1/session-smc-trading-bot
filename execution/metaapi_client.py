@@ -12,7 +12,7 @@ import asyncio
 import inspect
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from core.broker_interface import BrokerInterface

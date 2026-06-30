@@ -13,11 +13,9 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
-from replay.engine import ReplayTrade, ReplayResult
+from replay.engine import ReplayResult
 from replay.metrics import (
-    MetricSet, GateResult, gate_check,
-    compute_metrics, strategy_report, symbol_report,
-    year_report, session_report,
+    GateResult, compute_metrics, year_report, session_report,
 )
 
 _RESULTS_DIR = Path(__file__).parent / "results"

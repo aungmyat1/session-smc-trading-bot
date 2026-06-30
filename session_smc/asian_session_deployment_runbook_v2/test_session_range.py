@@ -21,7 +21,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -99,7 +99,6 @@ def _make_df_1h(hours: int = 48, base_price: float = 1.1000,
     Synthetic 1h OHLCV spanning `hours` candles starting at 2024-01-01 00:00 UTC.
     Generates mild sine-wave price movement.
     """
-    import numpy as np
 
     index  = pd.date_range("2024-01-01 00:00", periods=hours, freq="1h", tz="UTC")
     closes = base_price + amplitude * pd.Series(

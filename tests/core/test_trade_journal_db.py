@@ -1,8 +1,6 @@
 """Tests: SQLite trade journal — record, update, query, analytics."""
 
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 

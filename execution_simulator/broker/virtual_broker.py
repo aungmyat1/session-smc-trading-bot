@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from execution.metaapi_client import AccountInfo, BrokerPosition, OrderResult, SymbolPrice

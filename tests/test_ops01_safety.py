@@ -10,11 +10,11 @@ import pytest
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from execution.order_manager import OrderManager, MAX_OPEN_TRADES
 from execution.metaapi_client import MetaAPIClient, OrderResult, BrokerPosition
-from execution.risk_manager import RiskManager, BotState, STATE_FILE
+from execution.risk_manager import RiskManager
 from execution.trade_logger import TradeLogger, _VALID_EVENTS
 
 _UTC = timezone.utc
@@ -195,7 +195,6 @@ class TestHeartbeatFields:
         assert "DISCONNECTED" in {"CONNECTED", "DISCONNECTED"}
 
     def test_uptime_seconds_non_negative(self):
-        from datetime import timedelta
         start = datetime(2026, 6, 21, 8, 0, tzinfo=_UTC)
         now = datetime(2026, 6, 21, 8, 5, tzinfo=_UTC)
         uptime = int((now - start).total_seconds())
@@ -312,7 +311,6 @@ class TestRuntimeSafety:
         assert len(errors) == 1
 
     def test_live_trading_gate(self):
-        import execution.metaapi_client as m
         # In test environment, LIVE_TRADING should be False
         # (tests run with no .env or with LIVE_TRADING unset)
         # This asserts the module reads from os.getenv correctly

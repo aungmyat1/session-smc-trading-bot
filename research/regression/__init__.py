@@ -2,3 +2,5 @@
 
 from .engine import RegressionComparison, RegressionEngine, RegressionResult, RegressionThresholds
 
+__all__ = ["RegressionComparison", "RegressionEngine", "RegressionResult", "RegressionThresholds"]
+

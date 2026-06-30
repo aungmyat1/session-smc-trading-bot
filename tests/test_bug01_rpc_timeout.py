@@ -147,7 +147,6 @@ class TestHeartbeatSurvivesTimeout:
     @pytest.mark.asyncio
     async def test_heartbeat_completes_despite_rpc_hang(self):
         """_send_heartbeat() must return even when get_account_info() hangs."""
-        import bot as bot_module
         from bot import _send_heartbeat
 
         client = _connected_client()

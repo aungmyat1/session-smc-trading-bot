@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 
 from strategy_audit.audit_engine import StrategyAuditEngine
 from strategy_audit.audit_runner import StrategyAuditRunner

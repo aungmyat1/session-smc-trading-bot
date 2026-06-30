@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from execution.metaapi_client import MetaAPIClient, AccountInfo, SymbolPrice, OrderResult, BrokerPosition
+from execution.metaapi_client import MetaAPIClient, AccountInfo, OrderResult
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

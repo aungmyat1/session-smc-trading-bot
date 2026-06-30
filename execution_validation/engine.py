@@ -7,19 +7,16 @@ from pathlib import Path
 from statistics import quantiles
 from typing import Any
 
-from execution_gate import ExecutionGate, ExecutionGateConfig
 from execution_validation.common import CheckResult
 from execution_validation.rules import ValidationRules, load_validation_rules
 from execution_validation.tests.test_broker_rules import assess_broker_rules
 from execution_validation.tests.test_order_execution import assess_order_execution
-from execution_validation.tests.test_position_management import assess_position_management
 from execution_validation.tests.test_recovery import assess_recovery
 from execution_validation.tests.test_risk_engine import assess_risk_engine
 from execution_validation.tests.test_signal_integrity import assess_signal_integrity
 from execution_simulator.broker.virtual_broker import VirtualBroker, VirtualBrokerConfig
 from execution_simulator.execution.risk_engine import RiskEngine
 from execution_events import ExecutionEvent
-from models.order import Order
 from research.lineage import build_release_metadata
 
 _ROOT = Path(__file__).resolve().parents[1]

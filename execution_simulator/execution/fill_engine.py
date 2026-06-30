@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
-from execution.metaapi_client import OrderResult
 from execution_simulator.replay_engine.event_stream import MarketEvent
 
 

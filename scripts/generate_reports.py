@@ -13,7 +13,7 @@ import json
 import os
 import sqlite3
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path

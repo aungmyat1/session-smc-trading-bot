@@ -32,9 +32,7 @@ from __future__ import annotations
 import csv
 import sys
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
@@ -309,7 +307,7 @@ class ReplayEngine:
             return result
 
         print(f"\n{'='*60}")
-        print(f"  Historical Replay Engine")
+        print("  Historical Replay Engine")
         print(f"  Strategies : {list(adapters.keys())}")
         print(f"  Symbols    : {self.cfg.symbols}")
         print(f"  Period     : {self.cfg.start} → {self.cfg.end}")

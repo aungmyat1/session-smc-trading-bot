@@ -15,7 +15,7 @@ Provides:
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Mapping
+from typing import Any
 from zoneinfo import ZoneInfo
 
 _EST = ZoneInfo("America/New_York")

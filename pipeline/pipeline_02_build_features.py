@@ -15,8 +15,7 @@ Run:
 from __future__ import annotations
 
 import argparse
-from datetime import date, datetime, timezone
-from pathlib import Path
+from datetime import datetime, timezone
 from typing import Optional
 
 import polars as pl
@@ -29,7 +28,6 @@ from .config import (
     SESSIONS,
     SIGNAL_CONFIG,
     SYMBOLS,
-    SessionWindow,
 )
 from session_smc.liquidity_detector import build_session_range, classify_session
 

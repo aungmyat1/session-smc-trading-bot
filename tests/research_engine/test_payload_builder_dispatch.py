@@ -5,11 +5,10 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
 
 from core.strategy_registry import get_backtest_script
 from research.svos import payload_builder
-from research.svos.payload_builder import _no_backtest_summary, _run_backtest_script
+from research.svos.payload_builder import _no_backtest_summary
 
 
 # ── get_backtest_script registry lookup ──────────────────────────────────────

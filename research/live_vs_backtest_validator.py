@@ -377,7 +377,7 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a = lines.append
 
     since_str = since_dt.strftime("%Y-%m-%d") if since else "all-time"
-    a(f"# Live vs Backtest Validation Report")
+    a("# Live vs Backtest Validation Report")
     a(f"# Generated: {now.strftime('%Y-%m-%dT%H:%M UTC')}")
     a(f"# Period: {since_str} → now | Strategy: ST-A2 | Run: {_BACKTEST['run_id']}")
     a("")
@@ -387,8 +387,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     # ── Sample size warning ───────────────────────────────────────────────────
     a("## Sample Size")
     a("")
-    a(f"| Metric | Value |")
-    a(f"|---|---|")
+    a("| Metric | Value |")
+    a("|---|---|")
     a(f"| Signals generated | {n_signals} |")
     a(f"| Trades closed | {n_closed} |")
     a(f"| Days monitored | {freq['days_elapsed']} |")
@@ -403,8 +403,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     # ── 1. Signal Frequency ───────────────────────────────────────────────────
     a("## 1. Signal Frequency")
     a("")
-    a(f"| Metric | Live | Backtest | Status |")
-    a(f"|---|---|---|---|")
+    a("| Metric | Live | Backtest | Status |")
+    a("|---|---|---|---|")
     a(f"| Signals/month | {_fmt(freq['actual_per_month'])} | {_fmt(freq['expected_per_month'])} | "
       f"{'⚠️ Below 50% of expected' if freq['warn'] else '✅ OK (or too early to judge)'} |")
     a(f"| Total signals | {n_signals} | ~{round(_BACKTEST['trades_per_month'] * freq['days_elapsed'] / 30.44, 1)} expected | — |")
@@ -412,14 +412,14 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     if freq["days_elapsed"] < 30:
         a(f"> Too early to judge frequency (only {freq['days_elapsed']} days elapsed).")
         a(f"> Backtest baseline: {_BACKTEST['trades_per_month']:.1f}/month.")
-        a(f"> A full judgment requires ≥30 days of data.")
+        a("> A full judgment requires ≥30 days of data.")
         a("")
 
     # ── 2. Session Distribution ────────────────────────────────────────────────
     a("## 2. Session Distribution")
     a("")
-    a(f"| Session | Live Count | Live % | Backtest % | Status |")
-    a(f"|---|---|---|---|---|")
+    a("| Session | Live Count | Live % | Backtest % | Status |")
+    a("|---|---|---|---|---|")
     if sess["n"] > 0:
         a(f"| London | {sess['london_count']} | {_fmt(sess['london_pct'], '%')} | "
           f"{sess['backtest_london_pct']}% | {'⚠️ Unusually high' if sess['warn'] else '✅'} |")
@@ -436,8 +436,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     # ── 3. SL Distribution ────────────────────────────────────────────────────
     a("## 3. Stop-Loss Distance Distribution")
     a("")
-    a(f"| Metric | Live | Backtest Gate | Status |")
-    a(f"|---|---|---|---|")
+    a("| Metric | Live | Backtest Gate | Status |")
+    a("|---|---|---|---|")
     a(f"| Avg SL (pips) | {_fmt(sl_dist.get('avg_sl_pips'))} | ≥5.0 pip floor | "
       f"{'⚠️ Check' if sl_dist.get('warn') else '✅'} |")
     a(f"| Min SL (pips) | {_fmt(sl_dist.get('min_sl_pips'))} | ≥5.0 | "
@@ -461,8 +461,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
         a("|---|---|---|")
         a("| Slippage | 0 pips (bar-close execution) | — pending data — |")
     else:
-        a(f"| Metric | Value | Threshold | Status |")
-        a(f"|---|---|---|---|")
+        a("| Metric | Value | Threshold | Status |")
+        a("|---|---|---|---|")
         a(f"| Samples | {slip['n']} | — | — |")
         a(f"| Avg slippage | {_fmt(slip['avg_slippage_pips'], ' pips')} | < 1.0 pip | "
           f"{_badge(slip['warn'], slip['critical'])} |")
@@ -476,8 +476,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     # ── 5. Spread Analysis ────────────────────────────────────────────────────
     a("## 5. Spread at Execution")
     a("")
-    a(f"| Pair | Backtest Model | Live Rejections | Max Live Spread |")
-    a(f"|---|---|---|---|")
+    a("| Pair | Backtest Model | Live Rejections | Max Live Spread |")
+    a("|---|---|---|---|")
     for sym in ["EURUSD", "GBPUSD"]:
         key = f"spread_{sym.lower()}_pips"
         expected = _BACKTEST.get(key, "?")
@@ -494,8 +494,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     # ── 6. Trade Performance ─────────────────────────────────────────────────
     a("## 6. Trade Performance (Closed Trades)")
     a("")
-    a(f"| Metric | Live | Backtest (ST-A2) | Status |")
-    a(f"|---|---|---|---|")
+    a("| Metric | Live | Backtest (ST-A2) | Status |")
+    a("|---|---|---|---|")
     a(f"| Closed trades | {n_closed} | 169 (5yr) | "
       f"{'⚠️ Low sample' if perf['low_sample_warning'] else '—'} |")
     a(f"| Win rate | {_fmt(perf['win_rate'], '%', decimals=1) if perf['win_rate'] else '—'} | "
@@ -515,8 +515,8 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     if sym_bd:
         a("## 7. Symbol Breakdown")
         a("")
-        a(f"| Symbol | Signals | Trades | Win% | Avg R |")
-        a(f"|---|---|---|---|---|")
+        a("| Symbol | Signals | Trades | Win% | Avg R |")
+        a("|---|---|---|---|---|")
         for sym, d in sorted(sym_bd.items()):
             a(f"| {sym} | {d['signals']} | {d['closed_trades']} | "
               f"{_fmt(d['win_rate'], '%', decimals=1) if d['win_rate'] else '—'} | "
@@ -561,19 +561,19 @@ def generate_report(since: Optional[datetime], now: datetime) -> tuple[str, dict
     a("")
     a("| Metric | Value |")
     a("|---|---|")
-    a(f"| Strategy | ST-A2 (min_sl_pips=5.0) |")
+    a("| Strategy | ST-A2 (min_sl_pips=5.0) |")
     a(f"| Run ID | {_BACKTEST['run_id']} |")
-    a(f"| Pairs | EURUSD + GBPUSD |")
-    a(f"| Data period | 4.9 years |")
-    a(f"| Trade count | 169 |")
-    a(f"| Win rate | 32.0% |")
-    a(f"| Net PF (std) | 1.151 |")
-    a(f"| Net PF (2×) | 1.025 |")
-    a(f"| Max DD | 18.72 R |")
-    a(f"| London PF (std) | 0.949 |")
-    a(f"| NY PF (std) | 1.731 |")
-    a(f"| EURUSD PF (2×) | 0.945 ⚠️ |")
-    a(f"| GBPUSD PF (2×) | 1.168 ✅ |")
+    a("| Pairs | EURUSD + GBPUSD |")
+    a("| Data period | 4.9 years |")
+    a("| Trade count | 169 |")
+    a("| Win rate | 32.0% |")
+    a("| Net PF (std) | 1.151 |")
+    a("| Net PF (2×) | 1.025 |")
+    a("| Max DD | 18.72 R |")
+    a("| London PF (std) | 0.949 |")
+    a("| NY PF (std) | 1.731 |")
+    a("| EURUSD PF (2×) | 0.945 ⚠️ |")
+    a("| GBPUSD PF (2×) | 1.168 ✅ |")
     a("")
     a(f"*Generated by `research/live_vs_backtest_validator.py` at {now.strftime('%Y-%m-%dT%H:%M UTC')}*")
     a("")

@@ -6,7 +6,7 @@ Mirrors optimize_d2_rules.py logic exactly (session 08-16, liq_or_rr target).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 PIP: dict[str, float] = {"EURUSD": 0.0001, "GBPUSD": 0.0001}

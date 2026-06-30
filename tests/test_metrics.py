@@ -1,7 +1,6 @@
 """Tests for monitoring/metrics.py"""
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -79,7 +78,6 @@ class TestTradeJournal:
         assert stats["trades"] == 1    # only the closed one counts
 
     def test_daily_stats_filters_by_date(self, journal, monkeypatch):
-        import monitoring.metrics as m
 
         # Inject a fixed "today" for get_daily_stats
         monkeypatch.setattr(

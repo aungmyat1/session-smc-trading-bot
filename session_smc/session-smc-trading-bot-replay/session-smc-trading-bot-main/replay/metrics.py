@@ -249,7 +249,7 @@ def gate_check(trades: list[ReplayTrade]) -> GateResult:
 def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
     """Print a full replay summary to stdout."""
     print(f"\n{'═'*68}")
-    print(f"  REPLAY SUMMARY")
+    print("  REPLAY SUMMARY")
     print(f"{'═'*68}")
 
     # ── Per-strategy table ────────────────────────────────────────────────────
@@ -279,7 +279,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
     demo_trades = [t for t in trades if t.mode == "demo"]
     if demo_trades:
         print(f"\n  {'─'*68}")
-        print(f"  Year breakdown (demo strategies, std spread)")
+        print("  Year breakdown (demo strategies, std spread)")
         print(f"  {'Year':<8} {'N':>5} {'PF':>8} {'WR':>7} {'AvgR':>7} {'TotalR':>8}")
         print(f"  {'─'*68}")
         yr_map = year_report(demo_trades, "net_r_std")
@@ -290,7 +290,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     # ── Per-session breakdown ─────────────────────────────────────────────────
     if demo_trades:
-        print(f"\n  Session breakdown (demo strategies, std spread)")
+        print("\n  Session breakdown (demo strategies, std spread)")
         print(f"  {'Session':<12} {'N':>5} {'PF':>8} {'WR':>7} {'AvgR':>7}")
         print(f"  {'─'*68}")
         sess_map = session_report(demo_trades, "net_r_std")
@@ -299,7 +299,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     # ── Gate verdict ──────────────────────────────────────────────────────────
     print(f"\n  {'═'*68}")
-    print(f"  GATE RESULTS")
+    print("  GATE RESULTS")
     print(f"  {'─'*68}")
     for g in gate.strategies:
         icon = "✅" if g.overall else ("📋" if g.mode == "shadow" else "❌")
@@ -307,7 +307,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
 
     print(f"\n  {'─'*68}")
     if gate.demo_ready:
-        print(f"  ✅ ALL DEMO STRATEGIES PASS — cleared for Vantage demo connection")
+        print("  ✅ ALL DEMO STRATEGIES PASS — cleared for Vantage demo connection")
     else:
         failed = [g.strategy for g in gate.strategies if g.mode == "demo" and not g.overall]
         print(f"  ❌ DEMO GATE FAIL — {', '.join(failed)} did not pass")

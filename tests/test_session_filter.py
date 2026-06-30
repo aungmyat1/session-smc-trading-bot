@@ -2,7 +2,6 @@
 
 from datetime import datetime, timezone
 
-import pytest
 
 from data.session_filter import get_active_session, is_trading_allowed, seconds_to_next_session
 

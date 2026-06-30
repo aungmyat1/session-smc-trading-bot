@@ -70,7 +70,7 @@ from execution.mt5_connector       import MT5Connector
 from execution.vantage_demo_executor import VantageDemoExecutor
 from execution.trade_manager        import TradeManager
 from execution.demo_risk_manager    import (
-    calculate_lots, new_state, check_limits, record_result, reset_daily,
+    calculate_lots, new_state, check_limits, reset_daily,
 )
 from execution.trade_journal        import DemoTradeJournal
 

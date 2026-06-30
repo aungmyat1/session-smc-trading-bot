@@ -1,9 +1,8 @@
 """Tests for execution/position_sizer.py — lot sizing from risk model."""
 
-import math
 import pytest
 
-from execution.position_sizer import calculate_lots, SizingResult, _MIN_SL_PIPS, _MAX_SL_PIPS
+from execution.position_sizer import calculate_lots, _MIN_SL_PIPS, _MAX_SL_PIPS
 
 
 # ── Category 1: Standard calculation ─────────────────────────────────────────

@@ -1,6 +1,5 @@
 """Tests for session_smc/structure_detector.py"""
 import math
-import pytest
 from session_smc.structure_detector import atr, htf_bias, detect_choch, detect_bos, detect_displacement
 
 
