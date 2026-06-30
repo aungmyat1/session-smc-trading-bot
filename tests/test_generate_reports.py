@@ -237,3 +237,25 @@ def test_report_generation_does_not_call_live_broker_checks(tmp_path, monkeypatc
     content = path.read_text(encoding="utf-8")
     assert "Database connection" in content
     assert "Broker/API connection" in content
+
+
+def test_incident_metrics_ignore_benign_engineio_shutdown_noise(tmp_path, monkeypatch):
+    _configure_tmp_repo(tmp_path, monkeypatch)
+    _write(
+        tmp_path / "logs" / "strategy_demo.log",
+        "\n".join(
+            [
+                "2026-06-30 00:00:00 ERROR engineio.client — packet queue is empty, aborting",
+                "2026-06-30 00:00:01 INFO strategy_demo.runner — Shutting down.",
+            ]
+        )
+        + "\n",
+    )
+    monkeypatch.setattr(generate_reports, "RUNNER_LOGS", [tmp_path / "logs" / "strategy_demo.log"])
+
+    metrics = generate_reports._incident_metrics()
+    log_scan = generate_reports._recent_log_scan()
+
+    assert metrics["incident_count"] == 1
+    assert metrics["critical_count"] == 0
+    assert log_scan["error_count"] == 1

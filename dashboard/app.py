@@ -418,9 +418,18 @@ def _latest_log_lines(limit: int = 200) -> list[str]:
     return lines[-limit:]
 
 
+def _is_benign_runtime_line(line: str) -> bool:
+    text = str(line or "").lower()
+    return "engineio.client" in text and "packet queue is empty, aborting" in text
+
+
 def _incident_summary(limit: int = 20) -> dict[str, Any]:
     lines = _latest_log_lines(600)
-    incidents = [line for line in lines if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))]
+    incidents = [
+        line for line in lines
+        if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
+        and not _is_benign_runtime_line(line)
+    ]
     audit = tail_audit_log(limit=limit)
     return {
         "incident_count": len(incidents),

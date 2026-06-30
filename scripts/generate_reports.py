@@ -161,6 +161,11 @@ def _read_log_tails(paths: list[Path], limit: int) -> list[str]:
     return lines
 
 
+def _is_benign_runtime_line(line: str) -> bool:
+    text = str(line or "").lower()
+    return "engineio.client" in text and "packet queue is empty, aborting" in text
+
+
 def _parse_dt(value: Any) -> datetime | None:
     if not value:
         return None
@@ -259,8 +264,8 @@ def _read_log_tail(path: Path, lines: int = 400) -> list[str]:
 
 def _recent_log_scan() -> dict[str, Any]:
     lines = _read_log_tail(BOT_LOG, 600) + _read_log_tails(RUNNER_LOGS, 400)
-    errors = [line for line in lines if "ERROR" in line]
-    critical = [line for line in lines if "CRITICAL" in line or "FATAL" in line]
+    errors = [line for line in lines if "ERROR" in line and not _is_benign_runtime_line(line)]
+    critical = [line for line in lines if ("CRITICAL" in line or "FATAL" in line) and not _is_benign_runtime_line(line)]
     disconnect = any("DISCONNECTED" in line or "RPC timeout" in line for line in lines)
     reconnect = any("reconnect" in line.lower() for line in lines)
     last_success = next((line for line in reversed(lines) if "connected" in line.lower() or "filled" in line.lower()), "")
@@ -519,6 +524,8 @@ def _incident_metrics(days: int = 7) -> dict[str, Any]:
     filtered = []
     for line in lines:
         if not any(token in line for token in ("ERROR", "CRITICAL", "WARN", "disconnect", "Disconnect")):
+            continue
+        if _is_benign_runtime_line(line):
             continue
         filtered.append(line)
     recent = filtered[-20:]

@@ -514,6 +514,22 @@ def test_incident_acknowledgment_marks_incident_reviewed(client):
     assert reviewed["acknowledged"] is True
 
 
+def test_smo_ignores_benign_engineio_shutdown_noise(client, tmp_path):
+    _write(
+        tmp_path / "logs" / "strategy_demo.log",
+        "\n".join(
+            [
+                "2026-06-30 00:00:00 ERROR engineio.client — packet queue is empty, aborting",
+                "2026-06-30 00:00:01 INFO strategy_demo.runner — Shutting down.",
+            ]
+        )
+        + "\n",
+    )
+
+    payload = client.get("/api/smo").get_json()
+    assert all("packet queue is empty, aborting" not in item["text"] for item in payload["recent_incidents"])
+
+
 def test_incident_acknowledgment_requires_incident_id(client):
     response = client.post("/api/incidents/ack", json={})
     assert response.status_code == 400

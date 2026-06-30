@@ -19,7 +19,11 @@ class MonitoringStatusService:
     def snapshot(self) -> dict[str, Any]:
         health = self.health_snapshot_factory()
         logs = self._recent_log_lines(limit=300)
-        incidents = [line for line in logs if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))]
+        incidents = [
+            line for line in logs
+            if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
+            and not self._is_benign_runtime_line(line)
+        ]
         monitoring_status = "HEALTHY"
         if any(item.get("status") == "FAIL" for item in health.values() if isinstance(item, dict)):
             monitoring_status = "ALERT"
@@ -31,6 +35,11 @@ class MonitoringStatusService:
             "incident_count": len(incidents),
             "recent_incidents": incidents[-20:],
         }
+
+    @staticmethod
+    def _is_benign_runtime_line(line: str) -> bool:
+        text = str(line or "").lower()
+        return "engineio.client" in text and "packet queue is empty, aborting" in text
 
     def _recent_log_lines(self, limit: int = 200) -> list[str]:
         paths = [
