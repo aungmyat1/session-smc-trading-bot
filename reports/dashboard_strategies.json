@@ -1,0 +1,82 @@
+{
+  "strategies": {
+    "LondonBreakout": {
+      "status": "Virtual Demo Validation",
+      "updatedAt": "2026-06-30T17:47:53.061923+00:00",
+      "auditLog": [
+        {
+          "id": "08a63d38-44a4-409b-b4bb-3ddcabc0fd1c",
+          "timestamp": "2026-06-30T17:25:31.815108+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Strategy Audit",
+          "toStage": "AI Strategy Refinement",
+          "hash": "",
+          "evidenceSummary": "Promoted from Strategy Audit to AI Strategy Refinement",
+          "details": ""
+        },
+        {
+          "id": "287f03b1-f31c-4392-94ce-d8bafdf77f80",
+          "timestamp": "2026-06-30T17:26:11.318411+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "AI Strategy Refinement",
+          "toStage": "Historical Replay",
+          "hash": "",
+          "evidenceSummary": "Promoted from AI Strategy Refinement to Historical Replay",
+          "details": ""
+        },
+        {
+          "id": "88b94f4a-3a1d-477e-8e95-6ac0279281fd",
+          "timestamp": "2026-06-30T17:28:18.260629+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Historical Replay",
+          "toStage": "Statistical Validation",
+          "hash": "",
+          "evidenceSummary": "Promoted from Historical Replay to Statistical Validation",
+          "details": ""
+        },
+        {
+          "id": "9253fd89-e479-4666-8cb0-85530e2c673a",
+          "timestamp": "2026-06-30T17:47:41.278280+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Statistical Validation",
+          "toStage": "Robustness Validation",
+          "hash": "",
+          "evidenceSummary": "Promoted from Statistical Validation to Robustness Validation",
+          "details": ""
+        },
+        {
+          "id": "5687868d-b486-4ce8-9412-e733d1866f9d",
+          "timestamp": "2026-06-30T17:47:53.061923+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Robustness Validation",
+          "toStage": "Virtual Demo Validation",
+          "hash": "",
+          "evidenceSummary": "Promoted from Robustness Validation to Virtual Demo Validation",
+          "details": ""
+        }
+      ]
+    },
+    "ST-A2": {
+      "status": "Strategy Audit",
+      "updatedAt": "2026-06-30T17:46:34.526912+00:00",
+      "auditLog": [
+        {
+          "id": "e1ea790e-648e-484c-8a72-8e8b6b00cf58",
+          "timestamp": "2026-06-30T17:46:34.526912+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Strategy Intake",
+          "toStage": "Strategy Audit",
+          "hash": "",
+          "evidenceSummary": "Promoted from Strategy Intake to Strategy Audit",
+          "details": ""
+        }
+      ]
+    }
+  }
+}

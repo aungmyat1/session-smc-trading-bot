@@ -57,7 +57,7 @@ from dashboard.control_state import activate_emergency_stop, clear_emergency_sto
 from dashboard.report_service import generate as generate_reports_payload
 from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
 from dashboard.status_mapper import health_to_status
-from dashboard import strategy_service, gemini_service
+from dashboard import strategy_service, gemini_service, pipeline_service, live_dashboard_service
 import scripts.health_check as health_check
 from svos.api.service import SVOSOperationalAPI
 
@@ -121,6 +121,7 @@ _QUALITY_REPORT_JSON = _ROOT / "reports" / "quality_report.json"
 _STABILIZATION_STATUS_PATH = _ROOT / "docs" / "svos" / "STABILIZATION_STATUS.md"
 _NEW_DASHBOARD_ROOT = _ROOT / "New Dashborad"
 _NEW_DASHBOARD_DIST = _NEW_DASHBOARD_ROOT / "dist"
+_LIVE_DASHBOARD_HTML = Path(__file__).parent / "live_dashboard.html"
 _RUNNER_LOGS = [
     _ROOT / "logs" / "strategy_demo.log",
     _ROOT / "logs" / "st_a2_demo.log",
@@ -963,6 +964,34 @@ def api_new_dashboard_pipeline_report(strategy_id: str):
     return jsonify(report)
 
 
+@app.route("/api/new-dashboard/strategies/<strategy_id>/run-pipeline", methods=["POST"])
+def api_new_dashboard_run_pipeline(strategy_id: str):
+    body = request.get_json(silent=True) or {}
+    spec_text: str = body.get("spec", "").strip()
+
+    if not spec_text:
+        strat = strategy_service.get_strategy(strategy_id)
+        if strat:
+            spec_text = pipeline_service.build_spec_from_strategy(strat)
+
+    if not spec_text:
+        return jsonify({"error": "No strategy spec provided and none derivable from strategy rules"}), 400
+
+    try:
+        result = pipeline_service.run_pipeline(
+            strategy_id,
+            spec_text,
+            replay=body.get("replay") or None,
+            backtest=body.get("backtest") or None,
+            robustness=body.get("robustness") or None,
+            virtual_demo=body.get("virtual_demo") or None,
+        )
+        return jsonify(result)
+    except Exception as exc:
+        import traceback
+        return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
+
+
 @app.route("/api/new-dashboard/reports")
 def api_new_dashboard_reports():
     reports = load_index()
@@ -972,6 +1001,66 @@ def api_new_dashboard_reports():
         "generated_at": reports.get("generated_at", ""),
         "fetched_at": _now_iso(),
     })
+
+
+@app.route("/api/live-dashboard")
+def api_live_dashboard():
+    chart_symbol = str(request.args.get("symbol", "")).strip() or None
+    timeframe = str(request.args.get("timeframe", "M15")).strip() or "M15"
+    count = request.args.get("count", default=120, type=int) or 120
+    return jsonify(live_dashboard_service.load_snapshot(chart_symbol=chart_symbol, timeframe=timeframe, candle_count=max(10, min(count, 500))))
+
+
+@app.route("/api/live-dashboard/positions/<position_id>/close", methods=["POST"])
+@_require_operator("risk_operator", "admin")
+def api_live_dashboard_close_position(position_id: str):
+    try:
+        payload = live_dashboard_service.close_position(position_id)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+    write_audit_log(
+        "live_dashboard_close_position",
+        status="completed" if payload.get("ok") else "failed",
+        detail={**payload, "actor": request.environ["svos.actor"]},
+    )
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/live-dashboard/positions/<position_id>/protect", methods=["POST"])
+@_require_operator("risk_operator", "admin")
+def api_live_dashboard_modify_position(position_id: str):
+    body = request.get_json(silent=True) or {}
+    stop_loss = body.get("stop_loss")
+    take_profit = body.get("take_profit")
+    if stop_loss in (None, "") or take_profit in (None, ""):
+        return jsonify({"error": "stop_loss and take_profit are required"}), 400
+    try:
+        payload = live_dashboard_service.modify_position(position_id, float(stop_loss), float(take_profit))
+    except ValueError:
+        return jsonify({"error": "stop_loss and take_profit must be numeric"}), 400
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+    write_audit_log(
+        "live_dashboard_modify_position",
+        status="completed" if payload.get("ok") else "failed",
+        detail={**payload, "actor": request.environ["svos.actor"]},
+    )
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/live-dashboard/orders/<order_id>/cancel", methods=["POST"])
+@_require_operator("risk_operator", "admin")
+def api_live_dashboard_cancel_order(order_id: str):
+    try:
+        payload = live_dashboard_service.cancel_order(order_id)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 502
+    write_audit_log(
+        "live_dashboard_cancel_order",
+        status="completed" if payload.get("ok") else "failed",
+        detail={**payload, "actor": request.environ["svos.actor"]},
+    )
+    return jsonify({**payload, "fetched_at": _now_iso()})
 
 
 @app.route("/api/rgm")
@@ -1106,6 +1195,12 @@ def index():
 @app.route("/legacy")
 def legacy_index():
     return send_from_directory(str(Path(__file__).parent), "index.html")
+
+
+@app.route("/live-dashboard")
+@app.route("/live-dashboard/")
+def live_dashboard_index():
+    return send_from_directory(str(Path(__file__).parent), _LIVE_DASHBOARD_HTML.name)
 
 
 @app.route("/new-dashboard")

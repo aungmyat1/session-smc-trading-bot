@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Live Trading Dashboard</title>
+<style>
+  :root {
+    --bg: #09111f;
+    --surface: rgba(12, 22, 38, 0.92);
+    --surface-strong: #122033;
+    --surface-soft: #142742;
+    --border: rgba(122, 146, 182, 0.22);
+    --text: #f5f7fb;
+    --muted: #91a4bf;
+    --positive: #46d39a;
+    --negative: #ff7b7b;
+    --warning: #f2b74a;
+    --info: #7dc8ff;
+    --accent: #45a4ff;
+    --accent-2: #6be6c1;
+    --glow: rgba(69, 164, 255, 0.18);
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.34);
+    --radius: 18px;
+    --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", "SFMono-Regular", monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--text);
+    background:
+      radial-gradient(circle at top left, rgba(69, 164, 255, 0.18), transparent 32%),
+      radial-gradient(circle at top right, rgba(107, 230, 193, 0.12), transparent 28%),
+      linear-gradient(180deg, #08101c 0%, #0c1727 48%, #0a1220 100%);
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    padding: 28px 20px;
+    border-right: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(10, 18, 31, 0.96), rgba(9, 17, 31, 0.88));
+    backdrop-filter: blur(18px);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .brand {
+    margin-bottom: 28px;
+  }
+  .brand h1 {
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+    letter-spacing: 0.04em;
+  }
+  .brand p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .mode-strip {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .mode-chip {
+    border: 1px solid var(--border);
+    background: rgba(18, 32, 51, 0.76);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .nav {
+    display: grid;
+    gap: 8px;
+  }
+
+  .nav button {
+    width: 100%;
+    text-align: left;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--muted);
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: 0.18s ease;
+    font: inherit;
+  }
+
+  .nav button:hover,
+  .nav button.active {
+    color: var(--text);
+    background: linear-gradient(135deg, rgba(69, 164, 255, 0.16), rgba(107, 230, 193, 0.08));
+    border-color: rgba(69, 164, 255, 0.28);
+    box-shadow: inset 0 0 0 1px rgba(69, 164, 255, 0.12);
+  }
+
+  .content {
+    padding: 28px;
+    display: grid;
+    gap: 18px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .header h2 {
+    margin: 0 0 6px;
+    font-size: 1.65rem;
+  }
+
+  .header p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .badge, .button {
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    padding: 9px 14px;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(18, 32, 51, 0.74);
+    color: var(--text);
+  }
+
+  .button {
+    cursor: pointer;
+    transition: 0.18s ease;
+  }
+
+  .button:hover {
+    border-color: rgba(69, 164, 255, 0.34);
+    box-shadow: 0 0 0 3px rgba(69, 164, 255, 0.12);
+  }
+
+  .grid {
+    display: grid;
+    gap: 18px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  .split {
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .panel-header span {
+    color: var(--muted);
+    font-size: 0.84rem;
+  }
+
+  .panel-body {
+    padding: 18px;
+  }
+
+  .stat-card {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(69, 164, 255, 0.1), transparent 60%);
+    z-index: -1;
+  }
+
+  .label {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.72rem;
+    margin-bottom: 10px;
+  }
+
+  .value {
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-top: 8px;
+  }
+
+  .positive { color: var(--positive); }
+  .negative { color: var(--negative); }
+  .warning { color: var(--warning); }
+  .info { color: var(--info); }
+
+  .hidden { display: none; }
+
+  .kv {
+    display: grid;
+    gap: 12px;
+  }
+
+  .kv-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(122, 146, 182, 0.14);
+  }
+
+  .kv-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 11px 10px;
+    border-bottom: 1px solid rgba(122, 146, 182, 0.14);
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.92rem;
+  }
+
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .pill.ok { color: var(--positive); border-color: rgba(70, 211, 154, 0.32); background: rgba(70, 211, 154, 0.08); }
+  .pill.warn { color: var(--warning); border-color: rgba(242, 183, 74, 0.32); background: rgba(242, 183, 74, 0.08); }
+  .pill.bad { color: var(--negative); border-color: rgba(255, 123, 123, 0.3); background: rgba(255, 123, 123, 0.08); }
+  .pill.info { color: var(--info); border-color: rgba(125, 200, 255, 0.3); background: rgba(125, 200, 255, 0.08); }
+
+  .warning-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .warning-item {
+    border-radius: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(242, 183, 74, 0.22);
+    background: rgba(242, 183, 74, 0.08);
+  }
+
+  .warning-item.critical {
+    border-color: rgba(255, 123, 123, 0.26);
+    background: rgba(255, 123, 123, 0.08);
+  }
+
+  .chart {
+    width: 100%;
+    height: 300px;
+    background: linear-gradient(180deg, rgba(18, 32, 51, 0.92), rgba(12, 22, 38, 0.72));
+    border: 1px solid rgba(122, 146, 182, 0.14);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chart svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .footer-note {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .inline-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  input {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(10, 18, 31, 0.84);
+    color: var(--text);
+    padding: 10px 12px;
+    font: inherit;
+  }
+
+  .flash {
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(69, 164, 255, 0.22);
+    background: rgba(69, 164, 255, 0.08);
+    color: var(--info);
+  }
+
+  .mono {
+    font-family: var(--mono);
+  }
+
+  @media (max-width: 1100px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar {
+      position: static;
+      height: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .split { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Live Trading Dashboard</h1>
+      <p>Operational console for Vantage demo execution, portfolio awareness, and risk supervision.</p>
+    </div>
+    <div class="mode-strip">
+      <div class="mode-chip" id="modeChip">Mode: Demo</div>
+      <div class="mode-chip" id="safetyChip">Safety: Loading</div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="active" data-section="overview">Overview</button>
+      <button data-section="portfolio">Portfolio</button>
+      <button data-section="positions">Positions</button>
+      <button data-section="orders">Orders</button>
+      <button data-section="history">Trade History</button>
+      <button data-section="execution">Execution Monitor</button>
+      <button data-section="risk">Risk Dashboard</button>
+      <button data-section="broker">Broker Status</button>
+      <button data-section="market">Market Watch</button>
+      <button data-section="chart">Trading Chart</button>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <section class="header">
+      <div>
+        <h2>Live Operations</h2>
+        <p id="subtitle">Loading operational state from backend services...</p>
+      </div>
+      <div class="header-actions">
+        <div class="badge mono" id="updatedAt">Awaiting first refresh</div>
+        <button class="button" id="refreshBtn">Refresh</button>
+      </div>
+    </section>
+
+    <div id="flash" class="flash hidden"></div>
+
+    <section id="overview" class="grid cards"></section>
+    <section id="portfolio" class="grid split hidden"></section>
+    <section id="positions" class="hidden"></section>
+    <section id="orders" class="hidden"></section>
+    <section id="history" class="hidden"></section>
+    <section id="execution" class="hidden"></section>
+    <section id="risk" class="hidden"></section>
+    <section id="broker" class="hidden"></section>
+    <section id="market" class="hidden"></section>
+    <section id="chart" class="hidden"></section>
+  </main>
+</div>
+
+<script>
+  const sections = ["overview", "portfolio", "positions", "orders", "history", "execution", "risk", "broker", "market", "chart"];
+  const nav = document.getElementById("nav");
+  const flash = document.getElementById("flash");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const updatedAt = document.getElementById("updatedAt");
+  const subtitle = document.getElementById("subtitle");
+  const modeChip = document.getElementById("modeChip");
+  const safetyChip = document.getElementById("safetyChip");
+
+  function money(v) {
+    const n = Number(v || 0);
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  }
+
+  function number(v, digits = 2) {
+    return Number(v || 0).toFixed(digits);
+  }
+
+  function pnlClass(v) {
+    return Number(v || 0) >= 0 ? "positive" : "negative";
+  }
+
+  function pill(status) {
+    const value = String(status || "UNKNOWN").toUpperCase();
+    let cls = "info";
+    if (["CONNECTED", "OPEN", "GOOD", "OK", "QUALIFIED", "READY", "FILLED"].includes(value)) cls = "ok";
+    else if (["WARN", "WARNING", "DEGRADED", "PENDING", "WATCH"].includes(value)) cls = "warn";
+    else if (["FAIL", "FAILED", "DISCONNECTED", "CRITICAL", "BLOCKED", "REJECTED", "LOSS"].includes(value)) cls = "bad";
+    return `<span class="pill ${cls}">${value}</span>`;
+  }
+
+  function renderTable(columns, rows, renderRow) {
+    if (!rows.length) {
+      return `<div class="panel"><div class="panel-body footer-note">No records available.</div></div>`;
+    }
+    return `
+      <div class="panel">
+        <div class="panel-body table-wrap">
+          <table>
+            <thead><tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr></thead>
+            <tbody>${rows.map(renderRow).join("")}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function linePath(values, width, height, pad) {
+    if (!values.length) return "";
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min || 1;
+    return values.map((value, index) => {
+      const x = pad + (index * (width - pad * 2) / Math.max(values.length - 1, 1));
+      const y = height - pad - ((value - min) / span) * (height - pad * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join(" ");
+  }
+
+  function renderLineChart(points, label) {
+    const values = points.map(point => Number(point.value || point.close || 0));
+    const path = linePath(values, 900, 300, 28);
+    const last = points[points.length - 1];
+    return `
+      <div class="panel">
+        <div class="panel-header">
+          <div><h3>${label}</h3><span>${points.length} points</span></div>
+          <span>${last ? last.time || "" : ""}</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart">
+            <svg viewBox="0 0 900 300" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(69,164,255,0.45)"></stop>
+                  <stop offset="100%" stop-color="rgba(69,164,255,0)"></stop>
+                </linearGradient>
+              </defs>
+              <path d="${path}" fill="none" stroke="#7dc8ff" stroke-width="3" stroke-linecap="round"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function setFlash(message, type = "info") {
+    flash.textContent = message;
+    flash.classList.remove("hidden");
+    flash.style.borderColor = type === "error" ? "rgba(255,123,123,0.32)" : "rgba(69,164,255,0.22)";
+    flash.style.background = type === "error" ? "rgba(255,123,123,0.08)" : "rgba(69,164,255,0.08)";
+    flash.style.color = type === "error" ? "var(--negative)" : "var(--info)";
+    setTimeout(() => flash.classList.add("hidden"), 3500);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      headers: { "Content-Type": "application/json" },
+      ...options
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `Request failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  function activateSection(name) {
+    sections.forEach(section => {
+      document.getElementById(section).classList.toggle("hidden", section !== name);
+    });
+    nav.querySelectorAll("button").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.section === name);
+    });
+  }
+
+  nav.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-section]");
+    if (!button) return;
+    activateSection(button.dataset.section);
+  });
+
+  async function closePosition(positionId) {
+    try {
+      const result = await api(`/api/live-dashboard/positions/${encodeURIComponent(positionId)}/close`, { method: "POST" });
+      setFlash(result.simulated ? "Close action simulated because DEMO_ONLY is still enabled." : "Close order submitted.");
+      await loadDashboard();
+    } catch (error) {
+      setFlash(error.message, "error");
+    }
+  }
+
+  async function modifyPosition(positionId) {
+    const sl = document.getElementById(`sl-${positionId}`).value;
+    const tp = document.getElementById(`tp-${positionId}`).value;
+    try {
+      const result = await api(`/api/live-dashboard/positions/${encodeURIComponent(positionId)}/protect`, {
+        method: "POST",
+        body: JSON.stringify({ stop_loss: Number(sl), take_profit: Number(tp) })
+      });
+      setFlash(result.simulated ? "Protection update simulated because DEMO_ONLY is enabled." : "Protection updated.");
+      await loadDashboard();
+    } catch (error) {
+      setFlash(error.message, "error");
+    }
+  }
+
+  async function cancelOrder(orderId) {
+    try {
+      const result = await api(`/api/live-dashboard/orders/${encodeURIComponent(orderId)}/cancel`, { method: "POST" });
+      setFlash(result.simulated ? "Cancel action simulated because DEMO_ONLY is enabled." : "Order cancellation submitted.");
+      await loadDashboard();
+    } catch (error) {
+      setFlash(error.message, "error");
+    }
+  }
+
+  function renderOverview(data) {
+    const overview = data.overview;
+    document.getElementById("overview").innerHTML = [
+      ["Account Balance", money(overview.account_balance), "Broker-reported account balance"],
+      ["Equity", money(overview.equity), "Live account equity"],
+      ["Unrealized PnL", `<span class="${pnlClass(overview.unrealized_pnl)}">${money(overview.unrealized_pnl)}</span>`, "Open-position mark-to-market"],
+      ["Realized PnL", `<span class="${pnlClass(overview.realized_pnl)}">${money(overview.realized_pnl)}</span>`, "Closed trades from journal data"],
+      ["Daily PnL", `<span class="${pnlClass(overview.daily_pnl)}">${money(overview.daily_pnl)}</span>`, "UTC trading day"],
+      ["Weekly PnL", `<span class="${pnlClass(overview.weekly_pnl)}">${money(overview.weekly_pnl)}</span>`, "Rolling current week"],
+      ["Monthly PnL", `<span class="${pnlClass(overview.monthly_pnl)}">${money(overview.monthly_pnl)}</span>`, "Current month"],
+      ["Margin", money(overview.margin), "Used margin"],
+      ["Free Margin", money(overview.free_margin), "Available margin"],
+      ["Margin Level", `${number(overview.margin_level_pct)}%`, "Equity / margin"],
+      ["Drawdown", `${number(overview.drawdown_pct)}%`, "Current drawdown"],
+      ["Today's Risk", money(overview.todays_risk), "Open and realized downside"],
+      ["Open Positions", String(overview.open_positions), "Currently active broker positions"],
+      ["Pending Orders", String(overview.pending_orders), "Broker and journal-derived pending orders"],
+      ["Broker Status", pill(overview.broker_status), "Connection status"],
+      ["Market Status", pill(overview.market_status), "Market data availability"],
+      ["Connection Health", pill(overview.connection_health), "Broker heartbeat and reachability"],
+      ["Last Update", `<span class="mono">${overview.last_update_time}</span>`, "Backend snapshot time"]
+    ].map(([label, value, sub]) => `
+      <article class="panel stat-card">
+        <div class="panel-body">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          <div class="sub">${sub}</div>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  function renderPortfolio(data) {
+    const portfolio = data.portfolio;
+    document.getElementById("portfolio").innerHTML = `
+      <div class="panel">
+        <div class="panel-header"><div><h3>Portfolio Summary</h3><span>Equity, exposure, and realized performance</span></div></div>
+        <div class="panel-body kv">
+          <div class="kv-row"><span>Balance</span><strong>${money(portfolio.summary.balance)}</strong></div>
+          <div class="kv-row"><span>Equity</span><strong>${money(portfolio.summary.equity)}</strong></div>
+          <div class="kv-row"><span>Open Positions</span><strong>${portfolio.summary.open_positions}</strong></div>
+          <div class="kv-row"><span>Closed Trades</span><strong>${portfolio.summary.closed_trades}</strong></div>
+          <div class="kv-row"><span>Win Rate</span><strong>${number(portfolio.summary.win_rate_pct, 1)}%</strong></div>
+          <div class="kv-row"><span>Average Trade PnL</span><strong>${money(portfolio.summary.average_trade_pnl)}</strong></div>
+          <div class="kv-row"><span>Long Exposure</span><strong>${number(portfolio.exposure.long)}</strong></div>
+          <div class="kv-row"><span>Short Exposure</span><strong>${number(portfolio.exposure.short)}</strong></div>
+        </div>
+      </div>
+      <div class="grid">
+        ${renderLineChart(portfolio.equity_curve, "Equity Curve")}
+        <div class="panel">
+          <div class="panel-header"><div><h3>Asset Allocation</h3><span>Current open-position volume by symbol</span></div></div>
+          <div class="panel-body kv">
+            ${(portfolio.asset_allocation.length ? portfolio.asset_allocation : [{ symbol: "None", volume: 0 }]).map(item => `
+              <div class="kv-row"><span>${item.symbol}</span><strong>${number(item.volume)}</strong></div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPositions(data) {
+    const rows = data.positions.items || [];
+    document.getElementById("positions").innerHTML = renderTable(
+      ["Symbol", "Direction", "Volume", "Entry", "Current", "SL / TP", "PnL", "Holding", "Strategy", "Status", "Actions"],
+      rows,
+      (item) => `
+        <tr>
+          <td>${item.symbol || ""}</td>
+          <td>${pill(item.direction)}</td>
+          <td>${number(item.volume)}</td>
+          <td>${number(item.entry_price, 5)}</td>
+          <td>${number(item.current_price, 5)}</td>
+          <td>
+            <div>SL ${number(item.stop_loss, 5)}</div>
+            <div>TP ${number(item.take_profit, 5)}</div>
+          </td>
+          <td class="${pnlClass(item.unrealized_pnl)}">${money(item.unrealized_pnl)}</td>
+          <td>${item.holding_time || ""}</td>
+          <td>${item.strategy_name || ""}</td>
+          <td>${pill(item.status)}</td>
+          <td>
+            <div class="actions">
+              <button class="button" onclick="closePosition('${String(item.id).replace(/'/g, "\\'")}')">Close</button>
+            </div>
+            <div class="inline-form">
+              <input id="sl-${item.id}" value="${item.stop_loss || ""}" placeholder="Stop Loss" />
+              <input id="tp-${item.id}" value="${item.take_profit || ""}" placeholder="Take Profit" />
+              <button class="button" onclick="modifyPosition('${String(item.id).replace(/'/g, "\\'")}')">Update</button>
+            </div>
+          </td>
+        </tr>
+      `
+    );
+  }
+
+  function renderOrders(data) {
+    document.getElementById("orders").innerHTML = renderTable(
+      ["ID", "Symbol", "Direction", "Volume", "Entry", "Status", "Created", "Comment", "Actions"],
+      data.orders.all || [],
+      (item) => `
+        <tr>
+          <td class="mono">${item.id || ""}</td>
+          <td>${item.symbol || ""}</td>
+          <td>${pill(item.direction)}</td>
+          <td>${number(item.volume)}</td>
+          <td>${number(item.entry_price, 5)}</td>
+          <td>${pill(item.status)}</td>
+          <td>${item.created_at || ""}</td>
+          <td>${item.comment || ""}</td>
+          <td>${String(item.status || "").toUpperCase() === "PENDING" ? `<button class="button" onclick="cancelOrder('${String(item.id).replace(/'/g, "\\'")}')">Cancel</button>` : ""}</td>
+        </tr>
+      `
+    );
+  }
+
+  function renderHistory(data) {
+    document.getElementById("history").innerHTML = renderTable(
+      ["Time", "Symbol", "Strategy", "Entry", "Exit", "Duration", "Profit", "Commission", "Swap", "Slippage", "Notes"],
+      data.trade_history.trades || [],
+      (item) => `
+        <tr>
+          <td>${item.timestamp || ""}</td>
+          <td>${item.symbol || ""}</td>
+          <td>${item.strategy || ""}</td>
+          <td>${number(item.entry, 5)}</td>
+          <td>${number(item.exit, 5)}</td>
+          <td>${item.duration || ""}</td>
+          <td class="${pnlClass(item.profit)}">${money(item.profit)}</td>
+          <td>${money(item.commission)}</td>
+          <td>${money(item.swap)}</td>
+          <td>${number(item.slippage)}</td>
+          <td>${item.notes || ""}</td>
+        </tr>
+      `
+    );
+  }
+
+  function renderExecution(data) {
+    const exec = data.execution_monitor;
+    document.getElementById("execution").innerHTML = `
+      <div class="grid cards">
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Execution Latency</div><div class="value">${number(exec.execution_latency_ms)} ms</div><div class="sub">Average processing time from recent queue records</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Order Status</div><div class="value">${pill(exec.order_status)}</div><div class="sub">Latest order pipeline state</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Fill Status</div><div class="value">${pill(exec.fill_status)}</div><div class="sub">Latest fill event</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Retry Count</div><div class="value">${exec.retry_count}</div><div class="sub">Highest retry count in current queue</div></div></article>
+      </div>
+      ${renderTable(
+        ["Time", "Symbol", "Event", "Status", "Broker Response", "Retry Count", "Processing ms"],
+        exec.current_execution_queue || [],
+        (item) => `
+          <tr>
+            <td>${item.time || ""}</td>
+            <td>${item.symbol || ""}</td>
+            <td>${item.event || ""}</td>
+            <td>${pill(item.status)}</td>
+            <td>${item.broker_response || ""}</td>
+            <td>${item.retry_count}</td>
+            <td>${number(item.processing_time_ms)}</td>
+          </tr>
+        `
+      )}
+    `;
+  }
+
+  function renderRisk(data) {
+    const risk = data.risk_dashboard;
+    const warnings = risk.warnings || [];
+    document.getElementById("risk").innerHTML = `
+      <div class="grid cards">
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Daily Risk</div><div class="value">${money(risk.daily_risk)}</div><div class="sub">Realized downside for the current UTC day</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Open Risk</div><div class="value">${money(risk.open_risk)}</div><div class="sub">Loss exposure across open positions</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Exposure</div><div class="value">${number(risk.exposure)}</div><div class="sub">Aggregate open volume</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Current Drawdown</div><div class="value">${number(risk.current_drawdown_pct)}%</div><div class="sub">Peak-to-current drawdown estimate</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Margin Usage</div><div class="value">${number(risk.margin_usage_pct)}%</div><div class="sub">Used margin relative to equity</div></div></article>
+        <article class="panel stat-card"><div class="panel-body"><div class="label">Consecutive Losses</div><div class="value">${risk.consecutive_losses}</div><div class="sub">Persisted bot-state counter</div></div></article>
+      </div>
+      <div class="grid split">
+        <div class="panel">
+          <div class="panel-header"><div><h3>Risk Limits</h3><span>Configured operational thresholds</span></div></div>
+          <div class="panel-body kv">
+            <div class="kv-row"><span>Daily Loss Limit</span><strong>${money(risk.daily_loss_limit)}</strong></div>
+            <div class="kv-row"><span>Weekly Loss Limit</span><strong>${number(risk.risk_limits.weekly_loss_limit_pct)}%</strong></div>
+            <div class="kv-row"><span>Monthly Loss Limit</span><strong>${number(risk.risk_limits.monthly_loss_limit_pct)}%</strong></div>
+            <div class="kv-row"><span>Max Consecutive Losses</span><strong>${risk.risk_limits.max_consecutive_losses}</strong></div>
+            <div class="kv-row"><span>Max Open Positions</span><strong>${risk.risk_limits.max_open_positions}</strong></div>
+            <div class="kv-row"><span>Max Trades Per Day</span><strong>${risk.risk_limits.max_trades_per_day}</strong></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div><h3>Warnings</h3><span>Critical and warning conditions</span></div></div>
+          <div class="panel-body">
+            <div class="warning-list">
+              ${warnings.length ? warnings.map(item => `<div class="warning-item ${item.level === "critical" ? "critical" : ""}"><strong>${item.level.toUpperCase()}</strong><div>${item.message}</div></div>`).join("") : `<div class="footer-note">No active warning or critical states.</div>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBroker(data) {
+    const broker = data.broker_status;
+    document.getElementById("broker").innerHTML = `
+      <div class="grid split">
+        <div class="panel">
+          <div class="panel-header"><div><h3>Broker Connection</h3><span>Vantage demo / MetaAPI health</span></div></div>
+          <div class="panel-body kv">
+            <div class="kv-row"><span>Broker Connection</span><strong>${pill(broker.broker_connection)}</strong></div>
+            <div class="kv-row"><span>MT5 Status</span><strong>${pill(broker.mt5_status)}</strong></div>
+            <div class="kv-row"><span>MetaAPI Status</span><strong>${pill(broker.metaapi_status)}</strong></div>
+            <div class="kv-row"><span>Ping</span><strong>${broker.ping_ms} ms</strong></div>
+            <div class="kv-row"><span>Server Time</span><strong>${broker.server_time || ""}</strong></div>
+            <div class="kv-row"><span>Account Type</span><strong>${broker.account_type || "demo"}</strong></div>
+            <div class="kv-row"><span>Server</span><strong>${broker.server || ""}</strong></div>
+            <div class="kv-row"><span>Market Open Status</span><strong>${pill(broker.market_open_status)}</strong></div>
+            <div class="kv-row"><span>Average Spread</span><strong>${number(broker.spread)} pips</strong></div>
+            <div class="kv-row"><span>Connection Quality</span><strong>${pill(broker.connection_quality)}</strong></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><div><h3>Operational Notes</h3><span>Broker-facing execution context</span></div></div>
+          <div class="panel-body">
+            <p class="footer-note">The dashboard consumes backend APIs only. Position closes, protection updates, and order cancellations are routed through the existing Vantage demo execution adapter and remain subject to the `DEMO_ONLY` guard.</p>
+            <p class="footer-note">Last heartbeat: <span class="mono">${broker.last_heartbeat || "n/a"}</span></p>
+            <p class="footer-note">Latest broker response: ${broker.broker_response || "None captured in recent queue"}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMarket(data) {
+    document.getElementById("market").innerHTML = renderTable(
+      ["Symbol", "Bid", "Ask", "Spread", "Session Status", "Tick Time"],
+      data.market_watch.symbols || [],
+      (item) => `
+        <tr>
+          <td>${item.symbol}</td>
+          <td>${number(item.bid, 5)}</td>
+          <td>${number(item.ask, 5)}</td>
+          <td>${number(item.spread_pips)} pips</td>
+          <td>${pill("OPEN")}</td>
+          <td>${item.time || ""}</td>
+        </tr>
+      `
+    );
+  }
+
+  function renderChart(data) {
+    const chart = data.trading_chart || { candles: [] };
+    const points = (chart.candles || []).map(candle => ({ time: candle.time, value: candle.close }));
+    document.getElementById("chart").innerHTML = `
+      ${renderLineChart(points, `${chart.symbol || ""} ${chart.timeframe || ""} price`)}
+      <div class="panel">
+        <div class="panel-body footer-note">This chart uses backend-provided candles from the Vantage demo connection. It is intentionally thin and carries no trading logic in the browser.</div>
+      </div>
+    `;
+  }
+
+  async function loadDashboard() {
+    const data = await api("/api/live-dashboard");
+    updatedAt.textContent = data.fetched_at || "Unknown";
+    subtitle.textContent = `${data.system.vantage_demo_configured ? "Vantage demo credentials detected." : "Vantage demo credentials missing."} Broker status: ${data.broker_status.broker_connection}.`;
+    modeChip.textContent = `Mode: ${data.system.trading_mode || "demo"}`;
+    safetyChip.textContent = data.system.demo_only ? "Safety: DEMO_ONLY ON" : "Safety: DEMO_ONLY OFF";
+    renderOverview(data);
+    renderPortfolio(data);
+    renderPositions(data);
+    renderOrders(data);
+    renderHistory(data);
+    renderExecution(data);
+    renderRisk(data);
+    renderBroker(data);
+    renderMarket(data);
+    renderChart(data);
+  }
+
+  refreshBtn.addEventListener("click", async () => {
+    try {
+      await loadDashboard();
+      setFlash("Dashboard refreshed.");
+    } catch (error) {
+      setFlash(error.message, "error");
+    }
+  });
+
+  window.closePosition = closePosition;
+  window.modifyPosition = modifyPosition;
+  window.cancelOrder = cancelOrder;
+
+  loadDashboard().catch(error => setFlash(error.message, "error"));
+  setInterval(() => {
+    loadDashboard().catch(() => {});
+  }, 15000);
+</script>
+</body>
+</html>

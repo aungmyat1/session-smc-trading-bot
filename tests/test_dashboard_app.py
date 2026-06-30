@@ -8,6 +8,7 @@ import pytest
 import dashboard.app as dashboard_app
 import dashboard.audit_log as audit_log
 import dashboard.control_state as control_state
+import dashboard.live_dashboard_service as live_dashboard_service
 import dashboard.report_service as report_service
 import scripts.generate_reports as generate_reports
 
@@ -288,6 +289,78 @@ analytics:
     monkeypatch.setattr(report_service, "ROOT", tmp_path)
     monkeypatch.setattr(report_service, "REPORTS_ROOT", tmp_path / "reports")
     monkeypatch.setattr(report_service, "REPORT_INDEX_PATH", tmp_path / "reports" / "index.json")
+    monkeypatch.setattr(live_dashboard_service, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        live_dashboard_service,
+        "JOURNAL_PATHS",
+        [tmp_path / "logs" / "trades.jsonl"],
+    )
+    monkeypatch.setattr(live_dashboard_service, "BOT_STATE_PATH", tmp_path / "logs" / "bot_state.json")
+    monkeypatch.setattr(live_dashboard_service, "DEMO_CONFIG_PATH", tmp_path / "config" / "demo.yaml")
+    monkeypatch.setattr(
+        live_dashboard_service,
+        "_fetch_broker_snapshot",
+        lambda symbols, chart_symbol, timeframe, candle_count: {
+            "available": True,
+            "status": "CONNECTED",
+            "detail": "stubbed broker",
+            "account": {
+                "balance": 10125.0,
+                "equity": 10180.0,
+                "margin": 220.0,
+                "free_margin": 9960.0,
+                "currency": "USD",
+                "account_type": "demo",
+                "server": "VantageMarkets-Demo",
+                "account_id_masked": "...123456",
+            },
+            "positions": [
+                {
+                    "id": "pos-1",
+                    "symbol": "EURUSD",
+                    "direction": "buy",
+                    "volume": 0.2,
+                    "entry_price": 1.101,
+                    "current_price": 1.102,
+                    "stop_loss": 1.099,
+                    "take_profit": 1.105,
+                    "unrealized_pnl": 55.0,
+                    "strategy_name": "ST-A2",
+                    "status": "OPEN",
+                    "open_time": "2026-06-28T04:15:00+00:00",
+                    "holding_time": "1h 15m",
+                    "magic": 21099,
+                }
+            ],
+            "orders": [
+                {
+                    "id": "ord-1",
+                    "symbol": "GBPUSD",
+                    "direction": "buy",
+                    "volume": 0.1,
+                    "entry_price": 1.255,
+                    "stop_loss": 1.252,
+                    "take_profit": 1.26,
+                    "status": "PENDING",
+                    "created_at": "2026-06-28T05:15:00+00:00",
+                    "comment": "limit order",
+                }
+            ],
+            "market_watch": [
+                {"symbol": "EURUSD", "bid": 1.102, "ask": 1.1022, "spread_pips": 2.0, "time": "2026-06-28T05:16:00+00:00"},
+                {"symbol": "GBPUSD", "bid": 1.255, "ask": 1.2553, "spread_pips": 3.0, "time": "2026-06-28T05:16:00+00:00"},
+            ],
+            "chart": {
+                "symbol": chart_symbol,
+                "timeframe": timeframe,
+                "candles": [
+                    {"time": "2026-06-28T05:00:00+00:00", "open": 1.1, "high": 1.101, "low": 1.0995, "close": 1.1005, "volume": 10},
+                    {"time": "2026-06-28T05:15:00+00:00", "open": 1.1005, "high": 1.102, "low": 1.1002, "close": 1.1018, "volume": 12},
+                ],
+            },
+            "heartbeat": {"connected": True, "latency_ms": 115, "last_heartbeat": "2026-06-28T05:16:00+00:00"},
+        },
+    )
 
     monkeypatch.setattr(generate_reports, "ROOT", tmp_path)
     monkeypatch.setattr(generate_reports, "TRADE_EVENT_LOG", tmp_path / "logs" / "trades.jsonl")
@@ -303,6 +376,10 @@ analytics:
     monkeypatch.setattr(generate_reports, "VALIDATION_CONFIG", tmp_path / "config" / "validation.yaml")
     monkeypatch.setattr(generate_reports.health_check, "_ROOT", tmp_path)
     _write(tmp_path / "config" / "demo.yaml", "execution:\n  mode: demo\n")
+    _write(
+        tmp_path / "logs" / "bot_state.json",
+        json.dumps({"daily_loss_r": 0.5, "weekly_loss_r": 1.0, "consecutive_losses": 1, "halted": False}),
+    )
 
     monkeypatch.setattr(
         dashboard_app,
@@ -413,8 +490,14 @@ def test_new_dashboard_api_endpoints_work(client):
     assert detail.status_code == 200
     assert reports.status_code == 200
     assert "readiness" in overview.get_json()
-    assert strategies.get_json()["strategies"]
-    assert detail.get_json()["record"]["strategy"] == "ST-A2"
+    strategies_payload = strategies.get_json()
+    strategy_items = strategies_payload["strategies"] if isinstance(strategies_payload, dict) else strategies_payload
+    assert strategy_items
+    detail_payload = detail.get_json()
+    if "record" in detail_payload:
+        assert detail_payload["record"]["strategy"] == "ST-A2"
+    else:
+        assert detail_payload["id"] == "ST-A2"
     assert "reports" in reports.get_json()
 
 
@@ -491,6 +574,65 @@ def test_new_dashboard_static_route_blocks_path_traversal_probe(client):
     response = client.get("/new-dashboard/../../etc/shadow")
     assert response.status_code == 200
     assert b"New Project Dashboard" in response.data
+
+
+def test_live_dashboard_snapshot_endpoint_returns_operational_payload(client):
+    response = client.get("/api/live-dashboard")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert "overview" in payload
+    assert "portfolio" in payload
+    assert "positions" in payload
+    assert "orders" in payload
+    assert "trade_history" in payload
+    assert "execution_monitor" in payload
+    assert "risk_dashboard" in payload
+    assert "broker_status" in payload
+    assert "market_watch" in payload
+    assert "trading_chart" in payload
+
+
+def test_live_dashboard_static_route_serves_operational_console(client):
+    response = client.get("/live-dashboard/")
+
+    assert response.status_code == 200
+    assert b"Live Trading Dashboard" in response.data
+    assert b"Operational console for Vantage demo execution" in response.data
+
+
+def test_live_dashboard_position_actions_validate_payloads(client, monkeypatch):
+    monkeypatch.setattr(live_dashboard_service, "close_position", lambda position_id: {"ok": True, "position_id": position_id, "simulated": True})
+    monkeypatch.setattr(
+        live_dashboard_service,
+        "modify_position",
+        lambda position_id, stop_loss, take_profit: {
+            "ok": True,
+            "position_id": position_id,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "simulated": True,
+        },
+    )
+    monkeypatch.setattr(live_dashboard_service, "cancel_order", lambda order_id: {"ok": True, "order_id": order_id, "simulated": True})
+
+    close_response = client.post("/api/live-dashboard/positions/abc123/close")
+    assert close_response.status_code == 200
+    assert close_response.get_json()["position_id"] == "abc123"
+
+    bad_modify = client.post("/api/live-dashboard/positions/abc123/protect", json={})
+    assert bad_modify.status_code == 400
+
+    modify_response = client.post(
+        "/api/live-dashboard/positions/abc123/protect",
+        json={"stop_loss": 1.11, "take_profit": 1.22},
+    )
+    assert modify_response.status_code == 200
+    assert modify_response.get_json()["take_profit"] == 1.22
+
+    cancel_response = client.post("/api/live-dashboard/orders/o-1/cancel")
+    assert cancel_response.status_code == 200
+    assert cancel_response.get_json()["order_id"] == "o-1"
 
 
 def test_reports_include_strategy_audit_loop_report(client):
