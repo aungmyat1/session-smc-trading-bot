@@ -78,8 +78,8 @@ def _h4_bullish(trade_date: date = TRADE_DATE) -> list[dict]:
     lows  = [0.5, 1, 0.8, 0.5, 0.2, 0.8, 0.5, 0.8, 0.5, 0.3, 1.5, 0.5, 0.2]
     base  = datetime(2024, 1, 12, 0, 0, tzinfo=_UTC)
     return [
-        _bar(base + timedelta(hours=4 * i), float(h), float(l))
-        for i, (h, l) in enumerate(zip(highs, lows))
+        _bar(base + timedelta(hours=4 * i), float(h), float(lo))
+        for i, (h, lo) in enumerate(zip(highs, lows))
     ]
 
 

@@ -66,7 +66,7 @@ def main() -> None:
     args = parser.parse_args()
 
     start_date = _parse_date(args.start)
-    end_date = _parse_date(args.end)
+    _end_date = _parse_date(args.end)
     warmup_start = (
         (start_date - timedelta(days=args.warmup_days)).isoformat()
         if start_date

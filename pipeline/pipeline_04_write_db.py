@@ -123,9 +123,13 @@ def _monthly_breakdown(trades: list[dict]) -> list[dict]:
         los = [r for r in rs if r <= 0]
         gp  = sum(wins)
         gl  = abs(sum(los))
-        eq  = 0.0; peak = 0.0; mdd = 0.0
+        eq = 0.0
+        peak = 0.0
+        mdd = 0.0
         for r in rs:
-            eq += r; peak = max(peak, eq); mdd = max(mdd, peak - eq)
+            eq += r
+            peak = max(peak, eq)
+            mdd = max(mdd, peak - eq)
         rows.append({
             "month":         month,
             "trades":        len(rs),

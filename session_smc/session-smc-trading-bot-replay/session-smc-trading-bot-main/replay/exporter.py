@@ -142,7 +142,7 @@ def export_report(result: ReplayResult, gate: GateResult, path: Path | None = No
         gross_rs  = [t.gross_r      for t in st]
         m_std     = compute_metrics(std_rs,    [t.exit_reason for t in st])
         m_stress  = compute_metrics(stress_rs)
-        m_gross   = compute_metrics(gross_rs)
+        _m_gross   = compute_metrics(gross_rs)
 
         mode = st[0].mode if st else "?"
         lines += [f"### {name} ({mode})", ""]

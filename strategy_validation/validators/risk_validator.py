@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -46,7 +46,7 @@ class RiskValidationValidator(BaseValidator):
                 )
 
         score = round(((len(self.CONTROLS) - len(missing_controls)) / len(self.CONTROLS)) * 100.0, 2)
-        status = "PASS" if not missing_controls else "PARTIAL" if score >= 62.5 else "FAIL"
+        status: ValidationStatus = "PASS" if not missing_controls else "PARTIAL" if score >= 62.5 else "FAIL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

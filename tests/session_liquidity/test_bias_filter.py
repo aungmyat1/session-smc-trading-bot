@@ -47,11 +47,11 @@ def _bars(highs: list[float], lows: list[float], start: datetime = _T0) -> list[
     """Build 4H candle list from parallel highs/lows."""
     out = []
     t = start
-    for h, l in zip(highs, lows):
-        mid = round((h + l) / 2, 5)
+    for h, lo in zip(highs, lows):
+        mid = round((h + lo) / 2, 5)
         out.append({
             "time": t.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "open": mid, "high": h, "low": l, "close": mid,
+            "open": mid, "high": h, "low": lo, "close": mid,
         })
         t += timedelta(hours=4)
     return out

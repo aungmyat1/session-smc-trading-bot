@@ -40,7 +40,7 @@ def build_structure(frame: pd.DataFrame, swings: pd.DataFrame, pair: str | None 
     if active_high is None and active_low is None:
         return pd.DataFrame(columns=["timestamp", "pair", "structure", "direction"])
 
-    swing_lookup = swing_df.set_index("timestamp") if not swing_df.empty else pd.DataFrame()
+    _swing_lookup = swing_df.set_index("timestamp") if not swing_df.empty else pd.DataFrame()
     for _, candle in candles.iterrows():
         ts = candle["timestamp"]
         close = float(candle["close"])

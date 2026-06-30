@@ -401,12 +401,14 @@ def monthly_breakdown(trades: list[Trade], r_field: str) -> None:
         pf  = g_w / g_l if g_l > 0 else float("inf")
         wr  = wins / len(vals) * 100
         avg = sum(vals) / len(vals)
-        eq = peak = dd = mx = 0.0
+        eq = peak = mx = 0.0
         for v in vals:
             eq += v
-            if eq > peak: peak = eq
+            if eq > peak:
+                peak = eq
             d = peak - eq
-            if d > mx: mx = d
+            if d > mx:
+                mx = d
         pf_s = f"{pf:.3f}" if pf != float("inf") else "∞"
         print(f"  {month:<10} {len(vals):>4} {pf_s:>7} {wr:>5.1f}% {avg:>7.3f} {mx:>7.2f}")
 

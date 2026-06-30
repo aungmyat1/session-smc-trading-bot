@@ -25,8 +25,8 @@ MAX_SPREAD_PIPS = 3.0    # above this = UNSAFE
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _true_range(c: dict, prev_close: float) -> float:
-    h, l, pc = c["high"], c["low"], prev_close
-    return max(h - l, abs(h - pc), abs(l - pc))
+    h, lo, pc = c["high"], c["low"], prev_close
+    return max(h - lo, abs(h - pc), abs(lo - pc))
 
 
 def _wilder_smooth(values: list[float], period: int) -> list[float]:
@@ -63,12 +63,12 @@ def _compute_adx(candles: list[dict], period: int = ADX_PERIOD) -> tuple[float, 
     trs: list[float] = []
 
     for i in range(1, len(candles)):
-        h, l = candles[i]["high"], candles[i]["low"]
+        h, lo = candles[i]["high"], candles[i]["low"]
         ph, pl = candles[i - 1]["high"], candles[i - 1]["low"]
         pc = candles[i - 1]["close"]
 
         up_move = h - ph
-        down_move = pl - l
+        down_move = pl - lo
 
         plus_dm = up_move if (up_move > down_move and up_move > 0) else 0.0
         minus_dm = down_move if (down_move > up_move and down_move > 0) else 0.0

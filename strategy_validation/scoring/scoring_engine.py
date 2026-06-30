@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..models import ReadinessStatus, ValidatorResult
+from ..models import ReadinessStatus, ValidatorResult, ValidationStatus
 
 
 class ScoringEngine:
@@ -22,7 +22,7 @@ class ScoringEngine:
         weighted = sum(result.score * self.WEIGHTS.get(result.validator_name, 1.0) for result in results)
         return round(weighted / total_weight, 2)
 
-    def overall_status(self, results: list[ValidatorResult]) -> str:
+    def overall_status(self, results: list[ValidatorResult]) -> ValidationStatus:
         if any(result.status == "FAIL" for result in results):
             return "FAIL"
         if any(result.status in {"PARTIAL", "WARN"} for result in results):

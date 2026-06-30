@@ -20,10 +20,10 @@ from strategy.session_liquidity.session_builder import (
 UTC = timezone.utc
 
 
-def _c(t: str, h: float, l: float) -> dict:
+def _c(t: str, h: float, lo: float) -> dict:
     """Minimal M15 candle at time t with given high and low."""
-    mid = round((h + l) / 2, 5)
-    return {"time": t, "open": mid, "high": h, "low": l, "close": mid, "volume": 100.0}
+    mid = round((h + lo) / 2, 5)
+    return {"time": t, "open": mid, "high": h, "low": lo, "close": mid, "volume": 100.0}
 
 
 def _dt(s: str) -> datetime:

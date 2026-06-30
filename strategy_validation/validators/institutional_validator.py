@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -66,7 +66,7 @@ class InstitutionalRuleValidator(BaseValidator):
 
         score = round(min(100.0, len(detected) * 12.0 + 20.0 - len(findings) * 15.0), 2)
         score = max(score, 0.0)
-        status = "PASS" if detected and not findings and score >= 80 else "PARTIAL" if score >= 60 else "FAIL"
+        status: ValidationStatus = "PASS" if detected and not findings and score >= 80 else "PARTIAL" if score >= 60 else "FAIL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

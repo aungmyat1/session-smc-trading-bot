@@ -98,8 +98,8 @@ def generate_ny_momentum_signals(
         swept_short = False
         awaiting_long = False
         awaiting_short = False
-        long_sweep_idx = None
-        short_sweep_idx = None
+        _long_sweep_idx = None
+        _short_sweep_idx = None
 
         for _, candle in ny.iterrows():
             ts = candle["timestamp"]
@@ -110,12 +110,12 @@ def generate_ny_momentum_signals(
             if not swept_long and high > london_high + cfg.sweep_buffer_pips * pip and close > london_high:
                 swept_long = True
                 awaiting_long = True
-                long_sweep_idx = ts
+                _long_sweep_idx = ts
 
             if not swept_short and low < london_low - cfg.sweep_buffer_pips * pip and close < london_low:
                 swept_short = True
                 awaiting_short = True
-                short_sweep_idx = ts
+                _short_sweep_idx = ts
 
             if awaiting_long:
                 retest_top = london_high + cfg.retest_tolerance_pips * pip

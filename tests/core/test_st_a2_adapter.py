@@ -66,7 +66,7 @@ class TestST2Adapter:
 
     def test_signal_sell_mapping(self):
         adapter = ST2Adapter()
-        raw = _make_raw_signal(side="short")
+        _raw = _make_raw_signal(side="short")
         with patch("strategies.adapters.st_a2_adapter.ST2Adapter.generate_signal",
                    return_value=Signal(
                        timestamp="t", strategy_name="ST-A2",

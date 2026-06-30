@@ -87,7 +87,8 @@ class TestApplyFilter:
             _trade(sym="EURUSD", session="london"),
             _trade(sym="EURUSD", session="new_york"),
         ]
-        fn = lambda t: not (t["sym"] == "GBPUSD" and t["session"] == "london")
+        def fn(t):
+            return not (t["sym"] == "GBPUSD" and t["session"] == "london")
         result = apply_filter(trades, fn)
         assert len(result) == 3
         assert not any(t["sym"] == "GBPUSD" and t["session"] == "london" for t in result)
@@ -260,7 +261,7 @@ class TestRunAllExperiments:
         # EXP-01 ≥5pip at RR5
         r = next(r for r in results
                  if r["exp_id"] == "EXP-01" and r["variant"] == "≥ 5 pip" and r["rr"] == 5.0)
-        baseline = next(r for r in results
+        _baseline = next(r for r in results
                         if r["exp_id"] == "EXP-01" and r["variant"] == "≥ 5 pip" and r["rr"] == 5.0)
         # ≥5pip floor removes 3 trades per RR (those with sl=5.0 are kept, sl<5 removed)
         # sl_pips=5.0 exactly passes ≥5 — all 20 trades kept since min is 5.0

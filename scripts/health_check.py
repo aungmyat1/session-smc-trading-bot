@@ -80,7 +80,7 @@ def check_runner() -> dict:
     age_s = datetime.now().timestamp() - active_log.stat().st_mtime
     try:
         lines    = active_log.read_text(errors="replace").splitlines()
-        last_line = next((l for l in reversed(lines) if l.strip()), "")
+        last_line = next((line for line in reversed(lines) if line.strip()), "")
     except OSError:
         last_line = ""
 

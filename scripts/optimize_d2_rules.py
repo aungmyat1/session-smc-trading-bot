@@ -101,20 +101,32 @@ def backtest(df: pd.DataFrame, symbol: str, p: Params, start=None, end=None) -> 
     cooldown_until = -1
 
     for i in range(200, len(dfx)-1):
-        h = highs[i]; l = lows[i]; c = closes[i]; o = opens[i]
+        h = highs[i]
+        lo = lows[i]
+        c = closes[i]
 
         # Manage open trade
         if open_trade:
             bars_held = i - open_trade['entry_i']
-            exit_price = None; reason = None
+            exit_price = None
+            reason = None
             if open_trade['direction'] == 'long':
-                if l <= open_trade['stop']:    exit_price = open_trade['stop'];   reason = 'SL'
-                elif h >= open_trade['target']: exit_price = open_trade['target']; reason = 'TP'
+                if lo <= open_trade['stop']:
+                    exit_price = open_trade['stop']
+                    reason = 'SL'
+                elif h >= open_trade['target']:
+                    exit_price = open_trade['target']
+                    reason = 'TP'
             else:
-                if h >= open_trade['stop']:    exit_price = open_trade['stop'];   reason = 'SL'
-                elif l <= open_trade['target']: exit_price = open_trade['target']; reason = 'TP'
+                if h >= open_trade['stop']:
+                    exit_price = open_trade['stop']
+                    reason = 'SL'
+                elif lo <= open_trade['target']:
+                    exit_price = open_trade['target']
+                    reason = 'TP'
             if exit_price is None and bars_held >= 32:
-                exit_price = c; reason = 'TIME'
+                exit_price = c
+                reason = 'TIME'
             if exit_price is not None:
                 risk_dist = abs(open_trade['entry'] - open_trade['stop'])
                 if open_trade['direction'] == 'long':
@@ -131,7 +143,9 @@ def backtest(df: pd.DataFrame, symbol: str, p: Params, start=None, end=None) -> 
                     'exit_time': str(idx[i]), 'exit': float(exit_price),
                     'r': float(r), 'pnl': float(pnl), 'reason': reason,
                 })
-                open_trade = None; pending = None; cooldown_until = i + p.cooldown
+                open_trade = None
+                pending = None
+                cooldown_until = i + p.cooldown
             continue
 
         # Pending setup
@@ -142,7 +156,8 @@ def backtest(df: pd.DataFrame, symbol: str, p: Params, start=None, end=None) -> 
             else:
                 if not pending.get('confirmed'):
                     if age <= p.confirm_bars:
-                        pll_prev = pll_arr[i-1]; phl_prev = phl_arr[i-1]
+                        pll_prev = pll_arr[i-1]
+                        phl_prev = phl_arr[i-1]
                         if pending['direction'] == 'short':
                             mss = (c < pll_prev) if not np.isnan(pll_prev) else False
                         else:
@@ -150,54 +165,70 @@ def backtest(df: pd.DataFrame, symbol: str, p: Params, start=None, end=None) -> 
                         if mss:
                             pending['confirmed'] = True
                             if p.entry_mode == 'next_open':
-                                entry = float(opens[i+1]); fill_i = i+1
-                                pending['entry'] = entry; pending['fill_deadline'] = i + p.entry_wait
+                                entry = float(opens[i+1])
+                                fill_i = i+1
+                                pending['entry'] = entry
+                                pending['fill_deadline'] = i + p.entry_wait
                                 open_trade = _make_trade_arr(symbol, idx, pending, p, fill_i, entry, sl_buffer, pip, pdh_arr, pdl_arr, highs, lows)
-                                if open_trade is None: pending = None
+                                if open_trade is None:
+                                    pending = None
                                 continue
                             else:
-                                entry = float((h + l) / 2.0)
-                                pending['entry'] = entry; pending['fill_deadline'] = i + p.entry_wait
+                                entry = float((h + lo) / 2.0)
+                                pending['entry'] = entry
+                                pending['fill_deadline'] = i + p.entry_wait
                     else:
                         pending = None
                 else:
                     if p.entry_mode == 'fifty_pullback':
                         if i <= pending['fill_deadline']:
                             entry = pending['entry']
-                            filled = (h >= entry) if pending['direction']=='short' else (l <= entry)
+                            filled = (h >= entry) if pending['direction']=='short' else (lo <= entry)
                             if filled:
                                 open_trade = _make_trade_arr(symbol, idx, pending, p, i, entry, sl_buffer, pip, pdh_arr, pdl_arr, highs, lows)
-                                if open_trade is None: pending = None
+                                if open_trade is None:
+                                    pending = None
                                 continue
                         else:
                             pending = None
             continue
 
-        if i < cooldown_until: continue
-        if not (p.session_start <= hours_arr[i] < p.session_end): continue
-        pdh = pdh_arr[i]; pdl = pdl_arr[i]
-        if np.isnan(pdh) or np.isnan(pdl) or np.isnan(phl_arr[i]) or np.isnan(pll_arr[i]): continue
-        if spreads[i] > med_sp_arr[i] * SPREAD_FILTER_MULT: continue
+        if i < cooldown_until:
+            continue
+        if not (p.session_start <= hours_arr[i] < p.session_end):
+            continue
+        pdh = pdh_arr[i]
+        pdl = pdl_arr[i]
+        if np.isnan(pdh) or np.isnan(pdl) or np.isnan(phl_arr[i]) or np.isnan(pll_arr[i]):
+            continue
+        if spreads[i] > med_sp_arr[i] * SPREAD_FILTER_MULT:
+            continue
 
         swept_pdh = h > pdh and c < pdh
-        swept_pdl = l < pdl and c > pdl
+        swept_pdl = lo < pdl and c > pdl
         if swept_pdh:
-            direction = 'short'; extreme = h
+            direction = 'short'
+            extreme = h
         elif swept_pdl:
-            direction = 'long'; extreme = l
+            direction = 'long'
+            extreme = lo
         else:
             continue
 
         htf = htf_arr[i]
         if p.trend_filter == 'with_1h':
-            if direction == 'short' and htf != 'bearish': continue
-            if direction == 'long'  and htf != 'bullish': continue
+            if direction == 'short' and htf != 'bearish':
+                continue
+            if direction == 'long' and htf != 'bullish':
+                continue
         elif p.trend_filter == 'counter_1h':
-            if direction == 'short' and htf != 'bullish': continue
-            if direction == 'long'  and htf != 'bearish': continue
+            if direction == 'short' and htf != 'bullish':
+                continue
+            if direction == 'long' and htf != 'bearish':
+                continue
 
         pending = {'symbol': symbol, 'direction': direction, 'sweep_i': i,
-                   'sweep_time': idx[i], 'sweep_high': h, 'sweep_low': l,
+                   'sweep_time': idx[i], 'sweep_high': h, 'sweep_low': lo,
                    'pdh': pdh, 'pdl': pdl, 'extreme': extreme, 'confirmed': False}
 
     return pd.DataFrame(trades)
@@ -208,18 +239,22 @@ def _make_trade_arr(symbol, idx, pending, p, fill_i, entry, sl_buffer, pip, pdh_
     if direction == 'short':
         stop = pending['sweep_high'] + sl_buffer
         risk = stop - entry
-        if risk <= 0: return None
+        if risk <= 0:
+            return None
         risk_pips = risk / pip
-        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips: return None
+        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips:
+            return None
         liq = pending['pdl']
         target = liq if (p.target_mode == 'liq_or_rr' and liq < entry and (entry-liq)/risk >= 1.2) else entry - p.rr * risk
         model = f'D2_E3_opt_short_{p.entry_mode}'
     else:
         stop = pending['sweep_low'] - sl_buffer
         risk = entry - stop
-        if risk <= 0: return None
+        if risk <= 0:
+            return None
         risk_pips = risk / pip
-        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips: return None
+        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips:
+            return None
         liq = pending['pdh']
         target = liq if (p.target_mode == 'liq_or_rr' and liq > entry and (liq-entry)/risk >= 1.2) else entry + p.rr * risk
         model = f'D2_E3_opt_long_{p.entry_mode}'
@@ -233,9 +268,11 @@ def make_trade(symbol, dfx, pending, p: Params, fill_i, entry, sl_buffer, pip):
     if direction == 'short':
         stop = pending['sweep_high'] + sl_buffer
         risk = stop - entry
-        if risk <= 0: return None
+        if risk <= 0:
+            return None
         risk_pips = risk / pip
-        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips: return None
+        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips:
+            return None
         fixed_target = entry - p.rr * risk
         liq_target = pending['pdl']
         if p.target_mode == 'liq_or_rr' and liq_target < entry and (entry-liq_target)/risk >= 1.2:
@@ -246,9 +283,11 @@ def make_trade(symbol, dfx, pending, p: Params, fill_i, entry, sl_buffer, pip):
     else:
         stop = pending['sweep_low'] - sl_buffer
         risk = entry - stop
-        if risk <= 0: return None
+        if risk <= 0:
+            return None
         risk_pips = risk / pip
-        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips: return None
+        if risk_pips < p.min_stop_pips or risk_pips > p.max_stop_pips:
+            return None
         fixed_target = entry + p.rr * risk
         liq_target = pending['pdh']
         if p.target_mode == 'liq_or_rr' and liq_target > entry and (liq_target-entry)/risk >= 1.2:
@@ -269,7 +308,8 @@ def param_grid():
     maxstops=[6,10,15,25]
     trends=['none','with_1h','counter_1h']
     for (ss,se),cb,mode,wait,rr,tgt,ms,tr in itertools.product(sessions,confirm,modes,waits,rrs,targets,maxstops,trends):
-        if mode=='next_open' and wait != 1: continue
+        if mode == 'next_open' and wait != 1:
+            continue
         yield Params(ss,se,cb,mode,wait,rr,tgt,ms,2.0,3,tr)
 
 
@@ -282,19 +322,24 @@ def main():
     params=list(param_grid())
     print(f'Grid size: {len(params)}')
     for n,p in enumerate(params,1):
-        train_tr=[]; val_tr=[]
+        train_tr = []
+        val_tr = []
         for sym,df in data.items():
             t=backtest(df,sym,p,end=TRAIN_END-pd.Timedelta(minutes=15))
             v=backtest(df,sym,p,start=TRAIN_END)
-            if not t.empty: train_tr.append(t)
-            if not v.empty: val_tr.append(v)
+            if not t.empty:
+                train_tr.append(t)
+            if not v.empty:
+                val_tr.append(v)
         train=pd.concat(train_tr,ignore_index=True) if train_tr else pd.DataFrame()
         val=pd.concat(val_tr,ignore_index=True) if val_tr else pd.DataFrame()
-        st=summarize(train); sv=summarize(val)
+        st = summarize(train)
+        sv = summarize(val)
         if st['trades'] >= 20:  # avoid tiny sample winners
             score = st['profit_factor_R'] * min(1, st['trades']/50) + st['avg_R']
             results.append({'params':p.__dict__,'score':score,'train':st,'validation':sv})
-        if n%500==0: print(f'{n}/{len(params)}')
+        if n % 500 == 0:
+            print(f'{n}/{len(params)}')
     results=sorted(results, key=lambda x:(x['validation']['profit_factor_R'], x['validation']['total_R'], x['train']['profit_factor_R']), reverse=True)
     # Also sort by train to inspect overfit
     by_train=sorted(results, key=lambda x:(x['train']['profit_factor_R'], x['train']['total_R']), reverse=True)
@@ -306,12 +351,15 @@ def main():
     p=Params(**best['params'])
     print('BEST', json.dumps(best,indent=2))
     # full-period trades for best
-    all_tr=[]; per=[]
+    all_tr = []
+    per = []
     for sym,df in data.items():
         tr=backtest(df,sym,p)
         tr.to_csv(OUTDIR/f'{sym}_optimized_trades.csv',index=False)
         all_tr.append(tr)
-        st=summarize(tr); st['symbol']=sym; per.append(st)
+        st = summarize(tr)
+        st['symbol'] = sym
+        per.append(st)
     merged=pd.concat(all_tr,ignore_index=True).sort_values('entry_time') if all_tr else pd.DataFrame()
     merged.to_csv(OUTDIR/'all_optimized_trades.csv',index=False)
     port=summarize(merged)

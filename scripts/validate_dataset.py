@@ -337,7 +337,7 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
     legacy_path = DATA_PROC / sym / f"{tf}.parquet"
     partition_root = DATA_MARKET / tf.lower() / sym
     partition_paths = sorted(partition_root.glob("year=*/month=*/part-*.parquet")) if partition_root.exists() else []
-    path = legacy_path if legacy_path.exists() else (partition_paths[0] if partition_paths else legacy_path)
+    _path = legacy_path if legacy_path.exists() else (partition_paths[0] if partition_paths else legacy_path)
     stats = {
         "symbol": sym,
         "timeframe": tf,

@@ -479,7 +479,7 @@ def run_replay(symbol: str, start: str, end: str, rr: float, dry_run: bool, db: 
     # Compute metrics
     net_rs     = [t["result_r"]     for t in trade_records]
     stress_rs  = [t["result_r_2x"]  for t in trade_records]
-    gross_rs   = [t["gross_r"]       for t in trade_records]
+    _gross_rs   = [t["gross_r"]       for t in trade_records]
     m_std      = compute_metrics(net_rs)
     m_stress   = compute_metrics(stress_rs)
 

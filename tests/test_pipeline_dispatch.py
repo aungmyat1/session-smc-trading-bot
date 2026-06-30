@@ -209,7 +209,7 @@ def test_write_all_feature_flags_from_trade_dict() -> None:
         def __exit__(self, *_):
             self.commit()
         def execute(self, stmt, params=None):
-            sql = str(stmt)
+            _sql = str(stmt)
             if params and "bos" in params:
                 feature_inserts.append(dict(params))
             return _FakeResult()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -57,7 +57,7 @@ class TestabilityValidator(BaseValidator):
             )
 
         score = round(max(0.0, 100.0 - sum(30 if item.severity == "ERROR" else 15 for item in findings)), 2)
-        status = "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
+        status: ValidationStatus = "PASS" if not findings else "PARTIAL" if score >= 70 else "FAIL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

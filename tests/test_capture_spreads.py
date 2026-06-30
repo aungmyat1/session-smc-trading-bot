@@ -299,8 +299,8 @@ class TestBuildSummary:
         ])
         lines = build_summary(agg, 0.0, ["EURUSD", "GBPUSD"])
         assert len(lines) == 2
-        assert any("EURUSD" in l for l in lines)
-        assert any("GBPUSD" in l for l in lines)
+        assert any("EURUSD" in line for line in lines)
+        assert any("GBPUSD" in line for line in lines)
 
     def test_empty_agg(self):
         agg = defaultdict(lambda: [0.0, 0])

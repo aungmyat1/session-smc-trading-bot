@@ -550,7 +550,7 @@ class TestRunIntegration:
     """End-to-end test: write synthetic JSONL, call run(), verify output files."""
 
     def _write_trades_jsonl(self, path: Path) -> None:
-        now_str = "2026-06-22T08:00:00+00:00"
+        _now_str = "2026-06-22T08:00:00+00:00"
         records = [
             {"ts": "2026-06-22T08:00:00+00:00", "event": "SIGNAL_CREATED",
              "symbol": "EURUSD", "session": "london", "side": "buy",

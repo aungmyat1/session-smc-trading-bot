@@ -396,7 +396,7 @@ def _render_report(
     spread_q50 = _percentile(spread_values, 50)
     spread_q75 = _percentile(spread_values, 75)
 
-    loss_spreads = [c.spread_pips for c in losses if c.spread_pips is not None]
+    _loss_spreads = [c.spread_pips for c in losses if c.spread_pips is not None]
     loss_bos = Counter(c.bos_quality for c in losses)
     loss_sessions = Counter(c.session for c in losses)
     loss_sweep_types = Counter(c.sweep_type for c in losses)

@@ -327,7 +327,7 @@ def build_virtual_demo_payload(
         )
 
     metrics = _metrics_from_backtest(summary)
-    gate = bool(summary.get("any_pass", False))
+    _gate = bool(summary.get("any_pass", False))
     return {
         "completed_successfully": bool(execution_report and execution_report.status == "READY FOR DEMO"),
         "days_monitored": min_demo_days,

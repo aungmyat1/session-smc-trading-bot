@@ -240,17 +240,17 @@ def _first_matching_phrase(raw_text: str, phrases: Iterable[str]) -> str:
 
 def _find_ambiguities(raw_text: str, fields: dict[str, str]) -> list["StrategyIssue"]:
     issues: list[StrategyIssue] = []
-    for field, value in fields.items():
+    for fname, value in fields.items():
         lowered = value.lower()
         for pattern in _AMBIGUITY_PATTERNS:
             if re.search(pattern, lowered):
                 issues.append(
                     StrategyIssue(
                         code="ambiguous_rule",
-                        field=field,
+                        field=fname,
                         severity="MEDIUM",
-                        message=f"{_FIELD_LABELS[field]} contains ambiguous wording.",
-                        suggestion=f"Replace ambiguous language in {_FIELD_LABELS[field]} with a single, explicit rule.",
+                        message=f"{_FIELD_LABELS[fname]} contains ambiguous wording.",
+                        suggestion=f"Replace ambiguous language in {_FIELD_LABELS[fname]} with a single, explicit rule.",
                     )
                 )
                 break
@@ -286,15 +286,15 @@ def _find_contradictions(raw_text: str, fields: dict[str, str]) -> list["Strateg
             )
             break
 
-    for field, value in fields.items():
+    for fname, value in fields.items():
         if "both" in value.lower() and any(token in value.lower() for token in ("long", "short", "bullish", "bearish")):
             issues.append(
                 StrategyIssue(
                     code="contradictory_field",
-                    field=field,
+                    field=fname,
                     severity="CRITICAL",
-                    message=f"{_FIELD_LABELS[field]} appears to require conflicting outcomes.",
-                    suggestion=f"Rewrite {_FIELD_LABELS[field]} so it resolves to one unambiguous condition.",
+                    message=f"{_FIELD_LABELS[fname]} appears to require conflicting outcomes.",
+                    suggestion=f"Rewrite {_FIELD_LABELS[fname]} so it resolves to one unambiguous condition.",
                 )
             )
     return issues
@@ -506,32 +506,32 @@ class StrategyAuditEngine:
             available_data = _normalize_data_tokens(strategy.get("available_data", []))
             required_data = _normalize_data_tokens(strategy.get("required_data", []))
 
-        for field in self.required_fields:
-            value = extracted.get(field, "")
+        for fname in self.required_fields:
+            value = extracted.get(fname, "")
             if not value:
-                inferred = _infer_field_from_keywords(raw_text, field)
+                inferred = _infer_field_from_keywords(raw_text, fname)
                 if inferred:
                     value = inferred
-                    inferred_fields.append(field)
-            normalized_fields[field] = value.strip()
+                    inferred_fields.append(fname)
+            normalized_fields[fname] = value.strip()
 
         issues: list[StrategyIssue] = []
         clarifying_questions: list[str] = []
         fix_instructions: list[str] = []
         missing_fields: list[str] = []
 
-        for field in self.required_fields:
-            if not normalized_fields[field]:
-                missing_fields.append(field)
+        for fname in self.required_fields:
+            if not normalized_fields[fname]:
+                missing_fields.append(fname)
                 issue = StrategyIssue(
                     code="missing_field",
-                    field=field,
+                    field=fname,
                     severity="HIGH",
-                    message=f"Missing required field: {_FIELD_LABELS[field]}",
-                    suggestion=f"Specify {_FIELD_LABELS[field]} explicitly.",
+                    message=f"Missing required field: {_FIELD_LABELS[fname]}",
+                    suggestion=f"Specify {_FIELD_LABELS[fname]} explicitly.",
                 )
                 issues.append(issue)
-                clarifying_questions.append(f"What is the {_FIELD_LABELS[field]}?")
+                clarifying_questions.append(f"What is the {_FIELD_LABELS[fname]}?")
                 fix_instructions.append(issue.suggestion)
 
         issues.extend(_find_ambiguities(raw_text, normalized_fields))

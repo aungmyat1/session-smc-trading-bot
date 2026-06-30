@@ -98,7 +98,6 @@ def generate_signals(
     ah, al = asian["high"], asian["low"]
     signals: list[AdaptiveSignal] = []
     breakout_direction: str | None = None
-    breakout_bar: dict | None = None
 
     for candle in candles_m15:
         if not _is_london_bar(candle):
@@ -112,10 +111,8 @@ def generate_signals(
         if breakout_direction is None:
             if close > ah:
                 breakout_direction = "LONG"
-                breakout_bar = candle
             elif close < al:
                 breakout_direction = "SHORT"
-                breakout_bar = candle
             continue
 
         # After breakout: wait for retest

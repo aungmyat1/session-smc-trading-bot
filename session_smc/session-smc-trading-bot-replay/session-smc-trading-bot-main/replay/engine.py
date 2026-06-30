@@ -368,7 +368,7 @@ class ReplayEngine:
                 if h4_window:
                     h4_window = h4_window[-self.cfg.h4_lookback:]
 
-                current_bar_time = m15_bars[i]["time"]
+                _current_bar_time = m15_bars[i]["time"]
 
                 for name, adapter in adapters.items():
                     data = {

@@ -8,7 +8,7 @@ and outbox event. It never falls back to YAML or JSONL.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Sequence
+from typing import Callable, Sequence, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -102,7 +102,7 @@ class PostgresControlPlane:
                 if state.current_version_id != command.version_id:
                     raise ControlPlaneConflict("strategy version changed after gate evaluation")
 
-                self._validate_evidence(session, strategy.id, command, source.value)
+                self._validate_evidence(session, cast(UUID, strategy.id), command, source.value)
 
                 decision = GateDecision(
                     strategy_id=strategy.id,
@@ -131,9 +131,9 @@ class PostgresControlPlane:
                     actor=command.actor,
                     reason=command.reason,
                 )
-                state.current_stage = target.value
-                state.opt_lock = next_revision
-                state.updated_by = command.actor
+                state.current_stage = target.value  # type: ignore[assignment]
+                state.opt_lock = next_revision  # type: ignore[assignment]
+                state.updated_by = command.actor  # type: ignore[assignment]
                 outbox = Outbox(
                     event_type="stage_transition",
                     strategy_id=strategy.id,
@@ -149,11 +149,11 @@ class PostgresControlPlane:
                 session.add_all([transition, outbox])
                 session.flush()
                 result = CommittedTransition(
-                    decision_id=decision.id,
-                    transition_id=transition.id,
-                    strategy_id=strategy.id,
+                    decision_id=cast(UUID, decision.id),
+                    transition_id=cast(UUID, transition.id),
+                    strategy_id=cast(UUID, strategy.id),
                     from_revision=command.expected_revision,
-                    to_revision=next_revision,
+                    to_revision=int(next_revision),
                 )
             return result
 

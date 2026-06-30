@@ -189,7 +189,8 @@ class RobustnessIntegrationService:
             return {"status": "SKIPPED", "reason": "no parameter grid provided"}
         try:
             from research.robustness import parameter_sensitivity
-            return parameter_sensitivity(parameter_grid)
+            rr_results: dict[str, Any] = {str(i): g for i, g in enumerate(parameter_grid)}
+            return parameter_sensitivity(rr_results)
         except Exception as exc:
             return {"status": "ERROR", "reason": str(exc)}
 
@@ -199,7 +200,7 @@ class RobustnessIntegrationService:
             return {"status": "SKIPPED", "reason": "no regime labels provided"}
         try:
             from research.robustness import regime_analysis
-            return regime_analysis(trades, regime_labels=regime_labels, r_key="std_net_r")
+            return regime_analysis(trades, r_key="std_net_r")
         except Exception as exc:
             return {"status": "ERROR", "reason": str(exc)}
 

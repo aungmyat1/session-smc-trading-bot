@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -63,7 +63,7 @@ class LogicalConsistencyValidator(BaseValidator):
             )
 
         score = round(max(0.0, 100.0 - sum(30 if item.severity == "ERROR" else 15 for item in findings)), 2)
-        status = "PASS" if not findings else "FAIL" if any(item.severity == "ERROR" for item in findings) else "PARTIAL"
+        status: ValidationStatus = "PASS" if not findings else "FAIL" if any(item.severity == "ERROR" for item in findings) else "PARTIAL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

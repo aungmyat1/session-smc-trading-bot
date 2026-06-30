@@ -85,9 +85,9 @@ def _bot_process_status() -> dict:
     if pid:
         try:
             with open(f"/proc/{pid}/status") as f:
-                for l in f:
-                    if l.startswith("VmRSS:"):
-                        rss_mb = int(l.split()[1]) // 1024
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        rss_mb = int(line.split()[1]) // 1024
                         break
         except OSError:
             pass
@@ -119,13 +119,13 @@ def _heartbeat_metrics(lines: list[str]) -> dict:
     Returns: count, first_ts, last_ts, last_status, last_balance, last_equity,
              last_uptime, max_gap_s, last_open_positions.
     """
-    hb_lines = [l for l in lines if "[HEARTBEAT]" in l]
+    hb_lines = [line for line in lines if "[HEARTBEAT]" in line]
     if not hb_lines:
         return {"count": 0, "last_status": "UNKNOWN", "max_gap_s": None}
 
     timestamps = []
-    for l in hb_lines:
-        ts = _parse_ts(l)
+    for line in hb_lines:
+        ts = _parse_ts(line)
         if ts:
             timestamps.append(ts)
 
@@ -155,15 +155,15 @@ def _heartbeat_metrics(lines: list[str]) -> dict:
 
 def _connection_metrics(lines: list[str]) -> dict:
     """Count disconnects, reconnect successes/failures, watchdog alerts, rpc timeouts."""
-    disconnects = sum(1 for l in lines if "MetaAPI RPC timeout" in l or
-                      "connection_status=DISCONNECTED" in l and "[HEARTBEAT]" in l)
-    rpc_timeouts = sum(1 for l in lines if "MetaAPI RPC timeout" in l)
-    reconnect_ok = sum(1 for l in lines if "reconnected successfully" in l.lower() or
-                       "reconnect: connection established" in l.lower())
-    reconnect_fail = sum(1 for l in lines if "MetaAPI reconnect failed" in l or
-                         "reconnect failed" in l.lower())
-    watchdog = sum(1 for l in lines if "CRITICAL" in l and "heartbeat" in l.lower())
-    connected_events = sum(1 for l in lines if "MetaAPI connected" in l)
+    disconnects = sum(1 for line in lines if "MetaAPI RPC timeout" in line or
+                      "connection_status=DISCONNECTED" in line and "[HEARTBEAT]" in line)
+    rpc_timeouts = sum(1 for line in lines if "MetaAPI RPC timeout" in line)
+    reconnect_ok = sum(1 for line in lines if "reconnected successfully" in line.lower() or
+                       "reconnect: connection established" in line.lower())
+    reconnect_fail = sum(1 for line in lines if "MetaAPI reconnect failed" in line or
+                         "reconnect failed" in line.lower())
+    watchdog = sum(1 for line in lines if "CRITICAL" in line and "heartbeat" in line.lower())
+    connected_events = sum(1 for line in lines if "MetaAPI connected" in line)
 
     return {
         "rpc_timeouts": rpc_timeouts,
@@ -177,10 +177,10 @@ def _connection_metrics(lines: list[str]) -> dict:
 
 def _signal_metrics(lines: list[str]) -> dict:
     """Count signals generated and orders attempted today."""
-    signals = sum(1 for l in lines if "SIGNAL" in l and "generated" in l.lower())
-    orders_ok = sum(1 for l in lines if "ORDER_FILLED" in l or "order placed" in l.lower())
-    orders_rej = sum(1 for l in lines if "ORDER_REJECTED" in l or "SPREAD_TOO_WIDE" in l)
-    errors = sum(1 for l in lines if "ERROR" in l)
+    signals = sum(1 for line in lines if "SIGNAL" in line and "generated" in line.lower())
+    orders_ok = sum(1 for line in lines if "ORDER_FILLED" in line or "order placed" in line.lower())
+    orders_rej = sum(1 for line in lines if "ORDER_REJECTED" in line or "SPREAD_TOO_WIDE" in line)
+    errors = sum(1 for line in lines if "ERROR" in line)
     return {
         "signals_generated": signals,
         "orders_ok": orders_ok,

@@ -116,7 +116,7 @@ def test_intake_pass_with_good_spec(tmp_path):
 def test_intake_produces_evidence_record(tmp_path):
     _, platform = _setup(tmp_path)
     svc = IntakeService(platform)
-    result = svc.run("LONDON-SWEEP", _GOOD_SPEC, actor="test-runner")
+    _result = svc.run("LONDON-SWEEP", _GOOD_SPEC, actor="test-runner")
 
     evidence = platform.registry.evidence("LONDON-SWEEP")
     assert len(evidence) >= 1
@@ -160,7 +160,7 @@ def test_intake_report_has_markdown_companion(tmp_path):
 def test_intake_run_manifest_persisted(tmp_path):
     _, platform = _setup(tmp_path)
     svc = IntakeService(platform)
-    result = svc.run("LONDON-SWEEP", _GOOD_SPEC)
+    _result = svc.run("LONDON-SWEEP", _GOOD_SPEC)
     manifests_dir = tmp_path / "data" / "svos" / "manifests" / "LONDON-SWEEP"
     assert manifests_dir.exists()
     files = list(manifests_dir.glob("*.json"))

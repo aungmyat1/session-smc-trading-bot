@@ -220,10 +220,14 @@ def gate_check(trades: list[ReplayTrade]) -> GateResult:
         else:
             overall = p_trade and p_pf_std and p_pf_2x and p_wr
             notes_parts = []
-            if not p_trade:  notes_parts.append(f"need {min_n} trades (got {m_std.n})")
-            if not p_pf_std: notes_parts.append(f"PF_std={m_std.pf_str()} < {GATE_MIN_PF_STD}")
-            if not p_pf_2x:  notes_parts.append(f"PF_2x={m_stress.pf_str()} < {GATE_MIN_PF_STRESS}")
-            if not p_wr:     notes_parts.append(f"WR={m_std.win_pct()} < {GATE_MIN_WIN_RATE*100:.0f}%")
+            if not p_trade:
+                notes_parts.append(f"need {min_n} trades (got {m_std.n})")
+            if not p_pf_std:
+                notes_parts.append(f"PF_std={m_std.pf_str()} < {GATE_MIN_PF_STD}")
+            if not p_pf_2x:
+                notes_parts.append(f"PF_2x={m_stress.pf_str()} < {GATE_MIN_PF_STRESS}")
+            if not p_wr:
+                notes_parts.append(f"WR={m_std.win_pct()} < {GATE_MIN_WIN_RATE*100:.0f}%")
             notes = "; ".join(notes_parts) if notes_parts else "All checks passed"
 
         gates.append(StrategyGate(
@@ -257,7 +261,7 @@ def print_summary(trades: list[ReplayTrade], gate: GateResult) -> None:
           f"{'WR':>7} {'AvgR':>7} {'MaxDD':>7} {'Gate':>8}")
     print(f"  {'-'*68}")
 
-    mode_map = {
+    _mode_map = {
         "ST-A2": "demo", "LondonBreakout": "demo", "NYMomentum": "demo",
         "AdaptiveSMC": "shadow", "VWAPBreakout": "shadow",
     }

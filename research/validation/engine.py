@@ -287,9 +287,9 @@ class ValidationGate:
                 invalid_geometry.append(f"{trade_id}: NaN price")
                 continue
             try:
-                entry_f = float(entry)
-                stop_f = float(stop)
-                target_f = float(target)
+                entry_f = float(entry)  # type: ignore[arg-type]
+                stop_f = float(stop)  # type: ignore[arg-type]
+                target_f = float(target)  # type: ignore[arg-type]
             except (TypeError, ValueError):
                 invalid_geometry.append(f"{trade_id}: non-numeric price")
                 continue
@@ -333,10 +333,10 @@ class ValidationGate:
         checks.append(ValidationCheck("backtest_completed", completed, message="Backtest completed successfully" if completed else "Backtest did not complete successfully"))
 
         metrics = dict(data.get("metrics", {}) or {})
-        trade_count = int(data.get("trade_count", metrics.get("trade_count", 0) or 0))
-        expectancy = float(data.get("expectancy", metrics.get("expectancy", float("nan"))))
-        max_drawdown = float(data.get("max_drawdown", metrics.get("max_drawdown", float("nan"))))
-        profit_factor = float(data.get("profit_factor", metrics.get("profit_factor", float("nan"))))
+        trade_count = int(data.get("trade_count", metrics.get("trade_count", 0) or 0) or 0)
+        expectancy = float(data.get("expectancy", metrics.get("expectancy", float("nan"))) or float("nan"))
+        max_drawdown = float(data.get("max_drawdown", metrics.get("max_drawdown", float("nan"))) or float("nan"))
+        profit_factor = float(data.get("profit_factor", metrics.get("profit_factor", float("nan"))) or float("nan"))
         sharpe_ratio = data.get("sharpe_ratio", metrics.get("sharpe_ratio"))
         sortino_ratio = data.get("sortino_ratio", metrics.get("sortino_ratio"))
         recovery_factor = data.get("recovery_factor", metrics.get("recovery_factor"))

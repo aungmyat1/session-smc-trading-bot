@@ -87,9 +87,9 @@ def wilder_atr(candles: list[dict], period: int = 14) -> "list[float | None]":
     trs: list[float] = []
     for i in range(1, n):
         h = candles[i]["high"]
-        l = candles[i]["low"]
+        lo = candles[i]["low"]
         pc = candles[i - 1]["close"]
-        trs.append(max(h - l, abs(h - pc), abs(l - pc)))
+        trs.append(max(h - lo, abs(h - pc), abs(lo - pc)))
 
     # ── Seed: mean of the first `period` TR values (candles[1..period]) ───────
     seed = sum(trs[:period]) / period

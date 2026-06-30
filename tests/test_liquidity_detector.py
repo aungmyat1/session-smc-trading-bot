@@ -3,8 +3,8 @@ import pytest
 from session_smc.liquidity_detector import build_session_range, classify_session, detect_sweep
 
 
-def c(o, h, l, cl):
-    return {"open": o, "high": h, "low": l, "close": cl, "time": "T"}
+def c(o, h, lo, cl):
+    return {"open": o, "high": h, "low": lo, "close": cl, "time": "T"}
 
 
 # ── build_session_range ───────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ class TestClassifySession:
     def test_wide_range_trend(self):
         # Session range 50 pips, ATR 20 pips → ratio = 2.5 > 0.7 → TREND
         candles = [c(1.0, 1.002, 0.998, 1.0)] * 30  # ATR ≈ 0.004 per bar
-        atr_approx = 0.004
+        _atr_approx = 0.004
         range_size = 0.0050  # 50 pips
         sess_range = {"high": 1.0 + range_size / 2, "low": 1.0 - range_size / 2}
         # ratio = 0.005 / ~0.004 = 1.25 > 0.7 → TREND

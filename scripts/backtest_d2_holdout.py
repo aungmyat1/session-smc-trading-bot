@@ -72,8 +72,8 @@ def net_summary(trades: pd.DataFrame, symbol: str) -> dict:
 
     def pf(r_col):
         w = trades.loc[trades[r_col] > 0, r_col].sum()
-        l = abs(trades.loc[trades[r_col] <= 0, r_col].sum())
-        return round(float(w / l), 3) if l else math.inf
+        losses = abs(trades.loc[trades[r_col] <= 0, r_col].sum())
+        return round(float(w / losses), 3) if losses else math.inf
 
     gross_pf = pf('r')
     return {
@@ -106,7 +106,7 @@ def main():
         stats = net_summary(tr, sym)
         per_symbol[sym] = stats
         all_trades.append(tr)
-        gbpusd_start = '2023-03-13'
+        _gbpusd_start = '2023-03-13'
         print(f'  {sym}: n={stats.get("n",0)}  gross_pf={stats.get("gross_pf")}  net_std={stats.get("net_pf_std")}  net_2x={stats.get("net_pf_2x")}  wr={stats.get("win_rate_pct")}%')
 
     # Portfolio (combine both symbols)
@@ -114,7 +114,7 @@ def main():
     merged.to_csv(OUTDIR / 'all_holdout_trades.csv', index=False)
 
     # Combined net PF (merge R streams, apply per-symbol fee)
-    pip = PIP_SIZE['EURUSD']
+    _pip = PIP_SIZE['EURUSD']
     if not merged.empty:
         merged['pip'] = merged.symbol.map(PIP_SIZE)
         merged['sl_pips'] = abs(merged.entry - merged.stop) / merged.pip
@@ -124,8 +124,8 @@ def main():
         merged['net_r_2x']  = merged.r - merged.fee_2x  / merged.sl_pips
         def pf_col(col):
             w = merged.loc[merged[col]>0, col].sum()
-            l = abs(merged.loc[merged[col]<=0, col].sum())
-            return round(float(w/l), 3) if l else math.inf
+            losses = abs(merged.loc[merged[col]<=0, col].sum())
+            return round(float(w/losses), 3) if losses else math.inf
         eq = INITIAL_CAPITAL + (merged.r * INITIAL_CAPITAL * RISK_PER_TRADE).cumsum()
         eq2 = pd.concat([pd.Series([INITIAL_CAPITAL]), eq], ignore_index=True)
         dd = ((eq2 - eq2.cummax()) / eq2.cummax()).min()

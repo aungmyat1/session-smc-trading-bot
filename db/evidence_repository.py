@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -49,7 +49,7 @@ class PostgresEvidenceRepository:
                     select(ReportRecord).where(ReportRecord.report_id == registration.report_id)
                 )
                 if existing is not None:
-                    return existing.id
+                    return cast(UUID, existing.id)
                 json_artifact = self._artifact(session, registration.strategy_id, registration.stage, registration.report_type, registration.json_artifact, "application/json", registration)
                 markdown_artifact = None
                 if registration.markdown_artifact is not None:
@@ -78,7 +78,7 @@ class PostgresEvidenceRepository:
                 )
                 session.add(report)
                 session.flush()
-                return report.id
+                return cast(UUID, report.id)
 
     def _artifact(
         self,
@@ -143,4 +143,4 @@ class PostgresEvidenceRepository:
                 )
                 session.add(binding)
                 session.flush()
-                return binding.id
+                return cast(UUID, binding.id)

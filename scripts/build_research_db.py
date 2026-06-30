@@ -444,7 +444,7 @@ def main() -> None:
         if 1 in args.stages:
             stage_candles(sym)
         if 2 in args.stages:
-            sess_df = stage_sessions(sym, m15)
+            _sess_df = stage_sessions(sym, m15)
         if 3 in args.stages:
             # Asian ranges need full M15 (previous-day bars needed)
             asian_df = stage_asian_ranges(sym, m15_full)

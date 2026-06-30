@@ -3,8 +3,8 @@ import math
 from session_smc.structure_detector import atr, htf_bias, detect_choch, detect_bos, detect_displacement
 
 
-def c(o, h, l, cl):
-    return {"open": o, "high": h, "low": l, "close": cl, "time": "T"}
+def c(o, h, lo, cl):
+    return {"open": o, "high": h, "low": lo, "close": cl, "time": "T"}
 
 
 def flat(price, n=20):
@@ -56,13 +56,13 @@ class TestHTFBias:
         # Trailing bar at idx 5 gives idx 4 a right neighbor so swing_lows confirms it
         highs = [1, 2, 1, 3, 1, 4]
         lows  = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
-        return [c(l, h, l, h) for h, l in zip(highs, lows)]
+        return [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
 
     def _bearish(self):
         # LH: peaks 5→4→3 (idx 1,3,5); LL: valleys 1.5→1.0 (idx 2,4) with n=1
         highs = [1.0, 5.0, 2.0, 4.0, 1.5, 3.0, 1.0]
         lows  = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
-        return [c(l, h, l, h) for h, l in zip(highs, lows)]
+        return [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
 
     def test_both_bullish_returns_bullish(self):
         assert htf_bias(self._bullish(), self._bullish(), 1) == "bullish"

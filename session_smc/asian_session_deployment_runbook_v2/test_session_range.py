@@ -339,7 +339,7 @@ class TestBuildSessionSignal:
             data = {"GBPUSD": {"df_4h": df_4h, "df_1h": df_1h}}
             cfg = {**CFG, "risk": {"max_concurrent_signals": 3}}
             with patch("smc_bot.session_range.build_session_signal", return_value=None) as mock_sig:
-                signals = scan_all(data, cfg, utc_now=utc_now)
+                _signals = scan_all(data, cfg, utc_now=utc_now)
                 # build_session_signal should never be called for GBPUSD/asian
                 asian_calls = [
                     c for c in mock_sig.call_args_list

@@ -560,9 +560,11 @@ def phase7_quality(trades, m_std):
     max_consec_w = max_consec_l = cur_w = cur_l = 0
     for r in net_rs:
         if r > 0:
-            cur_w += 1; cur_l = 0
+            cur_w += 1
+            cur_l = 0
         else:
-            cur_l += 1; cur_w = 0
+            cur_l += 1
+            cur_w = 0
         max_consec_w = max(max_consec_w, cur_w)
         max_consec_l = max(max_consec_l, cur_l)
 

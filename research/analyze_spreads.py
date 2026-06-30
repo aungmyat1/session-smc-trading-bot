@@ -110,7 +110,7 @@ def main():
     ny_days     = len(sessions_seen.get(("EURUSD", "new_york"), set()))
 
     # Estimate poll efficiency: expected = rows per 30s interval
-    symbols_in_csv = sorted({k[0] for k in by_sym_sess})
+    _symbols_in_csv = sorted({k[0] for k in by_sym_sess})
 
     # Build the report
     lines = [

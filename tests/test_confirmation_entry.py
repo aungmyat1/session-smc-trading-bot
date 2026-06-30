@@ -10,8 +10,8 @@ from session_smc.confirmation_entry import generate_signal_A, DEFAULT_CONFIG
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def c(o, h, l, cl, t="2024-01-01T07:00:00Z"):
-    return {"open": o, "high": h, "low": l, "close": cl, "time": t, "volume": 100}
+def c(o, h, lo, cl, t="2024-01-01T07:00:00Z"):
+    return {"open": o, "high": h, "low": lo, "close": cl, "time": t, "volume": 100}
 
 
 def flat_candles(price, n, start_hour=7):
@@ -26,7 +26,7 @@ def bullish_htf(n=20):
     """
     highs = [1.0, 2.0, 1.0, 3.0, 1.0, 4.0]
     lows  = [0.5, 1.5, 0.5, 1.7, 0.7, 1.8]
-    base = [c(l, h, l, h) for h, l in zip(highs, lows)]
+    base = [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
     filler = flat_candles(2.0, max(0, n - len(base)))
     return base + filler
 
@@ -37,7 +37,7 @@ def bearish_htf(n=20):
     """
     highs = [1.0, 5.0, 2.0, 4.0, 1.5, 3.0, 1.0]
     lows  = [0.5, 4.0, 1.5, 3.0, 1.0, 2.0, 0.5]
-    base = [c(l, h, l, h) for h, l in zip(highs, lows)]
+    base = [c(lo, h, lo, h) for h, lo in zip(highs, lows)]
     filler = flat_candles(1.5, max(0, n - len(base)))
     return base + filler
 

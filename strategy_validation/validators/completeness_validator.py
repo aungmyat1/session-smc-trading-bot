@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -54,7 +54,7 @@ class RuleCompletenessValidator(BaseValidator):
                 )
 
         score = round(((len(self.QUESTIONS) - len(missing_dimensions)) / len(self.QUESTIONS)) * 100.0, 2)
-        status = "PASS" if not missing_dimensions else "PARTIAL" if score >= 66 else "FAIL"
+        status: ValidationStatus = "PASS" if not missing_dimensions else "PARTIAL" if score >= 66 else "FAIL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

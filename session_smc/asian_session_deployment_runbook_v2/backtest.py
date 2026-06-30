@@ -341,7 +341,7 @@ def run_backtest_for(
                            max_consec_loss, instrument, session}
     """
     session_cfg = CFG["sessions"][session_name]
-    start_h     = session_cfg["start_h"]
+    _start_h     = session_cfg["start_h"]
     end_h       = session_cfg["end_h"]
     instr_cfg   = CFG["instruments"][instrument]
 

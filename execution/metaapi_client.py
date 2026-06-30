@@ -14,13 +14,14 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Any
 
 from core.broker_interface import BrokerInterface
 
 logger = logging.getLogger(__name__)
 
 try:
-    from metaapi_cloud_sdk.clients.timeout_exception import TimeoutException as MetaAPITimeoutException
+    from metaapi_cloud_sdk.clients.timeout_exception import TimeoutException as MetaAPITimeoutException  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover - SDK may not be installed in tests
     MetaAPITimeoutException = None
 
@@ -105,9 +106,9 @@ class MetaAPIClient(BrokerInterface):
     def __init__(self, token: str, account_id: str) -> None:
         self._token = token
         self._account_id = account_id
-        self._api = None
-        self._account = None
-        self._connection = None
+        self._api: Any = None
+        self._account: Any = None
+        self._connection: Any = None
         self._connected: bool = False
 
     # ── RPC wrapper ───────────────────────────────────────────────────────────
@@ -155,7 +156,7 @@ class MetaAPIClient(BrokerInterface):
 
     async def connect(self) -> None:
         try:
-            from metaapi_cloud_sdk import MetaApi
+            from metaapi_cloud_sdk import MetaApi  # type: ignore[import-not-found]
         except ImportError:
             raise RuntimeError(
                 "metaapi-cloud-sdk not installed — run: pip install metaapi-cloud-sdk>=29"

@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID
 
 from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
@@ -343,7 +343,7 @@ class SVOSPlatform:
                     ArtifactBinding.invalidated_at.is_(None),
                 )
             ).all()
-            return tuple(b.id for b in bindings)
+            return tuple(cast(UUID, b.id) for b in bindings)
 
     # ── approval ───────────────────────────────────────────────────────────
 

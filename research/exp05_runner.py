@@ -378,17 +378,21 @@ def _simulate_all(
             if is_long:
                 if lo <= sl:
                     gross_r, exit_p, exit_t = -1.0, sl, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
                 if h >= tp:
                     gross_r, exit_p, exit_t = rr, tp, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
             else:
                 if h >= sl:
                     gross_r, exit_p, exit_t = -1.0, sl, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
                 if lo <= tp:
                     gross_r, exit_p, exit_t = rr, tp, bar["time"]
-                    hit = True; break
+                    hit = True
+                    break
 
         if not hit and future:
             last    = future[-1]

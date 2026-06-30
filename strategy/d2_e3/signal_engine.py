@@ -100,7 +100,7 @@ class D2E3Engine:
 
     def _step(self, i: int, ctx: list[dict]) -> list[Signal]:
         b = ctx[i]
-        h, l, c = b["high"], b["low"], b["close"]
+        h, lo, c = b["high"], b["low"], b["close"]
         t = _bar_time_str(b)
         pdh, pdl = b["pdh"], b["pdl"]
         phl, pll = b["phl"], b["pll"]
@@ -113,11 +113,15 @@ class D2E3Engine:
             exit_price = exit_reason = None
 
             if ot["direction"] == "long":
-                if l <= ot["stop"]:     exit_price, exit_reason = ot["stop"],   "SL"
-                elif h >= ot["target"]: exit_price, exit_reason = ot["target"],  "TP"
+                if lo <= ot["stop"]:
+                    exit_price, exit_reason = ot["stop"], "SL"
+                elif h >= ot["target"]:
+                    exit_price, exit_reason = ot["target"], "TP"
             else:
-                if h >= ot["stop"]:     exit_price, exit_reason = ot["stop"],   "SL"
-                elif l <= ot["target"]: exit_price, exit_reason = ot["target"],  "TP"
+                if h >= ot["stop"]:
+                    exit_price, exit_reason = ot["stop"], "SL"
+                elif lo <= ot["target"]:
+                    exit_price, exit_reason = ot["target"], "TP"
 
             if exit_price is None and bars_held >= self.p.max_hold_bars:
                 exit_price, exit_reason = c, "TIME"
@@ -155,7 +159,7 @@ class D2E3Engine:
                     elif pd["direction"] == "long" and not math.isnan(phl):
                         mss = c > phl
                     if mss:
-                        entry = (h + l) / 2.0
+                        entry = (h + lo) / 2.0
                         stop = self._stop(pd, entry)
                         pd.update(confirmed=True, entry=entry,
                                   fill_deadline_bar=i + self.p.entry_wait_bars)
@@ -171,7 +175,7 @@ class D2E3Engine:
                 # Waiting for limit fill
                 if i <= pd["fill_deadline_bar"]:
                     entry = pd["entry"]
-                    filled = (h >= entry if pd["direction"] == "short" else l <= entry)
+                    filled = (h >= entry if pd["direction"] == "short" else lo <= entry)
                     if filled:
                         ot = self._make_trade(pd, i)
                         if ot:
@@ -197,15 +201,15 @@ class D2E3Engine:
 
         if h > pdh and c < pdh:
             direction, extreme = "short", h
-        elif l < pdl and c > pdl:
-            direction, extreme = "long", l
+        elif lo < pdl and c > pdl:
+            direction, extreme = "long", lo
         else:
             return sigs
 
         self.pending = {
             "symbol": self.symbol, "direction": direction,
             "sweep_bar_i": i, "sweep_time": t,
-            "sweep_high": h, "sweep_low": l,
+            "sweep_high": h, "sweep_low": lo,
             "pdh": pdh, "pdl": pdl, "extreme": extreme,
             "confirmed": False,
         }
@@ -255,7 +259,7 @@ class D2E3Engine:
 
 def _build_context(bars: list[dict]) -> list[dict]:
     """Add pdh, pdl, phl (rolling pivot high), pll (rolling pivot low) to each bar."""
-    n = len(bars)
+    _n = len(bars)
 
     # Day → {high, low} accumulated
     day_hl: dict[str, list[float]] = {}

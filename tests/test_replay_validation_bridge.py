@@ -32,7 +32,7 @@ def _h4_bullish() -> list[dict]:
     highs = [1, 2, 5, 2, 1, 2, 3, 3, 2, 1, 8, 2, 1]
     lows = [0.5, 1, 0.8, 0.5, 0.2, 0.8, 0.5, 0.8, 0.5, 0.3, 1.5, 0.5, 0.2]
     base = datetime(2024, 1, 12, 0, 0, tzinfo=UTC)
-    return [_bar(base + timedelta(hours=4 * i), float(h), float(l)) for i, (h, l) in enumerate(zip(highs, lows))]
+    return [_bar(base + timedelta(hours=4 * i), float(h), float(lo)) for i, (h, lo) in enumerate(zip(highs, lows))]
 
 
 def _full_day() -> list[dict]:

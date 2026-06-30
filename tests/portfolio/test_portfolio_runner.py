@@ -284,7 +284,7 @@ class TestPortfolioLossLimit:
     """When portfolio loss limit is hit, the tick is skipped entirely."""
 
     def test_loss_limit_skips_tick(self):
-        sig = _make_signal(exec_mode="demo")
+        _sig = _make_signal(exec_mode="demo")
         strategy_map = {
             "ST-A2": {"pairs": ["EURUSD"], "mode": "demo", "enabled": True},
         }
@@ -303,7 +303,7 @@ class TestPortfolioLossLimit:
             patch("scripts.run_portfolio._jdb",           MagicMock()),
         ):
             from scripts.run_portfolio import _tick
-            result = asyncio.run(
+            asyncio.run(
                 _tick("demo", _FakeConnector(), _FakeExecutor(),
                       _FakeManager(), MagicMock(), {})
             )
@@ -442,7 +442,7 @@ class TestStrategyMapFromConfig:
         with patch("builtins.open", side_effect=FileNotFoundError):
             # Re-evaluate the _load_strategy_config call
             from scripts import run_portfolio as rp
-            cfg = rp._load_strategy_config()
+            _cfg = rp._load_strategy_config()
         # No yaml → empty dict; fallback map defined in module already
         # Just verify the hardcoded fallback names are all present
         expected = {"ST-A2", "LondonBreakout", "NYMomentum", "AdaptiveSMC", "VWAPBreakout"}

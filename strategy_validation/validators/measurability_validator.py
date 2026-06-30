@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult
+from ..models import StrategyDocument, ValidationFinding, ValidationRecommendation, ValidatorResult, ValidationStatus
 from ..module_base import BaseValidator
 
 
@@ -68,7 +68,7 @@ class MeasurabilityValidator(BaseValidator):
 
         total = len(measurable) + len(non_measurable)
         score = 0.0 if total == 0 else round((len(measurable) / total) * 100.0, 2)
-        status = "PASS" if total and not non_measurable else "PARTIAL" if score >= 60 else "FAIL"
+        status: ValidationStatus = "PASS" if total and not non_measurable else "PARTIAL" if score >= 60 else "FAIL"
         return ValidatorResult(
             validator_name=self.name,
             score=score,

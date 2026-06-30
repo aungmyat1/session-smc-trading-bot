@@ -3,8 +3,8 @@ import pytest
 from session_smc.poi_detector import find_fvg, check_fvg_retest
 
 
-def c(o, h, l, cl):
-    return {"open": o, "high": h, "low": l, "close": cl, "time": "T"}
+def c(o, h, lo, cl):
+    return {"open": o, "high": h, "low": lo, "close": cl, "time": "T"}
 
 
 # ── find_fvg ─────────────────────────────────────────────────────────────────

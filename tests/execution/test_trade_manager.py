@@ -33,7 +33,7 @@ class TestTradeManager:
     @pytest.mark.asyncio
     async def test_open_position_calls_executor(self):
         mgr, ex = _make_manager()
-        result = await mgr.open_position(_signal_ns("long"), 0.02)
+        _result = await mgr.open_position(_signal_ns("long"), 0.02)
         ex.place_order.assert_called_once()
         call_kwargs = ex.place_order.call_args.kwargs
         assert call_kwargs["direction"] == "buy"

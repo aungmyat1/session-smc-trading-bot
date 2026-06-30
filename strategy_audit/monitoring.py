@@ -19,10 +19,10 @@ class StrategyDriftAuditModule(AuditModule):
             if key not in historical or key not in live:
                 continue
             h = float(historical[key])
-            l = float(live[key])
-            delta = abs(l - h)
+            lv = float(live[key])
+            delta = abs(lv - h)
             delta_pct = 0.0 if h == 0 else abs(delta / h)
-            drift[key] = {"historical": h, "live": l, "delta_pct": delta_pct}
+            drift[key] = {"historical": h, "live": lv, "delta_pct": delta_pct}
             if delta_pct > float(context.notes.get("drift_threshold_pct", 0.20)):
                 warnings.append(f"{key} drift {delta_pct:.2%}")
         status = "PASS" if not warnings else "PARTIAL"

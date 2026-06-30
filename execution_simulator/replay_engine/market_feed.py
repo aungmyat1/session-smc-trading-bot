@@ -15,8 +15,9 @@ class MarketFeed:
 
     def __post_init__(self) -> None:
         self._last_tick: MarketEvent | None = None
-        if self.clock is not None and self.stream.peek() is not None:
-            self.clock.attach(self.stream.peek().timestamp)
+        first_event = self.stream.peek()
+        if self.clock is not None and first_event is not None:
+            self.clock.attach(first_event.timestamp)
 
     def get_tick(self) -> MarketEvent | None:
         tick = self.stream.next()

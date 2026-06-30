@@ -197,7 +197,7 @@ def check_ruff_clean(report: HealthReport) -> None:
     if proc.returncode == 0:
         report.checks.append(CheckResult("lint:ruff", CheckStatus.PASS, CheckLevel.WARNING, "zero violations"))
     else:
-        count = len([l for l in proc.stdout.splitlines() if l.strip() and not l.startswith("Found")])
+        count = len([line for line in proc.stdout.splitlines() if line.strip() and not line.startswith("Found")])
         report.checks.append(CheckResult("lint:ruff", CheckStatus.FAIL, CheckLevel.WARNING, f"{count} violations found"))
 
 

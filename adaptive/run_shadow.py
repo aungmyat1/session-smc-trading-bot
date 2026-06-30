@@ -146,7 +146,7 @@ async def _tick(
         try:
             m15 = await feed.get_candles(symbol, "M15", 200)
             h4  = await feed.get_candles(symbol, "H4",  100)
-            m5  = await feed.get_candles(symbol, "M5",  100)
+            _m5  = await feed.get_candles(symbol, "M5",  100)
             spread = await feed.get_current_spread(symbol)
         except Exception as exc:
             _log.warning("Feed error %s: %s", symbol, exc)
@@ -180,7 +180,7 @@ async def _tick(
             continue
 
         # ── Build context ────────────────────────────────────────────────────
-        session = feed.get_session()
+        _session = feed.get_session()
         utc_hour = datetime.now(timezone.utc).hour
         context = {
             "htf_bias":    _derive_htf_bias(h4),
