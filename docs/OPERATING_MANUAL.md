@@ -1,5 +1,7 @@
 # Operating Manual
 
+Related: [index.md](index.md) | [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) | [VPS_DEPLOYMENT_RUNBOOK.md](VPS_DEPLOYMENT_RUNBOOK.md) | [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md)
+
 This manual is for the project owner or operator. It explains how to run,
 monitor, pause, recover, and review the platform without changing trading
 logic.

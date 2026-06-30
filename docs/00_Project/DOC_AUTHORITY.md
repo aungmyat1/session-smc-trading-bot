@@ -9,6 +9,7 @@ Updated: 2026-06-29
 Owner: Platform Architecture
 Authority: Level 0 — Root
 Supersedes: (none — new document)
+Related: ../index.md, ../SYSTEM_ARCHITECTURE.md, ../DEVELOPER_HANDBOOK.md
 
 ---
 

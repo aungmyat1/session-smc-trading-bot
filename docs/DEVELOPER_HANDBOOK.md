@@ -6,7 +6,7 @@ Version: 1.0
 Updated: 2026-06-29
 Owner: Engineering
 Authority: Level 5 — Development Standards
-Related: DOC_AUTHORITY.md, SYSTEM_ARCHITECTURE.md, AGENT_RULES.md
+Related: index.md, DOC_AUTHORITY.md, SYSTEM_ARCHITECTURE.md, AGENT_RULES.md
 
 This handbook is the repository-level implementation constitution for AI agents
 and human contributors.
