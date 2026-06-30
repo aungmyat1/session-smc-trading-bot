@@ -22,6 +22,25 @@ no_implicit_optional = true
 warn_unused_ignores = true
 show_error_codes = true
 
+[[tool.mypy.overrides]]
+# Legacy modules that pre-date the mypy gate — suppress transitively-found errors
+# without blocking new code in svos/lifecycle and svos/shared.
+module = [
+    "execution.*",
+    "execution_simulator.*",
+    "strategy_validation.*",
+    "research.*",
+    "svos.application.*",
+    "svos.orchestration.*",
+    "svos.governance.*",
+    "svos.api.*",
+    "svos.adapters.*",
+    "svos.registry.*",
+    "svos.reports.*",
+    "db.*",
+]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 # Run svos coverage on every test invocation.
 # Pass --no-cov to skip (e.g. during rapid iteration: pytest --no-cov tests/svos/).
