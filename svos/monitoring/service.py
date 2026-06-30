@@ -19,11 +19,7 @@ class MonitoringStatusService:
     def snapshot(self) -> dict[str, Any]:
         health = self.health_snapshot_factory()
         logs = self._recent_log_lines(limit=300)
-        incidents = [
-            line for line in logs
-            if any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect"))
-            and not self._is_benign_runtime_line(line)
-        ]
+        incidents = self._incident_items(logs)
         monitoring_status = "HEALTHY"
         if any(item.get("status") == "FAIL" for item in health.values() if isinstance(item, dict)):
             monitoring_status = "ALERT"
@@ -57,3 +53,20 @@ class MonitoringStatusService:
             except Exception:
                 continue
         return lines[-limit:]
+
+    def _incident_items(self, lines: list[str]) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for line in lines:
+            if not any(token in line for token in ("ERROR", "CRITICAL", "WARN", "DISCONNECTED", "disconnect")):
+                continue
+            if self._is_benign_runtime_line(line):
+                continue
+            level = "INFO"
+            if "CRITICAL" in line or "FATAL" in line:
+                level = "CRITICAL"
+            elif "ERROR" in line or "DISCONNECTED" in line or "disconnect" in line:
+                level = "ERROR"
+            elif "WARN" in line:
+                level = "WARN"
+            items.append({"level": level, "message": line})
+        return items

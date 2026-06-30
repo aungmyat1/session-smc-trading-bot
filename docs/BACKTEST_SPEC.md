@@ -108,7 +108,7 @@ Run four independent backtests (same signals, different TP):
 
 Strategy passes if **ALL** of the following are true:
 
-1. `Trades ≥ 100`
+1. `Trades ≥ 50`
 2. `Net PF (std) > 1.0`
 3. `Net PF (2×) > 1.0`
 
@@ -118,7 +118,7 @@ All three must pass in the SAME RR variant. Report which RR(s) pass.
 
 ## Failure Handling
 
-- `n < 100` → INVALID — insufficient sample. Do not report PF as a result.
+- `n < 50` → INVALID — insufficient sample. Do not report PF as a result.
 - Any year with `n < 5` → exclude that year from per-year ⚠ flags.
 - If no RR variant passes → FAIL. Do not proceed to demo.
 

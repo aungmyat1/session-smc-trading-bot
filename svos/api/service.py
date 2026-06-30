@@ -6,7 +6,7 @@ from typing import Any, Callable
 from core.strategy_registry import get_current_strategy_name
 from svos.deployment.service import DeploymentStatusService
 from svos.monitoring.service import MonitoringStatusService
-from svos.orchestration.service import SVOSPlatform
+from svos.orchestration.service import PersistenceMode, SVOSPlatform
 
 
 class SVOSOperationalAPI:
@@ -23,7 +23,11 @@ class SVOSOperationalAPI:
     ) -> None:
         self.root = Path(root)
         self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
-        self.platform = SVOSPlatform(root=self.root, catalog_path=self.catalog_path)
+        self.platform = SVOSPlatform(
+            root=self.root,
+            catalog_path=self.catalog_path,
+            persistence_mode=PersistenceMode.LOCAL_COMPAT,
+        )
         self.deployment = DeploymentStatusService(root=self.root, catalog_path=self.catalog_path)
         self.monitoring = MonitoringStatusService(root=self.root, health_snapshot_factory=health_snapshot_factory)
         self.latest_reports_factory = latest_reports_factory
@@ -41,6 +45,7 @@ class SVOSOperationalAPI:
             "registry": registry,
             "deployment": deployment,
             "monitoring": monitoring,
+            "persistence": self.platform.persistence_status(),
             "reports": latest_reports,
             "emergency_stop": control.get("emergency_stop", {}),
             "service_status": {

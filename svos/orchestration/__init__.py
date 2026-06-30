@@ -1,5 +1,5 @@
 """SVOS orchestration services."""
 
-from svos.orchestration.service import SVOSPlatform
+from svos.orchestration.service import PersistenceMode, SVOSPlatform
 
-__all__ = ["SVOSPlatform"]
+__all__ = ["PersistenceMode", "SVOSPlatform"]

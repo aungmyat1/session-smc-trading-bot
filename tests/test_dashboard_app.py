@@ -34,6 +34,7 @@ def _setup_dashboard_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         "execution_validation/reports/run1",
         "docs",
         "data",
+        "New Dashborad/dist/assets",
     ]:
         (tmp_path / rel).mkdir(parents=True, exist_ok=True)
 
@@ -245,9 +246,16 @@ analytics:
     _write(tmp_path / "reports" / "system_health" / "system_health_report_2026-06-28_000000.md", "# System Health Report\n")
     _write(tmp_path / "reports" / "live_readiness" / "live_readiness_report_2026-06-28_000000.md", "# Live Readiness Report\n\n- Final verdict: `DEMO_READY`\n")
     _write(tmp_path / "reports" / "index.json", json.dumps({"generated_at": "", "latest": {}, "reports": []}))
+    _write(tmp_path / "reports" / "production_readiness_report.json", json.dumps({"release_status": "REJECTED", "rules": []}))
+    _write(tmp_path / "reports" / "testing_report.json", json.dumps({"status": "PASS", "score": 90.0}))
+    _write(tmp_path / "reports" / "quality_report.json", json.dumps({"status": "PASS", "quality_score": 95.0}))
+    _write(tmp_path / "docs" / "svos" / "STABILIZATION_STATUS.md", "# Stabilization Status\n\nVerdict: **NOT READY — feature freeze remains active**\n")
+    _write(tmp_path / "New Dashborad" / "dist" / "index.html", "<!doctype html><html><body><div id='root'>New Project Dashboard</div></body></html>")
+    _write(tmp_path / "New Dashborad" / "dist" / "assets" / "app.js", "console.log('new dashboard');")
 
     monkeypatch.setenv("DB_BACKEND", "duckdb")
     monkeypatch.setenv("LIVE_TRADING", "false")
+    monkeypatch.setenv("DEMO_ONLY", "true")
     monkeypatch.setattr(dashboard_app, "_ROOT", tmp_path)
     monkeypatch.setattr(dashboard_app, "_CATALOG_PATH", tmp_path / "config" / "strategy_catalog.yaml")
     monkeypatch.setattr(dashboard_app, "_EVF_REPORTS_DIR", tmp_path / "execution_validation" / "reports")
@@ -257,6 +265,12 @@ analytics:
     monkeypatch.setattr(dashboard_app, "_ARCHITECTURE_PATH", tmp_path / "docs" / "SYSTEM_ARCHITECTURE.md")
     monkeypatch.setattr(dashboard_app, "_BOT_LOG", tmp_path / "logs" / "bot.log")
     monkeypatch.setattr(dashboard_app, "_RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
+    monkeypatch.setattr(dashboard_app, "_READINESS_REPORT_JSON", tmp_path / "reports" / "production_readiness_report.json")
+    monkeypatch.setattr(dashboard_app, "_TESTING_REPORT_JSON", tmp_path / "reports" / "testing_report.json")
+    monkeypatch.setattr(dashboard_app, "_QUALITY_REPORT_JSON", tmp_path / "reports" / "quality_report.json")
+    monkeypatch.setattr(dashboard_app, "_STABILIZATION_STATUS_PATH", tmp_path / "docs" / "svos" / "STABILIZATION_STATUS.md")
+    monkeypatch.setattr(dashboard_app, "_NEW_DASHBOARD_ROOT", tmp_path / "New Dashborad")
+    monkeypatch.setattr(dashboard_app, "_NEW_DASHBOARD_DIST", tmp_path / "New Dashborad" / "dist")
 
     monkeypatch.setattr(audit_log, "ROOT", tmp_path)
     monkeypatch.setattr(audit_log, "AUDIT_LOG_PATH", tmp_path / "logs" / "dashboard_audit.jsonl")
@@ -371,6 +385,32 @@ def test_new_isop_endpoints_work(client):
     assert strategy.get_json()["record"]["strategy"] == "ST-A2"
 
 
+def test_platform_readiness_endpoint_exposes_reports_and_persistence(client):
+    response = client.get("/api/platform/readiness")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload["production_readiness"]["release_status"] == "REJECTED"
+    assert payload["stabilization"]["verdict"]
+    assert payload["persistence"]["configured_mode"] == "local_compat"
+
+
+def test_new_dashboard_api_endpoints_work(client):
+    overview = client.get("/api/new-dashboard/overview")
+    strategies = client.get("/api/new-dashboard/strategies")
+    detail = client.get("/api/new-dashboard/strategies/ST-A2")
+    reports = client.get("/api/new-dashboard/reports")
+
+    assert overview.status_code == 200
+    assert strategies.status_code == 200
+    assert detail.status_code == 200
+    assert reports.status_code == 200
+    assert "readiness" in overview.get_json()
+    assert strategies.get_json()["strategies"]
+    assert detail.get_json()["record"]["strategy"] == "ST-A2"
+    assert "reports" in reports.get_json()
+
+
 def test_svos_endpoint_exposes_stage_reports(client):
     response = client.get("/api/svos")
     payload = response.get_json()
@@ -428,6 +468,16 @@ def test_dashboard_uses_operational_nine_stage_svos_view(client):
     assert "Strategy Enhancement" in page
     assert "Verification Ready" in page
     assert "Virtual Demo Trading" in page
+
+
+def test_new_dashboard_static_route_serves_built_frontend(client):
+    response = client.get("/new-dashboard/")
+    assert response.status_code == 200
+    assert b"New Project Dashboard" in response.data
+
+    asset = client.get("/new-dashboard/assets/app.js")
+    assert asset.status_code == 200
+    assert b"new dashboard" in asset.data
 
 
 def test_reports_include_strategy_audit_loop_report(client):

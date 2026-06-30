@@ -63,9 +63,10 @@ choose one. Report the conflict with exact citations and wait for resolution.
 
 ## Canonical Lifecycle Vocabulary
 
-All documents must use the stage names from `svos/lifecycle/manager.py`.
+All documents must use the current implemented stage names from
+`svos/lifecycle/manager.py` when describing active code behavior.
 
-| Canonical Stage Enum | Do Not Use |
+| Current Implemented Stage Enum | Do Not Use |
 |---|---|
 | `DRAFT` | "new", "initial" |
 | `INTAKE` | "Phase 0 intake", "strategy intake" |
@@ -74,16 +75,15 @@ All documents must use the stage names from `svos/lifecycle/manager.py`.
 | `HISTORICAL_REPLAY` | "Phase 2", "replay", "historical replay phase" |
 | `STATISTICAL_VALIDATION` | "Phase 3", "backtest", "backtesting phase" |
 | `ROBUSTNESS_VALIDATION` | "Phase 4", "robustness" without citing source |
-| `VERIFICATION_READY` | "Phase 5", "verification ready" |
 | `VIRTUAL_DEMO` | "Phase 5 demo", "Virtual Demo Trading" — must always specify OFFLINE |
-| `EXECUTION_VALIDATION` | "Phase 6", "EVF", "execution validation phase" |
-| `PAPER_TRADING` | "shadow", "paper trade" |
-| `LIVE_DEMO` | "demo", "Live MT5 Demo" — must always specify ONLINE/POST-APPROVAL |
-| `PRODUCTION_CANDIDATE` | "pre-production" |
-| `PRODUCTION` | "live", "deployed" |
-| `MONITORING` | "monitoring phase" |
+| `PRODUCTION_APPROVAL` | "Phase 6", "live approval" |
 | `REVALIDATION` | "re-validation" |
 | `RETIRED` | "deprecated strategy", "stopped" |
+
+Target lifecycle terms such as `VERIFICATION_READY`, `EXECUTION_VALIDATION`,
+`PAPER_TRADING`, `LIVE_DEMO`, `PRODUCTION_CANDIDATE`, `PRODUCTION`, and
+`MONITORING` may be used only when explicitly describing target-state
+architecture rather than implemented runtime behavior.
 
 **Legacy phase numbers** (Phase 0–6 from CLAUDE.md, IMPLEMENTATION_PLAN stages 0–6)
 are summary views only. They do not name individual stages. Use canonical

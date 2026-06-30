@@ -155,15 +155,16 @@ Spend reasoning effort on architecture, contracts, and review quality. Keep
 implementation work narrow, testable, and obedient to the frozen spec.
 
 ## CI/CD Standards
-(Status: Stub — to be completed)
+(Status: Active baseline — update when gates change)
 
 - Python version: 3.12
 - Test runner: pytest
-- Coverage: no gate yet configured (see architecture review finding HIGH-7)
-- Type checking: no mypy configuration yet (see architecture review finding HIGH-7)
-- Linting: no ruff/flake8 configuration yet
-- Dependency locking: no lock file yet (range-pinned requirements.txt)
-- CI pipeline: not yet configured — target is GitHub Actions or equivalent
+- Coverage: enforced for `svos` via pytest-cov baseline
+- Type checking: mypy is configured and run in CI
+- Linting: Ruff is configured and run in CI
+- Dependency locking: runtime and development lock files exist
+- CI pipeline: GitHub Actions runs tests, mypy, Ruff, migration SQL compile, secret checks, and whitespace checks
 
-Priority: establish CI before resuming feature development.
-Reference: `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`
+Priority:
+- keep CI gate outputs aligned with generated readiness reports
+- tighten type/lint scope over time instead of reporting stale “not configured” guidance

@@ -10,7 +10,7 @@ from svos.lifecycle.manager import (
     StrategyLifecycleManager,
     StrategyStage,
 )
-from svos.orchestration.service import SVOSPlatform
+from svos.orchestration.service import PersistenceMode, SVOSPlatform
 from svos.registry.service import StrategyRegistryService
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
     "LifecycleTransitionError",
     "RunManifest",
     "RunManifestBuilder",
+    "PersistenceMode",
     "SVOSOperationalAPI",
     "SVOSPlatform",
     "StrategyLifecycleManager",

@@ -7,7 +7,7 @@ import pytest
 
 from svos.lifecycle import LifecycleTransitionError, StrategyLifecycleManager
 from svos.governance import GovernanceGateError
-from svos.orchestration import SVOSPlatform
+from svos.orchestration import PersistenceMode, SVOSPlatform
 from svos.registry import StrategyRegistryService
 
 
@@ -184,3 +184,25 @@ def test_governance_requires_an_audit_reason(tmp_path):
 
     with pytest.raises(GovernanceGateError, match="audit reason"):
         platform.audited_transition("ST-A2", to_stage="VIRTUAL_DEMO")
+
+
+def test_authoritative_pg_mode_requires_backend(tmp_path):
+    catalog = _setup_repo(tmp_path)
+    with pytest.raises(RuntimeError, match="PostgreSQL-authoritative persistence mode"):
+        SVOSPlatform(
+            root=tmp_path,
+            catalog_path=catalog,
+            persistence_mode=PersistenceMode.AUTHORITATIVE_PG,
+        )
+
+
+def test_local_compat_mode_disables_pg_autodetection(tmp_path, monkeypatch):
+    catalog = _setup_repo(tmp_path)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://invalid:invalid@127.0.0.1:5432/invalid")
+    platform = SVOSPlatform(
+        root=tmp_path,
+        catalog_path=catalog,
+        persistence_mode=PersistenceMode.LOCAL_COMPAT,
+    )
+    assert platform.persistence_status()["configured_mode"] == PersistenceMode.LOCAL_COMPAT.value
+    assert platform.persistence_status()["pg_active"] is False

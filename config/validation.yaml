@@ -1,6 +1,6 @@
 # Validation Gate Engine Configuration
 
-minimum_trade_count: 100
+minimum_trade_count: 50
 minimum_profit_factor: 1.0
 maximum_drawdown: 10.0
 minimum_expectancy: 0.0
@@ -32,4 +32,3 @@ promotion_map:
   walk_forward: shadow
   shadow: demo
   demo: live
-

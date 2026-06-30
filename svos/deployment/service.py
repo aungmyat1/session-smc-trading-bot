@@ -17,11 +17,15 @@ class DeploymentStatusService:
     def status(self) -> dict[str, Any]:
         current = get_current_strategy_name(self.catalog_path) or ""
         manifest = get_current_strategy_manifest(self.catalog_path) or {}
+        live_trading = os.getenv("LIVE_TRADING", "false").lower() == "true"
+        demo_only = os.getenv("DEMO_ONLY", "true").lower() == "true"
         return {
             "current_strategy": current,
             "deployment_target": manifest.get("deployment_target", "unknown"),
             "legacy_status": manifest.get("status", "draft"),
             "svos_stage": manifest.get("svos_stage", ""),
             "approved": bool(manifest.get("approved", False)),
-            "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
+            "live_trading": live_trading,
+            "demo_only": demo_only,
+            "deployment_readiness": "BLOCKED" if live_trading or not demo_only else "SAFE_CONSTRUCTION",
         }

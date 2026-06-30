@@ -46,14 +46,16 @@ must not mutate lifecycle state directly.
 > in `svos/lifecycle/manager.py`, all code, and all documentation. Legacy
 > "Phase N" numbering is a summary view only. See `docs/00_Project/DOC_AUTHORITY.md`.
 
-The canonical progression begins:
+The current implemented progression begins:
 
 ```text
 DRAFT -> INTAKE -> AUDIT -> REFINEMENT -> HISTORICAL_REPLAY
  -> STATISTICAL_VALIDATION -> ROBUSTNESS_VALIDATION
- -> VERIFICATION_READY -> VIRTUAL_DEMO -> EXECUTION_VALIDATION
- -> PAPER_TRADING -> LIVE_DEMO -> PRODUCTION_CANDIDATE
- -> PRODUCTION -> MONITORING -> REVALIDATION -> RETIRED
+ -> VIRTUAL_DEMO
+
+Stage vocabulary also includes `PRODUCTION_APPROVAL`, `REVALIDATION`, and
+`RETIRED`, but `PRODUCTION_APPROVAL` is record-only and not currently reachable
+through forward promotion during construction.
 ```
 
 ```mermaid
@@ -69,33 +71,19 @@ stateDiagram-v2
     STATISTICAL_VALIDATION --> REFINEMENT : validation_fail
     STATISTICAL_VALIDATION --> ROBUSTNESS_VALIDATION : validation_pass
     ROBUSTNESS_VALIDATION --> REFINEMENT : robustness_fail
-    ROBUSTNESS_VALIDATION --> VERIFICATION_READY : robustness_pass
-    VERIFICATION_READY --> VIRTUAL_DEMO : governance_approved
+    ROBUSTNESS_VALIDATION --> VIRTUAL_DEMO : robustness_pass
     VIRTUAL_DEMO --> REFINEMENT : demo_fail
-    VIRTUAL_DEMO --> EXECUTION_VALIDATION : demo_pass
-    EXECUTION_VALIDATION --> PAPER_TRADING : evf_pass
-    PAPER_TRADING --> LIVE_DEMO : paper_pass
-    LIVE_DEMO --> PRODUCTION_CANDIDATE : demo_pass
-    PRODUCTION_CANDIDATE --> PRODUCTION : production_approved
-    PRODUCTION --> MONITORING : deployed
-    MONITORING --> REVALIDATION : drift_detected
+    VIRTUAL_DEMO --> HISTORICAL_REPLAY : demo_fail_research
     REVALIDATION --> HISTORICAL_REPLAY : requires_research
     REVALIDATION --> RETIRED : no_edge
-    MONITORING --> RETIRED : retired
     RETIRED --> [*]
-
-    note right of VIRTUAL_DEMO : OFFLINE only
-No broker connection
-No network access
-    note right of LIVE_DEMO : ONLINE
-Post-approval only
-Requires Live Demo Authorization
 ```
 
-Monitoring may retire a strategy. Revalidation may return it to historical
-replay or retire it. Failed replay, statistical validation, robustness, and
-virtual demo stages may return to refinement; refinement can return to audit.
-These remediation paths do not permit forward execution-stage skipping.
+Revalidation may return a strategy to historical replay or retire it. Failed
+replay, statistical validation, robustness, and virtual demo stages may return
+to refinement; virtual demo may also return to historical replay when the
+failure requires research rework. These remediation paths do not permit forward
+execution-stage skipping.
 
 ## Application API
 

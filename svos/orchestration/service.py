@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -21,6 +22,12 @@ if TYPE_CHECKING:
 
 _POLICY_VERSION = "svos-v1"
 _PG_NO_EVIDENCE_SOURCES = frozenset({"DRAFT", "REFINEMENT", "REVALIDATION"})
+
+
+class PersistenceMode(str, Enum):
+    AUTO = "auto"
+    LOCAL_COMPAT = "local_compat"
+    AUTHORITATIVE_PG = "authoritative_pg"
 
 
 def _build_pg_backends(url: str, lifecycle: StrategyLifecycleManager) -> tuple[PostgresControlPlane, PostgresEvidenceRepository]:
@@ -47,6 +54,7 @@ class SVOSPlatform:
         governance: GovernanceService | None = None,
         pg_control_plane: PostgresControlPlane | None = None,
         pg_evidence_repo: PostgresEvidenceRepository | None = None,
+        persistence_mode: str | PersistenceMode = PersistenceMode.AUTO,
     ) -> None:
         self.root = Path(root)
         self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
@@ -56,15 +64,32 @@ class SVOSPlatform:
         self.reports = reports or StandardizedReportService(self.root)
         self.governance = governance or GovernanceService(root=self.root, registry=self.registry, lifecycle=_lifecycle)
 
-        # PG backends: use injected values; auto-detect from DATABASE_URL only when neither is given.
+        self.persistence_mode = (
+            persistence_mode
+            if isinstance(persistence_mode, PersistenceMode)
+            else PersistenceMode(str(persistence_mode))
+        )
+
+        # PG backends: use injected values; auto-detect from DATABASE_URL only when permitted.
         # Asyncpg (async) URLs are skipped — this layer requires a synchronous driver.
-        if pg_control_plane is None and pg_evidence_repo is None:
+        if pg_control_plane is None and pg_evidence_repo is None and self.persistence_mode != PersistenceMode.LOCAL_COMPAT:
             _url = os.getenv("DATABASE_URL", "")
             if _url and "asyncpg" not in _url:
                 try:
                     pg_control_plane, pg_evidence_repo = _build_pg_backends(_url, _lifecycle)
-                except Exception:
-                    pass  # unreachable DB or missing driver — fall back to JSONL
+                except Exception as exc:
+                    if self.persistence_mode == PersistenceMode.AUTHORITATIVE_PG:
+                        raise RuntimeError(
+                            "PostgreSQL-authoritative persistence mode is enabled, but the control-plane backends "
+                            "could not be initialized from DATABASE_URL."
+                        ) from exc
+
+        if self.persistence_mode == PersistenceMode.AUTHORITATIVE_PG and (
+            pg_control_plane is None or pg_evidence_repo is None
+        ):
+            raise RuntimeError(
+                "PostgreSQL-authoritative persistence mode requires both the control-plane and evidence repositories."
+            )
         self.pg_control_plane: PostgresControlPlane | None = pg_control_plane
         self.pg_evidence_repo: PostgresEvidenceRepository | None = pg_evidence_repo
         self._experiments = ExperimentManager(self.root)
@@ -72,6 +97,21 @@ class SVOSPlatform:
     @property
     def _pg_active(self) -> bool:
         return self.pg_control_plane is not None and self.pg_evidence_repo is not None
+
+    def persistence_status(self) -> dict[str, Any]:
+        effective_mode = (
+            PersistenceMode.AUTHORITATIVE_PG.value
+            if self._pg_active and self.persistence_mode == PersistenceMode.AUTHORITATIVE_PG
+            else (PersistenceMode.LOCAL_COMPAT.value if not self._pg_active else "pg_auto")
+        )
+        return {
+            "configured_mode": self.persistence_mode.value,
+            "effective_mode": effective_mode,
+            "pg_active": self._pg_active,
+            "jsonl_enabled": not self._pg_active,
+            "database_url_configured": bool(os.getenv("DATABASE_URL", "").strip()),
+            "authoritative": self.persistence_mode == PersistenceMode.AUTHORITATIVE_PG,
+        }
 
     # ── bootstrap ──────────────────────────────────────────────────────────
 

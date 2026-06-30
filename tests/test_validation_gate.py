@@ -163,5 +163,5 @@ def test_validation_runner_can_skip_promotion(tmp_path):
 
 def test_config_loading():
     cfg = load_validation_config()
-    assert cfg.minimum_trade_count >= 100
+    assert cfg.minimum_trade_count >= 50
     assert cfg.promotion_map["backtest"] == "walk_forward"

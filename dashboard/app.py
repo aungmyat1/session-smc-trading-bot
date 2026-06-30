@@ -114,6 +114,12 @@ _SVOS_REPORTS_DIR = _ROOT / "reports" / "current_strategy_svos"
 _SVOS_CANONICAL_REPORTS_DIR = _ROOT / "reports" / "svos"
 _ARCHITECTURE_PATH = _ROOT / "docs" / "SYSTEM_ARCHITECTURE.md"
 _BOT_LOG = _ROOT / "logs" / "bot.log"
+_READINESS_REPORT_JSON = _ROOT / "reports" / "production_readiness_report.json"
+_TESTING_REPORT_JSON = _ROOT / "reports" / "testing_report.json"
+_QUALITY_REPORT_JSON = _ROOT / "reports" / "quality_report.json"
+_STABILIZATION_STATUS_PATH = _ROOT / "docs" / "svos" / "STABILIZATION_STATUS.md"
+_NEW_DASHBOARD_ROOT = _ROOT / "New Dashborad"
+_NEW_DASHBOARD_DIST = _NEW_DASHBOARD_ROOT / "dist"
 _RUNNER_LOGS = [
     _ROOT / "logs" / "strategy_demo.log",
     _ROOT / "logs" / "st_a2_demo.log",
@@ -196,6 +202,15 @@ def _read_json(path: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def _read_text(path: Path) -> str:
+    if not path.exists():
+        return ""
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception:
+        return ""
 
 
 def _demo_runner_state() -> dict[str, Any]:
@@ -409,6 +424,34 @@ def _latest_architecture_status() -> dict[str, Any]:
     return {"current_architecture": current or "transitional", "target_architecture": target or "ISOP v2"}
 
 
+def _stabilization_status() -> dict[str, Any]:
+    text = _read_text(_STABILIZATION_STATUS_PATH)
+    verdict = ""
+    for line in text.splitlines():
+        if line.startswith("Verdict:"):
+            verdict = line.split("Verdict:", 1)[1].strip()
+            break
+    return {
+        "path": str(_STABILIZATION_STATUS_PATH.relative_to(_ROOT)) if _STABILIZATION_STATUS_PATH.exists() else "",
+        "verdict": verdict,
+        "content": text,
+    }
+
+
+def _readiness_payload() -> dict[str, Any]:
+    readiness = _read_json(_READINESS_REPORT_JSON)
+    testing = _read_json(_TESTING_REPORT_JSON)
+    quality = _read_json(_QUALITY_REPORT_JSON)
+    persistence = _platform_api().platform.persistence_status()
+    return {
+        "production_readiness": readiness,
+        "testing": testing,
+        "quality": quality,
+        "stabilization": _stabilization_status(),
+        "persistence": persistence,
+    }
+
+
 def _latest_log_lines(limit: int = 200) -> list[str]:
     lines: list[str] = []
     for path in (_BOT_LOG, *_RUNNER_LOGS):
@@ -487,6 +530,24 @@ def _platform_api() -> SVOSOperationalAPI:
         latest_reports_factory=latest_reports,
         control_state_factory=load_control_state,
     )
+
+
+def _new_dashboard_overview() -> dict[str, Any]:
+    overview = _platform_api().overview()
+    reports = latest_reports()
+    status = _readiness_payload()
+    return {
+        "current_strategy": overview.get("current_strategy", ""),
+        "service_status": overview.get("service_status", {}),
+        "registry": overview.get("registry", {}),
+        "deployment": overview.get("deployment", {}),
+        "monitoring": overview.get("monitoring", {}),
+        "persistence": overview.get("persistence", {}),
+        "reports": reports.get("latest", {}),
+        "recommendation_badge": reports.get("recommendation_badge", "REVIEW"),
+        "readiness": status,
+        "fetched_at": _now_iso(),
+    }
 
 
 def _governance_payload() -> dict[str, Any]:
@@ -795,6 +856,46 @@ def api_platform_strategy(strategy: str):
     return jsonify({**payload, "fetched_at": _now_iso()})
 
 
+@app.route("/api/platform/readiness")
+def api_platform_readiness():
+    return jsonify({**_readiness_payload(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/new-dashboard/overview")
+def api_new_dashboard_overview():
+    return jsonify(_new_dashboard_overview())
+
+
+@app.route("/api/new-dashboard/strategies")
+def api_new_dashboard_strategies():
+    registry = _platform_api().registry_snapshot()
+    return jsonify({
+        "strategies": registry.get("strategies", []),
+        "lifecycle_stages": registry.get("lifecycle_stages", []),
+        "fetched_at": _now_iso(),
+    })
+
+
+@app.route("/api/new-dashboard/strategies/<strategy>")
+def api_new_dashboard_strategy(strategy: str):
+    try:
+        payload = _platform_api().strategy_snapshot(strategy)
+    except KeyError:
+        return jsonify({"error": "Strategy not found", "strategy": strategy}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/new-dashboard/reports")
+def api_new_dashboard_reports():
+    reports = load_index()
+    return jsonify({
+        "reports": reports.get("reports", []),
+        "latest": reports.get("latest", {}),
+        "generated_at": reports.get("generated_at", ""),
+        "fetched_at": _now_iso(),
+    })
+
+
 @app.route("/api/rgm")
 def api_rgm():
     return jsonify({**_rgm_payload(), "fetched_at": _now_iso()})
@@ -921,6 +1022,45 @@ def api_emergency_stop_clear():
 @app.route("/")
 def index():
     return send_from_directory(str(Path(__file__).parent), "index.html")
+
+
+@app.route("/legacy")
+def legacy_index():
+    return send_from_directory(str(Path(__file__).parent), "index.html")
+
+
+@app.route("/new-dashboard")
+@app.route("/new-dashboard/")
+def new_dashboard_index():
+    if not _NEW_DASHBOARD_DIST.exists():
+        return (
+            jsonify(
+                {
+                    "error": "New dashboard frontend has not been built yet",
+                    "required_build_dir": str(_NEW_DASHBOARD_DIST.relative_to(_ROOT)),
+                }
+            ),
+            503,
+        )
+    return send_from_directory(str(_NEW_DASHBOARD_DIST), "index.html")
+
+
+@app.route("/new-dashboard/<path:asset_path>")
+def new_dashboard_assets(asset_path: str):
+    if not _NEW_DASHBOARD_DIST.exists():
+        return (
+            jsonify(
+                {
+                    "error": "New dashboard frontend has not been built yet",
+                    "required_build_dir": str(_NEW_DASHBOARD_DIST.relative_to(_ROOT)),
+                }
+            ),
+            503,
+        )
+    target = _NEW_DASHBOARD_DIST / asset_path
+    if target.is_file():
+        return send_from_directory(str(_NEW_DASHBOARD_DIST), asset_path)
+    return send_from_directory(str(_NEW_DASHBOARD_DIST), "index.html")
 
 
 if __name__ == "__main__":
