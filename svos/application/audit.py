@@ -164,7 +164,6 @@ class AuditIntegrationService:
         )
 
     def _run_engine(self, specification: str, strategy: str):
-        from strategy_validation.models import StrategyDocument
         from strategy_validation.parser import parse_strategy_document
         from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
 
