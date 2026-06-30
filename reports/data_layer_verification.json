@@ -1,0 +1,164 @@
+{
+  "generated_at": "2026-06-30T06:09:54.570061+00:00",
+  "issues": [],
+  "layers": [
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-25T09:17:04.204953+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/raw"
+      },
+      "issues": [],
+      "layer": "raw",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.988326+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/normalized"
+      },
+      "issues": [],
+      "layer": "normalized",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.989069+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/market"
+      },
+      "issues": [],
+      "layer": "market",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.989604+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/sessions"
+      },
+      "issues": [],
+      "layer": "sessions",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.990200+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/structure"
+      },
+      "issues": [],
+      "layer": "structure",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.991029+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/liquidity"
+      },
+      "issues": [],
+      "layer": "liquidity",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.991702+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/imbalances"
+      },
+      "issues": [],
+      "layer": "imbalances",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.991895+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/orderflow"
+      },
+      "issues": [],
+      "layer": "orderflow",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T00:25:29.992261+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/confluence"
+      },
+      "issues": [],
+      "layer": "confluence",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.087887+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/labels"
+      },
+      "issues": [],
+      "layer": "labels",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.088887+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/replay"
+      },
+      "issues": [],
+      "layer": "replay",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.088887+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/backtests"
+      },
+      "issues": [],
+      "layer": "backtests",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.089887+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/analytics"
+      },
+      "issues": [],
+      "layer": "analytics",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.091688+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/metadata"
+      },
+      "issues": [],
+      "layer": "metadata",
+      "status": "PASS"
+    },
+    {
+      "details": {
+        "exists": true,
+        "mtime": "2026-06-27T17:14:01.092392+00:00",
+        "path": "/home/aungp/session-smc-trading-bot/data/cache"
+      },
+      "issues": [],
+      "layer": "cache",
+      "status": "PASS"
+    }
+  ],
+  "max_age_hours": 999999.0,
+  "status": "PASS",
+  "symbols": [
+    "EURUSD"
+  ],
+  "timeframes": [
+    "M1"
+  ]
+}

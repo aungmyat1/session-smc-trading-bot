@@ -1,0 +1,278 @@
+{
+  "status": "PASS",
+  "score": 92.8,
+  "coverage": 86.9,
+  "generated_at": "2026-06-30T06:18:16.302613+00:00",
+  "duration_seconds": 52.284,
+  "unit_tests": {
+    "status": "PASS",
+    "score": 96.1,
+    "coverage": 86.9,
+    "duration_seconds": 42.341,
+    "errors": [],
+    "warnings": [],
+    "details": {
+      "passed": 1267,
+      "failed": 0,
+      "errors_count": 0,
+      "skipped": 4,
+      "coverage_pct": 86.9
+    }
+  },
+  "integration_tests": {
+    "status": "PASS",
+    "score": 83.6,
+    "coverage": null,
+    "duration_seconds": 9.898,
+    "errors": [],
+    "warnings": [
+      "Pipeline stages without dedicated tests: market_data, indicators, session_filter, liquidity_detection, bos, choch, fvg, order_block, risk_engine"
+    ],
+    "details": {
+      "pipeline_stages": [
+        "market_data",
+        "indicators",
+        "session_filter",
+        "liquidity_detection",
+        "bos",
+        "choch",
+        "fvg",
+        "order_block",
+        "risk_engine",
+        "execution",
+        "database"
+      ],
+      "passed": 100,
+      "failed": 0,
+      "errors_count": 0,
+      "skipped": 4,
+      "stage_coverage": {
+        "market_data": false,
+        "indicators": false,
+        "session_filter": false,
+        "liquidity_detection": false,
+        "bos": false,
+        "choch": false,
+        "fvg": false,
+        "order_block": false,
+        "risk_engine": false,
+        "execution": true,
+        "database": true
+      },
+      "uncovered_stages": [
+        "market_data",
+        "indicators",
+        "session_filter",
+        "liquidity_detection",
+        "bos",
+        "choch",
+        "fvg",
+        "order_block",
+        "risk_engine"
+      ]
+    }
+  },
+  "strategy_validation": {
+    "status": "PASS",
+    "score": 91.7,
+    "coverage": null,
+    "duration_seconds": 0.038,
+    "errors": [],
+    "warnings": [
+      "KILL_ZONES: Kill zone definition not found in config",
+      "RISK_REWARD: RR not found in config",
+      "MAX_RISK_PER_TRADE: risk_pct not found",
+      "MAX_DAILY_LOSS: max_daily_loss not found",
+      "MARKET_CLOSED_PROTECTION: Market-closed protection not found in config or code"
+    ],
+    "details": {
+      "total_rules": 30,
+      "passed": 25,
+      "warnings": 5,
+      "failed": 0,
+      "rule_results": [
+        {
+          "rule": "SESSION_DEFINITION",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SESSION_NEW_YORK",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SESSION_ASIAN",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SESSION_LONDON",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "KILL_ZONES",
+          "status": "WARNING",
+          "detail": "Kill zone definition not found in config"
+        },
+        {
+          "rule": "RISK_REWARD",
+          "status": "WARNING",
+          "detail": "RR not found in config"
+        },
+        {
+          "rule": "MAX_RISK_PER_TRADE",
+          "status": "WARNING",
+          "detail": "risk_pct not found"
+        },
+        {
+          "rule": "MAX_DAILY_LOSS",
+          "status": "WARNING",
+          "detail": "max_daily_loss not found"
+        },
+        {
+          "rule": "STOP_LOSS_REQUIRED",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "BIAS_REQUIRED",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "PREMIUM_DISCOUNT",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "LIQUIDITY_SWEEP",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "INVALID_ENTRY_GUARD",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "DUPLICATE_ENTRY_GUARD",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "BOS",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "CHOCH",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "FVG",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "ORDER_BLOCK",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "MITIGATION",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "WEEKEND_PROTECTION",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "MARKET_CLOSED_PROTECTION",
+          "status": "WARNING",
+          "detail": "Market-closed protection not found in config or code"
+        },
+        {
+          "rule": "SMC_BOS_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SMC_CHOCH_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SMC_FVG_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SMC_ORDER_BLOCK_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SMC_LIQUIDITY_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "SESSION_FILTER_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "RISK_ENGINE_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "STRATEGY_ADAPTER_IMPL",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "rule": "INSTITUTIONAL_VALIDATOR",
+          "status": "PASS",
+          "detail": ""
+        }
+      ]
+    }
+  },
+  "historical_replay": {
+    "status": "SKIP",
+    "score": 100.0,
+    "coverage": null,
+    "duration_seconds": 0.0,
+    "errors": [],
+    "warnings": [],
+    "details": {
+      "reason": "no replay report found \u2014 run SVOS Phase 2 first"
+    }
+  },
+  "regression": {
+    "status": "PASS",
+    "score": 100.0,
+    "coverage": null,
+    "duration_seconds": 0.006,
+    "errors": [],
+    "warnings": [],
+    "details": {
+      "current": {
+        "pass_rate": 100.0,
+        "coverage": 86.92
+      },
+      "baseline": {
+        "pass_rate": 100.0,
+        "coverage": 86.92
+      },
+      "regressions": {},
+      "improvements": {}
+    }
+  }
+}

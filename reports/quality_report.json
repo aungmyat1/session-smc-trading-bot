@@ -1,0 +1,122 @@
+{
+  "status": "PASS",
+  "quality_score": 100.0,
+  "security_score": 96.0,
+  "architecture_score": 100.0,
+  "documentation_score": 59.7,
+  "generated_at": "2026-06-30T07:01:26.594077+00:00",
+  "duration_seconds": 19.13,
+  "code_quality": {
+    "status": "PASS",
+    "score": 100.0,
+    "duration_seconds": 10.042,
+    "errors": [],
+    "warnings": [
+      "isort: 0 file(s) have unsorted imports"
+    ],
+    "details": {
+      "tool_scores": {
+        "ruff": 100.0,
+        "mypy": 100.0,
+        "black": 100.0,
+        "isort": 100.0
+      },
+      "tool_details": {
+        "ruff": {
+          "violation_count": 0
+        },
+        "mypy": {
+          "error_count": 0
+        },
+        "black": {
+          "reformattable": 0,
+          "returncode": 1
+        },
+        "isort": {
+          "returncode": 1
+        }
+      },
+      "source_dirs": [
+        "/home/aungp/session-smc-trading-bot/svos",
+        "/home/aungp/session-smc-trading-bot/agents",
+        "/home/aungp/session-smc-trading-bot/db",
+        "/home/aungp/session-smc-trading-bot/dashboard"
+      ]
+    }
+  },
+  "security": {
+    "status": "PASS",
+    "score": 96.0,
+    "duration_seconds": 7.475,
+    "errors": [],
+    "warnings": [
+      "bandit output unparseable: Working... \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 100% 0:00:02\n{\n  \"errors\": [],\n  \"generated_at\": \"2026-06-30T07:01:20Z\",\n  \"metrics\": {\n    \"/home/aungp/session-smc-trading-bot/agents/__init__.py\""
+    ],
+    "details": {
+      "tool_scores": {
+        "bandit": 90.0,
+        "pip_audit": 100.0,
+        "secret_scan": 100.0
+      },
+      "bandit": {},
+      "pip_audit": {
+        "result": "clean"
+      },
+      "secret_scan": {
+        "findings": 0
+      }
+    }
+  },
+  "architecture": {
+    "status": "PASS",
+    "score": 100.0,
+    "duration_seconds": 1.377,
+    "errors": [],
+    "warnings": [],
+    "details": {
+      "files_checked": 6153,
+      "violations": 0,
+      "violation_list": []
+    }
+  },
+  "dependency": {
+    "status": "PASS",
+    "score": 100.0,
+    "duration_seconds": 0.122,
+    "errors": [],
+    "warnings": [],
+    "details": {
+      "modules_scanned": 62,
+      "cycles_found": 0,
+      "forbidden_violations": 0,
+      "cycle_list": []
+    }
+  },
+  "documentation": {
+    "status": "PASS",
+    "score": 59.7,
+    "duration_seconds": 0.114,
+    "errors": [],
+    "warnings": [
+      "Missing docstring: svos/application/backtest.py:45 def passed()",
+      "Missing docstring: svos/application/backtest.py:48 def to_dict()",
+      "Missing docstring: svos/application/backtest.py:57 def __init__()",
+      "Missing docstring: svos/application/backtest.py:144 def _evaluate_gate()",
+      "Missing docstring: svos/application/backtest.py:200 def _default_cost_model()",
+      "Missing docstring: svos/application/backtest.py:209 def _drive_lifecycle()",
+      "Missing docstring: svos/application/robustness.py:43 def passed()",
+      "Missing docstring: svos/application/robustness.py:46 def to_dict()",
+      "Missing docstring: svos/application/robustness.py:55 def __init__()",
+      "Missing docstring: svos/application/robustness.py:159 def _normalize_trades()"
+    ],
+    "details": {
+      "modules": 72,
+      "module_docstring_pct": 80.6,
+      "functions": 269,
+      "function_docstring_pct": 14.5,
+      "function_typehint_pct": 98.5,
+      "classes": 120,
+      "class_docstring_pct": 65.0
+    }
+  }
+}

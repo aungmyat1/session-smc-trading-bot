@@ -1,0 +1,167 @@
+{
+  "status": "HEALTHY",
+  "checks": [
+    {
+      "name": "python_version",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "Python 3.12.3"
+    },
+    {
+      "name": "pkg:PyYAML",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "PyYAML importable"
+    },
+    {
+      "name": "pkg:pytest",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "pytest importable"
+    },
+    {
+      "name": "pkg:ruff",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "ruff importable"
+    },
+    {
+      "name": "pkg:mypy",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "mypy importable"
+    },
+    {
+      "name": "pkg:alembic",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "alembic importable"
+    },
+    {
+      "name": "pkg:SQLAlchemy",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "SQLAlchemy importable"
+    },
+    {
+      "name": "pkg:bandit",
+      "status": "SKIP",
+      "level": "WARNING",
+      "detail": "bandit not installed \u2014 quality gates limited"
+    },
+    {
+      "name": "pkg:pip-audit",
+      "status": "SKIP",
+      "level": "WARNING",
+      "detail": "pip-audit not installed \u2014 quality gates limited"
+    },
+    {
+      "name": "pkg:black",
+      "status": "SKIP",
+      "level": "WARNING",
+      "detail": "black not installed \u2014 quality gates limited"
+    },
+    {
+      "name": "pkg:isort",
+      "status": "SKIP",
+      "level": "WARNING",
+      "detail": "isort not installed \u2014 quality gates limited"
+    },
+    {
+      "name": "config:config/testing.yaml",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "/home/aungp/session-smc-trading-bot/config/testing.yaml"
+    },
+    {
+      "name": "config:config/approval.yaml",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "/home/aungp/session-smc-trading-bot/config/approval.yaml"
+    },
+    {
+      "name": "config:quality/config.yaml",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "/home/aungp/session-smc-trading-bot/quality/config.yaml"
+    },
+    {
+      "name": "config:quality/architecture_rules.yaml",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "/home/aungp/session-smc-trading-bot/quality/architecture_rules.yaml"
+    },
+    {
+      "name": "config:quality/import_rules.yaml",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "/home/aungp/session-smc-trading-bot/quality/import_rules.yaml"
+    },
+    {
+      "name": "module:agents.testing.agent",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "importable"
+    },
+    {
+      "name": "module:agents.quality.agent",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "importable"
+    },
+    {
+      "name": "module:agents.approval.agent",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "importable"
+    },
+    {
+      "name": "dir:data/",
+      "status": "PASS",
+      "level": "WARNING",
+      "detail": "/home/aungp/session-smc-trading-bot/data"
+    },
+    {
+      "name": "dir:reports/",
+      "status": "PASS",
+      "level": "WARNING",
+      "detail": "/home/aungp/session-smc-trading-bot/reports"
+    },
+    {
+      "name": "dir:logs/",
+      "status": "PASS",
+      "level": "INFO",
+      "detail": "/home/aungp/session-smc-trading-bot/logs"
+    },
+    {
+      "name": "env:broker_credentials",
+      "status": "SKIP",
+      "level": "INFO",
+      "detail": "No broker credentials (offline mode only)"
+    },
+    {
+      "name": "database:connectivity",
+      "status": "SKIP",
+      "level": "WARNING",
+      "detail": "DATABASE_URL not set \u2014 database features unavailable"
+    },
+    {
+      "name": "lint:ruff",
+      "status": "PASS",
+      "level": "WARNING",
+      "detail": "zero violations"
+    },
+    {
+      "name": "perm:write:reports/",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "writable"
+    },
+    {
+      "name": "perm:write:logs/",
+      "status": "PASS",
+      "level": "CRITICAL",
+      "detail": "writable"
+    }
+  ]
+}

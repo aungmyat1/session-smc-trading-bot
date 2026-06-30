@@ -1,0 +1,161 @@
+{
+  "release_status": "APPROVED",
+  "generated_at": "2026-06-30T07:01:41.671566+00:00",
+  "duration_seconds": 0.001,
+  "testing_score": 92.8,
+  "quality_score": 100.0,
+  "security_score": 96.0,
+  "architecture_score": 100.0,
+  "strategy_validation": 91.7,
+  "historical_validation": "SKIP",
+  "mandatory_failures": [],
+  "warnings": [
+    "DOC-001 WARNING: Documentation score \u2265 threshold (actual=59.7 required=70)"
+  ],
+  "rules": [
+    {
+      "id": "ARCH-001",
+      "description": "Architecture compliance PASS",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": "PASS",
+      "threshold": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "ARCH-002",
+      "description": "Zero architectural violations",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 0,
+      "threshold": 0,
+      "detail": ""
+    },
+    {
+      "id": "ARCH-003",
+      "description": "No circular dependencies",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 0,
+      "threshold": 0,
+      "detail": ""
+    },
+    {
+      "id": "QA-001",
+      "description": "Code quality score \u2265 threshold",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 100.0,
+      "threshold": 90,
+      "detail": ""
+    },
+    {
+      "id": "QA-002",
+      "description": "Ruff linting PASS (zero violations)",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 100.0,
+      "threshold": 100,
+      "detail": ""
+    },
+    {
+      "id": "SEC-001",
+      "description": "Security score \u2265 threshold",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 96.0,
+      "threshold": 90,
+      "detail": ""
+    },
+    {
+      "id": "SEC-002",
+      "description": "Secret scan clean (zero findings)",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 0,
+      "threshold": 0,
+      "detail": ""
+    },
+    {
+      "id": "SW-001",
+      "description": "Unit tests PASS",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": "PASS",
+      "threshold": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "SW-002",
+      "description": "Unit test coverage \u2265 threshold",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 86.9,
+      "threshold": 86,
+      "detail": ""
+    },
+    {
+      "id": "SW-003",
+      "description": "Integration tests PASS",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": "PASS",
+      "threshold": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "TR-001",
+      "description": "Strategy validation score \u2265 threshold",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": 91.7,
+      "threshold": 90,
+      "detail": ""
+    },
+    {
+      "id": "TR-003",
+      "description": "Regression check PASS",
+      "outcome": "PASS",
+      "mandatory": true,
+      "actual": "PASS",
+      "threshold": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "DOC-001",
+      "description": "Documentation score \u2265 threshold",
+      "outcome": "FAIL",
+      "mandatory": false,
+      "actual": 59.7,
+      "threshold": 70,
+      "detail": "actual=59.7 required=70"
+    },
+    {
+      "id": "QA-003",
+      "description": "MyPy type checking PASS",
+      "outcome": "PASS",
+      "mandatory": false,
+      "actual": 100.0,
+      "threshold": 100,
+      "detail": ""
+    },
+    {
+      "id": "SW-004",
+      "description": "Overall testing score \u2265 threshold",
+      "outcome": "PASS",
+      "mandatory": false,
+      "actual": 92.8,
+      "threshold": 85,
+      "detail": ""
+    },
+    {
+      "id": "TR-002",
+      "description": "Historical replay not FAIL",
+      "outcome": "SKIP",
+      "mandatory": false,
+      "actual": "SKIP",
+      "threshold": "not-FAIL",
+      "detail": "skipped \u2014 upstream stage not yet run"
+    }
+  ]
+}
