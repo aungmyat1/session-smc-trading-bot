@@ -2,7 +2,7 @@ task: P0-4
 title: Fix GateDecision and ApprovalRecord missing from svos/shared/__init__.py
 priority: P0
 effort: Trivial (5 min)
-status: PENDING
+status: COMPLETE
 depends: []
 
 goal: >

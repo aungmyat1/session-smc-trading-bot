@@ -2,7 +2,7 @@ task: P1-4
 title: Replace payload_builder backtest hardcode with registry dispatch
 priority: P1
 effort: Medium (1-2d)
-status: PENDING
+status: COMPLETE
 depends: [P1-2]
 
 goal: >

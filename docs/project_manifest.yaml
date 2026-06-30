@@ -4,39 +4,48 @@
 
 project: SVOS — Strategy Engineering Platform
 repository: session-smc-trading-bot
-date: 2026-06-29
-completion: 47%
-score: 59/100
-maturity: TRANSITIONAL
+date: 2026-06-30
+completion: 78%
+score: 78/100
+maturity: ADVANCING
 feature_freeze: true
-freeze_reason: PostgreSQL integration exercise not passed (P0-1)
+freeze_reason: P0-2 backup/restore drill + RPO/RTO declaration pending
+
+# ── Completed P0/P1 tasks ─────────────────────────────────────────────────────
+# P0-1 COMPLETE: PostgreSQL integration exercise (all 3 migrations pass)
+# P0-3 COMPLETE: data/svos/ bootstrapped via scripts/bootstrap_svos.py
+# P0-4 COMPLETE: GateDecision/ApprovalRecord exported from svos/shared/__init__.py
+# P1-1 COMPLETE: SVOSPlatform wired to PostgresControlPlane (active when DATABASE_URL set)
+# P1-2 COMPLETE: pipeline dispatch registry; --strategy flag on pipeline_03/04/run_phase0
+# P1-3 COMPLETE: signals_audit.parquet gap removed from docs/README
+# P1-4 COMPLETE: payload_builder generic dispatch via core/strategy_registry.get_backtest_script()
 
 # ── Current priority ──────────────────────────────────────────────────────────
 current_priority:
-  - P0-1  # Run PostgreSQL integration exercise — UNBLOCKS EVERYTHING
-  - P0-2  # Backup/restore drill + RPO/RTO declaration
-  - P0-3  # Initialise data/svos/ JSONL store (never been written)
-  - P0-4  # Fix GateDecision/ApprovalRecord missing from svos/shared/__init__.py
+  - P0-2  # Backup/restore drill + RPO/RTO declaration (last freeze gate)
+  - P1-5  # Register second strategy end-to-end (RESEARCH_CAPABLE milestone)
+  - P1-6  # Enforce coverage threshold in CI (--cov-fail-under=70, already at 88.94%)
 
 # ── Module status ─────────────────────────────────────────────────────────────
 status:
   svos_lifecycle:    COMPLETE      # 11 stages, full transition table
   svos_governance:   COMPLETE      # GovernanceService, bypass-closed
-  svos_registry:     COMPLETE      # JSONL backend; data/svos/ never written
-  svos_orchestration: COMPLETE     # coordination layer; delegates to governance
+  svos_registry:     COMPLETE      # JSONL backend; data/svos/ bootstrapped (registry + approvals)
+  svos_orchestration: COMPLETE     # coordination layer; wired to PostgresControlPlane when DB present
   svos_reports:      COMPLETE      # stage_package.py 766 lines; schema not enforced
+  svos_application:  COMPLETE      # StrategyPipeline 6-phase orchestrator + svos_run.py CLI
   svos_api:          PARTIAL       # 3 read-only endpoints; zero tests
   postgres_schema:   COMPLETE      # 39 ORM tables, 3 Alembic migrations
-  control_plane:     COMPLETE      # db/control_plane.py — NOT YET WIRED to production
-  evidence_repo:     COMPLETE      # db/evidence_repository.py — NOT YET WIRED
-  pipeline:          PARTIAL       # stages 2-4 exist; ALL hardcoded to ST-A2
-  research_engine:   PARTIAL       # 6 stage validators; payload_builder ST-A2-specific
+  control_plane:     COMPLETE      # db/control_plane.py — WIRED (active when DATABASE_URL set)
+  evidence_repo:     COMPLETE      # db/evidence_repository.py — WIRED with bind_evidence()
+  pipeline:          PARTIAL       # dispatch registry added; conditional ST-A2 refs remain
+  research_engine:   PARTIAL       # generic backtest dispatch; engine.py still a god module
   robustness:        COMPLETE      # 4 functions, strategy-agnostic, tested
   adapters:          COMPLETE      # 5 strategy adapters; architecture agnostic
   adaptive_engine:   COMPLETE      # 14 modules; NewsFilter is explicit stub
   dashboard:         PARTIAL       # ST-A2-specific paths; Flask not in requirements.lock
-  tests:             PARTIAL       # 1185 functions; ~50% coverage; pipeline untested
-  ci:                PARTIAL       # pytest+mypy+ruff+alembic; no coverage gate
+  tests:             PARTIAL       # 1281 functions; 88.94% coverage; CI/CD governance agents
+  ci:                PARTIAL       # pytest+mypy+ruff+alembic; coverage gate at 67% (target 70%)
 
 # ── Deployment state ──────────────────────────────────────────────────────────
 live_trading: false
@@ -49,11 +58,11 @@ architecture:
   pattern: modular_monolith
   language: python3.12
   lifecycle_authority: svos/lifecycle/manager.py       # only authority for stage changes
-  persistence_live: JSONL                              # data/svos/ — NEVER WRITTEN
-  persistence_target: PostgreSQL                       # vmassit db, localhost:5432
+  persistence_live: PostgreSQL                         # vmassit db, localhost:5432 (JSONL fallback)
+  persistence_jsonl: JSONL                             # data/svos/ — bootstrapped; fallback only
   persistence_readonly: YAML                           # config/strategy_catalog.yaml
   artifact_store: SHA-256 content-addressed filesystem # svos/adapters/artifacts.py
-  postgres_wired: false                                # built in db/; not called in production
+  postgres_wired: true                                 # active when DATABASE_URL set; JSONL fallback
 
 # ── Hard rules (never violate) ────────────────────────────────────────────────
 rules:

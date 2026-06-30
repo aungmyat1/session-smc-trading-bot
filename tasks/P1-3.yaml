@@ -2,7 +2,7 @@ task: P1-3
 title: Fix signals_audit.parquet gap
 priority: P1
 effort: Small (hours)
-status: PENDING
+status: COMPLETE
 depends: []
 
 goal: >

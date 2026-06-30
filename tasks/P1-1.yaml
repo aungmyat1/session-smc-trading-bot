@@ -2,7 +2,7 @@ task: P1-1
 title: Wire SVOSPlatform to PostgresControlPlane
 priority: P1
 effort: Medium (1-2d)
-status: PENDING
+status: COMPLETE
 depends: [P0-1, P0-3, P0-4]
 
 goal: >

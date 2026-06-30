@@ -24,7 +24,7 @@ P0-3:
   depends: [P0-1]
   unblocks: [P1-1]
   files: [svos/orchestration/service.py]
-  note: "data/svos/ directory has never been written; no bootstrap command exists"
+  note: "COMPLETE: data/svos/ bootstrapped via scripts/bootstrap_svos.py (8 strategies seeded)"
 
 P0-4:
   name: Fix GateDecision/ApprovalRecord export

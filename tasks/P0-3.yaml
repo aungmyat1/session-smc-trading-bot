@@ -2,7 +2,7 @@ task: P0-3
 title: Initialise data/svos/ JSONL store
 priority: P0
 effort: Small (1-2h)
-status: PENDING
+status: COMPLETE
 depends: [P0-1]
 
 goal: >

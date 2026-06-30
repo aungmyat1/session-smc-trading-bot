@@ -2,7 +2,7 @@ task: P1-2
 title: Remove ST-A2 hardcoding from pipeline/
 priority: P1
 effort: Large (3-5d)
-status: PENDING
+status: COMPLETE
 depends: [P0-1]
 note: "Largest single code change; 4 files, each a separate sub-task"
 

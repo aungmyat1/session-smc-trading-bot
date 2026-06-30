@@ -1,7 +1,10 @@
 # Stabilization Status
 
-Date: 2026-06-29
-Verdict: **NOT READY — feature freeze remains active**
+Date: 2026-06-30
+Verdict: **NOT READY — feature freeze remains active (P0-2 pending)**
+
+P0-1 cleared 2026-06-30: all 3 Alembic migrations apply; integration test passes.
+Freeze lifts when P0-2 (backup/restore drill + RPO/RTO declaration) is complete.
 
 This is the current implementation-status companion to the architecture review
 roadmap. It does not replace gate evidence.
