@@ -7,8 +7,8 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-dist/
-build/
+/dist/
+/build/
 
 # Data files (too large for git). Keep Python package modules tracked.
 /data/*
