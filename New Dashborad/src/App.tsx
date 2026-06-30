@@ -15,6 +15,7 @@ import VirtualDemoView from "./components/VirtualDemoView";
 import ExecutionSafetyView from "./components/ExecutionSafetyView";
 import GovernanceView from "./components/GovernanceView";
 import VersionHistoryChart from "./components/VersionHistoryChart";
+import FullPipelineReport from "./components/FullPipelineReport";
 import { Strategy, ValidationStage, StrategyRules } from "./types";
 import { BookOpen, AlertTriangle, Shield, Layers, HelpCircle, Activity, Sparkles, FolderKanban } from "lucide-react";
 
@@ -456,6 +457,10 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {activeTab === "report" && (
+                  <FullPipelineReport strategy={selectedStrategy} />
                 )}
 
                 {activeTab === "audit" && (

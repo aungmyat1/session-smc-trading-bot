@@ -5,7 +5,7 @@
 
 import React from "react";
 import { Strategy, ValidationStage } from "../types";
-import { Shield, BookOpen, Layers, Terminal, Server, Plus, Database, Cpu, Sun, Moon } from "lucide-react";
+import { Shield, BookOpen, Layers, Terminal, Server, Plus, Database, Cpu, Sun, Moon, FileText } from "lucide-react";
 
 interface HeaderProps {
   strategies: Strategy[];
@@ -56,6 +56,7 @@ export default function Header({
 
   const navItems = [
     { id: "registry", label: "Intake & Registry", icon: BookOpen },
+    { id: "report", label: "Full Pipeline Report", icon: FileText },
     { id: "audit", label: "AI Audit & Refinement", icon: Cpu },
     { id: "replay", label: "Historical Replay & Stats", icon: Layers },
     { id: "robustness", label: "Robustness & Stress Test", icon: Shield },

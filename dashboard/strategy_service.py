@@ -635,6 +635,61 @@ def promote_strategy(strategy_id: str) -> dict[str, Any] | None:
     return get_strategy(strategy_id)
 
 
+def get_pipeline_report(strategy_id: str) -> dict[str, Any] | None:
+    """Return raw SVOS stage data for the full pipeline report view."""
+    run_dir = _latest_svos_run(strategy_id)
+    if run_dir is None:
+        return None
+
+    try:
+        run_summary = json.loads((run_dir / "run_summary.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    stage_files = [
+        ("01_", "strategy_audit",      "Strategy Audit",       1),
+        ("02_", "historical_replay",   "Historical Replay",    2),
+        ("03_", "backtest",            "Backtest",             3),
+        ("04_", "robustness",          "Robustness Tests",     4),
+        ("05_", "virtual_demo",        "Virtual Demo",         5),
+        ("06_", "production_approval", "Production Approval",  6),
+    ]
+
+    stages_out = []
+    stages_index = {s["stage"]: s for s in run_summary.get("stages", [])}
+
+    for prefix, stage_key, label, num in stage_files:
+        data = _load_stage_json(run_dir, prefix)
+        if data is None:
+            continue
+        summary_entry = stages_index.get(stage_key, {})
+        stages_out.append({
+            "stage_num":        num,
+            "stage":            stage_key,
+            "stage_label":      label,
+            "status":           data.get("status", summary_entry.get("status", "PENDING")),
+            "score":            float(summary_entry.get("score", data.get("score", 0))),
+            "promotion_allowed": bool(summary_entry.get("promotion_allowed", data.get("promotion_allowed", False))),
+            "generated_at":     data.get("generated_at", run_summary.get("generated_at", "")),
+            "metrics":          data.get("metrics", {}),
+            "findings":         data.get("findings", []),
+            "hard_gate_results": data.get("hard_gate_results", []),
+            "warnings":         data.get("warnings", []),
+            "remediation":      data.get("remediation", []),
+        })
+
+    return {
+        "strategy_id":       run_summary.get("strategy_id", strategy_id),
+        "strategy_name":     run_summary.get("strategy_name", strategy_id),
+        "strategy_version":  run_summary.get("strategy_version", ""),
+        "run_id":            run_summary.get("run_id", ""),
+        "generated_at":      run_summary.get("generated_at", ""),
+        "overall_status":    run_summary.get("overall_status", ""),
+        "latest_passed_stage": run_summary.get("latest_passed_stage", ""),
+        "stages":            stages_out,
+    }
+
+
 def demote_strategy(strategy_id: str, target_stage: str, reason: str) -> dict[str, Any] | None:
     """Regress strategy to a prior stage."""
     strategy = get_strategy(strategy_id)

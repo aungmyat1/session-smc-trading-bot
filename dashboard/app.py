@@ -955,6 +955,14 @@ def api_new_dashboard_gemini_explain():
         return jsonify({"error": str(exc)}), 502
 
 
+@app.route("/api/new-dashboard/strategies/<strategy_id>/pipeline-report", methods=["GET"])
+def api_new_dashboard_pipeline_report(strategy_id: str):
+    report = strategy_service.get_pipeline_report(strategy_id)
+    if report is None:
+        return jsonify({"error": "No SVOS pipeline report found for this strategy"}), 404
+    return jsonify(report)
+
+
 @app.route("/api/new-dashboard/reports")
 def api_new_dashboard_reports():
     reports = load_index()
