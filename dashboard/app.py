@@ -3,6 +3,11 @@
 """
 ISOP Control Panel — Dashboard API server.
 
+This Flask control-plane app is distinct from the lightweight FastAPI live
+status dashboard in `dashboard/status_server.py`. The active emergency-stop API
+for the deployed live status surface is implemented in `status_server.py` so
+the runner and the visible dashboard share the same control-state file.
+
 Serves:
   GET /api/svos          — SVOS panel data (strategy catalog + last run)
   GET /api/evf           — EVF panel data (last validation report)
@@ -1163,7 +1168,10 @@ def api_emergency_stop():
         write_audit_log("emergency_stop_denied", status="denied", detail={"reason": "invalid_confirm_token"})
         return jsonify({"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-EMERGENCY-STOP"}), 403
     reason = str(body.get("reason", "Manual operator stop")).strip() or "Manual operator stop"
-    state = activate_emergency_stop(reason=reason, activated_by=request.environ["svos.actor"])
+    scope = str(body.get("scope", "block_only")).strip().lower() or "block_only"
+    if scope not in {"block_only", "close_positions"}:
+        return jsonify({"error": "Invalid emergency-stop scope", "scope": scope}), 400
+    state = activate_emergency_stop(reason=reason, activated_by=request.environ["svos.actor"], scope=scope)
     write_audit_log("emergency_stop", status="completed", detail=state["emergency_stop"])
     return jsonify({"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": _now_iso()})
 

@@ -1,17 +1,22 @@
 [Unit]
 Description=SMC OB+FVG strategy demo runner
-After=network-online.target
-Wants=network-online.target
+After=network-online.target reconcile-positions.timer
+Wants=network-online.target reconcile-positions.timer
 
 [Service]
 Type=simple
 User=aungp
 WorkingDirectory=/opt/session-smc-trading-bot
 EnvironmentFile=/etc/session-smc-trading-bot/live-dashboard.env
+ExecStartPre=/opt/session-smc-trading-bot/.venv/bin/python /opt/session-smc-trading-bot/scripts/validate_runtime_config.py --root /opt/session-smc-trading-bot
 ExecStart=/opt/session-smc-trading-bot/deploy/gcp-vm1/run_smc_demo.sh
 Restart=always
 RestartSec=15
 Nice=5
+MemoryMax=768M
+CPUQuota=75%
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

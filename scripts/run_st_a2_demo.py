@@ -67,6 +67,9 @@ _journal_db = TradeJournalDB()
 
 # ── Demo execution stack ──────────────────────────────────────────────────────
 from execution.mt5_connector       import MT5Connector
+from execution.control_plane import TradingPermissionService
+from execution.execution_state import ExecutionStateStore
+from execution.governance_guard import StrategyExecutionGuard
 from execution.vantage_demo_executor import VantageDemoExecutor
 from execution.trade_manager        import TradeManager
 from execution.demo_risk_manager    import (
@@ -74,6 +77,7 @@ from execution.demo_risk_manager    import (
 )
 from execution.trade_journal        import DemoTradeJournal
 from monitoring.telegram import TelegramAlerter
+from dashboard.control_state import load_control_state, set_trading_permission
 
 logging.basicConfig(
     level=logging.INFO,
@@ -147,6 +151,9 @@ def _base_state(mode: str, strategy_name: str, interval: int, once: bool) -> dic
         "last_signal": None,
         "open_positions": [],
         "account": {},
+        "emergency_stop": {"active": False, "activated_at": "", "reason": ""},
+        "reconnect_attempts_total": 0,
+        "last_reconnect_at": "",
     }
 
 
@@ -161,6 +168,11 @@ async def _tick(
     telegram:   TelegramAlerter | None = None,
 ) -> dict:
     """One scan cycle. Returns updated risk_state."""
+    control_state = load_control_state()
+    emergency_state = control_state.get("emergency_stop", {})
+    execution_store = ExecutionStateStore(_ROOT)
+    governance_guard = StrategyExecutionGuard(root=_ROOT)
+    permission_service = TradingPermissionService(root=_ROOT, environment=mode)
     state = dict(risk_state.get("_dashboard_state") or {})
     state.update(
         {
@@ -173,8 +185,52 @@ async def _tick(
             "last_decision": "scanning",
             "session_gate": _session_gate(),
             "pair_results": [],
+            "emergency_stop": {
+                "active": bool(emergency_state.get("active", False)),
+                "activated_at": emergency_state.get("activated_at", ""),
+                "reason": emergency_state.get("reason", ""),
+            },
+            "reconnect_attempts_total": connector.reconnect_attempts_total,
+            "last_reconnect_at": connector.last_reconnect_at,
+            "execution_recovery_pending": len(execution_store.recover_incomplete()),
         }
     )
+
+    if emergency_state.get("active"):
+        activation = str(emergency_state.get("activated_at", "")).strip()
+        handled_at = str(risk_state.get("_emergency_stop_handled_at", "")).strip()
+        if activation and activation != handled_at:
+            closed_count = await manager.emergency_close_all()
+            risk_state["_emergency_stop_handled_at"] = activation
+            _log.warning(
+                "Emergency stop active since %s — closed %d managed position(s).",
+                activation,
+                closed_count,
+            )
+            if telegram is not None:
+                await telegram.send_emergency_stop(
+                    reason=str(emergency_state.get("reason", "Manual operator stop")).strip() or "Manual operator stop",
+                    activated_at=activation,
+                    positions_closed=closed_count,
+                )
+        elif not activation:
+            risk_state["_emergency_stop_handled_at"] = "active-without-timestamp"
+        state["status"] = "blocked"
+        state["execution_status"] = "blocked"
+        state["last_decision"] = "emergency_stop_active"
+        try:
+            state["account"] = await executor.get_account_info()
+        except Exception:
+            pass
+        try:
+            state["open_positions"] = await manager.get_positions()
+        except Exception:
+            state["open_positions"] = []
+        risk_state["_dashboard_state"] = state
+        _write_state(state)
+        return risk_state
+    if risk_state.get("_emergency_stop_handled_at"):
+        risk_state["_emergency_stop_handled_at"] = ""
 
     # Daily reset
     from datetime import date
@@ -284,7 +340,7 @@ async def _tick(
                 json.dumps(m15[-200:], default=str), encoding="utf-8"
             )
         except Exception as _e:
-            logger.warning("candle cache write failed for %s: %s", symbol, _e)
+            _log.warning("candle cache write failed for %s: %s", symbol, _e)
 
     risk_state["_fetch_fails"] = fetch_fails
 
@@ -393,6 +449,27 @@ async def _tick(
         balance = 0.0
 
     for signal in pm_approved:
+        guard_result = governance_guard.evaluate(strategy_name, environment=mode)
+        permission = permission_service.evaluate(
+            governance_result=guard_result,
+            broker_connected=connector.is_connected,
+        )
+        set_trading_permission(permission.to_dict())
+        state["trading_permission"] = permission.to_dict()
+        state["governance"] = guard_result.to_dict()
+        if not permission.trading_allowed:
+            block_reason = ";".join(permission.reasons) or "trading blocked"
+            _log.warning("SKIP %s — %s", signal.symbol, block_reason)
+            state["last_decision"] = f"permission_blocked:{permission.mode.lower()}"
+            _journal_db.record_signal(
+                signal,
+                router_result="PASS",
+                breaker_result="PASS",
+                portfolio_result="PASS",
+                execution_result=f"BLOCKED: {block_reason}",
+            )
+            continue
+
         limit = check_limits(risk_state)
         if not limit["approved"]:
             _log.info("SKIP %s — %s", signal.symbol, limit["reason"])
@@ -461,7 +538,15 @@ async def _tick(
 
         # Demo mode: send to broker
         try:
-            order = await manager.open_position(signal, lots)
+            order = await manager.open_position(
+                signal,
+                lots,
+                execution_context={
+                    "strategy_version": guard_result.decision.strategy_version,
+                    "governance": guard_result.to_dict(),
+                    "permission": permission.to_dict(),
+                },
+            )
             journal.log_open(signal, order, lots, spread)
             if telegram is not None:
                 await telegram.send_trade_open(
@@ -484,6 +569,11 @@ async def _tick(
                 position_size=lots,
             )
             _portmgr.record_trade(signal)
+            execution_id = order.get("execution_id", "")
+            if execution_id:
+                manager.mark_execution_state(execution_id, "JOURNALED", {"broker_order_id": order.get("order_id", "")})
+                manager.mark_execution_state(execution_id, "PROJECTED", {"journal_id": trade_id})
+                manager.mark_execution_state(execution_id, "COMPLETED", {"status": "open_position_projected"})
             risk_state["open_positions"] = risk_state.get("open_positions", 0) + 1
             _log.info("Order placed: %s (journal_id=%s)", order.get("order_id"), trade_id)
             state["status"] = "signal"
@@ -537,10 +627,10 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
         return
 
     executor   = VantageDemoExecutor(connector)
-    manager    = TradeManager(executor)
     journal    = DemoTradeJournal()
     telegram   = TelegramAlerter()
     await telegram.start()
+    manager    = TradeManager(executor, telegram=telegram, execution_store=ExecutionStateStore(_ROOT))
     risk_state = new_state()
     state["status"] = "connected"
     state["broker_status"] = "connected"

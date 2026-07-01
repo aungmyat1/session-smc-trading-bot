@@ -77,3 +77,35 @@ class TestTradeManager:
         count = await mgr.emergency_close_all()
         assert count == 1  # only POS-1 has correct magic
         ex.close_position.assert_called_once_with("POS-1")
+
+    @pytest.mark.asyncio
+    async def test_open_position_retries_and_succeeds(self):
+        mgr, ex = _make_manager()
+        ex.place_order = AsyncMock(
+            side_effect=[
+                RuntimeError("connection reset"),
+                RuntimeError("temporarily unavailable"),
+                {"order_id": "SIM-OK", "simulated": True},
+            ]
+        )
+        result = await mgr.open_position(_signal_ns("long"), 0.02)
+        assert result["order_id"] == "SIM-OK"
+        assert ex.place_order.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_open_position_timeout_enters_recovery_pending(self):
+        mgr, ex = _make_manager()
+        ex.place_order = AsyncMock(side_effect=RuntimeError("timeout"))
+        with pytest.raises(RuntimeError):
+            await mgr.open_position(_signal_ns("long"), 0.02)
+
+    @pytest.mark.asyncio
+    async def test_open_position_exhaustion_alerts_once(self):
+        telegram = MagicMock()
+        telegram.send_error = AsyncMock(return_value=None)
+        mgr, ex = _make_manager()
+        mgr = TradeManager(ex, telegram=telegram)
+        ex.place_order = AsyncMock(side_effect=RuntimeError("timeout"))
+        with pytest.raises(RuntimeError):
+            await mgr.open_position(_signal_ns("long"), 0.02)
+        assert telegram.send_error.await_count == 1

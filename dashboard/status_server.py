@@ -25,7 +25,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+
+from core.trade_journal_db import TradeJournalDB
+from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
+from execution.control_plane import TradingPermissionService
+from execution.execution_state import ExecutionStateStore
+from execution.governance_guard import StrategyExecutionGuard
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -131,6 +137,132 @@ def _load_log(n: int = 30) -> list[str]:
             except Exception:
                 pass
     return ["(log not found — runner not started yet)"]
+
+
+def _load_latency_series(limit: int = 60) -> list[dict]:
+    path = ROOT / "logs" / "latency_timeseries.jsonl"
+    if not path.exists():
+        return []
+    rows: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            continue
+    return rows[-limit:]
+
+
+def _health_summary() -> dict:
+    state = _load_state()
+    control = load_control_state()
+    journal = TradeJournalDB().summary()
+    tick_age = _last_tick_age_seconds(state)
+    broker_connected = state.get("broker_status") == "connected"
+    guard = StrategyExecutionGuard(root=ROOT).evaluate(
+        state.get("strategy", "strategy-demo") or "strategy-demo",
+        environment=str(state.get("mode", "shadow")),
+    )
+    permission = TradingPermissionService(root=ROOT, environment=str(state.get("mode", "shadow"))).evaluate(
+        governance_result=guard,
+        broker_connected=broker_connected,
+    )
+    checks = {
+        "runner_state": state.get("status", "unknown"),
+        "broker_connected": broker_connected,
+        "last_tick_fresh": tick_age >= 0 and tick_age <= 180,
+        "emergency_stop_active": bool(control.get("emergency_stop", {}).get("active")),
+        "reconciliation_status": control.get("reconciliation", {}).get("status", "unknown"),
+        "governance_allowed": guard.allowed,
+        "trading_allowed": permission.trading_allowed,
+        "open_positions": len(state.get("open_positions", [])),
+        "closed_trades": journal.get("closed", 0),
+    }
+    score = 100
+    if not checks["broker_connected"]:
+        score -= 30
+    if not checks["last_tick_fresh"]:
+        score -= 20
+    if checks["emergency_stop_active"]:
+        score -= 15
+    if not checks["governance_allowed"]:
+        score -= 20
+    if not checks["trading_allowed"]:
+        score -= 15
+    return {
+        "score": max(0, score),
+        "checks": checks,
+        "governance": guard.to_dict(),
+        "trading_permission": permission.to_dict(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _readiness_payload() -> dict:
+    state = _load_state()
+    control = load_control_state()
+    health = _health_summary()
+    execution_store = ExecutionStateStore(ROOT)
+    report = {
+        "status": "GREEN" if health["score"] >= 85 and health["trading_permission"]["trading_allowed"] else "BLOCKED",
+        "mode": state.get("mode", "shadow"),
+        "summary": {
+            "health_score": health["score"],
+            "broker_status": state.get("broker_status", "unknown"),
+            "runner_status": state.get("status", "unknown"),
+            "reconciliation_status": control.get("reconciliation", {}).get("status", "unknown"),
+            "permission_mode": health["trading_permission"]["mode"],
+            "incomplete_executions": len(execution_store.recover_incomplete()),
+        },
+        "checks": health["checks"],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    html = [
+        "<html><head><title>Runtime Readiness</title></head><body>",
+        "<h1>Runtime Readiness</h1>",
+        f"<p>Status: <strong>{report['status']}</strong></p>",
+        "<ul>",
+    ]
+    for key, value in report["summary"].items():
+        html.append(f"<li>{key}: {value}</li>")
+    html.extend(["</ul>", "</body></html>"])
+    report["html_report"] = "".join(html)
+    return report
+
+
+def _last_tick_age_seconds(state: dict) -> int:
+    raw = str(state.get("last_tick_at", "")).strip()
+    if not raw:
+        return -1
+    try:
+        ts = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return -1
+    return max(0, int((datetime.now(timezone.utc) - ts).total_seconds()))
+
+
+def _render_latency_svg(points: list[dict]) -> str:
+    width, height = 360, 90
+    if not points:
+        return f'<svg viewBox="0 0 {width} {height}" width="100%" height="{height}"><text x="12" y="45" fill="#8b949e" font-size="12">No latency samples yet</text></svg>'
+    values = [max(0, float(item.get("latency_ms", 0))) for item in points]
+    vmax = max(values) or 1.0
+    coords: list[str] = []
+    for idx, value in enumerate(values):
+        x = 12 + (idx / max(1, len(values) - 1)) * (width - 24)
+        y = height - 12 - (value / vmax) * (height - 24)
+        coords.append(f"{x:.1f},{y:.1f}")
+    polyline = " ".join(coords)
+    latest = values[-1]
+    return (
+        f'<svg viewBox="0 0 {width} {height}" width="100%" height="{height}">'
+        f'<rect x="0" y="0" width="{width}" height="{height}" fill="transparent" />'
+        f'<polyline fill="none" stroke="#58a6ff" stroke-width="2" points="{polyline}" />'
+        f'<text x="12" y="16" fill="#8b949e" font-size="11">Latest {latest:.0f} ms</text>'
+        f'<text x="{width - 48}" y="16" fill="#8b949e" font-size="11">Peak {vmax:.0f}</text>'
+        f'</svg>'
+    )
 
 
 # ── SMC pipeline analysis ──────────────────────────────────────────────────────
@@ -951,6 +1083,10 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     strategy  = state.get("strategy", "SMCOrderBlockFVGSession")
     runner_ok = bool(state.get("status") == "running")
     runner_pid= state.get("pid", "?")
+    control = load_control_state()
+    emergency = control.get("emergency_stop", {})
+    journal_summary = TradeJournalDB().summary()
+    latency_points = _load_latency_series()
 
     # Header
     header = f"""<div class="header" id="section-header">
@@ -1013,6 +1149,8 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     <span class="metric-value muted" style="font-size:11px">{ldt_short}</span></div>
   <div class="metric"><span class="metric-label">Decision</span>
     <span class="metric-value muted" style="font-size:11px">{ldec}</span></div>
+  <div class="metric"><span class="metric-label">Emergency stop</span>
+    <span class="metric-value {'red' if emergency.get('active') else 'muted'}">{'ACTIVE' if emergency.get('active') else 'clear'}</span></div>
 </div>"""
 
     # Last signal card
@@ -1043,6 +1181,21 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
         sig_card = f"""<div class="card" id="section-signal">
   <div class="card-title">Last Signal</div>
   <div style="text-align:center;padding:24px;color:var(--muted)">No signal yet</div>
+</div>"""
+
+    metrics_card = f"""<div class="card" id="section-live-metrics">
+  <div class="card-title">Live Metrics</div>
+  <div class="metric"><span class="metric-label">Win rate</span>
+    <span class="metric-value">{journal_summary.get("win_rate_pct", 0.0):.1f}%</span></div>
+  <div class="metric"><span class="metric-label">Profit factor</span>
+    <span class="metric-value">{journal_summary.get("profit_factor", 0.0):.3f}</span></div>
+  <div class="metric"><span class="metric-label">Expectancy</span>
+    <span class="metric-value">{journal_summary.get("expectancy_r", 0.0):.3f}R</span></div>
+  <div class="metric"><span class="metric-label">Max drawdown</span>
+    <span class="metric-value red">{journal_summary.get("max_drawdown_r", 0.0):.3f}R</span></div>
+  <div class="metric"><span class="metric-label">Sharpe</span>
+    <span class="metric-value">{journal_summary.get("sharpe", 0.0):.3f}</span></div>
+  <div style="margin-top:10px">{_render_latency_svg(latency_points)}</div>
 </div>"""
 
     # Open positions card
@@ -1240,7 +1393,8 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
 </head>
 <body>
   {header}
-  <div class="grid-3" style="margin-bottom:12px">{acct_html}{sess_html}{sig_card}</div>
+  <div class="grid-2" style="margin-bottom:12px">{acct_html}{sess_html}</div>
+  <div class="grid-2" style="margin-bottom:12px">{sig_card}{metrics_card}</div>
   {maybe_pos}
   <div class="grid-2" style="margin-bottom:12px">{charts_html}</div>
   <div id="section-pairs-row" class="grid-3" style="margin-bottom:12px">{pair_cards}</div>
@@ -1277,6 +1431,8 @@ async def api_status():
     state = _load_state()
     dfs   = {s: _load_candles(s) for s in PAIRS}
     pipes = {s: _analyze(dfs[s], s) for s in PAIRS}
+    control = load_control_state()
+    journal_summary = TradeJournalDB().summary()
     return {
         "ts":      datetime.now(timezone.utc).isoformat(),
         "account": state.get("account", {}),
@@ -1287,7 +1443,123 @@ async def api_status():
                     for s in PAIRS},
         "open_positions": state.get("open_positions", []),
         "last_signal":    state.get("last_signal"),
+        "emergency_stop": control.get("emergency_stop", {}),
+        "journal_summary": journal_summary,
+        "reconnect_attempts_total": state.get("reconnect_attempts_total", 0),
+        "last_reconnect_at": state.get("last_reconnect_at", ""),
     }
+
+
+@app.get("/api/control/state")
+async def api_control_state():
+    return load_control_state()
+
+
+@app.get("/api/control/permission")
+async def api_control_permission():
+    state = _load_state()
+    guard = StrategyExecutionGuard(root=ROOT).evaluate(
+        state.get("strategy", "strategy-demo") or "strategy-demo",
+        environment=str(state.get("mode", "shadow")),
+    )
+    permission = TradingPermissionService(root=ROOT, environment=str(state.get("mode", "shadow"))).evaluate(
+        governance_result=guard,
+        broker_connected=state.get("broker_status") == "connected",
+    )
+    return permission.to_dict()
+
+
+@app.get("/api/execution/timeline/{execution_id}")
+async def api_execution_timeline(execution_id: str):
+    store = ExecutionStateStore(ROOT)
+    try:
+        return {"execution_id": execution_id, "timeline": store.timeline(execution_id)}
+    except FileNotFoundError:
+        return JSONResponse({"error": "execution timeline not found", "execution_id": execution_id}, status_code=404)
+
+
+@app.get("/api/health/summary")
+async def api_health_summary():
+    return _health_summary()
+
+
+@app.get("/api/readiness/report")
+async def api_readiness_report():
+    return _readiness_payload()
+
+
+@app.post("/api/emergency-stop")
+async def api_emergency_stop(body: dict):
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-EMERGENCY-STOP":
+        return JSONResponse(
+            {"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-EMERGENCY-STOP"},
+            status_code=403,
+        )
+    reason = str(body.get("reason", "Manual operator stop")).strip() or "Manual operator stop"
+    scope = str(body.get("scope", "block_only")).strip().lower() or "block_only"
+    if scope not in {"block_only", "close_positions"}:
+        return JSONResponse({"error": "Invalid emergency-stop scope", "scope": scope}, status_code=400)
+    state = activate_emergency_stop(reason=reason, activated_by="status_server", scope=scope)
+    return {"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/api/emergency-stop/clear")
+async def api_emergency_stop_clear(body: dict):
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-CLEAR-EMERGENCY-STOP":
+        return JSONResponse(
+            {"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-CLEAR-EMERGENCY-STOP"},
+            status_code=403,
+        )
+    reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
+    state = clear_emergency_stop(reason=reason, cleared_by="status_server")
+    return {"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics():
+    state = _load_state()
+    summary = TradeJournalDB().summary()
+    control = load_control_state()
+    health = _health_summary()
+    execution_counts = ExecutionStateStore(ROOT).count_by_state()
+    lines = [
+        "# HELP smc_runner_connected Runner connectivity state (1=running)",
+        "# TYPE smc_runner_connected gauge",
+        f"smc_runner_connected {1 if state.get('status') == 'running' else 0}",
+        "# HELP smc_open_positions Managed open positions",
+        "# TYPE smc_open_positions gauge",
+        f"smc_open_positions {len(state.get('open_positions', []))}",
+        "# HELP smc_last_tick_age_seconds Age of last tick in seconds",
+        "# TYPE smc_last_tick_age_seconds gauge",
+        f"smc_last_tick_age_seconds {_last_tick_age_seconds(state)}",
+        "# HELP smc_win_rate_pct Closed-trade win rate percentage",
+        "# TYPE smc_win_rate_pct gauge",
+        f"smc_win_rate_pct {summary.get('win_rate_pct', 0.0)}",
+        "# HELP smc_profit_factor Closed-trade profit factor",
+        "# TYPE smc_profit_factor gauge",
+        f"smc_profit_factor {summary.get('profit_factor', 0.0)}",
+        "# HELP smc_emergency_stop_active Emergency stop state (1=active)",
+        "# TYPE smc_emergency_stop_active gauge",
+        f"smc_emergency_stop_active {1 if control.get('emergency_stop', {}).get('active') else 0}",
+        "# HELP smc_trading_allowed Trading permission state (1=allowed)",
+        "# TYPE smc_trading_allowed gauge",
+        f"smc_trading_allowed {1 if health['trading_permission']['trading_allowed'] else 0}",
+        "# HELP smc_health_score Weighted runtime health score",
+        "# TYPE smc_health_score gauge",
+        f"smc_health_score {health['score']}",
+    ]
+    for state_name, count in sorted(execution_counts.items()):
+        metric_name = state_name.lower()
+        lines.extend(
+            [
+                f"# HELP smc_execution_state_total Execution records currently in {state_name}",
+                "# TYPE smc_execution_state_total gauge",
+                f'smc_execution_state_total{{state="{metric_name}"}} {count}',
+            ]
+        )
+    return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
 @app.get("/")
