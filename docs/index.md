@@ -57,6 +57,12 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
   - [05 Risk Assessment](svos/architecture-review-2026-06-29/05_RISK_ASSESSMENT.md)
   - [06 Upgrade Roadmap](svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md)
 
+### Architecture Separation Migration
+
+- [Phase 0 baseline](migration/baseline.md)
+- [Phase 0 test status](migration/current_test_status.md)
+- [Phase 0 safety state](migration/safety_state.md)
+
 ---
 
 ## Operations
