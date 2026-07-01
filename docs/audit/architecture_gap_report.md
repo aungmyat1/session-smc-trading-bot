@@ -108,8 +108,8 @@ Priority order (informational — no migration performed by this audit):
    split is real and authoritative (documented 2026-06-29), not aspirational — but migration
    onto it is incomplete, and the "auto-trade-vps" name in the prompt is the correct, live
    identity of the box this audit ran on.
-2. **Confirmed production location:** `auto-trade-vps.asia-southeast1-b.c.auto-489108.internal`
-   (this host), running `smc-demo-runner.service` + `live-dashboard.service`, demo-only.
+2. **Confirmed production location:** `<prod-host-fqdn>` (this host, `auto-trade-vps`),
+   running `smc-demo-runner.service` + `live-dashboard.service`, demo-only.
 3. **Confirmed SVOS location:** a separate machine named `gcp-vm1`, verified online (Tailscale +
    Docker + Postgres 16 healthy) per `docs/svos/PREFLIGHT_STATUS.md`, but not yet running the
    full research pipeline (capacity-gated) and not yet holding the authoritative Postgres

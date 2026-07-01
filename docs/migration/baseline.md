@@ -47,8 +47,7 @@ broker orders or possess broker credentials.
 
 ## Locally Observed Services: `auto-trade-vps`
 
-Snapshot host:
-`auto-trade-vps.asia-southeast1-b.c.auto-489108.internal`
+Snapshot host: `<prod-host-fqdn>` (production GCP instance, `auto-trade-vps`)
 
 ### systemd
 

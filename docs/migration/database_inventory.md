@@ -9,7 +9,7 @@ Related: `../audit/database_topology.md`, `../svos/DEPLOYMENT_TOPOLOGY.md`, `../
 
 Live queries only, run directly against both hosts:
 - VPS 1 (`auto-trade-vps`, this host): `sudo -u postgres psql` (local peer auth, no app credentials used).
-- VPS 2 (`gcp-vm1`): `ssh gcp-vm1` (Tailscale, `~/.ssh/google_compute_engine` key) → `docker exec quant-postgres psql`.
+- VPS 2 (`gcp-vm1`): `ssh gcp-vm1` (Tailscale, key configured in local SSH config) → `docker exec quant-postgres psql`.
 
 No DDL/DML executed. No rows inserted, updated, or deleted.
 
@@ -65,7 +65,7 @@ A checksum-verified pre-layout logical backup already exists at `/srv/svos/backu
 - `scripts/control_plane_backup.py` — existing encrypted (`gpg --symmetric AES256`) `pg_dump --format=custom` backup with SHA-256 manifest, and a `pg_restore` path gated behind `--confirm CONFIRM-RESTORE-CONTROL-PLANE`. This is the repo's established backup/restore mechanism and should be reused rather than inventing a new one.
 - `rsync` present on both hosts.
 - Both hosts run PostgreSQL **16.14** — dump/restore is version-matched, no upgrade step needed.
-- SSH connectivity confirmed both directions over Tailscale (`auto-trade-vps` 100.106.165.119 ↔ `gcp-vm1` 100.87.239.121) using `~/.ssh/google_compute_engine`.
+- SSH connectivity confirmed both directions over Tailscale (`auto-trade-vps` ↔ `gcp-vm1`, private overlay-network addresses) using the configured SSH key.
 
 ## Key finding
 
