@@ -20,8 +20,8 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
 
+from execution.market_data import MarketDataProvider, MetaApiMarketDataProvider
 from execution.mt5_connector import MT5Connector
 
 _log = logging.getLogger("strategy_demo.vantage_executor")
@@ -42,9 +42,18 @@ _TF_MAP = {
 
 
 class VantageDemoExecutor:
-    def __init__(self, connector: MT5Connector) -> None:
+    def __init__(
+        self,
+        connector: MT5Connector,
+        market_data_provider: MarketDataProvider | None = None,
+    ) -> None:
         self._conn = connector
         self.demo_only = _DEMO_ONLY
+        self._market_data = market_data_provider or MetaApiMarketDataProvider(
+            account_getter=lambda: self._conn._account,
+            connection_getter=lambda: self._conn.connection,
+            reconnect_callback=self._conn.reconnect,
+        )
 
     def _rpc(self):
         return self._conn.connection
@@ -55,19 +64,7 @@ class VantageDemoExecutor:
         self, symbol: str, timeframe: str, count: int = 200
     ) -> list[dict]:
         tf = _TF_MAP.get(timeframe, timeframe)
-        end = datetime.now(timezone.utc)
-        raw = await self._conn._account.get_historical_candles(symbol, tf, end, count)
-        return [
-            {
-                "time":   c.get("time"),
-                "open":   c.get("open"),
-                "high":   c.get("high"),
-                "low":    c.get("low"),
-                "close":  c.get("close"),
-                "volume": c.get("tickVolume", 0),
-            }
-            for c in (raw or [])
-        ]
+        return await self._market_data.get_candles(symbol, tf, count)
 
     async def get_price(self, symbol: str) -> dict:
         p = await self._rpc().get_symbol_price(symbol)

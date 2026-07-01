@@ -73,6 +73,7 @@ from execution.demo_risk_manager    import (
     calculate_lots, new_state, check_limits, record_result, reset_daily,
 )
 from execution.trade_journal        import DemoTradeJournal
+from monitoring.telegram import TelegramAlerter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -136,6 +137,9 @@ def _base_state(mode: str, strategy_name: str, interval: int, once: bool) -> dic
         "session_gate": _session_gate(),
         "started_at": _now_iso(),
         "status": "starting",
+        "broker_status": "starting",
+        "strategy_status": "starting",
+        "execution_status": "starting",
         "last_tick_at": "",
         "last_decision": "starting",
         "last_error": "",
@@ -154,12 +158,16 @@ async def _tick(
     manager:    TradeManager,
     journal:    DemoTradeJournal,
     risk_state: dict,
+    telegram:   TelegramAlerter | None = None,
 ) -> dict:
     """One scan cycle. Returns updated risk_state."""
     state = dict(risk_state.get("_dashboard_state") or {})
     state.update(
         {
             "status": "running",
+            "broker_status": "connected" if connector.is_connected else "disconnected",
+            "strategy_status": "active",
+            "execution_status": "idle",
             "last_error": "",
             "last_tick_at": _now_iso(),
             "last_decision": "scanning",
@@ -180,6 +188,7 @@ async def _tick(
     if _portmgr.any_loss_limit_hit():
         _log.warning("Portfolio loss limit hit — skipping tick. %s", _portmgr.stats())
         state["status"] = "blocked"
+        state["execution_status"] = "blocked"
         state["last_decision"] = "portfolio_loss_limit"
         state["portfolio_stats"] = _portmgr.stats()
         risk_state["_dashboard_state"] = state
@@ -208,9 +217,11 @@ async def _tick(
                     await connector.reconnect()
                     fetch_fails = 0
                     state["last_decision"] = "reconnected"
+                    state["broker_status"] = "connected"
                 except Exception as re_exc:
                     _log.error("Reconnect failed: %s", re_exc)
                     state["status"] = "error"
+                    state["broker_status"] = "disconnected"
                     state["last_error"] = str(re_exc)
             continue
 
@@ -251,6 +262,15 @@ async def _tick(
         )
         ready.append({"symbol": symbol, "m15": m15, "h4": h4,
                       "spread": spread, "px": px})
+        # Cache M15 candles for the live status dashboard
+        _candle_dir = Path("logs") / "candles"
+        _candle_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            (_candle_dir / f"{symbol}_M15.json").write_text(
+                json.dumps(m15[-200:], default=str), encoding="utf-8"
+            )
+        except Exception as _e:
+            logger.warning("candle cache write failed for %s: %s", symbol, _e)
 
     risk_state["_fetch_fails"] = fetch_fails
 
@@ -285,6 +305,7 @@ async def _tick(
     if not raw_signals:
         _log.info("No signals this tick.")
         state["last_decision"] = "no_signals"
+        state["execution_status"] = "idle"
         try:
             state["account"] = await executor.get_account_info()
         except Exception:
@@ -303,6 +324,7 @@ async def _tick(
     if not routed:
         _log.info("SignalRouter: all signals rejected.")
         state["last_decision"] = "router_rejected"
+        state["execution_status"] = "idle"
         risk_state["_dashboard_state"] = state
         _write_state(state)
         return risk_state
@@ -323,6 +345,7 @@ async def _tick(
 
     if not cb_approved:
         state["last_decision"] = "breaker_blocked"
+        state["execution_status"] = "blocked"
         risk_state["_dashboard_state"] = state
         _write_state(state)
         return risk_state
@@ -339,6 +362,7 @@ async def _tick(
     if not pm_approved:
         _log.info("PortfolioManager blocked all signals. %s", _portmgr.stats())
         state["last_decision"] = "portfolio_blocked"
+        state["execution_status"] = "blocked"
         state["portfolio_stats"] = _portmgr.stats()
         risk_state["_dashboard_state"] = state
         _write_state(state)
@@ -390,6 +414,17 @@ async def _tick(
             "reward_pips": signal.metadata.get("reward_pips"),
             "rr": signal.metadata.get("rr"),
         }
+        if telegram is not None:
+            await telegram.send_signal_detected(
+                strategy=signal.strategy_name,
+                symbol=signal.symbol,
+                direction=signal.side,
+                session=signal.session,
+                entry=signal.entry_price,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+                confidence=signal.confidence,
+            )
 
         _breaker.record_signal(signal.strategy_name)
 
@@ -405,6 +440,7 @@ async def _tick(
             _portmgr.record_trade(signal)
             _log.info("SHADOW — signal recorded, no order sent.")
             state["status"] = "signal"
+            state["execution_status"] = "shadow"
             state["last_decision"] = "shadow_signal"
             state["last_signal"]["simulated"] = True
             continue
@@ -413,6 +449,17 @@ async def _tick(
         try:
             order = await manager.open_position(signal, lots)
             journal.log_open(signal, order, lots, spread)
+            if telegram is not None:
+                await telegram.send_trade_open(
+                    symbol=signal.symbol,
+                    direction=signal.side,
+                    entry=signal.entry_price,
+                    sl=signal.stop_loss,
+                    tp=signal.take_profit,
+                    risk_pct=signal.risk_percent,
+                    lot=lots,
+                    dry_run=order.get("simulated", False),
+                )
             trade_id = _journal_db.record_signal(
                 signal,
                 router_result="PASS",
@@ -426,14 +473,18 @@ async def _tick(
             risk_state["open_positions"] = risk_state.get("open_positions", 0) + 1
             _log.info("Order placed: %s (journal_id=%s)", order.get("order_id"), trade_id)
             state["status"] = "signal"
+            state["execution_status"] = "order_opened"
             state["last_decision"] = "order_opened"
             state["last_signal"]["order_id"] = order.get("order_id", "")
             state["last_signal"]["simulated"] = order.get("simulated", False)
         except Exception as exc:
             _log.error("Order placement failed %s: %s", signal.symbol, exc)
             state["status"] = "error"
+            state["execution_status"] = "error"
             state["last_decision"] = "order_error"
             state["last_error"] = str(exc)
+            if telegram is not None:
+                await telegram.send_error(f"Order placement failed {signal.symbol}: {exc}")
             _journal_db.record_signal(signal, router_result="PASS",
                                       breaker_result="PASS",
                                       portfolio_result="PASS",
@@ -474,8 +525,13 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     executor   = VantageDemoExecutor(connector)
     manager    = TradeManager(executor)
     journal    = DemoTradeJournal()
+    telegram   = TelegramAlerter()
+    await telegram.start()
     risk_state = new_state()
     state["status"] = "connected"
+    state["broker_status"] = "connected"
+    state["strategy_status"] = "active"
+    state["execution_status"] = "idle"
     state["last_decision"] = "connected"
     _write_state(state)
 
@@ -484,15 +540,17 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
             try:
                 risk_state["_dashboard_state"] = dict(risk_state.get("_dashboard_state") or state)
                 risk_state = await _tick(
-                    mode, strategy_name, connector, executor, manager, journal, risk_state
+                    mode, strategy_name, connector, executor, manager, journal, risk_state, telegram
                 )
             except Exception as exc:
                 _log.error("Tick error: %s", exc, exc_info=True)
                 state = dict(risk_state.get("_dashboard_state") or state)
                 state["status"] = "error"
+                state["execution_status"] = "error"
                 state["last_error"] = str(exc)
                 state["last_decision"] = "tick_error"
                 _write_state(state)
+                await telegram.send_error(f"Strategy demo tick error: {exc}")
             if once:
                 break
             await asyncio.sleep(interval)
@@ -500,8 +558,20 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
         _log.info("Shutting down.")
         state = dict(risk_state.get("_dashboard_state") or state)
         state["status"] = "stopped"
+        state["broker_status"] = "disconnected"
+        state["strategy_status"] = "stopped"
+        state["execution_status"] = "stopped"
         state["last_decision"] = "shutdown"
         _write_state(state)
+        summary = journal.summary()
+        await telegram.send_daily_summary(
+            opened=summary["total_opened"],
+            closed=summary["total_closed"],
+            wins=summary["wins"],
+            losses=summary["losses"],
+            avg_r=summary["avg_r"],
+        )
+        await telegram.stop()
         await connector.disconnect()
 
 

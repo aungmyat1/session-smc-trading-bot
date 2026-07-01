@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timezone
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+_TF_MAP = {
+    "M1": "1m",
+    "M5": "5m",
+    "M15": "15m",
+    "H1": "1h",
+    "H4": "4h",
+    "D1": "1d",
+    "m1": "1m",
+    "m5": "5m",
+    "m15": "15m",
+    "h1": "1h",
+    "h4": "4h",
+    "d1": "1d",
+}
+
+
+class MarketDataProvider(ABC):
+    @abstractmethod
+    async def get_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+
+class MetaApiMarketDataProvider(MarketDataProvider):
+    def __init__(
+        self,
+        *,
+        account_getter: Callable[[], Any],
+        connection_getter: Callable[[], Any],
+        reconnect_callback: Callable[[], Awaitable[Any]] | None = None,
+        retries: int = 2,
+        retry_delay_s: float = 0.5,
+    ) -> None:
+        self._account_getter = account_getter
+        self._connection_getter = connection_getter
+        self._reconnect_callback = reconnect_callback
+        self._retries = max(1, retries)
+        self._retry_delay_s = max(0.0, retry_delay_s)
+        self._metrics = {
+            "requests": 0,
+            "successes": 0,
+            "retries": 0,
+            "errors": 0,
+            "empty_responses": 0,
+            "last_error": "",
+            "last_success_at": "",
+        }
+
+    @property
+    def metrics(self) -> dict[str, Any]:
+        return dict(self._metrics)
+
+    async def get_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
+        normalized_tf = _TF_MAP.get(timeframe, timeframe)
+        end_time = datetime.now(timezone.utc)
+        self._metrics["requests"] += 1
+
+        last_error: Exception | None = None
+        for attempt in range(1, self._retries + 1):
+            try:
+                raw = await self._fetch_raw(symbol, normalized_tf, end_time, limit)
+                candles = [self._normalize_candle(item) for item in (raw or []) if isinstance(item, dict)]
+                if not candles:
+                    self._metrics["empty_responses"] += 1
+                    logger.warning(
+                        "Market data returned no candles for %s %s (attempt %d/%d)",
+                        symbol,
+                        normalized_tf,
+                        attempt,
+                        self._retries,
+                    )
+                self._metrics["successes"] += 1
+                self._metrics["last_success_at"] = datetime.now(timezone.utc).isoformat()
+                return candles
+            except Exception as exc:
+                last_error = exc
+                self._metrics["errors"] += 1
+                self._metrics["last_error"] = str(exc)
+                logger.warning(
+                    "Market data fetch failed for %s %s (attempt %d/%d): %s",
+                    symbol,
+                    normalized_tf,
+                    attempt,
+                    self._retries,
+                    exc,
+                )
+                if attempt >= self._retries:
+                    break
+                self._metrics["retries"] += 1
+                if self._reconnect_callback is not None:
+                    try:
+                        await self._reconnect_callback()
+                    except Exception as reconnect_exc:
+                        logger.warning("Market data reconnect attempt failed: %s", reconnect_exc)
+                if self._retry_delay_s:
+                    await asyncio.sleep(self._retry_delay_s)
+
+        if last_error is not None:
+            raise last_error
+        return []
+
+    async def _fetch_raw(
+        self,
+        symbol: str,
+        timeframe: str,
+        end_time: datetime,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        account = self._account_getter()
+        connection = self._connection_getter()
+        if account is None and connection is None:
+            raise RuntimeError("MetaAPI market data unavailable: no account or connection")
+
+        if account is not None and hasattr(account, "get_historical_candles"):
+            return await account.get_historical_candles(symbol, timeframe, end_time, limit)
+
+        if connection is not None and hasattr(connection, "get_historical_candles"):
+            return await connection.get_historical_candles(symbol, timeframe, end_time, limit)
+
+        if connection is not None and hasattr(connection, "get_candles"):
+            return await connection.get_candles(symbol, timeframe, end_time, limit)
+
+        raise AttributeError("MetaAPI historical candle API not available on account or connection")
+
+    @staticmethod
+    def _normalize_candle(raw: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "time": raw.get("time"),
+            "open": raw.get("open"),
+            "high": raw.get("high"),
+            "low": raw.get("low"),
+            "close": raw.get("close"),
+            "volume": raw.get("tickVolume", raw.get("volume", 0)),
+        }
+
+
+class MockMarketDataProvider(MarketDataProvider):
+    def __init__(self, candles_by_key: dict[tuple[str, str], list[dict[str, Any]]]) -> None:
+        self._candles_by_key = {
+            (symbol.upper(), _TF_MAP.get(timeframe, timeframe)): list(rows)
+            for (symbol, timeframe), rows in candles_by_key.items()
+        }
+
+    async def get_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
+        rows = self._candles_by_key.get((symbol.upper(), _TF_MAP.get(timeframe, timeframe)), [])
+        return list(rows[-limit:])
+
+
+class ReplayMarketDataProvider(MarketDataProvider):
+    def __init__(self, candles_by_key: dict[tuple[str, str], list[dict[str, Any]]]) -> None:
+        self._mock = MockMarketDataProvider(candles_by_key)
+
+    async def get_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
+        return await self._mock.get_candles(symbol, timeframe, limit)

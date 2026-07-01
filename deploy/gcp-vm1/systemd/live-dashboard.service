@@ -1,0 +1,17 @@
+[Unit]
+Description=Live trading dashboard service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aungp
+WorkingDirectory=/opt/session-smc-trading-bot
+EnvironmentFile=/etc/session-smc-trading-bot/live-dashboard.env
+ExecStart=/opt/session-smc-trading-bot/deploy/gcp-vm1/run_live_dashboard.sh
+Restart=always
+RestartSec=10
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

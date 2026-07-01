@@ -148,6 +148,34 @@ class TelegramAlerter:
         )
         await self._send_md(msg)
 
+    async def send_signal_detected(
+        self,
+        *,
+        strategy: str,
+        symbol: str,
+        direction: str,
+        session: str,
+        entry: float,
+        stop_loss: float,
+        take_profit: float,
+        confidence: float,
+    ) -> None:
+        symbol_safe = _escape_markdown(symbol)
+        strategy_safe = _escape_markdown(strategy)
+        session_safe = _escape_markdown(session)
+        direction_label = "LONG" if direction.lower() in {"long", "buy"} else "SHORT"
+        msg = (
+            f"📡 *SIGNAL {symbol_safe}*\\n\\n"
+            f"Strategy: {strategy_safe}\\n"
+            f"Direction: *{direction_label}*\\n"
+            f"Session: {session_safe}\\n"
+            f"Entry: `{entry:.5f}`\\n"
+            f"SL: `{stop_loss:.5f}`\\n"
+            f"TP: `{take_profit:.5f}`\\n"
+            f"Confidence: `{confidence:.2f}`"
+        )
+        await self._send_md(msg)
+
     async def send_trade_close(
         self,
         symbol: str,
@@ -166,6 +194,28 @@ class TelegramAlerter:
             + (f"\nReason: {reason_safe}" if reason else "")
         )
         await self._send_md(msg)
+
+    async def send_daily_summary(
+        self,
+        *,
+        opened: int,
+        closed: int,
+        wins: int,
+        losses: int,
+        avg_r: float,
+    ) -> None:
+        msg = (
+            "[DAILY SUMMARY]\n"
+            f"opened={opened}  closed={closed}\n"
+            f"wins={wins}  losses={losses}\n"
+            f"avg_r={avg_r:.3f}"
+        )
+        await self._post(
+            msg,
+            parse_mode=None,
+            alert_category="daily_summary",
+            suppress_key="daily_summary",
+        )
 
     async def send_circuit_breaker(self, reason: str, state_summary: str) -> None:
         reason_safe = _escape_markdown(reason)
