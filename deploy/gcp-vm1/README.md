@@ -7,6 +7,7 @@ future strategy testing.
 
 - PostgreSQL 16 research database
 - `D2E3` demo runner
+- Standalone live trading dashboard on its own address/port
 - Replay/backtest ingestion from `data/` and `logs/`
 - Structured trade journal at `logs/d2e3_trades.jsonl`
 - 5-minute journal sync into PostgreSQL for runs, trades, and metrics
@@ -46,12 +47,65 @@ python3 scripts/bootstrap_quant_db.py --dry-run
 DEMO_LIVE=false python3 scripts/run_d2_e3_demo.py
 ```
 
-For a persistent service, install [`systemd/d2e3.service`](systemd/d2e3.service)
+For a persistent D2E3 service, install [`systemd/d2e3.service`](systemd/d2e3.service)
 and point it at [`run_d2e3.sh`](run_d2e3.sh).
 
 To keep the journal reflected in PostgreSQL, enable
 [`systemd/d2e3-journal-sync.timer`](systemd/d2e3-journal-sync.timer) and its
 paired service.
+
+## Standalone live dashboard
+
+The live trading dashboard is now a separate Flask app from SVOS.
+
+- SVOS/control panel remains on port `8080`
+- Live trading dashboard runs on port `8090` by default
+
+Run it manually:
+
+```bash
+python3 dashboard/live_app.py
+```
+
+Or use the wrapper:
+
+```bash
+./deploy/gcp-vm1/run_live_dashboard.sh
+```
+
+For a persistent service, install
+[`systemd/live-dashboard.service`](systemd/live-dashboard.service) and use an
+environment file like:
+
+```bash
+sudo install -d /etc/session-smc-trading-bot
+sudo tee /etc/session-smc-trading-bot/live-dashboard.env >/dev/null <<'EOF'
+REPO_DIR=/opt/session-smc-trading-bot
+PYTHON_BIN=/opt/session-smc-trading-bot/.venv/bin/python
+SVOS_OPERATOR_TOKEN=replace-me
+VPS_IP_ADDRESS=34.87.36.159
+LIVE_DASHBOARD_HOST=0.0.0.0
+LIVE_DASHBOARD_PUBLIC_HOST=34.87.36.159
+LIVE_DASHBOARD_PORT=8090
+LIVE_TRADING=false
+DEMO_ONLY=true
+EOF
+```
+
+Install and enable it:
+
+```bash
+sudo cp deploy/gcp-vm1/systemd/live-dashboard.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now live-dashboard.service
+sudo systemctl status live-dashboard.service
+```
+
+Expected live dashboard address:
+
+```text
+http://34.87.36.159:8090
+```
 
 ## Database layout
 

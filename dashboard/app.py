@@ -30,10 +30,8 @@ from __future__ import annotations
 
 import json
 import os
-import hmac
 import subprocess
 import sys
-from functools import wraps
 import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -52,6 +50,7 @@ except ImportError:
     sys.exit(1)
 
 from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
+from dashboard.auth import require_operator
 from dashboard.audit_log import tail_audit_log, write_audit_log
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state, mark_incident_reviewed
 from dashboard.report_service import generate as generate_reports_payload
@@ -76,31 +75,6 @@ _allowed_origins = [
     if item.strip()
 ]
 CORS(app, resources={r"/api/*": {"origins": _allowed_origins}})
-
-
-def _require_operator(*allowed_roles: str):
-    """Require bearer authentication, a stable actor, and an allowed role."""
-    def decorator(view):
-        @wraps(view)
-        def wrapped(*args, **kwargs):
-            configured = str(app.config.get("SVOS_OPERATOR_TOKEN") or os.getenv("SVOS_OPERATOR_TOKEN", ""))
-            supplied = request.headers.get("Authorization", "")
-            actor = request.headers.get("X-SVOS-Actor", "").strip()
-            role = request.headers.get("X-SVOS-Role", "").strip()
-            expected = f"Bearer {configured}" if configured else ""
-            if not configured:
-                return jsonify({"error": "Operator authentication is not configured"}), 503
-            if not hmac.compare_digest(supplied, expected):
-                return jsonify({"error": "Unauthorized"}), 401
-            if not actor:
-                return jsonify({"error": "Missing immutable operator identity"}), 401
-            if role not in allowed_roles:
-                return jsonify({"error": "Forbidden", "required_roles": list(allowed_roles)}), 403
-            request.environ["svos.actor"] = actor
-            request.environ["svos.role"] = role
-            return view(*args, **kwargs)
-        return wrapped
-    return decorator
 
 _CATALOG_PATH = _ROOT / "config" / "strategy_catalog.yaml"
 _EVF_REPORTS_DIR = _ROOT / "execution_validation" / "reports"
@@ -218,6 +192,24 @@ def _read_text(path: Path) -> str:
 def _demo_runner_state() -> dict[str, Any]:
     payload = _read_json(_DEMO_STATE_PATH)
     return payload if isinstance(payload, dict) else {}
+
+
+def _demo_health_payload() -> dict[str, Any]:
+    state = _demo_runner_state()
+    records = _all_trades()
+    latest_trade = records[0] if records else {}
+    last_signal = state.get("last_signal") or {}
+    return {
+        "status": state.get("status", "stopped"),
+        "broker": state.get("broker_status", "unknown"),
+        "strategy": state.get("strategy_status", "inactive"),
+        "execution_status": state.get("execution_status", state.get("status", "unknown")),
+        "strategy_status": state.get("strategy_status", "inactive"),
+        "broker_status": state.get("broker_status", "unknown"),
+        "last_signal": last_signal.get("timestamp") or "",
+        "last_trade": latest_trade.get("timestamp") or latest_trade.get("ts") or "",
+        "updated_at": state.get("updated_at", ""),
+    }
 
 
 def _svos_stage_report_payload(strategy: str) -> dict[str, Any]:
@@ -688,7 +680,7 @@ def api_svos():
 
 
 @app.route("/api/svos/run", methods=["POST"])
-@_require_operator("research_operator", "admin")
+@require_operator(app, "research_operator", "admin")
 def api_svos_run():
     body = request.get_json(silent=True) or {}
     confirm = body.get("confirm_token", "")
@@ -746,7 +738,7 @@ def api_evf():
 
 
 @app.route("/api/evf/run", methods=["POST"])
-@_require_operator("research_operator", "admin")
+@require_operator(app, "research_operator", "admin")
 def api_evf_run():
     body = request.get_json(silent=True) or {}
     confirm = body.get("confirm_token", "")
@@ -794,6 +786,11 @@ def api_demo_runner():
     })
 
 
+@app.route("/health/demo")
+def health_demo():
+    return jsonify({**_demo_health_payload(), "fetched_at": _now_iso()})
+
+
 @app.route("/api/status")
 def api_status():
     current, current_meta, _ = _current_catalog_state()
@@ -826,6 +823,8 @@ def api_status():
         "live_trading": os.getenv("LIVE_TRADING", "false").lower() == "true",
         "demo_runner_mode": demo_runner.get("mode", ""),
         "demo_runner_status": demo_runner.get("status", ""),
+        "execution_status": demo_runner.get("execution_status", ""),
+        "broker_status": demo_runner.get("broker_status", ""),
         "demo_runner_strategy": demo_runner.get("strategy", ""),
         "demo_runner_updated_at": demo_runner.get("updated_at", ""),
         "demo_only": demo_runner.get("demo_only"),
@@ -1012,7 +1011,7 @@ def api_live_dashboard():
 
 
 @app.route("/api/live-dashboard/positions/<position_id>/close", methods=["POST"])
-@_require_operator("risk_operator", "admin")
+@require_operator(app, "risk_operator", "admin")
 def api_live_dashboard_close_position(position_id: str):
     try:
         payload = live_dashboard_service.close_position(position_id)
@@ -1027,7 +1026,7 @@ def api_live_dashboard_close_position(position_id: str):
 
 
 @app.route("/api/live-dashboard/positions/<position_id>/protect", methods=["POST"])
-@_require_operator("risk_operator", "admin")
+@require_operator(app, "risk_operator", "admin")
 def api_live_dashboard_modify_position(position_id: str):
     body = request.get_json(silent=True) or {}
     stop_loss = body.get("stop_loss")
@@ -1049,7 +1048,7 @@ def api_live_dashboard_modify_position(position_id: str):
 
 
 @app.route("/api/live-dashboard/orders/<order_id>/cancel", methods=["POST"])
-@_require_operator("risk_operator", "admin")
+@require_operator(app, "risk_operator", "admin")
 def api_live_dashboard_cancel_order(order_id: str):
     try:
         payload = live_dashboard_service.cancel_order(order_id)
@@ -1106,7 +1105,7 @@ def api_reports_by_id(report_id: str):
 
 
 @app.route("/api/reports/<path:report_id>/review", methods=["POST"])
-@_require_operator("research_operator", "admin")
+@require_operator(app, "research_operator", "admin")
 def api_reports_review(report_id: str):
     review = mark_reviewed(report_id)
     write_audit_log(
@@ -1118,7 +1117,7 @@ def api_reports_review(report_id: str):
 
 
 @app.route("/api/reports/generate", methods=["POST"])
-@_require_operator("research_operator", "admin")
+@require_operator(app, "research_operator", "admin")
 def api_reports_generate():
     body = request.get_json(silent=True) or {}
     report_type = str(body.get("type", "")).strip()
@@ -1134,7 +1133,7 @@ def api_reports_generate():
 
 
 @app.route("/api/incidents/ack", methods=["POST"])
-@_require_operator("incident_operator", "admin")
+@require_operator(app, "incident_operator", "admin")
 def api_incidents_ack():
     body = request.get_json(silent=True) or {}
     incident_id = str(body.get("incident_id", "")).strip()
@@ -1148,7 +1147,7 @@ def api_incidents_ack():
 
 
 @app.route("/api/reports/generate/all", methods=["POST"])
-@_require_operator("research_operator", "admin")
+@require_operator(app, "research_operator", "admin")
 def api_reports_generate_all():
     payload = generate_reports_payload("all")
     write_audit_log("report_generate_all", status="completed", detail={"artifact_count": len(payload.get("artifacts", []))})
@@ -1156,7 +1155,7 @@ def api_reports_generate_all():
 
 
 @app.route("/api/emergency-stop", methods=["POST"])
-@_require_operator("risk_operator", "admin")
+@require_operator(app, "risk_operator", "admin")
 def api_emergency_stop():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()
@@ -1170,7 +1169,7 @@ def api_emergency_stop():
 
 
 @app.route("/api/emergency-stop/clear", methods=["POST"])
-@_require_operator("admin")
+@require_operator(app, "admin")
 def api_emergency_stop_clear():
     body = request.get_json(silent=True) or {}
     confirm = str(body.get("confirm_token", "")).strip()

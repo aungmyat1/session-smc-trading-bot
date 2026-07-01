@@ -71,6 +71,28 @@ class AuditLogEntry:
 
 
 @dataclass(frozen=True)
+class AuditSummaryCounts:
+    ambiguous_rule_count: int = 0
+    missing_parameter_count: int = 0
+    contradiction_count: int = 0
+    undefined_filter_count: int = 0
+    execution_conflict_count: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class AuditIssueBuckets:
+    fatal_blockers: list[str] = field(default_factory=list)
+    revision_required_issues: list[str] = field(default_factory=list)
+    improvement_only_recommendations: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
 class StrategyDocument:
     strategy_name: str
     raw_text: str
@@ -110,6 +132,8 @@ class ValidationReport:
     warnings: list[str] = field(default_factory=list)
     recommendations: list[ValidationRecommendation] = field(default_factory=list)
     audit_log: list[AuditLogEntry] = field(default_factory=list)
+    summary_counts: AuditSummaryCounts = field(default_factory=AuditSummaryCounts)
+    issue_buckets: AuditIssueBuckets = field(default_factory=AuditIssueBuckets)
     summary: str = ""
     generated_at: str = field(default_factory=utc_now)
     source_path: str = ""
@@ -126,6 +150,8 @@ class ValidationReport:
             "warnings": list(self.warnings),
             "recommendations": [item.to_dict() for item in self.recommendations],
             "audit_log": [item.to_dict() for item in self.audit_log],
+            "summary_counts": self.summary_counts.to_dict(),
+            "issue_buckets": self.issue_buckets.to_dict(),
             "summary": self.summary,
             "generated_at": self.generated_at,
             "source_path": self.source_path,

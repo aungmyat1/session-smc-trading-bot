@@ -1,8 +1,8 @@
 {
   "strategies": {
     "LondonBreakout": {
-      "status": "Virtual Demo Validation",
-      "updatedAt": "2026-06-30T17:47:53.061923+00:00",
+      "status": "Production Approval",
+      "updatedAt": "2026-06-30T19:20:16.031804+00:00",
       "auditLog": [
         {
           "id": "08a63d38-44a4-409b-b4bb-3ddcabc0fd1c",
@@ -57,6 +57,50 @@
           "toStage": "Virtual Demo Validation",
           "hash": "",
           "evidenceSummary": "Promoted from Robustness Validation to Virtual Demo Validation",
+          "details": ""
+        },
+        {
+          "id": "3e9902f3-9590-4874-8c7b-1859978fdb92",
+          "timestamp": "2026-06-30T19:20:04.024558+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Virtual Demo Validation",
+          "toStage": "Verification Ready",
+          "hash": "",
+          "evidenceSummary": "Promoted from Virtual Demo Validation to Verification Ready",
+          "details": ""
+        },
+        {
+          "id": "f7e695f9-a705-42ea-b640-9d9ea35dd2c6",
+          "timestamp": "2026-06-30T19:20:07.579624+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Verification Ready",
+          "toStage": "Execution Validation",
+          "hash": "",
+          "evidenceSummary": "Promoted from Verification Ready to Execution Validation",
+          "details": ""
+        },
+        {
+          "id": "fc31a1d5-d526-4e24-aa3a-d6591f09f72e",
+          "timestamp": "2026-06-30T19:20:11.512251+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Execution Validation",
+          "toStage": "Live Demo",
+          "hash": "",
+          "evidenceSummary": "Promoted from Execution Validation to Live Demo",
+          "details": ""
+        },
+        {
+          "id": "b42d9abe-195c-4a19-9d0e-36704c560e4e",
+          "timestamp": "2026-06-30T19:20:16.031804+00:00",
+          "actor": "dashboard",
+          "action": "stage_promoted",
+          "fromStage": "Live Demo",
+          "toStage": "Production Approval",
+          "hash": "",
+          "evidenceSummary": "Promoted from Live Demo to Production Approval",
           "details": ""
         }
       ]

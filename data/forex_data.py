@@ -37,15 +37,17 @@ class ForexData:
         Returns list of dicts with keys: time, open, high, low, close, volume
         """
         end_time = end_time or datetime.now(timezone.utc)
-        try:
-            candles = await self._ex._connection.get_historical_candles(
-                symbol, timeframe, end_time, count
-            )
-        except AttributeError:
-            # Fallback for SDK versions using get_candles
-            candles = await self._ex._connection.get_candles(
-                symbol, timeframe, end_time, count
-            )
+        account = getattr(self._ex, "_account", None)
+        connection = getattr(self._ex, "_connection", None)
+
+        if account is not None and hasattr(account, "get_historical_candles"):
+            candles = await account.get_historical_candles(symbol, timeframe, end_time, count)
+        elif connection is not None and hasattr(connection, "get_historical_candles"):
+            candles = await connection.get_historical_candles(symbol, timeframe, end_time, count)
+        elif connection is not None and hasattr(connection, "get_candles"):
+            candles = await connection.get_candles(symbol, timeframe, end_time, count)
+        else:
+            raise AttributeError("No MetaAPI historical candle method available")
 
         result = []
         for c in (candles or []):

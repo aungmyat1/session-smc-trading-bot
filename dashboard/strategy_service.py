@@ -368,6 +368,11 @@ def _build_audit_log(run_summary: dict | None) -> list[dict]:
     prev_stage = "NONE"
     for stage in run_summary.get("stages", []):
         ui_stage = _STATUS_TO_UI_STAGE.get(stage.get("stage", ""), _STAGE_INTAKE)
+        raw_score = stage.get("score", 0)
+        try:
+            score_text = f"{float(raw_score):.1f}"
+        except (TypeError, ValueError):
+            score_text = "n/a"
         records.append({
             "id": str(uuid.uuid5(uuid.NAMESPACE_URL, stage.get("report_id", stage.get("stage", "")))),
             "timestamp": run_summary.get("generated_at", ""),
@@ -376,7 +381,7 @@ def _build_audit_log(run_summary: dict | None) -> list[dict]:
             "fromStage": _STATUS_TO_UI_STAGE.get(prev_stage, "NONE") if prev_stage != "NONE" else "NONE",
             "toStage": ui_stage,
             "hash": stage.get("report_id", ""),
-            "evidenceSummary": f"{stage.get('stage_label', '')} — score {stage.get('score', 0):.1f}",
+            "evidenceSummary": f"{stage.get('stage_label', '')} — score {score_text}",
             "details": stage.get("status", ""),
         })
         prev_stage = stage.get("stage", "")

@@ -163,3 +163,51 @@ async def test_watchdog_helper_uses_dedicated_category():
             "[CRITICAL] No heartbeat for 700s (threshold=600s) — bot may be hung",
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_signal_helper_formats_signal_alert():
+    alerter = TelegramAlerter(token="tok", chat_id="chat")
+    seen: list[str] = []
+
+    async def _capture(text, parse_mode=None, alert_category=None, suppress_key=None):
+        seen.append(text)
+
+    alerter._post = AsyncMock(side_effect=_capture)  # type: ignore[assignment]
+
+    await alerter.send_signal_detected(
+        strategy="ST-A2",
+        symbol="EURUSD",
+        direction="long",
+        session="london",
+        entry=1.10123,
+        stop_loss=1.09901,
+        take_profit=1.10789,
+        confidence=0.82,
+    )
+
+    assert len(seen) == 1
+    assert "SIGNAL EURUSD" in seen[0]
+    assert "Strategy: ST\\-A2" not in seen[0]
+    assert "Confidence: `0.82`" in seen[0]
+
+
+@pytest.mark.asyncio
+async def test_daily_summary_helper_uses_dedicated_category():
+    alerter = TelegramAlerter(token="tok", chat_id="chat")
+    seen: list[tuple[str | None, str | None, str]] = []
+
+    async def _capture(text, parse_mode=None, alert_category=None, suppress_key=None):
+        seen.append((alert_category, suppress_key, text))
+
+    alerter._post = AsyncMock(side_effect=_capture)  # type: ignore[assignment]
+
+    await alerter.send_daily_summary(opened=3, closed=2, wins=1, losses=1, avg_r=0.375)
+
+    assert seen == [
+        (
+            "daily_summary",
+            "daily_summary",
+            "[DAILY SUMMARY]\nopened=3  closed=2\nwins=1  losses=1\navg_r=0.375",
+        )
+    ]

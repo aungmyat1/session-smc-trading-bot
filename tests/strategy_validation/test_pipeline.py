@@ -4,6 +4,7 @@ import json
 
 from strategy_validation.cli import main
 from strategy_validation.pipeline.strategy_validation_pipeline import StrategyValidationPipeline
+from strategy_validation.schemas import VALIDATION_REPORT_SCHEMA
 
 
 def _good_spec() -> str:
@@ -74,6 +75,14 @@ def test_pipeline_detects_stage1_issues():
 
     assert report.overall_status == "FAIL"
     assert report.readiness_decision in {"REJECTED", "INCOMPLETE"}
+    assert report.summary_counts.ambiguous_rule_count >= 5
+    assert report.summary_counts.missing_parameter_count >= 20
+    assert report.summary_counts.contradiction_count >= 2
+    assert report.summary_counts.undefined_filter_count >= 1
+    assert report.summary_counts.execution_conflict_count >= 3
+    assert report.issue_buckets.fatal_blockers
+    assert report.issue_buckets.revision_required_issues
+    assert report.issue_buckets.improvement_only_recommendations
     assert any("Subjective wording" in finding.message for result in report.validator_results for finding in result.findings)
     assert any("daily trade cap" in finding.message for result in report.validator_results for finding in result.findings)
 
@@ -89,6 +98,27 @@ def test_report_files_are_written(tmp_path):
     assert written["html"].exists()
     assert written["audit_log"].exists()
     assert payload["strategy_name"] == "ReplayReady"
+    assert payload["summary_counts"]["ambiguous_rule_count"] == 0
+    assert "summary_counts" in VALIDATION_REPORT_SCHEMA["properties"]
+    assert "issue_buckets" in VALIDATION_REPORT_SCHEMA["properties"]
+
+
+def test_reports_render_summary_counts_and_issue_buckets(tmp_path):
+    pipeline = StrategyValidationPipeline()
+    report = pipeline.run_text(_bad_spec())
+
+    written = pipeline.write_report(report, tmp_path / report.strategy_name)
+    markdown = written["markdown"].read_text(encoding="utf-8")
+    html = written["html"].read_text(encoding="utf-8")
+    payload = json.loads(written["json"].read_text(encoding="utf-8"))
+
+    assert "## Audit Summary" in markdown
+    assert "- Ambiguous rules: **5**" in markdown
+    assert "### Fatal Blockers" in markdown
+    assert "<h2>Audit Summary</h2>" in html
+    assert "Execution conflicts" in html
+    assert payload["issue_buckets"]["fatal_blockers"]
+    assert payload["summary_counts"]["execution_conflict_count"] >= 3
 
 
 def test_cli_generates_reports(tmp_path, capsys):

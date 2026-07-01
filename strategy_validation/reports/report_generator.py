@@ -24,8 +24,31 @@ class ReportGenerator:
             "",
             report.summary,
             "",
-            "## Validator Results",
+            "## Audit Summary",
+            "",
+            f"- Ambiguous rules: **{report.summary_counts.ambiguous_rule_count}**",
+            f"- Missing parameters: **{report.summary_counts.missing_parameter_count}**",
+            f"- Contradictions: **{report.summary_counts.contradiction_count}**",
+            f"- Undefined filters: **{report.summary_counts.undefined_filter_count}**",
+            f"- Execution conflicts: **{report.summary_counts.execution_conflict_count}**",
+            "",
+            "## Issue Buckets",
         ]
+        if report.issue_buckets.fatal_blockers:
+            lines.extend(["", "### Fatal Blockers"])
+            lines.extend([f"- {item}" for item in report.issue_buckets.fatal_blockers])
+        if report.issue_buckets.revision_required_issues:
+            lines.extend(["", "### Revision Required"])
+            lines.extend([f"- {item}" for item in report.issue_buckets.revision_required_issues])
+        if report.issue_buckets.improvement_only_recommendations:
+            lines.extend(["", "### Improvement-Only Recommendations"])
+            lines.extend([f"- {item}" for item in report.issue_buckets.improvement_only_recommendations])
+        lines.extend(
+            [
+                "",
+                "## Validator Results",
+            ]
+        )
         for result in report.validator_results:
             lines.extend(
                 [
@@ -61,6 +84,34 @@ class ReportGenerator:
                 f"<td>{html.escape('; '.join(f.message for f in result.findings[:3]))}</td>"
                 "</tr>"
             )
+        summary_rows = [
+            ("Ambiguous rules", report.summary_counts.ambiguous_rule_count),
+            ("Missing parameters", report.summary_counts.missing_parameter_count),
+            ("Contradictions", report.summary_counts.contradiction_count),
+            ("Undefined filters", report.summary_counts.undefined_filter_count),
+            ("Execution conflicts", report.summary_counts.execution_conflict_count),
+        ]
+        issue_sections: list[str] = []
+        if report.issue_buckets.fatal_blockers:
+            issue_sections.append(
+                "<h2>Fatal Blockers</h2><ul>"
+                + "".join(f"<li>{html.escape(item)}</li>" for item in report.issue_buckets.fatal_blockers)
+                + "</ul>"
+            )
+        if report.issue_buckets.revision_required_issues:
+            issue_sections.append(
+                "<h2>Revision Required</h2><ul>"
+                + "".join(f"<li>{html.escape(item)}</li>" for item in report.issue_buckets.revision_required_issues)
+                + "</ul>"
+            )
+        if report.issue_buckets.improvement_only_recommendations:
+            issue_sections.append(
+                "<h2>Improvement-Only Recommendations</h2><ul>"
+                + "".join(
+                    f"<li>{html.escape(item)}</li>" for item in report.issue_buckets.improvement_only_recommendations
+                )
+                + "</ul>"
+            )
         return (
             "<html><body>"
             "<h1>Strategy Specification Validation Report</h1>"
@@ -68,6 +119,10 @@ class ReportGenerator:
             f"<p><strong>Overall Status:</strong> {html.escape(report.overall_status)}</p>"
             f"<p><strong>Overall Score:</strong> {report.overall_score:.1f}%</p>"
             f"<p><strong>Readiness Decision:</strong> {html.escape(report.readiness_decision)}</p>"
+            "<h2>Audit Summary</h2>"
+            "<table border='1'><thead><tr><th>Category</th><th>Count</th></tr></thead>"
+            f"<tbody>{''.join(f'<tr><td>{html.escape(label)}</td><td>{count}</td></tr>' for label, count in summary_rows)}</tbody></table>"
+            f"{''.join(issue_sections)}"
             "<table border='1'><thead><tr><th>Validator</th><th>Status</th><th>Score</th><th>Findings</th></tr></thead>"
             f"<tbody>{''.join(rows)}</tbody></table>"
             "</body></html>"

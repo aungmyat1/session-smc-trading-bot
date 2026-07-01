@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-30T18:36:26.281154+00:00",
+  "generated_at": "2026-06-30T19:32:29.020691+00:00",
   "latest": {
     "strategy-audit-loop": {
       "created_at": "2026-06-28T11:43:43.203844+00:00",
@@ -10,15 +10,111 @@
       "title": "SVOS Strategy Audit Feedback Loop Report"
     },
     "svos-stage": {
-      "created_at": "2026-06-29T07:19:43.521346+00:00",
-      "filename": "incident.md",
-      "path": "reports/svos/platform/incidents/INC-20260629-LIVE-CONFIG-DRIFT/incident.md",
-      "report_id": "reports__svos__platform__incidents__INC-20260629-LIVE-CONFIG-DRIFT__incident.md",
+      "created_at": "2026-06-30T18:36:38.791186+00:00",
+      "filename": "final_qualification.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/final_qualification.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__final_qualification.md",
       "report_type": "svos-stage",
-      "title": "Operating Incident: Live Configuration Drift"
+      "title": "SVOS Final Qualification Report"
     }
   },
   "reports": [
+    {
+      "created_at": "2026-06-30T18:36:38.791186+00:00",
+      "filename": "final_qualification.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/final_qualification.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__final_qualification.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Final Qualification Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.790835+00:00",
+      "filename": "run_summary.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/run_summary.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__run_summary.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Run Summary"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.790462+00:00",
+      "filename": "improvement_report.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/improvement_report.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__improvement_report.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Improvement Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.789981+00:00",
+      "filename": "failure_analysis.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/failure_analysis.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__failure_analysis.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Failure Analysis Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.787305+00:00",
+      "filename": "strategy_evolution.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/strategy_evolution.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__strategy_evolution.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Strategy Evolution Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.786960+00:00",
+      "filename": "00_strategy_summary.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/00_strategy_summary.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__00_strategy_summary.md",
+      "report_type": "svos-stage",
+      "title": "SVOS New Strategy Summary"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.786526+00:00",
+      "filename": "06_production_approval.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/06_production_approval.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__06_production_approval.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Production Approval Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.785818+00:00",
+      "filename": "05_virtual_demo.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/05_virtual_demo.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__05_virtual_demo.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Virtual Demo Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.782712+00:00",
+      "filename": "04_robustness.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/04_robustness.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__04_robustness.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Robustness Tests Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.781751+00:00",
+      "filename": "03_backtest.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/03_backtest.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__03_backtest.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Backtest Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.778863+00:00",
+      "filename": "02_historical_replay.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/02_historical_replay.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__02_historical_replay.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Historical Replay Report"
+    },
+    {
+      "created_at": "2026-06-30T18:36:38.778100+00:00",
+      "filename": "01_strategy_audit.md",
+      "path": "reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/01_strategy_audit.md",
+      "report_id": "reports__svos__SVOS-SAMPLE__1.0.0__20260630T183638.769996Z-e2bf91d10d__01_strategy_audit.md",
+      "report_type": "svos-stage",
+      "title": "SVOS Strategy Audit Report"
+    },
     {
       "created_at": "2026-06-29T07:19:43.521346+00:00",
       "filename": "incident.md",

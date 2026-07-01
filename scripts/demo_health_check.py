@@ -35,6 +35,9 @@ _SIGNAL_LOG_CANDIDATES = [
     _ROOT / "logs" / "strategy_demo.log",
     _ROOT / "logs" / "st_a2_demo.log",
 ]
+_STATE_CANDIDATES = [
+    _ROOT / "logs" / "strategy_demo_state.json",
+]
 _DAILY_LOSS_LIMIT = 0.015
 _MAX_TRADES    = 4
 _CONNECT_TIMEOUT_S = 45
@@ -42,6 +45,17 @@ _RPC_TIMEOUT_S = 20
 
 
 def _last_signal() -> str:
+    for path in _STATE_CANDIDATES:
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict):
+            last_signal = payload.get("last_signal", {})
+            if isinstance(last_signal, dict) and last_signal.get("timestamp"):
+                return str(last_signal.get("timestamp"))
     for path in _SIGNAL_LOG_CANDIDATES:
         if not path.exists():
             continue
@@ -57,7 +71,7 @@ def _daily_pnl(journal: DemoTradeJournal) -> tuple[float, int]:
     total_r = 0.0
     count   = 0
     for t in journal.read_all():
-        if t.get("type") == "CLOSE" and t.get("timestamp", "")[:10] == today:
+        if t.get("record_type") == "close" and t.get("timestamp", "")[:10] == today:
             total_r += t.get("result_R", 0.0)
             count   += 1
     return total_r, count

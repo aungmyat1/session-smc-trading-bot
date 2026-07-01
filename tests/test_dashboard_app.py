@@ -230,6 +230,21 @@ analytics:
     )
     _write(tmp_path / "logs" / "st_a2_runner.log", "2026-06-28 05:00:00 INFO runner alive\n")
     _write(
+        tmp_path / "logs" / "strategy_demo_state.json",
+        json.dumps(
+            {
+                "status": "running",
+                "broker_status": "connected",
+                "strategy_status": "active",
+                "execution_status": "idle",
+                "strategy": "ST-A2",
+                "mode": "demo",
+                "updated_at": "2026-06-28T05:16:00+00:00",
+                "last_signal": {"timestamp": "2026-06-28T05:15:00+00:00"},
+            }
+        ),
+    )
+    _write(
         tmp_path / "logs" / "bot.log",
         "\n".join(
             [
@@ -275,6 +290,7 @@ analytics:
         ],
     )
     monkeypatch.setattr(dashboard_app, "_RUNNER_LOG", tmp_path / "logs" / "st_a2_runner.log")
+    monkeypatch.setattr(dashboard_app, "_DEMO_STATE_PATH", tmp_path / "logs" / "strategy_demo_state.json")
     monkeypatch.setattr(dashboard_app, "_READINESS_REPORT_JSON", tmp_path / "reports" / "production_readiness_report.json")
     monkeypatch.setattr(dashboard_app, "_TESTING_REPORT_JSON", tmp_path / "reports" / "testing_report.json")
     monkeypatch.setattr(dashboard_app, "_QUALITY_REPORT_JSON", tmp_path / "reports" / "quality_report.json")
@@ -439,6 +455,20 @@ def test_api_status_returns_online_and_never_live_in_tests(client):
     assert payload["system"] == "ONLINE"
     assert "dashboard_url" in payload
     assert payload["live_trading"] is False
+    assert payload["execution_status"] == "idle"
+    assert payload["broker_status"] == "connected"
+
+
+def test_demo_health_endpoint_returns_runner_contract(client):
+    response = client.get("/health/demo")
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "running"
+    assert payload["broker"] == "connected"
+    assert payload["strategy"] == "active"
+    assert payload["execution_status"] == "idle"
+    assert payload["last_signal"] == "2026-06-28T05:15:00+00:00"
 
 
 def test_new_isop_endpoints_work(client):
