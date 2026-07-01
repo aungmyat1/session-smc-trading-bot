@@ -15,7 +15,8 @@
 
 3. **Net-of-fees only.** A backtest result without spread + commission applied is not a
    result. Vantage Standard: EURUSD ~0.8–1.2 pip, GBPUSD ~1.2–1.8 pip RT.
-   Robust PASS = net PF > 1.0 at BOTH standard AND 2× spread stress.
+   Robust PASS = net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15% at BOTH standard AND
+   2× spread stress (see §0.6 for the full gate).
 
 4. **Never commit secrets.** MetaAPI tokens, Vantage credentials, and Telegram tokens
    live in `.env` (gitignored). Never in code.
@@ -25,8 +26,15 @@
    verdict history is `docs/VERDICT_LOG.md`. Check both before proposing anything.
 
 6. **Phase gates are mandatory.** No stage advances without the required evidence:
-   n ≥ 50 AND net PF > 1.0 at standard AND 2× spread stress for Phase-0.
-   No Virtual Demo without Phase-0 PASS. No Production Approval without Virtual Demo PASS.
+   n > 200 AND net PF > 1.25 at BOTH standard AND 2× spread stress AND Sharpe > 1.2
+   AND MaxDD < 15% for Phase-3 (Statistical Validation). No Virtual Demo without this
+   PASS. No Production Approval without Virtual Demo PASS AND a 30+ day stable demo
+   with n ≥ 50 trades and no critical execution failures (see
+   `docs/STRATEGY_PORTFOLIO_ROADMAP.md` deployment constraint).
+   Superseded 2026-07-01: the prior gate (n ≥ 50, net PF > 1.0) still governs any
+   evidence recorded before this date (e.g. ST-A2's PF_2x=1.025, n=169) — that
+   evidence does not retroactively satisfy the new gate and must be re-earned on
+   revalidation.
 
 7. **One position per symbol.** No concurrency within a pair.
 
@@ -38,7 +46,32 @@
 
 ## §1 — PROJECT OBJECTIVE
 
-Build a **Strategy Engineering Platform** for systematic Forex strategies:
+This is not just a trading bot — it is a two-system quantitative trading platform:
+
+```
+             ┌───────────────────────────┐
+             │       SVOS (research)      │   gcp-vm1
+             │  Strategy Validation OS    │
+             └─────────────┬──────────────┘
+                            │  Validated Strategy Artifact
+                            ▼
+             ┌───────────────────────────┐
+             │  Production Execution      │   auto-trade-vps
+             │  (Vantage Forex Bot)       │
+             └─────────────┬──────────────┘
+                            ▼
+                    Broker Execution (MetaAPI / Vantage)
+```
+
+**Governing principle: research never trades.** SVOS discovers, backtests, and
+validates strategies. Production loads and executes only an approved strategy
+package. Canonical architecture: `docs/svos/CORE_ARCHITECTURE.md` (lifecycle/registry),
+`docs/svos/DEPLOYMENT_TOPOLOGY.md` (two-node infra boundary — SVOS on `gcp-vm1`,
+execution on `auto-trade-vps`). Do not duplicate those diagrams here; this section
+is the summary view only — see `docs/00_Project/DOC_AUTHORITY.md` before trusting any
+architecture claim that conflicts with them.
+
+SVOS pipeline:
 
 ```
 Strategy Input
@@ -62,8 +95,17 @@ The trading bot is downstream. It loads only a valid Approved Strategy Package. 
 not audit, backtest, optimize, or approve strategies. Broker credentials are unavailable
 to research, reporting, and dashboard processes.
 
-**No current strategy is active.** ST-A2 is DEFERRED_REVALIDATION — not deleted,
-not current, not approved. See §6.
+**No strategy holds Production Approval.** But do not confuse this with "nothing is
+running": `config/strategy_portfolio.yaml` currently runs FIVE strategies in tiered
+demo/shadow execution — ST-A2 (demo, tier1), LondonBreakout (demo, tier2), NYMomentum
+(demo, tier2), AdaptiveSMC (shadow, tier3), VWAPMeanReversion (shadow, tier3). This is a
+tracked governance gap, not evidence of approval: these strategies run ahead of formal
+SVOS lifecycle registration (see `docs/VERDICT_LOG.md` 2026-07-01 entry). ST-A2's SVOS
+lifecycle stage is still `DEFERRED_REVALIDATION` (§6) — the config running it in demo does
+not change that. `LIVE_TRADING=false` / `DEMO_ONLY=true` remain enforced regardless.
+`docs/STRATEGY_PORTFOLIO_ROADMAP.md` (the sequential A→D ladder, dated 2026-06-23) predates
+this five-strategy config and is now stale on which strategies are actually deployed —
+treat the roadmap's gating logic as intent, not as a description of current deployment.
 
 ---
 
@@ -94,7 +136,8 @@ Phase 2  Historical Replay
 Phase 3  Backtesting
          Statistical validation on the replay-approved spec and frozen dataset.
          Realistic fees applied (spread + commission). No fees = not a result.
-         Gate: n ≥ 50 AND net PF > 1.0 at standard AND 2× spread stress.
+         Gate: n > 200 AND net PF > 1.25 at standard AND 2× spread stress
+         AND Sharpe > 1.2 AND MaxDD < 15%.
          Output: PASS / FAIL / FIX
 
 Phase 4  Robustness Tests
@@ -178,13 +221,18 @@ exact-match CONFIRM token. Agent must never self-execute. Always propose, wait f
 
 ## §6 — ST-A2 STATE
 
-ST-A2 (Session Liquidity Reversal) status: **DEFERRED_REVALIDATION**
+ST-A2 (Session Liquidity Reversal) SVOS lifecycle status: **DEFERRED_REVALIDATION**
 
-- `approved: false` | `current: false` | no deployment target
+- `approved: false` | `current: false` | no registry-authorized deployment target
 - All code, datasets, reports, and backtest findings are preserved as legacy research.
 - ST-A2 cannot satisfy any qualification gate until it re-enters at Intake and passes
-  the full pipeline from zero with current evidence.
+  the full pipeline from zero with current evidence (new gate — see §0.6).
 - Do not treat any ST-A2 path, report, or metric as platform evidence.
+- **Separately:** `config/strategy_portfolio.yaml` runs ST-A2 in live-demo (tier1,
+  `enabled: true`, `execution_mode: demo`) today. This is a real, tracked governance
+  gap between the SVOS registry (DEFERRED_REVALIDATION) and the running config (demo
+  live) — not a contradiction to silently resolve by editing one or the other. See §1
+  and `docs/VERDICT_LOG.md` 2026-07-01 entry.
 
 Known completed trials (immutable — do not re-run):
 - **ST-A**: FAIL — passes standard spread but fails 2× stress
@@ -199,8 +247,11 @@ Every strategy trial or parameter change = a new row in `docs/VERDICT_LOG.md`.
 Pre-register the spec BEFORE running the backtest.
 Never re-run on the same trial ID after a parameter change.
 
-Gate (Phase-0): n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread stress.
-Single-spread PASS is insufficient (ST-A failed 2×, T29-GBP failed 2×).
+Gate (Phase-3, effective 2026-07-01): n > 200 AND net PF > 1.25 AND Sharpe > 1.2
+AND MaxDD < 15% at BOTH standard AND 2× spread stress. Single-spread PASS is
+insufficient (ST-A failed 2×, T29-GBP failed 2×). Trials recorded before this date
+under the old n≥50/PF>1.0 gate remain in the log as historical record but do not
+satisfy the current gate.
 
 ---
 
