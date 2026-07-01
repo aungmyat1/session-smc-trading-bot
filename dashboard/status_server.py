@@ -953,7 +953,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     runner_pid= state.get("pid", "?")
 
     # Header
-    header = f"""<div class="header">
+    header = f"""<div class="header" id="section-header">
   <div style="display:flex;align-items:center;gap:14px">
     <span class="logo">⚡ SMC-Forex Demo</span>
     <span class="badge {badge_cls}">{badge_lbl}</span>
@@ -961,9 +961,17 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     <span style="font-size:12px;color:{'var(--green)' if runner_ok else 'var(--red)'}"
           title="runner PID {runner_pid}">{"● RUNNING" if runner_ok else "● STOPPED"}</span>
   </div>
-  <div class="header-right">
-    {now_str}<br>
-    <span class="muted">{strategy}</span> · {elapsed}ms · <a class="muted" href="/dashboard/">↻ refresh</a>
+  <div class="header-right" style="display:flex;align-items:center;gap:16px">
+    <span id="refresh-indicator" style="font-size:12px;color:var(--green)">● live</span>
+    <span style="font-size:12px;color:var(--muted)">↻ <span id="refresh-countdown">30</span>s</span>
+    <button id="refresh-now" style="background:none;border:1px solid var(--border);color:var(--blue);
+      font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:4px;cursor:pointer">
+      refresh now
+    </button>
+    <div style="text-align:right">
+      <span id="section-ts" style="color:var(--muted)">{now_str}</span><br>
+      <span class="muted">{strategy}</span> · {elapsed}ms
+    </div>
   </div>
 </div>"""
 
@@ -974,7 +982,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     fm    = acct.get("free_margin", 0)
     pnl   = eq - bal
     pnl_c = "green" if pnl >= 0 else "red"
-    acct_html = f"""<div class="card">
+    acct_html = f"""<div class="card" id="section-account">
   <div class="card-title">Vantage Demo Account</div>
   <div class="metric"><span class="metric-label">Balance</span>
     <span class="metric-value">${bal:.2f}</span></div>
@@ -993,7 +1001,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     ldt = state.get("last_tick_at","—")
     ldt_short = ldt[:19].replace("T"," ") if ldt != "—" else "—"
     ldec = state.get("last_decision", "—")
-    sess_html = f"""<div class="card">
+    sess_html = f"""<div class="card" id="section-session">
   <div class="card-title">Session Status</div>
   <div class="metric"><span class="metric-label">Session</span>
     <span class="metric-value" style="color:{sess_col}">{sess_icon} {sess_lbl}</span></div>
@@ -1014,7 +1022,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
         ls_act = ls.get("action","—")
         ls_col = "#3fb950" if ls_act == "BUY" else "#f85149" if ls_act == "SELL" else "#6e7681"
         ls_ts  = (ls.get("timestamp","")[:19].replace("T"," "))
-        sig_card = f"""<div class="card">
+        sig_card = f"""<div class="card" id="section-signal">
   <div class="card-title">Last Signal</div>
   <div class="metric"><span class="metric-label">Symbol</span>
     <span class="metric-value blue">{ls_sym}</span></div>
@@ -1032,7 +1040,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     <span class="metric-value muted" style="font-size:11px">{ls_ts}</span></div>
 </div>"""
     else:
-        sig_card = f"""<div class="card">
+        sig_card = f"""<div class="card" id="section-signal">
   <div class="card-title">Last Signal</div>
   <div style="text-align:center;padding:24px;color:var(--muted)">No signal yet</div>
 </div>"""
@@ -1052,7 +1060,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
             f'{float(p.get("profit",0)):+.2f}</td></tr>'
             for p in pos_list
         )
-        pos_html = f"""<div class="card full-width">
+        pos_html = f"""<div class="card full-width" id="section-positions">
   <div class="card-title">Open Positions ({len(pos_list)})</div>
   <table class="trades-table">
     <thead><tr><th>Symbol</th><th>Dir</th><th>Entry</th><th>SL</th><th>TP</th><th>P&L</th></tr></thead>
@@ -1092,7 +1100,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
         f'onclick="showChart(\'{s}\')" id="tab-btn-{s}">{tab_labels[s]}</button>'
         for i, s in enumerate(PAIRS)
     )
-    charts_html = f"""<div class="card" style="grid-column:1/-1">
+    charts_html = f"""<div class="card" id="section-charts" style="grid-column:1/-1">
   <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
     <span>Live M15 Charts</span>
     <div class="tab-bar">{tab_btns}</div>
@@ -1116,7 +1124,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
             f'<td class="green">{t.get("take_profit","—")}</td></tr>'
             for t in actual_trades[:25]
         )
-        trades_html = f"""<div class="card full-width">
+        trades_html = f"""<div class="card full-width" id="section-trades">
   <div class="card-title">Recent Trades</div>
   <div style="overflow-x:auto">
   <table class="trades-table">
@@ -1125,7 +1133,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
   </table></div>
 </div>"""
     else:
-        trades_html = """<div class="card full-width">
+        trades_html = """<div class="card full-width" id="section-trades">
   <div class="card-title">Recent Trades</div>
   <div style="text-align:center;padding:18px;color:var(--muted)">No completed trades yet.</div>
 </div>"""
@@ -1139,24 +1147,83 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
         if "debug" in l: return "log-debug"
         return "log-info"
     log_rows = "".join(f'<div class="{_lcls(ln)}">{ln}</div>' for ln in log_lines)
-    log_html = f"""<div class="card full-width">
+    log_html = f"""<div class="card full-width" id="section-log">
   <div class="card-title">System Log — last 30 lines</div>
   <div class="log-box" id="lb">{log_rows}</div>
 </div>"""
 
-    maybe_pos = f'<div class="grid-2" style="margin-bottom:12px">{pos_html}</div>' if pos_html else ""
+    maybe_pos = (
+        f'<div id="section-positions-row" class="grid-2" style="margin-bottom:12px">{pos_html}</div>'
+        if pos_html else
+        '<div id="section-positions-row"></div>'
+    )
 
     _JS = (
         "<script>"
-        "const lb=document.getElementById('lb');if(lb)lb.scrollTop=lb.scrollHeight;"
-        "const _PAIRS=['EURUSD','GBPUSD','XAUUSD'];"
+        # tab switcher
+        "var _PAIRS=['EURUSD','GBPUSD','XAUUSD'];"
         "function showChart(sym){"
         "_PAIRS.forEach(function(s){"
         "var p=document.getElementById('chart-panel-'+s);"
         "var b=document.getElementById('tab-btn-'+s);"
         "if(p)p.style.display=s===sym?'block':'none';"
-        "if(b){b.classList.toggle('tab-active',s===sym);}"
+        "if(b)b.classList.toggle('tab-active',s===sym);"
         "});}"
+        # scroll log
+        "(function(){var lb=document.getElementById('lb');if(lb)lb.scrollTop=lb.scrollHeight;})();"
+        # soft-refresh engine
+        "(function(){"
+        "var INTERVAL=30,countdown=INTERVAL,refreshing=false;"
+        "var SECTIONS=['section-account','section-session','section-signal',"
+        "'section-positions-row','section-charts','section-pairs-row',"
+        "'section-trades','section-log'];"
+        "function setIndicator(txt,col){"
+        "var el=document.getElementById('refresh-indicator');"
+        "if(el){el.textContent=txt;el.style.color=col;}}"
+        "function tickCountdown(){"
+        "countdown--;"
+        "var el=document.getElementById('refresh-countdown');"
+        "if(el)el.textContent=countdown<=0?'…':String(countdown);"
+        "if(countdown<=0){countdown=INTERVAL;doRefresh();}}"
+        "function doRefresh(){"
+        "if(refreshing)return;refreshing=true;"
+        "setIndicator('↻ updating','#d29922');"
+        "fetch('/dashboard/',{cache:'no-store'})"
+        ".then(function(r){return r.text();})"
+        ".then(function(html){"
+        "var doc=new DOMParser().parseFromString(html,'text/html');"
+        # remember active tab before replacing
+        "var activeTab=null;"
+        "_PAIRS.forEach(function(s){"
+        "var b=document.getElementById('tab-btn-'+s);"
+        "if(b&&b.classList.contains('tab-active'))activeTab=s;"
+        "});"
+        "if(!activeTab)activeTab=_PAIRS[0];"
+        # replace all sections
+        "SECTIONS.forEach(function(id){"
+        "var o=document.getElementById(id);"
+        "var n=doc.getElementById(id);"
+        "if(o&&n){n.classList.add('fade-in');o.replaceWith(n);}});"
+        # restore active tab
+        "showChart(activeTab);"
+        # scroll log
+        "var lb=document.getElementById('lb');if(lb)lb.scrollTop=lb.scrollHeight;"
+        # update timestamp
+        "var ts=doc.getElementById('section-ts');"
+        "var ots=document.getElementById('section-ts');"
+        "if(ts&&ots)ots.textContent=ts.textContent;"
+        "setIndicator('● live','#3fb950');"
+        "})"
+        ".catch(function(){"
+        "setIndicator('✕ error','#f85149');countdown=15;"  # retry sooner on error
+        "})"
+        ".finally(function(){refreshing=false;});}"
+        # countdown ticker
+        "setInterval(tickCountdown,1000);"
+        # manual refresh button
+        "var btn=document.getElementById('refresh-now');"
+        "if(btn)btn.addEventListener('click',function(){countdown=0;});"
+        "})();"
         "</script>"
     )
 
@@ -1165,16 +1232,18 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="refresh" content="30">
   <title>SMC Demo Dashboard</title>
-  <style>{_CSS}</style>
+  <style>{_CSS}
+@keyframes fadein{{from{{opacity:.5;transform:translateY(2px)}}to{{opacity:1;transform:translateY(0)}}}}
+.fade-in{{animation:fadein .35s ease-out;}}
+</style>
 </head>
 <body>
   {header}
   <div class="grid-3" style="margin-bottom:12px">{acct_html}{sess_html}{sig_card}</div>
   {maybe_pos}
   <div class="grid-2" style="margin-bottom:12px">{charts_html}</div>
-  <div class="grid-3" style="margin-bottom:12px">{pair_cards}</div>
+  <div id="section-pairs-row" class="grid-3" style="margin-bottom:12px">{pair_cards}</div>
   <div class="grid-2">{_strategy_section(utc_now)}</div>
   <div class="grid-2" style="margin-bottom:12px">{trades_html}</div>
   <div class="grid-2">{log_html}</div>
