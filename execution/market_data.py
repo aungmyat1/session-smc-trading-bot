@@ -38,8 +38,8 @@ class MetaApiMarketDataProvider(MarketDataProvider):
         account_getter: Callable[[], Any],
         connection_getter: Callable[[], Any],
         reconnect_callback: Callable[[], Awaitable[Any]] | None = None,
-        retries: int = 2,
-        retry_delay_s: float = 0.5,
+        retries: int = 3,
+        retry_delay_s: float = 2.0,
     ) -> None:
         self._account_getter = account_getter
         self._connection_getter = connection_getter
@@ -74,10 +74,7 @@ class MetaApiMarketDataProvider(MarketDataProvider):
                     self._metrics["empty_responses"] += 1
                     logger.warning(
                         "Market data returned no candles for %s %s (attempt %d/%d)",
-                        symbol,
-                        normalized_tf,
-                        attempt,
-                        self._retries,
+                        symbol, normalized_tf, attempt, self._retries,
                     )
                 self._metrics["successes"] += 1
                 self._metrics["last_success_at"] = datetime.now(timezone.utc).isoformat()
@@ -88,22 +85,23 @@ class MetaApiMarketDataProvider(MarketDataProvider):
                 self._metrics["last_error"] = str(exc)
                 logger.warning(
                     "Market data fetch failed for %s %s (attempt %d/%d): %s",
-                    symbol,
-                    normalized_tf,
-                    attempt,
-                    self._retries,
-                    exc,
+                    symbol, normalized_tf, attempt, self._retries, exc,
                 )
                 if attempt >= self._retries:
                     break
                 self._metrics["retries"] += 1
-                if self._reconnect_callback is not None:
+                # Only trigger reconnect on the final retry — earlier attempts may
+                # recover on their own (transient socket hiccup). Reconnecting on
+                # every attempt causes redundant disconnect/connect cycles.
+                if attempt == self._retries - 1 and self._reconnect_callback is not None:
                     try:
                         await self._reconnect_callback()
                     except Exception as reconnect_exc:
                         logger.warning("Market data reconnect attempt failed: %s", reconnect_exc)
-                if self._retry_delay_s:
-                    await asyncio.sleep(self._retry_delay_s)
+                # Exponential backoff: 2s, 4s, … capped at 10s
+                delay = min(self._retry_delay_s * (2 ** (attempt - 1)), 10.0)
+                if delay:
+                    await asyncio.sleep(delay)
 
         if last_error is not None:
             raise last_error

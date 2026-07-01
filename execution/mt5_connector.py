@@ -28,8 +28,9 @@ from datetime import datetime, timezone
 
 _log = logging.getLogger("strategy_demo.mt5_connector")
 
-_SYNC_TIMEOUT_S = 60
+_SYNC_TIMEOUT_S    = 60
 _RECONNECT_DELAY_S = 5
+_HB_TIMEOUT_S      = 10   # fast ping timeout before deciding to reconnect
 
 # Env var names as found in .env
 _ACCOUNT_ID_VARS = {
@@ -40,14 +41,15 @@ _ACCOUNT_ID_VARS = {
 
 class MT5Connector:
     def __init__(self, mode: str = "demo") -> None:
-        self._mode       = mode
-        self._token      = os.environ.get("METAAPI_TOKEN", "")
-        env_key          = _ACCOUNT_ID_VARS.get(mode, "VANTAGE_DEMO_METAAPI_ID")
-        self._account_id = os.environ.get(env_key, "")
-        self._api        = None
-        self._account    = None
-        self._connection = None
-        self._last_hb:   datetime | None = None
+        self._mode         = mode
+        self._token        = os.environ.get("METAAPI_TOKEN", "")
+        env_key            = _ACCOUNT_ID_VARS.get(mode, "VANTAGE_DEMO_METAAPI_ID")
+        self._account_id   = os.environ.get(env_key, "")
+        self._api          = None
+        self._account      = None
+        self._connection   = None
+        self._last_hb:     datetime | None = None
+        self._reconnecting = False     # guard against concurrent reconnect calls
 
     # ── Connection ─────────────────────────────────────────────────────────
 
@@ -98,11 +100,39 @@ class MT5Connector:
         _log.info("Disconnected.")
 
     async def reconnect(self) -> None:
-        _log.warning("Reconnecting…")
-        await self.disconnect()
         import asyncio
-        await asyncio.sleep(_RECONNECT_DELAY_S)
-        await self.connect()
+        if self._reconnecting:
+            _log.debug("Reconnect already in progress — skipping duplicate call")
+            return
+        self._reconnecting = True
+        try:
+            _log.warning("Reconnecting to MetaAPI…")
+            await self.disconnect()
+            await asyncio.sleep(_RECONNECT_DELAY_S)
+            await self.connect()
+        finally:
+            self._reconnecting = False
+
+    async def ensure_connected(self) -> bool:
+        """
+        Lightweight liveness check. Returns True if already alive, False after
+        a successful reconnect. Raises if reconnect also fails.
+        Fast-path: a timed get_account_information call proves the socket works.
+        """
+        import asyncio
+        if self._connection is None:
+            await self.reconnect()
+            return False
+        try:
+            await asyncio.wait_for(
+                self._connection.get_account_information(),
+                timeout=_HB_TIMEOUT_S,
+            )
+            return True
+        except Exception as exc:
+            _log.warning("Connection liveness check failed (%s) — reconnecting", exc)
+            await self.reconnect()
+            return False
 
     # ── Heartbeat ──────────────────────────────────────────────────────────
 

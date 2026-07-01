@@ -91,7 +91,7 @@ _log = logging.getLogger("strategy_demo.runner")
 PAIRS    = ["EURUSD", "GBPUSD", "XAUUSD"]
 INTERVAL = 60   # seconds
 MAX_SPREAD_PIPS: dict[str, float] = {"EURUSD": 1.5, "GBPUSD": 2.0, "XAUUSD": 3.0}
-_MAX_FETCH_FAILURES = 3
+_MAX_FETCH_FAILURES = 1   # proactive ensure_connected runs first; this is last-resort
 _STATE_PATH = Path("logs") / "strategy_demo_state.json"
 
 
@@ -198,6 +198,20 @@ async def _tick(
     # ── Phase 1: Gather market data ────────────────────────────────────────
     fetch_fails = risk_state.get("_fetch_fails", 0)
     ready: list[dict] = []
+
+    # Proactive liveness check — reconnect before any symbol fetch if the
+    # WebSocket has dropped between ticks (avoids a cascade of per-symbol errors).
+    try:
+        await connector.ensure_connected()
+    except Exception as conn_exc:
+        _log.error("Cannot establish MetaAPI connection: %s", conn_exc)
+        state["broker_status"] = "disconnected"
+        state["last_error"] = str(conn_exc)
+        state["last_decision"] = "connection_failed"
+        risk_state["_fetch_fails"] = fetch_fails
+        risk_state["_dashboard_state"] = state
+        _write_state(state)
+        return risk_state
 
     for symbol in PAIRS:
         try:
