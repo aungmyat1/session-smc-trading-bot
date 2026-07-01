@@ -629,7 +629,21 @@ def main() -> None:
         sys.exit(1)
 
     register_strategy(build_strategy(args.strategy))
-    asyncio.run(run(mode, args.interval, args.strategy, once=args.once))
+
+    async def _main() -> None:
+        # Catch unhandled background task exceptions (e.g. MetaAPI SDK internals)
+        # so they are logged but do NOT silently kill the event loop.
+        def _handle_task_exc(loop: asyncio.AbstractEventLoop, ctx: dict) -> None:
+            exc  = ctx.get("exception")
+            msg  = ctx.get("message", "")
+            name = type(exc).__name__ if exc else "Unknown"
+            _log.warning("Unhandled async task exception [%s]: %s — %s", name, msg, exc)
+
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(_handle_task_exc)
+        await run(mode, args.interval, args.strategy, once=args.once)
+
+    asyncio.run(_main())
 
 
 if __name__ == "__main__":
