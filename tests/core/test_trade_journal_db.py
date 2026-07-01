@@ -191,6 +191,15 @@ class TestSummary:
         assert s["open"]    == 1
         assert s["total"]   == 2
 
+    def test_expectancy_drawdown_and_sharpe(self, db):
+        self._make_closed(db, 2.0)
+        self._make_closed(db, -1.0)
+        self._make_closed(db, 1.0)
+        s = db.summary()
+        assert s["expectancy_r"] == pytest.approx(0.667, abs=0.01)
+        assert s["max_drawdown_r"] == pytest.approx(1.0, abs=0.01)
+        assert s["sharpe"] > 0
+
 
 class TestXAUUSD:
     def test_xauusd_signal_stored(self, db):

@@ -1,0 +1,18 @@
+/opt/session-smc-trading-bot/logs/*.log {
+  rotate 7
+  daily
+  missingok
+  notifempty
+  compress
+  delaycompress
+  copytruncate
+}
+
+/opt/session-smc-trading-bot/logs/latency_timeseries.jsonl {
+  rotate 5
+  size 256k
+  missingok
+  notifempty
+  compress
+  copytruncate
+}

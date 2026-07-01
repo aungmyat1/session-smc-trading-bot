@@ -281,3 +281,16 @@ max_hold: 32 bars (8h on M15)
 **Phase-0 gate:** n ≥ 50 AND net PF > 1.0 at BOTH std AND 2× stress
 
 **Holdout results:** PENDING
+
+---
+
+## 2026-07-01 — Governance Gap Recorded: `SMCOrderBlockFVGSession`
+
+**Status:** TRACKED GAP — not a gate pass
+
+`SMCOrderBlockFVGSession` is currently running in live-demo shadow/dry-run form via
+`smc-demo-runner.service` against real market data with `LIVE_TRADING=false`, while the
+SVOS lifecycle/file-registry record remains at stage `INTAKE` and the expected evidence
+gates (`backtest`, `replay`, `walk_forward`) are still pending. This entry documents the
+gap only. It is not evidence that any missing gate has passed, and it does not mutate
+registry state or lifecycle status.

@@ -7,6 +7,8 @@ Table:    trades
 Schema captures every field from signal generation through execution result,
 allowing post-hoc analysis of router/breaker/portfolio decisions alongside
 execution quality and trade outcome.
+This SQLite journal is the source of truth for reconciliation and analytics,
+while `execution/trade_journal.py` remains the lightweight JSONL operational log.
 
 Public API:
     TradeJournalDB(path)
@@ -24,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -234,20 +237,27 @@ class TradeJournalDB:
                 SELECT
                     COUNT(*) FILTER (WHERE r_multiple > 0) AS wins,
                     COUNT(*) FILTER (WHERE r_multiple < 0) AS losses,
-                    AVG(r_multiple)                         AS avg_r,
-                    SUM(profit_loss)                        AS total_pnl
+                    AVG(r_multiple) AS avg_r,
+                    AVG(CASE WHEN r_multiple > 0 THEN r_multiple END) AS avg_win_r,
+                    AVG(CASE WHEN r_multiple < 0 THEN ABS(r_multiple) END) AS avg_loss_r,
+                    SUM(profit_loss) AS total_pnl
                 FROM trades WHERE status='CLOSED'
             """).fetchone()
 
             wins       = row["wins"]   or 0
             losses     = row["losses"] or 0
             avg_r      = round(row["avg_r"] or 0.0, 3)
+            avg_win_r  = float(row["avg_win_r"] or 0.0)
+            avg_loss_r = float(row["avg_loss_r"] or 0.0)
             total_pnl  = round(row["total_pnl"] or 0.0, 2)
 
         win_rate    = round(wins / (wins + losses) * 100, 1) if (wins + losses) else 0.0
         gross_wins  = self._sum_r(closed=True, side="win")
         gross_losses = abs(self._sum_r(closed=True, side="loss"))
         pf = round(gross_wins / gross_losses, 3) if gross_losses > 0 else 0.0
+        loss_rate = (losses / (wins + losses)) if (wins + losses) else 0.0
+        expectancy = round(((wins / (wins + losses)) * avg_win_r) - (loss_rate * avg_loss_r), 3) if (wins + losses) else 0.0
+        returns = self._closed_returns()
 
         return {
             "total":       total,
@@ -260,6 +270,9 @@ class TradeJournalDB:
             "avg_r":       avg_r,
             "profit_factor": pf,
             "total_pnl":   total_pnl,
+            "expectancy_r": expectancy,
+            "max_drawdown_r": round(self._max_drawdown(returns), 3),
+            "sharpe": round(self._sharpe(returns), 3),
         }
 
     def _sum_r(self, closed: bool, side: str) -> float:
@@ -269,3 +282,28 @@ class TradeJournalDB:
                 f"SELECT SUM(r_multiple) FROM trades WHERE status='CLOSED' AND {cond}"
             ).fetchone()[0]
         return val or 0.0
+
+    def _closed_returns(self) -> list[float]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT r_multiple FROM trades WHERE status='CLOSED' AND r_multiple IS NOT NULL ORDER BY timestamp, id"
+            ).fetchall()
+        return [float(row[0]) for row in rows]
+
+    def _max_drawdown(self, returns: list[float]) -> float:
+        equity = 0.0
+        peak = 0.0
+        max_drawdown = 0.0
+        for value in returns:
+            equity += value
+            peak = max(peak, equity)
+            max_drawdown = min(max_drawdown, equity - peak)
+        return abs(max_drawdown)
+
+    def _sharpe(self, returns: list[float]) -> float:
+        if len(returns) < 2:
+            return 0.0
+        stddev = statistics.pstdev(returns)
+        if stddev == 0:
+            return 0.0
+        return statistics.mean(returns) / stddev

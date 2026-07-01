@@ -174,6 +174,11 @@ Strategy-specific research:
 - [TIMEFRAME_GENERATION.md](TIMEFRAME_GENERATION.md)
 - [TIMEZONE_AUDIT.md](TIMEZONE_AUDIT.md)
 - [TASK_QUEUE.md](TASK_QUEUE.md)
+- [strategy_execution_audit.md](audit/strategy_execution_audit.md)
+
+## Dashboard Reuse Assessment
+
+- [dashboard_audit.md](dashboard_reuse_assessment/dashboard_audit.md) — inventory and migration recommendation set
 
 ---
 
@@ -192,6 +197,7 @@ Strategy-specific research:
 ## Archive
 
 - [Archive/INDEX.md](Archive/INDEX.md) — explains every archived file; treat as historical record, non-prescriptive
+- [Stratos SVOS prototype](archive/stratos-svos-prototype/README.md) — historical external prototype snapshot
 
 ---
 

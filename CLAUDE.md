@@ -169,7 +169,9 @@ exact-match CONFIRM token. Agent must never self-execute. Always propose, wait f
 - Live: `VANTAGE-LIVE-METAAPI-ID` (from `.env`)
 - Historical data: Dukascopy public feed via `scripts/fetch_data.py`
 - Telegram alerts: `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (from `.env`)
-- Magic numbers: EURUSD → 21001 | GBPUSD → 21002
+- Magic number: flat `21099` for the demo execution path (`config/demo.yaml`, `execution/trade_manager.py`)
+- Live-traded pairs: EURUSD, GBPUSD, XAUUSD (`scripts/run_st_a2_demo.py`)
+- Config ceiling: `config/demo.yaml` also lists USDJPY as an allowed pair, but it is not currently traded by the deployed ST-A2 demo runner.
 - Never use raw REST for signed endpoints — always use the SDK.
 
 ---

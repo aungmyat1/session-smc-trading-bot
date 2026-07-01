@@ -76,3 +76,8 @@ jobs:
         run: python scripts/lint_docs.py --root docs --index docs/index.md
         env:
           PYTHONPATH: "."
+
+      - name: Check docs drift
+        run: python scripts/check_docs_drift.py --root .
+        env:
+          PYTHONPATH: "."

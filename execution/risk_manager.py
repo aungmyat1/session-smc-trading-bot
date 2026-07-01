@@ -3,6 +3,10 @@ Risk manager — lot sizing, position guards, circuit breakers.
 
 State is persisted to logs/bot_state.json so circuit-breaker counts
 survive bot restarts.
+
+This module serves the legacy `bot.py` execution path through
+`execution/order_manager.py`. The live `scripts/run_st_a2_demo.py` path uses
+`execution/demo_risk_manager.py` instead.
 """
 
 import json

@@ -1,0 +1,85 @@
+{
+  "strategies": [
+    {
+      "approval_count": 0,
+      "current_stage": "AUDIT",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.1",
+      "strategy": "AdaptiveSMC",
+      "transition_count": 0,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "AUDIT",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.1",
+      "strategy": "D2E3",
+      "transition_count": 0,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "HISTORICAL_REPLAY",
+      "decision_count": 3,
+      "evidence_count": 0,
+      "latest_version": "0.3",
+      "strategy": "LondonBreakout",
+      "transition_count": 2,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "HISTORICAL_REPLAY",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.3",
+      "strategy": "NYMomentum",
+      "transition_count": 0,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "INTAKE",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.1",
+      "strategy": "SMCOrderBlockFVGSession",
+      "transition_count": 0,
+      "version_count": 2
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "DRAFT",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "2.1",
+      "strategy": "ST-A2",
+      "transition_count": 0,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "VIRTUAL_DEMO",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.3",
+      "strategy": "VWAPBreakout",
+      "transition_count": 0,
+      "version_count": 1
+    },
+    {
+      "approval_count": 0,
+      "current_stage": "VIRTUAL_DEMO",
+      "decision_count": 0,
+      "evidence_count": 0,
+      "latest_version": "0.1",
+      "strategy": "VWAPMeanReversion",
+      "transition_count": 0,
+      "version_count": 1
+    }
+  ],
+  "strategy_count": 8
+}

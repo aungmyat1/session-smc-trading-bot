@@ -3,6 +3,9 @@ Strategy Demo Trade Journal.
 
 Appends records to logs/strategy_demo_trades.jsonl by default.
 Isolated from execution/trade_logger.py (live bot logger).
+This JSONL journal feeds operational summaries, while
+`core/trade_journal_db.py` is the richer SQLite audit trail and reconciliation
+source of truth.
 
 Public API:
     DemoTradeJournal(path)

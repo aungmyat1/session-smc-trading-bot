@@ -243,6 +243,28 @@ class TelegramAlerter:
             suppress_key=normalized,
         )
 
+    async def send_emergency_stop(self, *, reason: str, activated_at: str, positions_closed: int) -> None:
+        msg = (
+            "[EMERGENCY STOP ACTIVE]\n"
+            f"activated_at={activated_at}\n"
+            f"reason={reason}\n"
+            f"positions_closed={positions_closed}"
+        )
+        await self._post(
+            msg,
+            parse_mode=None,
+            alert_category="emergency_stop",
+            suppress_key=activated_at or "emergency_stop",
+        )
+
+    async def send_reconciliation_mismatch(self, summary: str) -> None:
+        await self._post(
+            f"[RECONCILIATION MISMATCH]\n{summary}",
+            parse_mode=None,
+            alert_category="reconciliation_mismatch",
+            suppress_key=summary,
+        )
+
     async def send_session_open(self, session: str) -> None:
         await self.send(f"[{session.upper()} session open] scanning pairs")
 

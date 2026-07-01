@@ -526,3 +526,12 @@ Start with Phases A and B only:
 
 Do not revalidate ST-A2, optimize a strategy, or implement new trading logic
 until this platform foundation is complete.
+
+## 2026-07-01 implementation note
+
+The current file-based SVOS path still has an enforcement gap: `svos/lifecycle/manager.py`
+is a topology validator and lifecycle vocabulary authority, but it does not enforce
+evidence gates against `data/svos/registry/*/state.json`. Qualifying-evidence enforcement
+exists today only in the PostgreSQL control-plane path through
+`db/control_plane.py::_validate_evidence()`. See the 2026-07-01 governance-gap entry in
+`docs/VERDICT_LOG.md` for the tracked live-demo consequence of that split.

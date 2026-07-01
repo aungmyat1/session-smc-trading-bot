@@ -29,5 +29,10 @@ Scripts from completed research phases:
 Documentation from completed phases (E6, OPS01).
 Historical record — do not delete.
 
+### session-smc-runtime-docker/
+Archived root-level `Dockerfile` and `docker-compose.yml`.
+These are vestigial runtime assets: they target the retired `bot.py` path,
+are not part of CI, and are superseded by the current systemd-based runtime.
+
 ## Deletion Policy
 No file in archive/ to be permanently deleted without explicit CONFIRM-DELETE token.

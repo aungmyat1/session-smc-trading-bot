@@ -22,15 +22,19 @@ Public API:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 _log = logging.getLogger("strategy_demo.mt5_connector")
 
 _SYNC_TIMEOUT_S    = 60
 _RECONNECT_DELAY_S = 5
 _HB_TIMEOUT_S      = 10   # fast ping timeout before deciding to reconnect
+_LATENCY_PATH = Path("logs") / "latency_timeseries.jsonl"
+_LATENCY_RETENTION = 1000
 
 # Env var names as found in .env
 _ACCOUNT_ID_VARS = {
@@ -50,6 +54,8 @@ class MT5Connector:
         self._connection   = None
         self._last_hb:     datetime | None = None
         self._reconnecting = False     # guard against concurrent reconnect calls
+        self._reconnect_count = 0
+        self._last_reconnect_at = ""
 
     # ── Connection ─────────────────────────────────────────────────────────
 
@@ -106,6 +112,8 @@ class MT5Connector:
             return
         self._reconnecting = True
         try:
+            self._reconnect_count += 1
+            self._last_reconnect_at = datetime.now(timezone.utc).isoformat()
             _log.warning("Reconnecting to MetaAPI…")
             await self.disconnect()
             await asyncio.sleep(_RECONNECT_DELAY_S)
@@ -147,19 +155,25 @@ class MT5Connector:
             await self._connection.get_account_information()
             latency = round((time.monotonic() - t0) * 1000)
             self._last_hb = datetime.now(timezone.utc)
-            return {
+            payload = {
                 "connected":      True,
                 "latency_ms":     latency,
                 "last_heartbeat": self._last_hb.isoformat(),
             }
+            self._append_latency_sample(payload)
+            return payload
         except Exception as exc:
             _log.warning("Heartbeat failed: %s — reconnecting", exc)
             try:
                 await self.reconnect()
-                return {"connected": True, "latency_ms": -1,
-                        "last_heartbeat": self._last_hb.isoformat() if self._last_hb else ""}
+                payload = {"connected": True, "latency_ms": -1,
+                           "last_heartbeat": self._last_hb.isoformat() if self._last_hb else ""}
+                self._append_latency_sample(payload)
+                return payload
             except Exception:
-                return {"connected": False, "latency_ms": -1, "last_heartbeat": ""}
+                payload = {"connected": False, "latency_ms": -1, "last_heartbeat": ""}
+                self._append_latency_sample(payload)
+                return payload
 
     @property
     def is_connected(self) -> bool:
@@ -168,3 +182,29 @@ class MT5Connector:
     @property
     def connection(self):
         return self._connection
+
+    @property
+    def reconnect_attempts_total(self) -> int:
+        return self._reconnect_count
+
+    @property
+    def last_reconnect_at(self) -> str:
+        return self._last_reconnect_at
+
+    def _append_latency_sample(self, payload: dict) -> None:
+        _LATENCY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "latency_ms": payload.get("latency_ms", -1),
+            "connected": bool(payload.get("connected", False)),
+        }
+        lines: list[str] = []
+        if _LATENCY_PATH.exists():
+            try:
+                lines = _LATENCY_PATH.read_text(encoding="utf-8").splitlines()
+            except OSError:
+                lines = []
+        lines.append(json.dumps(entry, sort_keys=True))
+        if len(lines) > _LATENCY_RETENTION:
+            lines = lines[-_LATENCY_RETENTION:]
+        _LATENCY_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
