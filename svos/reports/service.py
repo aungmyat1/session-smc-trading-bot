@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from svos.adapters.artifacts import FilesystemArtifactStore
-from svos.shared.support import now_iso, read_json, write_json
+from shared.serialization import now_iso, read_json, write_json
 
 
 class StandardizedReportService:

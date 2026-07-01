@@ -20,9 +20,9 @@ except ImportError:
 
 from core.trade_journal_db import TradeJournalDB
 from execution.mt5_connector import MT5Connector
-from execution.trade_manager import _MAGIC
 from execution.vantage_demo_executor import VantageDemoExecutor
 from monitoring.telegram import TelegramAlerter
+from production.engine import MANAGED_POSITION_MAGIC
 
 
 def _summarize(orphan_positions: list[dict], stale_trades: list[dict]) -> str:
@@ -46,7 +46,7 @@ async def run(*, dry_run: bool = False) -> int:
     try:
         executor = VantageDemoExecutor(connector)
         db = TradeJournalDB()
-        broker_positions = [p for p in await executor.get_positions() if p.get("magic") == _MAGIC]
+        broker_positions = [p for p in await executor.get_positions() if p.get("magic") == MANAGED_POSITION_MAGIC]
         open_trades = db.get_open_trades()
 
         broker_keys = {

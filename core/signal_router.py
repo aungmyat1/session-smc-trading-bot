@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 _log = logging.getLogger("portfolio.router")
 

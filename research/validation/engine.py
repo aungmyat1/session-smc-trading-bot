@@ -14,9 +14,10 @@ import yaml
 
 from core.strategy_registry import DirectCatalogMutationError
 from research.regression.engine import RegressionEngine, RegressionResult
+from shared.configuration import load_yaml_mapping, resolve_validation_config_path
 
 _ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CONFIG_PATH = _ROOT / "config" / "validation.yaml"
+_DEFAULT_CONFIG_PATH = resolve_validation_config_path(None, root=_ROOT)
 _DEFAULT_REPORT_DIR = _ROOT / "reports" / "validation"
 
 _ALLOWED_TRANSITIONS = {
@@ -190,12 +191,8 @@ class ValidationConfig:
 
 
 def load_validation_config(path: Path | str | None = None) -> ValidationConfig:
-    config_path = Path(path) if path is not None else _DEFAULT_CONFIG_PATH
-    payload: dict[str, Any] = {}
-    if config_path.exists():
-        payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-        if not isinstance(payload, dict):
-            payload = {}
+    config_path = resolve_validation_config_path(path, root=_ROOT)
+    payload = load_yaml_mapping(config_path)
     return ValidationConfig(
         minimum_trade_count=int(payload.get("minimum_trade_count", 100)),
         minimum_profit_factor=float(payload.get("minimum_profit_factor", 1.0)),

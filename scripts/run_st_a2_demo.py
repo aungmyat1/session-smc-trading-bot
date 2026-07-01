@@ -67,11 +67,8 @@ _journal_db = TradeJournalDB()
 
 # ── Demo execution stack ──────────────────────────────────────────────────────
 from execution.mt5_connector       import MT5Connector
-from execution.control_plane import TradingPermissionService
-from execution.execution_state import ExecutionStateStore
-from execution.governance_guard import StrategyExecutionGuard
 from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager        import TradeManager
+from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradeManager, TradingPermissionService
 from execution.demo_risk_manager    import (
     calculate_lots, new_state, check_limits, record_result, reset_daily,
 )

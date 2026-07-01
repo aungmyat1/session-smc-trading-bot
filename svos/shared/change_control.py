@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from svos.shared.support import ensure_parent, now_iso, read_json, stable_manifest_hash
+from shared.serialization import ensure_parent, now_iso, read_json, stable_manifest_hash
 
 
 RUNNER_PATTERNS: tuple[str, ...] = (

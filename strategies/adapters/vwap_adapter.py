@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from core.base_strategy import BaseStrategy
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 _PIP = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "USDJPY": 0.01, "XAUUSD": 0.1}
 

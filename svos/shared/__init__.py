@@ -1,6 +1,6 @@
-"""Shared SVOS types and helpers."""
+"""Shared SVOS compatibility re-exports."""
 
-from svos.shared.models import (
+from shared.models import (
     ApprovalRecord,
     EvidenceRecord,
     GateDecision,

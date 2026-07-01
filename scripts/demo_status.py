@@ -24,8 +24,8 @@ except ImportError:
 
 from execution.mt5_connector         import MT5Connector
 from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager         import TradeManager
 from execution.trade_journal         import DemoTradeJournal
+from production.engine import TradeManager
 
 _CONNECT_TIMEOUT_S = 45
 _RPC_TIMEOUT_S = 20

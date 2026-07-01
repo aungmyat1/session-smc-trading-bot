@@ -7,8 +7,8 @@ from typing import Any
 
 from core.strategy_registry import get_strategy_manifest, list_catalog_strategies
 from svos.lifecycle.manager import LifecycleTransitionError, StrategyLifecycleManager
-from svos.shared.models import EvidenceRecord, GateDecision, StrategyRecord, TransitionRecord, VersionRecord
-from svos.shared.support import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
+from shared.models import EvidenceRecord, GateDecision, StrategyRecord, TransitionRecord, VersionRecord
+from shared.serialization import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
 
 
 def _stable_strategy_id(strategy: str) -> str:

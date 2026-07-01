@@ -31,7 +31,7 @@ import pandas as pd
 from smartmoneyconcepts import smc
 
 from core.base_strategy import BaseStrategy
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 _PIP: dict[str, float] = {
     "EURUSD": 0.0001,

@@ -2,9 +2,16 @@ from __future__ import annotations
 
 import argparse
 
-from agtrade.admin import backup_main, restore_main
-from agtrade.research import research_queue_main, research_status_main
-from agtrade.strategy import audit_main, sample_main, svos_main, validate_main
+from application import (
+    audit_main,
+    backup_main,
+    research_queue_main,
+    research_status_main,
+    restore_main,
+    sample_main,
+    svos_main,
+    validate_main,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:

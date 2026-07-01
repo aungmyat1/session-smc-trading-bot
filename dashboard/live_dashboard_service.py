@@ -19,8 +19,8 @@ except ImportError:  # pragma: no cover - optional dependency in minimal runtime
     pass
 
 from execution.mt5_connector import MT5Connector
-from execution.trade_manager import TradeManager
 from execution.vantage_demo_executor import VantageDemoExecutor
+from production.engine import TradeManager
 
 JOURNAL_PATHS = [
     ROOT / "logs" / "trades.jsonl",

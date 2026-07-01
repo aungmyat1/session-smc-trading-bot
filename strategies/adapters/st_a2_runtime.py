@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.base_strategy import BaseStrategy
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 try:
     import yaml
