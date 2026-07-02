@@ -13,7 +13,7 @@ function tradeSymbol(trade: Record<string, string | number | null>): string {
 }
 
 export function PositionsDashboard() {
-  const { live, mutationBlockedReason, closePosition, protectPosition, cancelOrder } = useSocket();
+  const { live, mutationBlockedReason, brokerActionBlockedReason, closePosition, protectPosition, cancelOrder } = useSocket();
   const [closeIntent, setCloseIntent] = useState<{ id: string; symbol: string; reason: string } | null>(null);
   const [protectIntent, setProtectIntent] = useState<{ id: string; symbol: string; stopLoss: string; takeProfit: string; reason: string } | null>(null);
   const [cancelIntent, setCancelIntent] = useState<{ id: string; symbol: string; reason: string } | null>(null);
@@ -29,6 +29,7 @@ export function PositionsDashboard() {
   }
 
   const controlsDisabled = Boolean(mutationBlockedReason);
+  const brokerControlsDisabled = Boolean(mutationBlockedReason || brokerActionBlockedReason);
   const trades = live.data.trade_history.trades || [];
   const selectedTrade = trades[selectedTradeIndex] || null;
   const matchedPosition = selectedTrade ? live.data.positions.items.find((item) => item.symbol === tradeSymbol(selectedTrade)) : null;
@@ -77,7 +78,7 @@ export function PositionsDashboard() {
         <MetricCard label="Open Positions" value={String(live.data.positions.count)} accent="text-white" />
         <MetricCard label="Pending Orders" value={String(live.data.orders.pending.length)} accent="text-sky-200" />
         <MetricCard label="Realized PnL" value={formatValue(live.data.overview.realized_pnl)} accent="text-emerald-200" />
-        <MetricCard label="Open Risk" value={formatValue(live.data.risk_dashboard.open_risk)} accent="text-amber-100" detail={mutationBlockedReason || "Controls available"} />
+        <MetricCard label="Open Risk" value={formatValue(live.data.risk_dashboard.open_risk)} accent="text-amber-100" detail={brokerActionBlockedReason || mutationBlockedReason || "Controls available"} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -107,8 +108,8 @@ export function PositionsDashboard() {
                     <td className={`py-4 ${position.unrealized_pnl >= 0 ? "text-emerald-200" : "text-rose-200"}`}>{formatValue(position.unrealized_pnl)}</td>
                     <td className="py-4">
                       <div className="flex flex-wrap gap-2">
-                        <button disabled={controlsDisabled} onClick={() => setCloseIntent({ id: position.id, symbol: position.symbol, reason: "" })} className="rounded-full border border-rose-300/30 px-3 py-1.5 text-xs font-semibold text-rose-100 disabled:opacity-40">Close</button>
-                        <button disabled={controlsDisabled} onClick={() => setProtectIntent({ id: position.id, symbol: position.symbol, stopLoss: String(position.stop_loss || ""), takeProfit: String(position.take_profit || ""), reason: "" })} className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">Protect</button>
+                        <button disabled={brokerControlsDisabled} onClick={() => setCloseIntent({ id: position.id, symbol: position.symbol, reason: "" })} className="rounded-full border border-rose-300/30 px-3 py-1.5 text-xs font-semibold text-rose-100 disabled:opacity-40">Close</button>
+                        <button disabled={brokerControlsDisabled} onClick={() => setProtectIntent({ id: position.id, symbol: position.symbol, stopLoss: String(position.stop_loss || ""), takeProfit: String(position.take_profit || ""), reason: "" })} className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">Protect</button>
                       </div>
                     </td>
                   </tr>
@@ -173,7 +174,7 @@ export function PositionsDashboard() {
                   <span>SL {formatValue(order.stop_loss, 5)}</span>
                   <span>TP {formatValue(order.take_profit, 5)}</span>
                 </div>
-                <button disabled={controlsDisabled} onClick={() => setCancelIntent({ id: order.id, symbol: order.symbol, reason: "" })} className="mt-4 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Cancel order</button>
+                <button disabled={brokerControlsDisabled} onClick={() => setCancelIntent({ id: order.id, symbol: order.symbol, reason: "" })} className="mt-4 rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">Cancel order</button>
               </div>
             ))}
             {!live.data.orders.pending.length ? <p className="text-sm text-slate-400">No pending orders are present.</p> : null}

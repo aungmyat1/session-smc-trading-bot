@@ -82,7 +82,14 @@ def _same_origin() -> bool:
     if not source:
         return False
     source_parts = urlsplit(source)
-    host_parts = urlsplit(request.host_url)
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "").strip()
+    forwarded_host = request.headers.get("X-Forwarded-Host", "").strip()
+    forwarded_port = request.headers.get("X-Forwarded-Port", "").strip()
+    expected_scheme = forwarded_proto or request.scheme
+    expected_host = forwarded_host or request.host
+    if forwarded_port and forwarded_host and ":" not in forwarded_host:
+        expected_host = f"{forwarded_host}:{forwarded_port}"
+    host_parts = urlsplit(f"{expected_scheme}://{expected_host}")
     return (
         source_parts.scheme == host_parts.scheme
         and source_parts.netloc == host_parts.netloc

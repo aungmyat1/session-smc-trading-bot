@@ -48,6 +48,7 @@ export function LiveOperationsDashboard() {
     live,
     session,
     mutationBlockedReason,
+    brokerActionBlockedReason,
     closePosition,
     protectPosition,
     cancelOrder,
@@ -81,6 +82,7 @@ export function LiveOperationsDashboard() {
 
   const { overview, positions, orders, trade_history, risk_dashboard, market_watch, broker_status, system, execution_monitor } = live.data;
   const controlsDisabled = Boolean(mutationBlockedReason);
+  const brokerControlsDisabled = Boolean(mutationBlockedReason || brokerActionBlockedReason);
   const isAdmin = session.data?.role === "admin";
 
   async function handleClose(position: PositionItem) {
@@ -116,6 +118,7 @@ export function LiveOperationsDashboard() {
   return (
     <div className="space-y-6">
       {actionMessage ? <ActionNotice message={actionMessage} danger={actionMessage.toLowerCase().includes("failed")} /> : null}
+      {brokerActionBlockedReason ? <ActionNotice message={brokerActionBlockedReason} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-4">
         <StatCard label="Equity" value={formatNumber(overview.equity)} accent="text-white" />
@@ -298,14 +301,14 @@ export function LiveOperationsDashboard() {
                       <td className="py-4">
                         <div className="flex flex-wrap gap-2">
                           <button
-                            disabled={controlsDisabled}
+                            disabled={brokerControlsDisabled}
                             onClick={() => setCloseIntent({ id: position.id, reason: "", message: position.symbol })}
                             className="rounded-full border border-rose-300/30 px-3 py-1.5 text-xs font-semibold text-rose-100 disabled:opacity-40"
                           >
                             Close
                           </button>
                           <button
-                            disabled={controlsDisabled}
+                            disabled={brokerControlsDisabled}
                             onClick={() =>
                               setProtectIntent({
                                 id: position.id,
@@ -431,7 +434,7 @@ export function LiveOperationsDashboard() {
                         <td className="py-4">{formatNumber(order.entry_price, 5)}</td>
                         <td className="py-4">
                           <button
-                            disabled={controlsDisabled}
+                            disabled={brokerControlsDisabled}
                             onClick={() => setCancelIntent({ id: order.id, reason: "", message: order.symbol })}
                             className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
                           >

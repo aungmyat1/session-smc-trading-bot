@@ -142,6 +142,48 @@ def test_proxy_mutation_accepts_valid_csrf_token(monkeypatch):
     assert payload["type"] == "daily"
 
 
+def test_proxy_mutation_accepts_forwarded_https_origin(monkeypatch):
+    _clear_auth_env(monkeypatch)
+    monkeypatch.setenv("DASHBOARD_PROXY_SECRET", "proxy-secret")
+    monkeypatch.setattr(
+        dashboard_app,
+        "generate_reports_payload",
+        lambda report_type: {"type": report_type, "artifacts": [{"path": "reports/daily.md"}]},
+    )
+    client = dashboard_app.app.test_client()
+
+    session_response = client.get(
+        "/api/session/me",
+        headers={
+            "X-Dashboard-Proxy-Secret": "proxy-secret",
+            "X-Forwarded-Email": "research@example.com",
+            "X-SVOS-Proxy-Role": "research_operator",
+        },
+        base_url="http://localhost",
+    )
+    cookie = session_response.headers.get("Set-Cookie", "")
+    token = cookie.split("dashboard_csrf=", 1)[1].split(";", 1)[0]
+
+    response = client.post(
+        "/api/reports/generate",
+        json={"type": "daily"},
+        headers={
+            "Origin": "https://dashboard.example.com",
+            "X-CSRF-Token": token,
+            "X-Dashboard-Proxy-Secret": "proxy-secret",
+            "X-Forwarded-Email": "research@example.com",
+            "X-SVOS-Proxy-Role": "research_operator",
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Host": "dashboard.example.com",
+        },
+        base_url="http://localhost",
+    )
+    payload = response.get_json()
+
+    assert response.status_code == 200
+    assert payload["type"] == "daily"
+
+
 def test_spoofed_proxy_headers_are_rejected(monkeypatch):
     _clear_auth_env(monkeypatch)
     monkeypatch.setenv("DASHBOARD_PROXY_SECRET", "proxy-secret")

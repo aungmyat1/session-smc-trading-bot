@@ -16,6 +16,7 @@ interface SocketContextType {
   isStale: boolean;
   mutationPending: boolean;
   mutationBlockedReason: string;
+  brokerActionBlockedReason: string;
   refreshAll: () => Promise<void>;
   closePosition: (positionId: string, reason: string) => Promise<MutationResult>;
   protectPosition: (positionId: string, stopLoss: number, takeProfit: number, reason: string) => Promise<MutationResult>;
@@ -93,11 +94,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ? "Your role is read-only on this dashboard."
       : isStale
         ? "Live data is stale. Refresh before sending a control action."
-        : !brokerConnected
-          ? "Broker connection is not healthy enough for mutations."
-          : mutationPending
-            ? "A control action is already in progress."
-            : "";
+        : mutationPending
+          ? "A control action is already in progress."
+          : "";
+  const brokerActionBlockedReason = !brokerConnected
+    ? "Broker connection is not healthy enough for live broker actions."
+    : "";
 
   async function apiRequest<T>(path: string, init?: RequestInit, body?: JsonBody): Promise<T> {
     const headers = new Headers(init?.headers ?? {});
@@ -256,9 +258,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await Promise.all([refreshSession(), refreshLive(), refreshSvos()]);
   }
 
-  async function runMutation(path: string, body?: JsonBody, init?: RequestInit): Promise<MutationResult> {
+  async function runMutation(path: string, body?: JsonBody, init?: RequestInit, options?: { requiresBroker?: boolean }): Promise<MutationResult> {
     if (mutationBlockedReason) {
       return { ok: false, error: mutationBlockedReason };
+    }
+    if (options?.requiresBroker && brokerActionBlockedReason) {
+      return { ok: false, error: brokerActionBlockedReason };
     }
 
     setMutationCount((value) => value + 1);
@@ -305,15 +310,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isStale,
         mutationPending,
         mutationBlockedReason,
+        brokerActionBlockedReason,
         refreshAll,
-        closePosition: (positionId, reason) => runMutation(`/api/live-dashboard/positions/${encodeURIComponent(positionId)}/close`, { reason }),
+        closePosition: (positionId, reason) => runMutation(`/api/live-dashboard/positions/${encodeURIComponent(positionId)}/close`, { reason }, undefined, { requiresBroker: true }),
         protectPosition: (positionId, stopLoss, takeProfit, reason) =>
           runMutation(`/api/live-dashboard/positions/${encodeURIComponent(positionId)}/protect`, {
             stop_loss: stopLoss,
             take_profit: takeProfit,
             reason,
-          }),
-        cancelOrder: (orderId, reason) => runMutation(`/api/live-dashboard/orders/${encodeURIComponent(orderId)}/cancel`, { reason }),
+          }, undefined, { requiresBroker: true }),
+        cancelOrder: (orderId, reason) => runMutation(`/api/live-dashboard/orders/${encodeURIComponent(orderId)}/cancel`, { reason }, undefined, { requiresBroker: true }),
         emergencyStop: (reason, scope) =>
           runMutation("/api/emergency-stop", {
             reason,
