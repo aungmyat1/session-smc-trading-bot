@@ -6,7 +6,7 @@ Date: 2026-06-28
 
 Close the remaining gaps between the current repository implementation and the
 professional Strategy Research and Validating System workflow validated in
-[docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md](/home/aungp/session-smc-trading-bot/docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md:1).
+[SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md](SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md).
 
 The target is not to invent a new workflow. The target is to make the current
 repo fully behave like a professional research gate:
@@ -36,7 +36,7 @@ Production Approval
 From the validation report, the remaining gaps are:
 
 1. The audit engine is split between the legacy audit logic in
-   `research/svos/engine.py` and the newer `strategy_validation/` module.
+   `docs/docs/docs/research/svos/engine.py` and the newer `strategy_validation/` module.
 2. The AI enhancement stage is recommendation-based, not a true interactive
    clarification/editor loop.
 3. Strategy input ingestion is still mostly markdown/text oriented.
@@ -52,7 +52,7 @@ Do not add another strategy-audit subsystem.
 Instead:
 
 - promote `strategy_validation/` into the canonical specification-quality layer
-- reduce the legacy audit code in `research/svos/engine.py` to orchestration
+- reduce the legacy audit code in `docs/docs/docs/research/svos/engine.py` to orchestration
 - make Enhancement the structured bridge between failed audit findings and a
   replay-ready rulebook
 
@@ -77,8 +77,8 @@ Implementation steps:
 
 Primary files:
 
-- [strategy_validation/pipeline/strategy_validation_pipeline.py](/home/aungp/session-smc-trading-bot/strategy_validation/pipeline/strategy_validation_pipeline.py:1)
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:645)
+- [../strategy_validation/pipeline/strategy_validation_pipeline.py](../strategy_validation/pipeline/strategy_validation_pipeline.py)
+- [../research/svos/engine.py](../research/svos/engine.py)
 
 Definition of done:
 
@@ -117,7 +117,7 @@ Primary files to add or extend:
 
 - `strategy_validation/ai/question_engine.py`
 - `strategy_validation/ai/editor_engine.py`
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:778)
+- [../research/svos/engine.py](../research/svos/engine.py)
 
 Definition of done:
 
@@ -177,9 +177,9 @@ Implementation steps:
 
 Primary files:
 
-- [strategy_validation/models.py](/home/aungp/session-smc-trading-bot/strategy_validation/models.py:1)
-- [strategy_validation/reports/report_generator.py](/home/aungp/session-smc-trading-bot/strategy_validation/reports/report_generator.py:1)
-- [dashboard/index.html](/home/aungp/session-smc-trading-bot/dashboard/index.html:1)
+- [../strategy_validation/models.py](../strategy_validation/models.py)
+- [../strategy_validation/reports/report_generator.py](../strategy_validation/reports/report_generator.py)
+- [../dashboard/index.html](../dashboard/index.html)
 
 Definition of done:
 
@@ -202,9 +202,9 @@ Implementation steps:
 
 Primary files:
 
-- [docs/SYSTEM_ARCHITECTURE.md](/home/aungp/session-smc-trading-bot/docs/SYSTEM_ARCHITECTURE.md:1)
-- [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:1)
-- [dashboard/index.html](/home/aungp/session-smc-trading-bot/dashboard/index.html:1)
+-- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
+-- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
+-- [../dashboard/index.html](../dashboard/index.html)
 
 Definition of done:
 
@@ -253,8 +253,8 @@ Why later:
 
 Inspect:
 
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:645)
-- [strategy_validation/pipeline/strategy_validation_pipeline.py](/home/aungp/session-smc-trading-bot/strategy_validation/pipeline/strategy_validation_pipeline.py:1)
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [../strategy_validation/pipeline/strategy_validation_pipeline.py](../strategy_validation/pipeline/strategy_validation_pipeline.py)
 
 Confirm:
 
@@ -293,8 +293,8 @@ Extend tests for:
 
 Primary test files:
 
-- [tests/strategy_validation/test_pipeline.py](/home/aungp/session-smc-trading-bot/tests/strategy_validation/test_pipeline.py:1)
-- [tests/test_dashboard_app.py](/home/aungp/session-smc-trading-bot/tests/test_dashboard_app.py:1)
+- [../tests/strategy_validation/test_pipeline.py](../tests/strategy_validation/test_pipeline.py:1)
+- [../tests/test_dashboard_app.py](../tests/test_dashboard_app.py:1)
 
 ## Success Criteria
 

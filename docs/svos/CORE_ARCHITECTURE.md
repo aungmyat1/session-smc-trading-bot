@@ -1,11 +1,13 @@
 # SVOS Core Architecture
 
-Status: Authoritative
-Version: 1.0
-Updated: 2026-06-29
+---
 Owner: Platform Architecture
-Authority: Level 4 — Implementation
-Related: SYSTEM_ARCHITECTURE.md, ADR-0001-STABILIZATION-FOUNDATION.md, DOC_AUTHORITY.md
+Status: Authoritative (SVOS implementation)
+Version: 1.0
+Last Reviewed: 2026-06-29
+Next Review: TODO
+Related Documents: ../SYSTEM_ARCHITECTURE.md (canonical architecture), ADR-0001-STABILIZATION-FOUNDATION.md, DOC_AUTHORITY.md
+---
 
 Product conformance: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` governs.
 The missing standalone `BACKTEST` state below is recorded implementation debt;
@@ -46,9 +48,7 @@ must not mutate lifecycle state directly.
 
 ## Lifecycle
 
-> **Vocabulary note:** These stage names are the canonical identifiers used
-> in `svos/lifecycle/manager.py`, all code, and all documentation. Legacy
-> "Phase N" numbering is a summary view only. See `docs/00_Project/DOC_AUTHORITY.md`.
+> **Vocabulary note:** `svos/lifecycle/manager.py` is the canonical implementation for SVOS lifecycle state names. For repository-level architecture and lifecycle authority, consult `docs/SYSTEM_ARCHITECTURE.md`. Legacy "Phase N" numbering is a summary view only. See `docs/00_Project/DOC_AUTHORITY.md`.
 
 The current implemented progression begins:
 

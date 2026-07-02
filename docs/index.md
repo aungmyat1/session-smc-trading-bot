@@ -124,15 +124,15 @@ Inventory and governance:
 
 Individual strategy specs (detail files — flow, parameters, rules — are co-located in each strategy directory):
 
-- [ST-A2 — Session Liquidity Reversal](strategy_audit/strategies/ST-A2%20%28Session%20Liquidity%20Reversal%29/strategy_spec.md)
-- [London Breakout](strategy_audit/strategies/London%20Breakout/strategy_spec.md)
-- [NY Momentum](strategy_audit/strategies/NY%20Momentum/strategy_spec.md)
-- [Adaptive SMC](strategy_audit/strategies/Adaptive%20SMC%20%28AdaptiveSMC%29/strategy_spec.md)
-- [VWAP Breakout](strategy_audit/strategies/VWAP%20Breakout%20%28VWAPBreakout%29/strategy_spec.md)
-- [VWAP Mean Reversion](strategy_audit/strategies/VWAP%20Mean%20Reversion%20%28VWAPMeanReversion%29/strategy_spec.md)
-- [SMC Order Block + FVG Session](strategy_audit/strategies/SMC%20Order%20Block%20%2B%20FVG%20Session%20%28SVOSReady%29/strategy_spec.md)
+- [ST-A2 — Session Liquidity Reversal](strategy_audit/strategies/ST-A2 %28Session Liquidity Reversal%29/strategy_spec.md)
+- [London Breakout](strategy_audit/strategies/London Breakout/strategy_spec.md)
+- [NY Momentum](strategy_audit/strategies/NY Momentum/strategy_spec.md)
+- [Adaptive SMC](strategy_audit/strategies/Adaptive SMC %28AdaptiveSMC%29/strategy_spec.md)
+- [VWAP Breakout](strategy_audit/strategies/VWAP Breakout %28VWAPBreakout%29/strategy_spec.md)
+- [VWAP Mean Reversion](strategy_audit/strategies/VWAP Mean Reversion %28VWAPMeanReversion%29/strategy_spec.md)
+- [SMC Order Block + FVG Session](strategy_audit/strategies/SMC Order Block + FVG Session %28SVOSReady%29/strategy_spec.md)
 - [D2E3](strategy_audit/strategies/D2E3/strategy_spec.md)
-- [11-Phase SMC Session Chain](strategy_audit/strategies/11-Phase%20SMC%20Session%20Chain%20%28Strategy%20B%20_%20session_smc%29/strategy_spec.md)
+- [11-Phase SMC Session Chain](strategy_audit/strategies/11-Phase SMC Session Chain %28Strategy B _ session_smc%29/strategy_spec.md)
 
 ---
 

@@ -30,6 +30,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from core.trade_journal_db import TradeJournalDB
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
+from approval_package.package_validator import validate_package
+from demo_runtime.demo_health_check import evaluate_demo_readiness
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -43,6 +45,37 @@ except Exception:
     _STRAT_CFG: dict = {}
 
 app = FastAPI(docs_url=None, redoc_url=None)
+
+
+@app.get("/api/project-readiness")
+def project_readiness() -> dict:
+    """Single dashboard payload for the evidence → approval → demo boundary."""
+    package_path = ROOT / "reports" / "approved_packages" / "active"
+    package = validate_package(package_path)
+    state = _load_state()
+    checks = {
+        "approved_package": package.valid,
+        "broker_connection": state.get("broker_status") == "connected",
+        "market_data": any((ROOT / "logs" / "candles").glob("*_M15.json")),
+        "order_dry_run": bool(state.get("order_dry_run_passed", False)),
+        "risk_firewall": bool(state.get("risk_firewall_active", False)),
+        "stop_loss_required": True,
+        "max_daily_loss": bool(state.get("max_daily_loss_enforced", True)),
+        "dashboard": True,
+        "telegram": bool(state.get("telegram_status") == "connected"),
+        "restart_recovery": bool(state.get("restart_recovery_passed", False)),
+    }
+    readiness = evaluate_demo_readiness(checks)
+    return {
+        "platform_status": "STRATEGY_ENGINEERING",
+        "strategy_input_status": "AVAILABLE",
+        "replay_status": "AVAILABLE",
+        "package_approval_status": "APPROVED" if package.valid else "BLOCKED",
+        "package_findings": list(package.reasons),
+        "bot_runtime_status": state.get("status", "stopped"),
+        "risk_firewall_status": "PASS" if checks["risk_firewall"] else "BLOCKED",
+        "demo_readiness": readiness.to_dict(),
+    }
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────

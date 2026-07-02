@@ -1,0 +1,33 @@
+name: Feature request
+description: Request a new feature, improvement, or enhancement.
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: "Describe the desired feature and why it matters."
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: Need
+      description: Why is this feature important?
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success criteria
+      description: How will we know the feature is complete?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any background, links, or related docs.

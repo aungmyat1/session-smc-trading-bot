@@ -2,111 +2,98 @@
 
 Date: 2026-06-28
 
-## Scope
 
 This report validates the current Strategy Audit workflow in the repository
 against the attached reference describing how professional quantitative trading
-firms gate strategy research before replay and backtesting.
 
 The reference model is:
+Evidence:
 
-```text
-Strategy Intake
-  ↓
-Phase 0 ─ Strategy Audit
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
+- [SVOS_STRATEGY_AUDIT_LOOP_REPORT.md](SVOS_STRATEGY_AUDIT_LOOP_REPORT.md)
+- [../research/svos/engine.py](../research/svos/engine.py)
   ↓
 Phase 1 ─ Strategy Enhancement
   ↓
 Phase 2 ─ Historical Replay
   ↓
-Phase 3 ─ Backtesting
   ↓
 Phase 4 ─ Robustness
   ↓
-Phase 5 ─ Verification Ready
-  ↓
 Phase 6 ─ Virtual Demo Trading
   ↓
-Phase 7 ─ Production Approval
-```
+Evidence:
 
-## Executive Verdict
-
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
 The repository is **substantially aligned in intent** and **partially aligned
 in implementation**.
 
 Short version:
 
-- The repo already treats Strategy Audit as a pre-backtest quality gate.
 - The repo already includes an Enhancement stage in executable SVOS code.
 - The repo already supports stage-by-stage SVOS reports and dashboard display.
 - The repo does **not yet fully implement** the reference model's interactive
-  AI rule-editor workflow for resolving ambiguities before promotion.
 - The new `strategy_validation/` module is closer to the reference model than
   the legacy audit logic embedded in `research/svos/engine.py`.
+Evidence:
 
-## Reference-To-Repo Validation
-
-### 1. Pre-backtest audit gate
-
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [../strategy_validation/parser.py](../strategy_validation/parser.py)
+- [../strategy_validation/models.py](../strategy_validation/models.py)
 Reference expectation:
 
 - Strategy logic is audited before replay or backtest.
 
 Repository status:
-
 - Implemented.
 
 Evidence:
 
-- [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:1)
-- [docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md](/home/aungp/session-smc-trading-bot/docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md:1)
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:657)
+- [SVOS_STRATEGY_AUDIT_LOOP_REPORT.md](SVOS_STRATEGY_AUDIT_LOOP_REPORT.md)
+- [../research/svos/engine.py](../research/svos/engine.py)
+Evidence:
 
-Assessment:
-
-- Matches the professional workflow.
-
-### 2. Separate Strategy Enhancement phase
-
+- [../strategy_validation/validators/ambiguity_validator.py](../strategy_validation/validators/ambiguity_validator.py)
+- [../strategy_validation/validators/completeness_validator.py](../strategy_validation/validators/completeness_validator.py)
+- [../strategy_validation/validators/consistency_validator.py](../strategy_validation/validators/consistency_validator.py)
+- [../strategy_validation/validators/measurability_validator.py](../strategy_validation/validators/measurability_validator.py)
+- [../strategy_validation/validators/risk_validator.py](../strategy_validation/validators/risk_validator.py)
 Reference expectation:
 
 - After audit, the strategy enters an enhancement/editor stage before replay.
 
 Repository status:
-
 - Implemented in code.
 - Not always surfaced consistently in simplified lifecycle summaries.
 
 Evidence:
 
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:673)
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:778)
-- [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:64)
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
 
-Assessment:
+Evidence:
 
-- The actual executable SVOS flow is closer to the attached reference than the
-  simplified operational pipeline text.
-
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
+- [../strategy_validation/ai/improvement_engine.py](../strategy_validation/ai/improvement_engine.py)
 ### 3. Rule extraction and machine-readable strategy normalization
 
 Reference expectation:
 
 - Loose strategy text should be converted into structured rules before testing.
-
 Repository status:
 
 - Implemented in two layers.
+Evidence:
 
 Evidence:
 
-- Legacy extraction and normalization:
-  [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:130)
-- New Stage 1 parser and document model:
-  [strategy_validation/parser.py](/home/aungp/session-smc-trading-bot/strategy_validation/parser.py:1)
-  [strategy_validation/models.py](/home/aungp/session-smc-trading-bot/strategy_validation/models.py:1)
-
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
+- [../dashboard/app.py](../dashboard/app.py)
+- [../dashboard/index.html](../dashboard/index.html)
 Assessment:
 
 - Matches the reference direction.
@@ -115,24 +102,20 @@ Assessment:
 
 Reference expectation:
 
-- The audit should flag ambiguous rules, missing parameters, undefined filters,
   and contradictions before replay.
 
 Repository status:
 
-- Implemented, especially in the new Stage 1 validation module.
 
 Evidence:
 
-- [strategy_validation/validators/ambiguity_validator.py](/home/aungp/session-smc-trading-bot/strategy_validation/validators/ambiguity_validator.py:1)
-- [strategy_validation/validators/completeness_validator.py](/home/aungp/session-smc-trading-bot/strategy_validation/validators/completeness_validator.py:1)
-- [strategy_validation/validators/consistency_validator.py](/home/aungp/session-smc-trading-bot/strategy_validation/validators/consistency_validator.py:1)
-- [strategy_validation/validators/measurability_validator.py](/home/aungp/session-smc-trading-bot/strategy_validation/validators/measurability_validator.py:1)
-- [strategy_validation/validators/risk_validator.py](/home/aungp/session-smc-trading-bot/strategy_validation/validators/risk_validator.py:1)
-
-Assessment:
-
+Evidence:
 - Strong alignment.
+-- [../strategy_validation/validators/ambiguity_validator.py](../strategy_validation/validators/ambiguity_validator.py)
+-- [../strategy_validation/validators/completeness_validator.py](../strategy_validation/validators/completeness_validator.py)
+-- [../strategy_validation/validators/consistency_validator.py](../strategy_validation/validators/consistency_validator.py)
+-- [../strategy_validation/validators/measurability_validator.py](../strategy_validation/validators/measurability_validator.py)
+-- [../strategy_validation/validators/risk_validator.py](../strategy_validation/validators/risk_validator.py)
 
 ### 5. Interactive AI clarification/editor loop
 
@@ -150,53 +133,34 @@ Repository status:
 Evidence:
 
 - The legacy audit stores clarifying questions:
-  [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:474)
+  [../research/svos/engine.py](../research/svos/engine.py)
 - The repo explicitly documents that AI edits are outside the deterministic
   pipeline:
-  [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:81)
+  [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
 - The new improvement engine is deterministic recommendation aggregation, not a
   live interactive editor:
-  [strategy_validation/ai/improvement_engine.py](/home/aungp/session-smc-trading-bot/strategy_validation/ai/improvement_engine.py:1)
+  [../strategy_validation/ai/improvement_engine.py](../strategy_validation/ai/improvement_engine.py)
 
 Assessment:
-
-- This is the biggest gap versus the attached professional workflow.
-
-### 6. Audit outputs and stage reports
 
 Reference expectation:
 
 - Every research stage should produce reviewable evidence before promotion.
-
-Repository status:
-
 - Implemented.
 
 Evidence:
 
-- Stage report writing:
-  [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:1289)
+  [../research/svos/engine.py](../research/svos/engine.py)
 - Stage workflow docs:
-  [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:61)
-- Dashboard stage-report surfacing:
-  [dashboard/app.py](/home/aungp/session-smc-trading-bot/dashboard/app.py:69)
-  [dashboard/index.html](/home/aungp/session-smc-trading-bot/dashboard/index.html:616)
-
+  [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
 Assessment:
 
 - Strong alignment.
 
 ## Overall Alignment Rating
-
-| Area | Status |
 |---|---|
 | Pre-backtest strategy audit | Aligned |
 | Strategy enhancement phase | Aligned in code |
-| Structured rule extraction | Aligned |
-| Ambiguity and contradiction checks | Aligned |
-| Interactive AI rule editor | Partial |
-| Multi-stage evidence and reports | Aligned |
-| Input support for PDF/Word/screenshots | Partial |
 
 ## Practical Conclusion
 
@@ -208,13 +172,8 @@ The current repo should be described as:
 - professionally valid in research-gate philosophy
 - operationally usable today
 - not yet fully complete as an interactive AI-first rule editing system
-
-The most accurate current implementation sequence is:
-
 ```text
 Strategy Intake
-  ↓
-Strategy Audit
   ↓
 Strategy Enhancement
   ↓
@@ -229,38 +188,22 @@ Verification Ready
 Virtual Demo Trading
   ↓
 Production Approval
-```
-
-## How To Check The Implementation
 
 Use the following checklist to validate the workflow in the repo directly.
-
 ### A. Check the documented workflow
 
 Review:
 
-- [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:1)
-- [docs/SYSTEM_ARCHITECTURE.md](/home/aungp/session-smc-trading-bot/docs/SYSTEM_ARCHITECTURE.md:1)
-- [docs/STRATEGY_VALIDATION_ENGINE.md](/home/aungp/session-smc-trading-bot/docs/STRATEGY_VALIDATION_ENGINE.md:1)
-- [docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md](/home/aungp/session-smc-trading-bot/docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md:1)
 
 What to confirm:
 
-- audit happens before replay
-- enhancement exists between audit and replay
 - stage reports are part of the operational model
 
 ### B. Check the executable SVOS stage order
 
-Inspect:
-
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:645)
+- [../research/svos/engine.py](../research/svos/engine.py)
 
 What to confirm in `SVOSRunner.run_pipeline()`:
-
-- `intake` runs first
-- `audit` runs second
-- `_enhance(audit)` runs before replay
 - replay, backtest, robustness, verification-ready, virtual-demo, and
   production-approval run in sequence
 
@@ -268,16 +211,11 @@ What to confirm in `SVOSRunner.run_pipeline()`:
 
 Inspect:
 
-- [research/svos/engine.py](/home/aungp/session-smc-trading-bot/research/svos/engine.py:389)
-- [strategy_validation/validators](/home/aungp/session-smc-trading-bot/strategy_validation/validators)
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [../strategy_validation/validators](../strategy_validation/validators)
 
-What to confirm:
-
-- missing fields are detected
 - ambiguous rules are flagged
 - contradictory rules are flagged
-- risk controls are validated
-- readiness decisions are generated
 
 ### D. Check the new Stage 1 validator module
 
@@ -296,8 +234,8 @@ What to confirm:
 
 Relevant files:
 
-- [strategy_validation/cli.py](/home/aungp/session-smc-trading-bot/strategy_validation/cli.py:1)
-- [strategy_validation/pipeline/strategy_validation_pipeline.py](/home/aungp/session-smc-trading-bot/strategy_validation/pipeline/strategy_validation_pipeline.py:1)
+- [../strategy_validation/cli.py](../strategy_validation/cli.py)
+- [../strategy_validation/pipeline/strategy_validation_pipeline.py](../strategy_validation/pipeline/strategy_validation_pipeline.py)
 
 ### E. Check the SVOS orchestration entrypoint
 
@@ -321,7 +259,7 @@ What to confirm:
 
 Relevant file:
 
-- [scripts/run_current_strategy_svos.py](/home/aungp/session-smc-trading-bot/scripts/run_current_strategy_svos.py:1)
+- [../scripts/run_current_strategy_svos.py](../scripts/run_current_strategy_svos.py)
 
 ### F. Check stage report artifacts on disk
 
@@ -341,8 +279,8 @@ What to confirm:
 
 Inspect:
 
-- [dashboard/app.py](/home/aungp/session-smc-trading-bot/dashboard/app.py:69)
-- [dashboard/index.html](/home/aungp/session-smc-trading-bot/dashboard/index.html:616)
+- [../dashboard/app.py](../dashboard/app.py)
+- [../dashboard/index.html](../dashboard/index.html)
 
 What to confirm:
 
@@ -367,8 +305,8 @@ What to confirm:
 
 Relevant tests:
 
-- [tests/strategy_validation/test_pipeline.py](/home/aungp/session-smc-trading-bot/tests/strategy_validation/test_pipeline.py:1)
-- [tests/test_dashboard_app.py](/home/aungp/session-smc-trading-bot/tests/test_dashboard_app.py:1)
+- [../tests/strategy_validation/test_pipeline.py](../tests/strategy_validation/test_pipeline.py)
+- [../tests/test_dashboard_app.py](../tests/test_dashboard_app.py)
 
 ## Recommended Next Steps
 

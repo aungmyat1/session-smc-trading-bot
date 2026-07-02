@@ -404,13 +404,17 @@ def _catalog_meta_to_strategy(
         except (OSError, json.JSONDecodeError):
             run_summary = None
 
-    # Determine status: prefer overlay, then SVOS latest_passed_stage, then catalog
-    if ovr.get("status"):
-        status = ovr["status"]
-    elif run_summary and run_summary.get("latest_passed_stage"):
+    # Determine status: prefer authoritative SVOS latest_passed_stage, then
+    # catalog value, then overlay UI annotations. Overlay remains for user
+    # edits but must not override SVOS validation state.
+    if run_summary and run_summary.get("latest_passed_stage"):
         status = _STATUS_TO_UI_STAGE.get(run_summary["latest_passed_stage"], _STAGE_INTAKE)
-    else:
+    elif meta and meta.get("status"):
         status = _STATUS_TO_UI_STAGE.get(str(meta.get("status", "intake")), _STAGE_INTAKE)
+    elif ovr.get("status"):
+        status = ovr["status"]
+    else:
+        status = _STAGE_INTAKE
 
     symbols = meta.get("symbols", [])
     timeframes = meta.get("timeframes", [])

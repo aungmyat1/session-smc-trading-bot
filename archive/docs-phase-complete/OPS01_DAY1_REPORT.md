@@ -48,9 +48,9 @@ Both OPS-01 interrupt conditions are met: **heartbeat failure** and **reconnect 
 
 ## Root Cause
 
-**Primary:** `_send_heartbeat()` at [bot.py:290](../bot.py#L290) awaits `self._connection.get_account_information()` with no timeout. When the MetaAPI WebSocket drops at 21:34:09 and enters a reconnect cycle that does not synchronize, the RPC call blocks indefinitely inside the SDK's message queue. The `except Exception` guard at [bot.py:295](../bot.py#L295) is never reached because no exception is raised — the coroutine simply never returns.
+**Primary:** `_send_heartbeat()` at [bot.py:290](bot.py) awaits `self._connection.get_account_information()` with no timeout. When the MetaAPI WebSocket drops at 21:34:09 and enters a reconnect cycle that does not synchronize, the RPC call blocks indefinitely inside the SDK's message queue. The `except Exception` guard at [bot.py:295](bot.py) is never reached because no exception is raised — the coroutine simply never returns.
 
-**Secondary:** `self._connected` flag in [execution/metaapi_client.py:141](../execution/metaapi_client.py#L141) is set to `True` at connection and never cleared on drop. The guard `if not self._connected: raise RuntimeError(...)` passes silently, masking the disconnected state from the heartbeat caller.
+**Secondary:** `self._connected` flag in [execution/metaapi_client.py:141](execution/metaapi_client.py) is set to `True` at connection and never cleared on drop. The guard `if not self._connected: raise RuntimeError(...)` passes silently, masking the disconnected state from the heartbeat caller.
 
 **Contributing:** MetaAPI reconnect loop is connect-then-close cycling (not recovering). Each reconnect attempt (21:42, 21:57, and continuing) connects at WebSocket level but sends `CLOSE` immediately after `MESSAGE data 1`, never reaching synchronized state. The RPC queue waits for synchronization that never comes.
 
@@ -69,7 +69,7 @@ Both OPS-01 interrupt conditions are met: **heartbeat failure** and **reconnect 
 
 ## Telegram Status
 
-All 37 heartbeats showed `Telegram send failed 400: Bad Request`. Telegram is misconfigured (invalid chat_id or token in `.env`). This is a known, pre-existing issue. **Telegram failure is NOT related to the WebSocket drop** — the 10s timeout and exception catch in [monitoring/telegram.py](../monitoring/telegram.py) prevent it from blocking the loop. Telegram requires a separate `.env` fix outside the scope of OPS-01 stability testing.
+All 37 heartbeats showed `Telegram send failed 400: Bad Request`. Telegram is misconfigured (invalid chat_id or token in `.env`). This is a known, pre-existing issue. **Telegram failure is NOT related to the WebSocket drop** — the 10s timeout and exception catch in [monitoring/telegram.py](monitoring/telegram.py) prevent it from blocking the loop. Telegram requires a separate `.env` fix outside the scope of OPS-01 stability testing.
 
 ---
 
@@ -91,8 +91,8 @@ All 37 heartbeats showed `Telegram send failed 400: Bad Request`. Telegram is mi
 
 ## Fix Applied (BUG-01 — 2026-06-22)
 
-Fix is in: [execution/metaapi_client.py](../execution/metaapi_client.py) and [bot.py](../bot.py).
-Tests: [tests/test_bug01_rpc_timeout.py](../tests/test_bug01_rpc_timeout.py) — 19/19 pass.
+Fix is in: [execution/metaapi_client.py](execution/metaapi_client.py) and [bot.py](bot.py).
+Tests: [tests/test_bug01_rpc_timeout.py](tests/test_bug01_rpc_timeout.py) — 19/19 pass.
 Full suite: 700/700 pass.
 
 ---

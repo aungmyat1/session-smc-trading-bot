@@ -7,203 +7,57 @@
 - [Glossary](docs/00_Project/GLOSSARY.md) — canonical definitions for all domain terms
 - [Governing Plan](docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md) — product authority
 - [System Architecture](docs/SYSTEM_ARCHITECTURE.md) — lifecycle and responsibility model
-- [Developer Handbook](docs/DEVELOPER_HANDBOOK.md) — implementation standards
-- [Architecture Review (2026-06-29)](docs/svos/architecture-review-2026-06-29/README.md) — current NOT READY status
+# Strategy Validation Operating System
 
-**Current status:** NOT READY for feature expansion. See architecture review above.
+---
+Owner: Platform Architecture
+Status: Active (documentation audit in-progress)
+Version: 2.0
+Last Reviewed: TODO
+Next Review: TODO
+Related Documents: docs/project_overview.md, docs/SYSTEM_ARCHITECTURE.md, docs/documentation_inventory.md
+---
 
-This repository is an institutional-style strategy research, validation,
-execution-verification, and governance platform for quantitative trading
-workflows.
+This repository is the Strategy Validation Operating System (SVOS) — a two-system platform for research & validation (SVOS) and a simple production execution engine (Vantage bot).
 
-It is not just a backtester and it is not just a trading bot.
+Quick links
+- Project overview: [docs/project_overview.md](docs/project_overview.md)
+- Architecture: [docs/architecture/system_architecture.md](docs/architecture/system_architecture.md)
+-- SVOS authoritative docs: [docs/svos/CORE_ARCHITECTURE.md](docs/svos/CORE_ARCHITECTURE.md)
+- Documentation inventory & audit: [docs/documentation_inventory.md](docs/documentation_inventory.md)
+- Readiness and gates: [docs/READINESS_CRITERIA.md](docs/READINESS_CRITERIA.md)
 
-It is designed to move a strategy through governed research stages, separate
-research from execution risk, and prevent uncontrolled promotion into demo or
-live deployment.
+Status
+- Current stability assessment: see `docs/svos/architecture-review-2026-06-29/README.md` and `docs/svos/STABILIZATION_STATUS.md`.
+- This repository contains active research artifacts, archived historical documents, and operational runbooks. A documentation consolidation and audit is in progress.
 
-Repository identity note:
+What this project is
+- A governance-first research and validation platform for trading strategies (SVOS).
+- A lightweight production execution path (Vantage demo/live bot) that only runs approved strategy packages.
 
-- repository name: `session-smc-trading-bot`
-- current canonical branch: `main`
-- current meaning of `main`: the branch now represents the platform stage of
-  the project, not a narrow single-strategy bot snapshot
+Why it exists
+- To separate research risk from execution risk and to provide a rigorous validation pipeline before any capital is deployed.
 
-In this stage, the repository should be understood as a trading strategy
-validation and execution platform with these core capabilities:
+Quick start (developer)
+1. Create and activate a Python virtual environment:
 
-- research and strategy audit
-- replay and backtesting
-- robustness and validation gates
-- execution simulation and demo trading
-- governance before live deployment
-
-Current scope note:
-
-- the repository contains broader platform-oriented components
-- but the current development scope is intentionally narrower
-- current priority is an SVOS research-and-verification engine plus a simple
-  Vantage demo/live trading bot
-- governing scope: `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`
-- active stabilization roadmap:
-  `docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md`
-- current stabilization status: `docs/svos/STABILIZATION_STATUS.md`
-
-## Repository Status
-
-Architecture review update (2026-06-29): the repository is currently assessed
-as **NOT READY** for further feature expansion. The review found Critical
-governance-bypass, control-state persistence, and operator API security risks.
-Complete stabilization Phases 0–2 before resuming bounded feature development.
-See `docs/svos/architecture-review-2026-06-29/README.md`.
-
-This repository is currently transitioning from a unified SVOS validation
-pipeline to the full ISOP target architecture.
-
-- Architecture source of truth: `docs/SYSTEM_ARCHITECTURE.md`
-- Current implementation plan:
-  `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md`
-- Strategy state source of truth: `config/strategy_catalog.yaml`
-- AI workflow and prompt layering: `docs/AI_WORKFLOW_ARCHITECTURE.md`
-- Repository implementation constitution: `docs/DEVELOPER_HANDBOOK.md`
-- Implementation task contract template:
-  `docs/templates/implementation_spec_template.md`
-
-Current implementation:
-
-```text
-SVOS
-├── Research Validation
-├── Virtual Execution Validation
-└── Production Approval
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.in
 ```
 
-Target architecture:
+2. See `docs/DEVELOPER_HANDBOOK.md` for development workflow and `docs/PROJECT_READINESS_V1_REVALIDATION.md` for testing and gating instructions.
 
-```text
-SVOS
-  ↓
-Verification Ready
-  ↓
-EVF
-  ↓
-RGM
-  ↓
-Governance
-  ↓
-SMO
-```
+Documentation map
+- Top-level docs live under `docs/` and are being standardized. Start at `docs/project_overview.md`.
 
-The repository is being refactored toward this separation while maintaining
-backward compatibility with the current SVOS-driven workflow.
+Contributing
+- See `docs/DEVELOPER_HANDBOOK.md` and the repository `CONTRIBUTING` policy (use PRs, add owner and last-reviewed headers to docs you change).
 
-Branch policy:
+Owner: TODO
+Last reviewed: TODO
 
-- `main` is the canonical branch for the current platform state
-- branch swaps are not required to express the broader platform identity
-- strategy-specific or experimental work should live on separate branches until
-  intentionally promoted
-
-Current delivery focus:
-
-- do not expand the project unnecessarily
-- prioritize the direct path to a simple strategy verification workflow and
-  Vantage demo/live execution
-- treat broader platform build-out as deferred unless it directly supports that
-  goal
-
-## Overview
-
-SVOS is the research and governance operating system for strategy qualification.
-EVF is the execution validation layer that checks whether a strategy can be
-operated safely once research has produced verification-ready evidence.
-
-SVOS validates whether a strategy has an edge.
-EVF validates whether that edge can actually be executed safely.
-
-The target progression is:
-
-```text
-Strategy Idea
-  ↓
-SVOS Research Qualification
-  ↓
-Research Qualified
-  ↓
-Verification Ready
-  ↓
-EVF Execution Qualification
-  ↓
-Execution Qualified
-  ↓
-Operational Ready
-  ↓
-RGM Risk Qualification
-  ↓
-Risk Qualified
-  ↓
-Risk Approved
-  ↓
-Live Demo Authorization
-  ↓
-Live MT5 Demo
-  ↓
-Production Candidate
-  ↓
-Production Approval
-  ↓
-Production
-  ↓
-SMO Monitoring
-  ↓
-Drift Detection
-  ↓
-Revalidation
-```
-
-## Top-Level Architecture
-
-```text
-                    ISOP
-
-        Intelligent Strategy Operating Platform
-
-             Strategy Registry
-
-                    │
-
-        Governance Control Plane
-
-                    │
-                    │ controls transitions
-                    │
- ---------------------------------------------------
-
- ┌───────────────────────────────────────────┐
- │                 SVOS                      │
- │        Research Qualification             │
- │ Audit → Replay → Backtest → Robustness   │
- └───────────────────────────────────────────┘
-
-                    │
-                    ▼
-          Verification Ready
-                    │
-                    ▼
- ┌───────────────────────────────────────────┐
- │                  EVF                      │
- │      Execution Qualification              │
- │ Virtual Execution → Microstructure →      │
- │ Cost → Latency → Recovery → Evidence      │
- └───────────────────────────────────────────┘
-
-                    │
-                    ▼
-           Operational Ready
-                    │
-                    ▼
- ┌───────────────────────────────────────────┐
- │                  RGM                      │
  │        Risk Qualification                 │
  │ Allocation → Exposure → Preservation →    │
  │ Constraints → Emergency Controls          │

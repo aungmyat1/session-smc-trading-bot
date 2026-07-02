@@ -48,9 +48,9 @@ Both OPS-01 interrupt conditions are met: **heartbeat failure** and **reconnect 
 
 ## Root Cause
 
-**Primary:** `_send_heartbeat()` at [bot.py:290](../bot.py#L290) awaits `self._connection.get_account_information()` with no timeout. When the MetaAPI WebSocket drops at 21:34:09 and enters a reconnect cycle that does not synchronize, the RPC call blocks indefinitely inside the SDK's message queue. The `except Exception` guard at [bot.py:295](../bot.py#L295) is never reached because no exception is raised — the coroutine simply never returns.
+**Primary:** `_send_heartbeat()` at [bot.py:290](../bot.py) awaits `self._connection.get_account_information()` with no timeout. When the MetaAPI WebSocket drops at 21:34:09 and enters a reconnect cycle that does not synchronize, the RPC call blocks indefinitely inside the SDK's message queue. The `except Exception` guard at [bot.py:295](../bot.py) is never reached because no exception is raised — the coroutine simply never returns.
 
-**Secondary:** `self._connected` flag in [execution/metaapi_client.py:141](../execution/metaapi_client.py#L141) is set to `True` at connection and never cleared on drop. The guard `if not self._connected: raise RuntimeError(...)` passes silently, masking the disconnected state from the heartbeat caller.
+**Secondary:** `self._connected` flag in [execution/metaapi_client.py:141](../execution/metaapi_client.py) is set to `True` at connection and never cleared on drop. The guard `if not self._connected: raise RuntimeError(...)` passes silently, masking the disconnected state from the heartbeat caller.
 
 **Contributing:** MetaAPI reconnect loop is connect-then-close cycling (not recovering). Each reconnect attempt (21:42, 21:57, and continuing) connects at WebSocket level but sends `CLOSE` immediately after `MESSAGE data 1`, never reaching synchronized state. The RPC queue waits for synchronization that never comes.
 
