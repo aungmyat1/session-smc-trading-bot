@@ -19,16 +19,16 @@ def detect_order_blocks(frame: pd.DataFrame, structure: pd.DataFrame, pair: str 
         if ev["structure"] != "BOS":
             continue
         direction = ev["direction"]
-        before = candles[candles["timestamp"] < ev["timestamp"]]
-        if before.empty:
+        candidates = []
+        for _, candle in candles.iterrows():
+            if candle["timestamp"] >= ev["timestamp"]:
+                continue
+            opposite = candle["close"] < candle["open"] if direction == "bullish" else candle["close"] > candle["open"]
+            if opposite:
+                candidates.append(candle)
+        if not candidates:
             continue
-        if direction == "bullish":
-            prior = before[before["close"] < before["open"]]
-        else:
-            prior = before[before["close"] > before["open"]]
-        if prior.empty:
-            continue
-        ob = prior.iloc[-1]
+        ob = candidates[-1]
         records.append({
             "pair": pair,
             "time": ob["timestamp"],
@@ -45,4 +45,3 @@ def save_order_blocks(frame: pd.DataFrame, path: str | Path, pair: str | None = 
     p.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(p, index=False)
     return p
-

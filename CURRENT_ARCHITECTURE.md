@@ -6,6 +6,12 @@ Scope: Repository architecture audit performed for the Project Objective Gap Ana
 Companion document: `docs/project_readiness_assessment.md` (gap matrix + roadmap).
 This document does not change, move, or rename anything.
 
+> Historical baseline: the artifact/deployment gaps recorded below were accurate
+> when this audit was captured. The July 2 repository implementation added
+> deterministic strategy packages, Production import and verification, preflight,
+> and disabled staging. See
+> `docs/architecture/production_svos_rollout_index.md` for current status.
+
 ---
 
 ## 1. Current Architecture Diagram

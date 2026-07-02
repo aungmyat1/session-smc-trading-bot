@@ -18,6 +18,15 @@ FORBIDDEN_PREFIXES = {
     "production": ("agtrade", "dashboard", "research", "strategy_audit", "strategy_validation", "svos"),
 }
 
+SVOS_FORBIDDEN_LIVE_MODULES = (
+    "execution.metaapi_client",
+    "execution.mt5_connector",
+    "execution.mt5_executor",
+    "execution.order_manager",
+    "execution.trade_manager",
+    "production",
+)
+
 
 def _module_names(node: ast.AST) -> list[str]:
     if isinstance(node, ast.Import):
@@ -58,6 +67,17 @@ def test_boundary_packages_respect_import_rules() -> None:
                         if module == prefix or module.startswith(f"{prefix}."):
                             violations.append(f"{path.relative_to(ROOT)} imports {module}")
     assert not violations, "Boundary package import violations:\n" + "\n".join(violations)
+
+
+def test_svos_does_not_import_live_execution_modules() -> None:
+    violations: list[str] = []
+    for path in _python_files(ROOT / "svos"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path.relative_to(ROOT)))
+        for node in ast.walk(tree):
+            for module in _module_names(node):
+                if any(module == prefix or module.startswith(f"{prefix}.") for prefix in SVOS_FORBIDDEN_LIVE_MODULES):
+                    violations.append(f"{path.relative_to(ROOT)} imports {module}")
+    assert not violations, "SVOS must not import live execution modules:\n" + "\n".join(violations)
 
 
 def test_legacy_signal_module_is_a_shared_reexport() -> None:

@@ -1,0 +1,48 @@
+name: Deploy Production Disabled
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_id:
+        description: SVOS deployment identifier
+        required: true
+      environment:
+        description: Protected GitHub environment
+        type: choice
+        options: [paper, production-disabled]
+        default: paper
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Import, preflight, and stage disabled
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements.lock
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Run production deployment command remotely
+        env:
+          DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          GCP_ZONE: ${{ vars.GCP_PRODUCTION_ZONE }}
+          GCP_VM: ${{ vars.GCP_PRODUCTION_VM }}
+        run: |
+          test -n "$GCP_ZONE" && test -n "$GCP_VM"
+          gcloud compute ssh "$GCP_VM" --zone "$GCP_ZONE" --command \
+            "cd /opt/session-smc-trading-bot && LIVE_TRADING=false DEMO_ONLY=true .venv/bin/agtrade production deploy-disabled --deployment-id '$DEPLOYMENT_ID'"

@@ -499,6 +499,128 @@ def test_new_isop_endpoints_work(client):
     assert strategy.get_json()["record"]["strategy"] == "ST-A2"
 
 
+def test_v1_strategy_endpoints_expose_version_and_validation_contracts(client):
+    latest = client.get("/api/v1/strategies/ST-A2/latest")
+    version = client.get("/api/v1/strategies/ST-A2/versions/2.1")
+    validations = client.get("/api/v1/validations/ST-A2/2.1")
+
+    assert latest.status_code == 200
+    assert version.status_code == 200
+    assert validations.status_code == 200
+    assert latest.get_json()["version"] == "2.1"
+    assert latest.get_json()["package"]["archive_sha256"]
+    assert version.get_json()["record"]["strategy"] == "ST-A2"
+    assert isinstance(validations.get_json()["validations"], list)
+
+
+def test_v1_deployment_endpoints_create_and_update_disabled_deployment(client, tmp_path):
+    report = tmp_path / "deployment_report.json"
+    report.write_text('{"result":"ok"}', encoding="utf-8")
+
+    created = client.post(
+        "/api/v1/deployments",
+        json={"strategy": "ST-A2", "target": "gcp-vm1", "notes": "live-ready disabled"},
+    )
+    assert created.status_code == 201
+    deployment_id = created.get_json()["deployment_id"]
+    assert created.get_json()["status"] == "READY_DISABLED"
+
+    reported = client.post(
+        f"/api/v1/deployments/{deployment_id}/reports",
+        json={
+            "status": "VALIDATED",
+            "summary": "Disabled deployment validated",
+            "artifact_path": str(report),
+        },
+    )
+    assert reported.status_code == 201
+    assert reported.get_json()["artifact_hash"]
+
+    fetched = client.get(f"/api/v1/deployments/{deployment_id}")
+    assert fetched.status_code == 200
+    assert fetched.get_json()["status"] == "VALIDATED"
+    assert len(fetched.get_json()["reports"]) == 1
+
+
+def test_platform_status_exposes_transport_and_signing_modes(client, monkeypatch):
+    monkeypatch.setenv("SVOS_PACKAGE_TRANSPORT", "gcs")
+    monkeypatch.setenv("SVOS_KMS_KEY_VERSION", "projects/demo/locations/global/keyRings/svos/cryptoKeys/strategy/cryptoKeyVersions/1")
+
+    response = client.get("/api/platform")
+
+    assert response.status_code == 200
+    deployment = response.get_json()["deployment"]
+    assert deployment["package_transport"] == "gcs"
+    assert deployment["signing_mode"] == "gcp-kms-asymmetric"
+
+
+def test_production_import_and_preflight_endpoints_stage_and_verify(client):
+    created = client.post(
+        "/api/v1/deployments",
+        json={"strategy": "ST-A2", "target": "gcp-vm1", "notes": "live-ready disabled"},
+    )
+    deployment_id = created.get_json()["deployment_id"]
+
+    imported = client.post(f"/api/v1/production/deployments/{deployment_id}/import")
+    assert imported.status_code == 201
+    assert imported.get_json()["verified"] is True
+
+    import_status = client.get(f"/api/v1/production/deployments/{deployment_id}/import")
+    assert import_status.status_code == 200
+    assert import_status.get_json()["deployment_id"] == deployment_id
+
+    preflight = client.post(f"/api/v1/production/deployments/{deployment_id}/preflight")
+    assert preflight.status_code == 201
+    assert preflight.get_json()["verdict"] == "READY_DISABLED"
+
+    preflight_status = client.get(f"/api/v1/production/deployments/{deployment_id}/preflight")
+    assert preflight_status.status_code == 200
+    assert preflight_status.get_json()["verified"] is True
+
+    activation = client.post(f"/api/v1/production/deployments/{deployment_id}/activate", json={})
+    assert activation.status_code == 201
+    assert activation.get_json()["activation_status"] == "STAGED_DISABLED"
+    assert activation.get_json()["live_trading_enabled"] is False
+
+    activation_status = client.get(f"/api/v1/production/deployments/{deployment_id}/activate")
+    assert activation_status.status_code == 200
+    assert activation_status.get_json()["runtime_ready"] is True
+
+    summary = client.get(f"/api/v1/production/deployments/{deployment_id}/status")
+    assert summary.status_code == 200
+    assert summary.get_json()["overall_status"] == "STAGED_DISABLED"
+    assert summary.get_json()["next_action"] == "Deployment is fully staged and remains disabled."
+
+    latest_reports = client.get("/api/reports/latest")
+    assert latest_reports.status_code == 200
+    latest_payload = latest_reports.get_json()
+    assert "production-preflight" in latest_payload["latest"]
+    report = latest_payload["latest"]["production-preflight"]
+    detail = client.get(f"/api/reports/{report['report_id']}")
+    assert detail.status_code == 200
+    assert "Production Preflight Verification" in detail.get_json()["content"]
+
+
+def test_production_activation_endpoint_blocks_live_request(client):
+    created = client.post("/api/v1/deployments", json={"strategy": "ST-A2"})
+    deployment_id = created.get_json()["deployment_id"]
+    client.post(f"/api/v1/production/deployments/{deployment_id}/import")
+    client.post(f"/api/v1/production/deployments/{deployment_id}/preflight")
+
+    activation = client.post(
+        f"/api/v1/production/deployments/{deployment_id}/activate",
+        json={"request_live": True},
+    )
+
+    assert activation.status_code == 201
+    assert activation.get_json()["activation_status"] == "BLOCKED"
+    assert activation.get_json()["live_trading_enabled"] is False
+
+    summary = client.get(f"/api/v1/production/deployments/{deployment_id}/status")
+    assert summary.status_code == 200
+    assert summary.get_json()["overall_status"] == "ACTIVATION_BLOCKED"
+
+
 def test_platform_readiness_endpoint_exposes_reports_and_persistence(client):
     response = client.get("/api/platform/readiness")
     payload = response.get_json()

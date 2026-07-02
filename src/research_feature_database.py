@@ -313,11 +313,25 @@ def build_symbol_feature_frame(symbol: str, paths: FeatureDatabasePaths, swing_l
 
 
 def _stage_views(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    def filtered(columns: list[str], predicate) -> pd.DataFrame:
+        records = [
+            {column: row[column] for column in columns}
+            for _, row in frame.iterrows()
+            if predicate(row)
+        ]
+        return pd.DataFrame.from_records(records, columns=columns)
+
     candles_labeled = frame[["timestamp", "pair", "open", "high", "low", "close", "volume", "session"]].copy()
     structure = frame[["timestamp", "pair", "swing_high", "swing_low", "structure", "bos", "choch", "direction"]].copy()
-    sweeps = frame.loc[frame["sweep_high"] | frame["sweep_low"], ["timestamp", "pair", "sweep_high", "sweep_low", "direction"]].copy()
-    order_blocks = frame.loc[frame["has_order_block"], ["timestamp", "pair", "has_order_block", "ob_type", "ob_high", "ob_low", "direction"]].copy()
-    fvgs = frame.loc[frame["has_fvg"], ["timestamp", "pair", "has_fvg", "fvg_type", "fvg_high", "fvg_low", "direction"]].copy()
+    sweeps = filtered(["timestamp", "pair", "sweep_high", "sweep_low", "direction"], lambda row: bool(row["sweep_high"] or row["sweep_low"]))
+    order_blocks = filtered(
+        ["timestamp", "pair", "has_order_block", "ob_type", "ob_high", "ob_low", "direction"],
+        lambda row: bool(row["has_order_block"]),
+    )
+    fvgs = filtered(
+        ["timestamp", "pair", "has_fvg", "fvg_type", "fvg_high", "fvg_low", "direction"],
+        lambda row: bool(row["has_fvg"]),
+    )
     return {
         "candles_labeled": candles_labeled,
         "structure": structure,

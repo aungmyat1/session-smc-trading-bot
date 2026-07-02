@@ -63,7 +63,15 @@ from dashboard.report_service import latest_reports, load_index, mark_reviewed, 
 from dashboard.status_mapper import health_to_status
 from dashboard import strategy_service, gemini_service, pipeline_service, live_dashboard_service
 import scripts.health_check as health_check
+from production import (
+    DeploymentImportService,
+    ProductionActivationService,
+    ProductionObservabilityService,
+    ProductionPreflightVerifier,
+    ProductionSummaryService,
+)
 from svos.api.service import SVOSOperationalAPI
+from svos.deployment.service import DeploymentStatusService
 
 try:
     import yaml
@@ -532,6 +540,30 @@ def _platform_api() -> SVOSOperationalAPI:
     )
 
 
+def _deployment_service() -> DeploymentStatusService:
+    return DeploymentStatusService(root=_ROOT, catalog_path=_CATALOG_PATH)
+
+
+def _production_import_service() -> DeploymentImportService:
+    return DeploymentImportService(root=_ROOT)
+
+
+def _production_preflight_verifier() -> ProductionPreflightVerifier:
+    return ProductionPreflightVerifier(root=_ROOT)
+
+
+def _production_activation_service() -> ProductionActivationService:
+    return ProductionActivationService(root=_ROOT)
+
+
+def _production_summary_service() -> ProductionSummaryService:
+    return ProductionSummaryService(root=_ROOT)
+
+
+def _production_observability_service() -> ProductionObservabilityService:
+    return ProductionObservabilityService(root=_ROOT)
+
+
 def _new_dashboard_overview() -> dict[str, Any]:
     api = _platform_api()
     overview = api.overview()
@@ -864,9 +896,209 @@ def api_platform_strategy(strategy: str):
     return jsonify({**payload, "fetched_at": _now_iso()})
 
 
+@app.route("/api/v1/strategies/<strategy>/latest")
+def api_v1_strategy_latest(strategy: str):
+    try:
+        payload = _deployment_service().latest_strategy_version(strategy)
+    except KeyError:
+        return jsonify({"error": "Strategy not found", "strategy": strategy}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/strategies/<strategy>/versions/<version>")
+def api_v1_strategy_version(strategy: str, version: str):
+    try:
+        payload = _deployment_service().strategy_version_detail(strategy, version)
+    except KeyError:
+        return jsonify({"error": "Strategy version not found", "strategy": strategy, "version": version}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/validations/<strategy>/<version>")
+def api_v1_strategy_validations(strategy: str, version: str):
+    try:
+        validations = _deployment_service().validation_history(strategy, version)
+    except KeyError:
+        return jsonify({"error": "Strategy version not found", "strategy": strategy, "version": version}), 404
+    return jsonify({"strategy": strategy, "version": version, "validations": validations, "fetched_at": _now_iso()})
+
+
 @app.route("/api/platform/readiness")
 def api_platform_readiness():
     return jsonify({**_readiness_payload(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/deployments", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_create_deployment():
+    body = request.get_json(silent=True) or {}
+    strategy = str(body.get("strategy", "")).strip()
+    if not strategy:
+        return jsonify({"error": "strategy field required"}), 400
+    try:
+        payload = _deployment_service().create_deployment(
+            strategy=strategy,
+            version=str(body.get("version", "")).strip() or None,
+            target=str(body.get("target", "")).strip() or None,
+            actor=str(request.environ.get("svos.actor", "system")),
+            notes=str(body.get("notes", "")),
+        )
+    except KeyError as exc:
+        return jsonify({"error": str(exc)}), 404
+    return jsonify(payload), 201
+
+
+@app.route("/api/v1/deployments")
+def api_v1_deployment_history():
+    return jsonify({"deployments": _deployment_service().deployment_history(strategy=request.args.get("strategy", "")), "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/strategy-registry")
+def api_v1_strategy_registry():
+    return jsonify({**_deployment_service().registry_inventory(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/deployments/<deployment_id>/reports", methods=["POST"])
+@require_operator(app, "research_operator", "risk_operator", "admin")
+def api_v1_record_deployment_report(deployment_id: str):
+    body = request.get_json(silent=True) or {}
+    status = str(body.get("status", "")).strip()
+    if not status:
+        return jsonify({"error": "status field required"}), 400
+    try:
+        payload = _deployment_service().record_deployment_report(
+            deployment_id,
+            status=status,
+            actor=str(request.environ.get("svos.actor", "system")),
+            summary=str(body.get("summary", "")),
+            metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else {},
+            artifact_path=str(body.get("artifact_path", "")),
+        )
+    except KeyError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except FileNotFoundError as exc:
+        return jsonify({"error": f"artifact not found: {exc}"}), 400
+    return jsonify(payload), 201
+
+
+@app.route("/api/v1/deployments/<deployment_id>")
+def api_v1_deployment_status(deployment_id: str):
+    try:
+        payload = _deployment_service().deployment_status(deployment_id)
+    except KeyError:
+        return jsonify({"error": "Deployment not found", "deployment_id": deployment_id}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/deployments/<deployment_id>/rollback", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_deployment_rollback(deployment_id: str):
+    body = request.get_json(silent=True) or {}
+    try:
+        payload = _deployment_service().create_rollback(
+            deployment_id,
+            to_version=str(body.get("to_version", "")),
+            actor=str(request.environ.get("svos.actor", "system")),
+            reason=str(body.get("reason", "")),
+        )
+    except KeyError as exc:
+        return jsonify({"error": str(exc)}), 404
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(payload), 201
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/import", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_production_import(deployment_id: str):
+    try:
+        payload = _production_import_service().import_deployment(deployment_id)
+    except (KeyError, FileNotFoundError, ValueError) as exc:
+        return jsonify({"error": str(exc), "deployment_id": deployment_id}), 400
+    return jsonify(payload.to_dict()), 201
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/import")
+def api_v1_production_import_status(deployment_id: str):
+    try:
+        payload = _production_import_service().import_status(deployment_id)
+    except KeyError:
+        return jsonify({"error": "Import not found", "deployment_id": deployment_id}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/preflight", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_production_preflight(deployment_id: str):
+    try:
+        payload = _production_preflight_verifier().verify_import(deployment_id)
+    except (KeyError, FileNotFoundError, ValueError) as exc:
+        return jsonify({"error": str(exc), "deployment_id": deployment_id}), 400
+    return jsonify(payload.to_dict()), 201
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/preflight")
+def api_v1_production_preflight_status(deployment_id: str):
+    try:
+        payload = _production_preflight_verifier().verification_status(deployment_id)
+    except KeyError:
+        return jsonify({"error": "Preflight verification not found", "deployment_id": deployment_id}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/activate", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_production_activate(deployment_id: str):
+    body = request.get_json(silent=True) or {}
+    try:
+        payload = _production_activation_service().stage_runtime(
+            deployment_id,
+            actor=str(request.environ.get("svos.actor", "system")),
+            request_live=bool(body.get("request_live", False)),
+        )
+    except KeyError as exc:
+        return jsonify({"error": str(exc), "deployment_id": deployment_id}), 404
+    return jsonify(payload.to_dict()), 201
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/activate")
+def api_v1_production_activate_status(deployment_id: str):
+    try:
+        payload = _production_activation_service().activation_status(deployment_id)
+    except KeyError:
+        return jsonify({"error": "Activation state not found", "deployment_id": deployment_id}), 404
+    return jsonify({**payload, "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/production/deployments/<deployment_id>/status")
+def api_v1_production_status(deployment_id: str):
+    try:
+        payload = _production_summary_service().summarize(deployment_id)
+    except KeyError as exc:
+        return jsonify({"error": str(exc), "deployment_id": deployment_id}), 404
+    return jsonify({**payload.to_dict(), "fetched_at": _now_iso()})
+
+
+@app.route("/api/v1/production/health")
+def api_v1_production_health():
+    payload = _production_observability_service().health()
+    return jsonify(payload), (200 if payload["status"] == "PASS" else 503)
+
+
+@app.route("/api/v1/production/heartbeat", methods=["POST"])
+@require_operator(app, "risk_operator", "admin")
+def api_v1_production_heartbeat():
+    body = request.get_json(silent=True) or {}
+    payload = _production_observability_service().heartbeat(
+        component=str(body.get("component", "production-runtime")),
+        metadata=body.get("metadata") if isinstance(body.get("metadata"), dict) else {},
+    )
+    return jsonify(payload), 201
+
+
+@app.route("/metrics")
+def api_metrics():
+    return app.response_class(_production_observability_service().metrics(), mimetype="text/plain; version=0.0.4")
 
 
 @app.route("/api/new-dashboard/overview")

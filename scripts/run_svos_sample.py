@@ -10,7 +10,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from agtrade.strategy import sample_main
+from agtrade.strategy import run_sample, sample_main
+from application.strategy_service import _REPORTS as REPORTS
+
+__all__ = ["REPORTS", "main", "run_sample"]
 
 
 def main() -> int:

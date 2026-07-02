@@ -1,9 +1,13 @@
 from production.engine import (
     ACTIVE_RUNTIME_MODULES,
+    DeploymentImportService,
     ExecutionGuardResult,
     ExecutionStateStore,
     GovernanceDecision,
+    ImportedDeploymentPackage,
     MANAGED_POSITION_MAGIC,
+    PreflightVerificationResult,
+    ProductionPreflightVerifier,
     StrategyExecutionGuard,
     TradeManager,
     TradingPermissionService,
@@ -34,3 +38,10 @@ def test_engine_runtime_inventory_exposes_execution_modules() -> None:
     assert inventory == ACTIVE_RUNTIME_MODULES
     assert "execution.control_plane" in inventory
     assert "execution.execution_state" in inventory
+
+
+def test_engine_facade_exports_deployment_import_surface() -> None:
+    assert DeploymentImportService.__name__ == "DeploymentImportService"
+    assert ImportedDeploymentPackage.__name__ == "ImportedDeploymentPackage"
+    assert ProductionPreflightVerifier.__name__ == "ProductionPreflightVerifier"
+    assert PreflightVerificationResult.__name__ == "PreflightVerificationResult"

@@ -20,7 +20,7 @@ Usage:
 import argparse
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -49,12 +49,12 @@ PIP_SIZE = {
 }
 
 EXPECTED_TF_GAPS = {
-    "M1":  pd.Timedelta(minutes=1),
-    "M5":  pd.Timedelta(minutes=5),
-    "M15": pd.Timedelta(minutes=15),
-    "H1":  pd.Timedelta(hours=1),
-    "H4":  pd.Timedelta(hours=4),
-    "D1":  pd.Timedelta(days=1),
+    "M1": timedelta(minutes=1),
+    "M5": timedelta(minutes=5),
+    "M15": timedelta(minutes=15),
+    "H1": timedelta(hours=1),
+    "H4": timedelta(hours=4),
+    "D1": timedelta(days=1),
 }
 
 LEGACY_PROCESSED_COLS = [
@@ -401,9 +401,9 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
         report.add("PASS", f"{sym} {tf}: no duplicate timestamps")
 
     # Weekend bars (Saturday=5, Sunday=6)
-    weekends = df[df[ts_col].dt.dayofweek >= 5]
-    if not weekends.empty:
-        report.add("WARN", f"{sym} {tf}: {len(weekends)} weekend bars found (first: {weekends[ts_col].iloc[0]})")
+    weekend_timestamps = [timestamp for timestamp in df[ts_col] if timestamp.dayofweek >= 5]
+    if weekend_timestamps:
+        report.add("WARN", f"{sym} {tf}: {len(weekend_timestamps)} weekend bars found (first: {weekend_timestamps[0]})")
     else:
         report.add("PASS", f"{sym} {tf}: no weekend bars")
 

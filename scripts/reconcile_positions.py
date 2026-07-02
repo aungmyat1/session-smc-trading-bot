@@ -24,6 +24,9 @@ from execution.vantage_demo_executor import VantageDemoExecutor
 from monitoring.telegram import TelegramAlerter
 from production.engine import MANAGED_POSITION_MAGIC
 
+# Compatibility alias retained for older operational tests and scripts.
+_MAGIC = MANAGED_POSITION_MAGIC
+
 
 def _summarize(orphan_positions: list[dict], stale_trades: list[dict]) -> str:
     lines: list[str] = []

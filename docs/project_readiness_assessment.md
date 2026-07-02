@@ -16,6 +16,12 @@ testing/dashboard) plus direct review of `docs/audit/*` and `docs/migration/*`
 (dated 2026-07-01, same day) for repository-structure and module-boundary findings.
 Every finding below is anchored to file:line evidence surfaced during those passes.
 
+> Historical baseline: this report intentionally preserves the July 1 pre-migration
+> findings. The July 2 implementation closed the repo-side strategy packaging,
+> Production import, verification, preflight, and disabled-staging gaps. See
+> `docs/architecture/production_svos_rollout_index.md` for the current delta and
+> remaining real-world rollout work.
+
 ---
 
 # Executive Summary

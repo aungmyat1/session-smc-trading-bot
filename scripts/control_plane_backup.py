@@ -12,6 +12,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from agtrade.admin import backup_main, restore_main
+from application.admin_service import _libpq_environment
+
+__all__ = ["_libpq_environment", "main"]
 
 
 def main() -> int:

@@ -24,6 +24,7 @@ include = [
   "execution*",
   "execution_simulator*",
   "execution_validation*",
+  "infrastructure*",
   "models*",
   "pipeline*",
   "production*",

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from agtrade.cli import main
+from svos.deployment.service import DeploymentStatusService
 
 
 def test_agtrade_research_status_summarizes_queue(tmp_path, capsys):
@@ -78,3 +80,55 @@ Exit Rules: Close at target
 
     assert exit_code == 0
     assert "ST-A2" in captured.out
+
+
+def test_agtrade_production_import_and_preflight_workflows(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("LIVE_TRADING", "false")
+    monkeypatch.setenv("DEMO_ONLY", "true")
+    catalog = tmp_path / "config" / "strategy_catalog.yaml"
+    catalog.parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs" / "specs").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "docs" / "specs" / "st_a2.md").write_text("# ST-A2\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("flask==3.0.0\n", encoding="utf-8")
+    catalog.write_text(
+        """
+current_strategy: ST-A2
+strategies:
+  ST-A2:
+    status: walk_forward
+    approved: true
+    current: true
+    version: "2.1"
+    owner: quant
+    description: Session liquidity reversal production candidate
+    deployment_target: execution
+    strategy_spec_path: docs/specs/st_a2.md
+    symbols: [EURUSD, GBPUSD]
+    timeframes: [M15, H4]
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    deployment = DeploymentStatusService(root=tmp_path, catalog_path=catalog).create_deployment(
+        strategy="ST-A2",
+        actor="risk-operator",
+    )
+
+    import_exit = main(["production", "import", "--deployment-id", deployment["deployment_id"], "--root", str(tmp_path)])
+    import_payload = json.loads(capsys.readouterr().out)
+
+    preflight_exit = main(["production", "preflight", "--deployment-id", deployment["deployment_id"], "--root", str(tmp_path)])
+    preflight_payload = json.loads(capsys.readouterr().out)
+    activate_exit = main(["production", "activate", "--deployment-id", deployment["deployment_id"], "--root", str(tmp_path)])
+    activate_payload = json.loads(capsys.readouterr().out)
+    status_exit = main(["production", "status", "--deployment-id", deployment["deployment_id"], "--root", str(tmp_path)])
+    status_payload = json.loads(capsys.readouterr().out)
+
+    assert import_exit == 0
+    assert preflight_exit == 0
+    assert activate_exit == 0
+    assert status_exit == 0
+    assert Path(import_payload["staged_archive_path"]).exists()
+    assert preflight_payload["verdict"] == "READY_DISABLED"
+    assert activate_payload["activation_status"] == "STAGED_DISABLED"
+    assert status_payload["overall_status"] == "STAGED_DISABLED"

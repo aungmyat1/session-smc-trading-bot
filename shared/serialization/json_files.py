@@ -55,13 +55,14 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def stable_manifest_hash(payload: dict[str, Any]) -> str:
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def file_sha1(path: Path) -> str:
     if not path.exists() or not path.is_file():
         return ""
-    digest = hashlib.sha1()
+    # Legacy compatibility fingerprint only; package security uses SHA-256.
+    digest = hashlib.sha1(usedforsecurity=False)
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)

@@ -1,0 +1,55 @@
+name: Strategy Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: Approved strategy catalog name
+        required: true
+      version:
+        description: Approved strategy semantic version
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: strategy-release-${{ inputs.strategy }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build signed strategy release
+    runs-on: ubuntu-latest
+    environment: strategy-release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements.lock
+      - name: Authenticate to Google Cloud
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_RELEASE_SERVICE_ACCOUNT }}
+      - name: Build and verify approved package
+        env:
+          SVOS_PACKAGE_SIGNING_MODE: gcp-kms-asymmetric
+          SVOS_CLOUD_ADAPTER: real
+          SVOS_KMS_KEY_VERSION: ${{ vars.SVOS_KMS_KEY_VERSION }}
+          SVOS_PACKAGE_TRANSPORT: gcs
+          SVOS_GCS_BUCKET: ${{ vars.SVOS_GCS_BUCKET }}
+        run: python scripts/build_strategy_release.py --strategy '${{ inputs.strategy }}' --version '${{ inputs.version }}' --output dist/release
+      - name: Publish immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create 'strategy/${{ inputs.strategy }}/v${{ inputs.version }}'
+          dist/release/*
+          --generate-notes
+          --target '${{ github.sha }}'
+          --title '${{ inputs.strategy }} v${{ inputs.version }}'

@@ -1,0 +1,20 @@
+[Unit]
+Description=Agtrade production disabled-deployment poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=agtrade
+Group=agtrade
+WorkingDirectory=/opt/session-smc-trading-bot
+EnvironmentFile=/etc/session-smc-trading-bot/production.env
+Environment=LIVE_TRADING=false
+Environment=DEMO_ONLY=true
+ExecStart=/opt/session-smc-trading-bot/.venv/bin/agtrade production poll --root /opt/session-smc-trading-bot
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/session-smc-trading-bot/data/production /opt/session-smc-trading-bot/reports/production_preflight
+

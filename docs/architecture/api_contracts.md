@@ -1,19 +1,21 @@
 # API Contracts
 
 Date: 2026-07-01
-Status: target contract proposal
+Status: versioned contract implemented; authentication hardening remains
 
 ## Goal
 
 Define explicit versioned interfaces between SVOS and Production.
 
-## Proposed Endpoints
+## Implemented Endpoints
 
 ```text
-GET  /api/v1/strategy/latest
-GET  /api/v1/strategy/{id}
-GET  /api/v1/validation/status
-POST /api/v1/deployment/report
+GET  /api/v1/strategies/{strategy}/latest
+GET  /api/v1/strategies/{strategy}/versions/{version}
+GET  /api/v1/validations/{strategy}/{version}
+POST /api/v1/deployments
+POST /api/v1/deployments/{deployment_id}/reports
+GET  /api/v1/deployments/{deployment_id}
 ```
 
 ## Contract Requirements
