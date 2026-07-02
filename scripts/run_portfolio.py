@@ -40,6 +40,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from approval_package.package_validator import validate_package
+
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
@@ -101,6 +103,22 @@ def _load_strategy_config() -> dict:
             return yaml.safe_load(f) or {}
     except Exception:
         return {}
+
+
+def _resolve_strategy_package(args: argparse.Namespace) -> str | None:
+    package_path = args.strategy_package or os.environ.get("APPROVED_STRATEGY_PACKAGE", "")
+    return package_path.strip() or None
+
+
+def _ensure_strategy_package(package_path: str | None) -> None:
+    if not package_path:
+        raise PermissionError(
+            "approved strategy package is required for demo execution"
+        )
+    result = validate_package(package_path)
+    if not result.valid:
+        raise PermissionError("approved package rejected: " + "; ".join(result.reasons))
+    _log.info("Approved strategy package accepted: %s", result.package_path)
 
 _CFG = _load_strategy_config()
 _STRAT_CFG: dict = _CFG.get("strategies", {})
@@ -396,6 +414,8 @@ def main() -> None:
     parser.add_argument("--mode", choices=["shadow", "demo", "live"],
                         default=env_mode)
     parser.add_argument("--interval", type=int, default=INTERVAL)
+    parser.add_argument("--strategy-package", default=os.environ.get("APPROVED_STRATEGY_PACKAGE", ""),
+                        help="Path to approved strategy package for demo execution")
     parser.add_argument("--dry-run", action="store_true", default=False,
                         help="Alias for --mode shadow")
     args = parser.parse_args()
@@ -411,6 +431,14 @@ def main() -> None:
             "See CLAUDE.md §0 rule 1."
         )
         sys.exit(1)
+
+    package_path = _resolve_strategy_package(args)
+    if mode == "demo":
+        try:
+            _ensure_strategy_package(package_path)
+        except PermissionError as exc:
+            print(f"ERROR: {exc}")
+            sys.exit(1)
 
     asyncio.run(run(mode, args.interval))
 
