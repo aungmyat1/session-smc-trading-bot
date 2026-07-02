@@ -1,0 +1,18 @@
+[Unit]
+Description=Session SMC Unified Dashboard Flask Service
+After=network.target
+
+[Service]
+Type=simple
+User=smc
+Group=smc
+WorkingDirectory=/opt/session-smc-trading-bot
+EnvironmentFile=/opt/session-smc-trading-bot/deploy/dashboard/dashboard.env
+ExecStart=/opt/session-smc-trading-bot/.venv/bin/python dashboard/app.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
