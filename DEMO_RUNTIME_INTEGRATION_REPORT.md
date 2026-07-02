@@ -62,3 +62,7 @@ These baseline findings do not contradict the green scoped PR CI, but they remai
 ## Safety verdict
 
 **READY TO MERGE WHEN BRANCH POLICY IS SATISFIED.** This verdict covers demo runtime integration only. It does not authorize live trading.
+
+## Post-merge fixture validation
+
+PR #20 adds one deterministic `ST-A2` package fixture for offline smoke testing. Its metadata is `DEMO_ONLY`, `dry_run_only=true`, and `live_eligible=false`; it uses a conspicuous test-only HMAC key and a test/demo SVOS registry fixture. The offline smoke path validates the package, identity, canonical runner, SVOS/dashboard mapping, and report artifacts without connecting to a broker or submitting an order.

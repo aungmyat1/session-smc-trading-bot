@@ -1,0 +1,10 @@
+{
+  "approval_status": "APPROVED",
+  "approved_at": "2026-07-02T00:00:00+00:00",
+  "deployment_mode": "DEMO_ONLY",
+  "dry_run_only": true,
+  "expires_at": "2099-12-31T23:59:59+00:00",
+  "fixture": true,
+  "live_eligible": false,
+  "strategy_id": "ST-A2"
+}

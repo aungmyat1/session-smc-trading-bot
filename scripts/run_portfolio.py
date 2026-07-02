@@ -111,19 +111,27 @@ def _resolve_strategy_package(args: argparse.Namespace) -> str | None:
     return package_path.strip() or None
 
 
-def _ensure_strategy_package(package_path: str | None, runner_strategy_id: str | None = None) -> str:
+def _ensure_strategy_package(
+    package_path: str | None,
+    runner_strategy_id: str | None = None,
+    *,
+    signing_key: str | None = None,
+    root: Path = _ROOT,
+    registry_root: Path | str | None = None,
+) -> str:
     if not package_path:
         raise PermissionError(
             "approved strategy package is required for demo execution"
         )
-    result = validate_package(package_path)
+    result = validate_package(package_path, signing_key=signing_key)
     if not result.valid:
         raise PermissionError("approved package rejected: " + "; ".join(result.reasons))
     strategy_id = (runner_strategy_id or package_strategy_id(package_path)).strip()
     identity = validate_strategy_identity(
-        root=_ROOT,
+        root=root,
         package_path=package_path,
         runner_strategy_id=strategy_id,
+        registry_root=registry_root,
     )
     identity.require_valid()
     _log.info("Approved strategy package accepted: %s", result.package_path)

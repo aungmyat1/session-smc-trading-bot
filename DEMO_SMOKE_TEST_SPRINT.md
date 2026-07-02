@@ -1,7 +1,7 @@
 # Demo Smoke Test Sprint
 
 - Date: 2026-07-02
-- Status: PREFLIGHT BLOCKED — APPROVED PACKAGE REQUIRED
+- Status: OFFLINE PREFLIGHT PASS — BROKER PHASE NOT STARTED
 - Owner: Engineering / Operations
 - Live trading: DISABLED
 
@@ -10,11 +10,16 @@
 - PR #19 merged: **PASS** (`284dcab` on `main`)
 - Demo runtime integration report preserved: **PASS**
 - Package and identity CLI self-tests: **PASS**
-- Active approved package: **BLOCKED** (`reports/approved_packages/active` is absent)
+- Deterministic demo-only package fixture: **PASS** (`tests/fixtures/demo_approved_package`)
+- Test/demo SVOS registration: **PASS** (`tests/fixtures/svos_demo_registry/ST-A2`)
 - Broker connection attempt: **NOT STARTED**
 - Order submission: **NOT STARTED**
 
-The smoke test must not create, approve, or select a package on behalf of the strategy engineering platform. Operations must provide a signed, unexpired, risk-approved package whose identity matches the catalog, portfolio, SVOS registry, and runner.
+The fixture is explicitly `DEMO_ONLY`, dry-run only, not live eligible, deterministic, test-signed, and tied to `ST-A2`. It is test evidence only and cannot authorize a broker or live runtime.
+
+## Offline smoke result
+
+The package, identity chain, canonical runner preflight, SVOS registration, dashboard stage mapping, and JSON/Markdown report generation pass. The smoke command contains no broker construction or order submission path. Live mode raises before validation or report generation.
 
 ## Smoke sequence
 
@@ -29,6 +34,6 @@ The smoke test must not create, approve, or select a package on behalf of the st
 9. Restart the demo process and verify state recovery and signal deduplication.
 10. Begin the two-week minimum observation window only after every preflight check passes.
 
-## Required operator input
+## Next operator-gated phase
 
-Place or link the approved package at `reports/approved_packages/active`, configure `STRATEGY_PACKAGE_SIGNING_KEY`, and identify the canonical strategy with `RUNNER_STRATEGY_ID`. No broker smoke test should run until those inputs validate.
+Broker connectivity remains intentionally unstarted. Before any connected demo test, operations must separately authorize the demo account configuration and provide a non-fixture approved package. The fixture and its test key must never be promoted to a runtime or live credential path.

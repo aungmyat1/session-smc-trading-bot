@@ -1,0 +1,14 @@
+{
+  "digest_sha256": "0039b7f193a1e906f89183d58099bdbc8d2d2a4274f632f4257254f6cccb1a18",
+  "files": {
+    "approval_status.json": "97230f085db1f3db6e7a6bc0832d7f119b649502495a5dd55f7ddff7a5e6239b",
+    "backtest_report.md": "7e88ea8fa8c3f8203d6cd69a6286c05510308c93b058efca0f0aaad2d5687b2b",
+    "demo_profile.json": "5898770e518cde656a68cad5f48863748d4ab918c903d4e8b9a7a9123442cf74",
+    "replay_report.md": "ce556cd76f80e7431368d65956cf368eee684644da6c0be8ee091c5b90741450",
+    "risk_report.md": "a76693bec09c4e6a98df45e0811eaae3c7390be9b377c4d23cc9fca346641565",
+    "strategy_spec.yaml": "8b9127d15dfcabf458eb95720c551d79cba73ec409aa69baa835045b21907da0",
+    "validation_summary.json": "742ecba0c0a9d94fe0846bc7ad9b390ca879ef1490e26cfcf67a4505e83e6ddc"
+  },
+  "scheme": "hmac-sha256",
+  "signature": "ee540f14a5d397c06071e27b18412f5a87a89f0a2b3e29e2a39724099d11ac83"
+}

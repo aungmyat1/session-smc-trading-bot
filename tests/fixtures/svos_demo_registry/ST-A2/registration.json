@@ -1,0 +1,7 @@
+{
+  "context": "test/demo",
+  "live_eligible": false,
+  "package": "tests/fixtures/demo_approved_package",
+  "registration_status": "REGISTERED",
+  "strategy": "ST-A2"
+}

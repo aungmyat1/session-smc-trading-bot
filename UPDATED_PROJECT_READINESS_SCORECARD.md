@@ -17,14 +17,16 @@
 | Legacy runner migration | 90% | Marked legacy; compatibility file remains |
 | Repository-wide code hygiene | 45% | Existing Ruff/mypy baseline debt |
 | Full local test stability | 60% | Scoped suites and CI pass; native pandas crash blocks full run |
-| Demo observation evidence | 0% | Two-to-four-week smoke/stability period not started |
+| Offline demo smoke preflight | 100% | Deterministic fixture, identity, runner, dashboard, and reports pass |
+| Demo observation evidence | 0% | Connected two-to-four-week stability period not started |
 
 ## Gate decisions
 
 - Demo Runtime Integration Sprint: **PASS**.
 - PR #19 CI: **PASS**.
 - PR #19 merge: **BLOCKED BY REPOSITORY POLICY**, not by CI.
-- Demo Smoke Test Sprint: **NEXT**, only after PR #19 merges.
+- Approved Package Creation Sprint: **PASS** for test/demo fixture scope.
+- Demo Smoke Test Sprint: **OFFLINE PREFLIGHT PASS**; broker phase remains operator-gated.
 - Live readiness: **BLOCKED** pending demo observation, operational evidence, and explicit approval.
 
 ## Next milestone
