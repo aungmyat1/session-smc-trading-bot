@@ -1,0 +1,32 @@
+name: Operational work
+description: Infrastructure, Production, SVOS, monitoring, security, or debt item
+title: "[area] "
+labels: [technical-debt]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Infrastructure, Production, SVOS, Documentation, Monitoring, Security, Technical Debt]
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Required outcome
+      description: Describe the observable result, not only an implementation idea.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and rollback
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance checks
+      placeholder: Tests, monitoring evidence, documentation, and rollback proof
+    validations:
+      required: true

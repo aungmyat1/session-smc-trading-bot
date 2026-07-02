@@ -1,38 +1,25 @@
 #!/usr/bin/env python3
-"""Run the manifest-driven research queue."""
+"""Compatibility wrapper for the canonical agtrade research queue command."""
 
 from __future__ import annotations
 
-import argparse
-import json
 import sys
-from dataclasses import asdict
+import warnings
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from research.research_queue import run_research_queue
+from agtrade.research import research_queue_main
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the research queue")
-    parser.add_argument("--queue", default="config/research_queue.yaml", help="Queue YAML file")
-    parser.add_argument(
-        "--output-dir",
-        default="reports/research_queue",
-        help="Directory for job results and reports",
+    warnings.warn(
+        "scripts/run_research_queue.py is deprecated; use `agtrade research queue` instead.",
+        DeprecationWarning,
+        stacklevel=2,
     )
-    parser.add_argument("--dry-run", action="store_true", help="Validate jobs without running commands")
-    args = parser.parse_args()
-
-    results = run_research_queue(
-        path=_ROOT / args.queue,
-        output_dir=_ROOT / args.output_dir,
-        dry_run=args.dry_run,
-    )
-    print(json.dumps([asdict(result) for result in results], indent=2, sort_keys=True))
-    return 0
+    return research_queue_main(sys.argv[1:])
 
 
 if __name__ == "__main__":

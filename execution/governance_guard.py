@@ -7,7 +7,7 @@ from typing import Any
 from core.strategy_registry import can_deploy_strategy, get_strategy_manifest
 from svos.governance.service import GovernanceService
 from svos.registry.service import StrategyRegistryService
-from svos.shared.support import now_iso, stable_manifest_hash
+from shared.serialization import now_iso, stable_manifest_hash
 
 
 @dataclass(slots=True)

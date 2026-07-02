@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import date
 from typing import List, Optional
 
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 # Risk tiers — risk_pct applied per trade (% of account)
 RISK_TIERS: dict[str, float] = {

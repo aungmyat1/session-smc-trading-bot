@@ -11,12 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-try:
-    import yaml
-except ImportError as exc:  # pragma: no cover - dependency exists in CI
-    raise RuntimeError("PyYAML is required for the strategy catalog") from exc
-
 from core.base_strategy import BaseStrategy
+from shared.configuration import load_yaml_mapping
 
 _registry: Dict[str, BaseStrategy] = {}
 _LIFECYCLE_ORDER = {
@@ -48,13 +44,7 @@ def _normalize_status(status: str | None) -> str:
 
 def _catalog_payload(path: Path | None = None) -> dict[str, Any]:
     catalog_path = Path(path) if path is not None else _CATALOG_PATH
-    if not catalog_path.exists():
-        return {"strategies": {}}
-    with catalog_path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
-    if not isinstance(data, dict):
-        return {"strategies": {}}
-    data = dict(data)
+    data = load_yaml_mapping(catalog_path, default={"strategies": {}})
     strategies = data.get("strategies", {})
     if not isinstance(strategies, dict):
         strategies = {}
@@ -63,6 +53,8 @@ def _catalog_payload(path: Path | None = None) -> dict[str, Any]:
 
 
 def _write_catalog(payload: dict[str, Any], path: Path | None = None) -> None:
+    import yaml
+
     catalog_path = Path(path) if path is not None else _CATALOG_PATH
     catalog_path.parent.mkdir(parents=True, exist_ok=True)
     with catalog_path.open("w", encoding="utf-8") as handle:

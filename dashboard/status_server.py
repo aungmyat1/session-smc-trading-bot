@@ -29,9 +29,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from core.trade_journal_db import TradeJournalDB
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
-from execution.control_plane import TradingPermissionService
-from execution.execution_state import ExecutionStateStore
-from execution.governance_guard import StrategyExecutionGuard
+from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))

@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from svos.shared.support import now_iso, stable_manifest_hash
+from shared.serialization import now_iso, stable_manifest_hash
 
 
 _SCHEMA_VERSION = "1.0"

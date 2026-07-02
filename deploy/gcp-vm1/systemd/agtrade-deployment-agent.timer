@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll for approved strategy deployments every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+RandomizedDelaySec=10
+Persistent=true
+Unit=agtrade-deployment-agent.service
+
+[Install]
+WantedBy=timers.target

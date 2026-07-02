@@ -12,7 +12,7 @@ from svos.application.intake import IntakeService
 from svos.application.replay import ReplayIntegrationService
 from svos.application.robustness import RobustnessIntegrationService
 from svos.application.virtual_demo import VirtualDemoIntegrationService
-from svos.shared.support import now_iso, stable_manifest_hash
+from shared.serialization import now_iso, stable_manifest_hash
 
 _PHASES = ("INTAKE", "AUDIT", "REPLAY", "BACKTEST", "ROBUSTNESS", "VIRTUAL_DEMO")
 

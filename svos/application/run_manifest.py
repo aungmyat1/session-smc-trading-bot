@@ -25,7 +25,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from svos.shared.support import now_iso, stable_manifest_hash
+from shared.serialization import now_iso, stable_manifest_hash
 
 
 @dataclass(slots=True)

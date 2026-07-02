@@ -8,8 +8,9 @@ Wraps research.robustness (walk_forward_analysis, monte_carlo_resampling,
 parameter_sensitivity, regime_analysis) and connects results to SVOS evidence
 + governance lifecycle.
 
-A PASS requires at least walk-forward and Monte Carlo to both pass. Parameter
-sensitivity and regime analysis are recorded but treated as WARN-only.
+A PASS requires walk-forward, Monte Carlo, parameter sensitivity, and regime
+analysis to all pass. Missing or malformed supplemental robustness inputs fail
+closed rather than being silently downgraded.
 
 Lifecycle:
   STATISTICAL_VALIDATION → ROBUSTNESS_VALIDATION  (PASS)
@@ -64,7 +65,7 @@ class RobustnessIntegrationService:
         *,
         actor: str = "svos-robustness",
         dataset_id: str = "",
-        parameter_grid: list[dict[str, Any]] | None = None,
+        parameter_grid: list[dict[str, Any]] | dict[str, Any] | None = None,
         regime_labels: list[str] | None = None,
         r_key: str = "result_r",
     ) -> RobustnessResult:
@@ -76,8 +77,10 @@ class RobustnessIntegrationService:
                 specified by r_key (default "result_r") plus entry_time.
             actor: Caller identity.
             dataset_id: Dataset snapshot ID.
-            parameter_grid: Optional list of parameter-sweep result dicts for
-                sensitivity analysis. Each: {"params": {...}, "result_r": ...}.
+            parameter_grid: Optional parameter-sweep payload for sensitivity
+                analysis. Accepts either the native rr-results mapping expected
+                by ``research.robustness.parameter_sensitivity`` or a list of
+                sweep points that include an RR key plus a profit-factor metric.
             regime_labels: Optional list of regime label strings (one per trade)
                 for regime-slice analysis.
             r_key: Key used to read the net R value from each trade dict.
@@ -97,11 +100,14 @@ class RobustnessIntegrationService:
 
         wf = self._run_walk_forward(normalized)
         mc = self._run_monte_carlo(normalized)
-        sens = self._run_sensitivity(parameter_grid or [])
-        reg = self._run_regime(normalized, regime_labels or [])
+        sens = self._run_sensitivity(parameter_grid)
+        reg = self._run_regime(normalized, regime_labels)
 
-        # PASS = walk-forward AND Monte Carlo both pass (§4 hard gates)
-        hard_pass = wf.get("passed", False) and mc.get("passed", False)
+        # PASS = all four robustness gates passing.
+        hard_pass = all(
+            component.get("passed", False)
+            for component in (wf, mc, sens, reg)
+        )
         status = "PASS" if hard_pass else "FAIL"
 
         current = self._platform.registry.ensure_strategy(strategy)
@@ -184,24 +190,67 @@ class RobustnessIntegrationService:
             return {"passed": False, "reason": str(exc), "iterations": 0}
 
     @staticmethod
-    def _run_sensitivity(parameter_grid: list[dict[str, Any]]) -> dict[str, Any]:
-        if not parameter_grid:
-            return {"status": "SKIPPED", "reason": "no parameter grid provided"}
+    def _run_sensitivity(parameter_grid: list[dict[str, Any]] | dict[str, Any] | None) -> dict[str, Any]:
+        rr_results = RobustnessIntegrationService._normalize_parameter_grid(parameter_grid)
+        if not rr_results:
+            return {"passed": False, "reason": "no_parameter_grid"}
         try:
             from research.robustness import parameter_sensitivity
-            return parameter_sensitivity(parameter_grid)
+            return parameter_sensitivity(rr_results)
         except Exception as exc:
-            return {"status": "ERROR", "reason": str(exc)}
+            return {"passed": False, "reason": str(exc), "rr_results": rr_results}
 
     @staticmethod
-    def _run_regime(trades: list[dict[str, Any]], regime_labels: list[str]) -> dict[str, Any]:
-        if not regime_labels:
-            return {"status": "SKIPPED", "reason": "no regime labels provided"}
+    def _run_regime(trades: list[dict[str, Any]], regime_labels: list[str] | None) -> dict[str, Any]:
         try:
             from research.robustness import regime_analysis
-            return regime_analysis(trades, regime_labels=regime_labels, r_key="std_net_r")
+            return regime_analysis(
+                RobustnessIntegrationService._merge_regime_labels(trades, regime_labels),
+                r_key="std_net_r",
+            )
         except Exception as exc:
-            return {"status": "ERROR", "reason": str(exc)}
+            return {"passed": False, "reason": str(exc), "regimes": []}
+
+    @staticmethod
+    def _normalize_parameter_grid(parameter_grid: list[dict[str, Any]] | dict[str, Any] | None) -> dict[str, Any]:
+        if isinstance(parameter_grid, dict):
+            return parameter_grid
+        if not isinstance(parameter_grid, list):
+            return {}
+
+        rr_results: dict[str, Any] = {}
+        for row in parameter_grid:
+            if not isinstance(row, dict):
+                continue
+            rr_value = (
+                row.get("rr")
+                or row.get("reward_risk")
+                or row.get("reward_risk_ratio")
+                or row.get("rr_ratio")
+                or row.get("take_profit_r")
+            )
+            if rr_value is None:
+                continue
+
+            metrics = row.get("std_metrics") if isinstance(row.get("std_metrics"), dict) else None
+            if metrics is None:
+                net_pf = row.get("net_pf") or row.get("profit_factor")
+                if net_pf is None:
+                    continue
+                metrics = {"net_pf": float(net_pf)}
+            rr_results[str(rr_value)] = {"std_metrics": metrics}
+        return rr_results
+
+    @staticmethod
+    def _merge_regime_labels(trades: list[dict[str, Any]], regime_labels: list[str] | None) -> list[dict[str, Any]]:
+        if regime_labels is None:
+            return trades
+        if len(regime_labels) != len(trades):
+            raise ValueError("regime label count must match trade count")
+        merged: list[dict[str, Any]] = []
+        for trade, regime in zip(trades, regime_labels, strict=True):
+            merged.append({**trade, "regime": regime})
+        return merged
 
     def _drive_lifecycle(self, strategy: str, status: str, actor: str, current: Any) -> None:
         current_stage = str(current.current_stage)

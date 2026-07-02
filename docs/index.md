@@ -57,10 +57,38 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
   - [05 Risk Assessment](svos/architecture-review-2026-06-29/05_RISK_ASSESSMENT.md)
   - [06 Upgrade Roadmap](svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md)
 
+### Architecture Separation Migration
+
+- [Phase 0 baseline](migration/baseline.md)
+- [Phase 0 test status](migration/current_test_status.md)
+- [Phase 0 safety state](migration/safety_state.md)
+- [Current architecture state](architecture/current_state.md)
+- [Target architecture](architecture/target_architecture.md)
+- [Module inventory](architecture/module_inventory.md)
+- [Module boundaries](architecture/module_boundaries.md)
+- [Dependency graph](architecture/dependency_graph.md)
+- [Risk assessment](architecture/risk_assessment.md)
+- [Dashboard boundary](architecture/dashboard_boundary.md)
+- [Shared library design](architecture/shared_library_design.md)
+- [Strategy registry](architecture/strategy_registry.md)
+- [API contracts](architecture/api_contracts.md)
+- [Deployment flow](architecture/deployment_flow.md)
+- [Migration plan](architecture/migration_plan.md)
+- [Production/SVOS rollout index](architecture/production_svos_rollout_index.md)
+- [Implementation plan](architecture/production_svos_implementation_plan.md)
+- [Implementation completion report](architecture/production_svos_implementation_completion_report.md)
+- [Remaining real-world rollout tasks](architecture/remaining_real_world_rollout_tasks.md)
+- [Institutional platform plan](implementation/INSTITUTIONAL_TRADING_PLATFORM_PLAN.md)
+
 ---
 
 ## Operations
 
+- [Current operational status](operations/current_operational_status.md)
+- [Production readiness report](operations/production_readiness_report.md)
+- [Disabled deployment runbook](operations/deployment_runbook.md)
+- [Monitoring endpoints](operations/monitoring_endpoints.md)
+- [GitHub operating model](operations/github_operating_model.md)
 - [OPERATING_MANUAL.md](OPERATING_MANUAL.md) — run, monitor, pause, recover
 - [VPS_DEPLOYMENT_RUNBOOK.md](VPS_DEPLOYMENT_RUNBOOK.md)
 - [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md)

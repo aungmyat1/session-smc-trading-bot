@@ -1,11 +1,21 @@
-name: stabilization-gates
+name: CI
 
 on:
   push:
+    branches: [main, develop, "feature/**", "hotfix/**", "release/**"]
   pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  quality:
+    name: Quality and architecture
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -14,25 +24,101 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install locked development dependencies
-        run: python -m pip install -r requirements-dev.lock
-      - name: Unit and architecture tests
-        run: python -m pytest -q
-      - name: Type-check canonical lifecycle
-        run: python -m mypy
-      - name: Lint stabilization boundary
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Ruff
         run: >-
           python -m ruff check
-          db/connection.py db/control_plane.py db/evidence_repository.py db/legacy_import.py
-          db/projection.py db/migrations data/*.py src/data adaptive/data svos/adapters svos/lifecycle
-          svos/registry svos/reports dashboard/app.py tests/architecture tests/database
-      - name: Compile migration SQL without credentials
+          application production shared svos infrastructure
+          scripts/build_strategy_release.py scripts/validate_strategy_package.py
+          tests/architecture
+      - name: Type check
+        run: python -m mypy --follow-imports=skip svos/lifecycle shared/models shared/serialization
+      - name: Architecture contracts
+        run: python -m pytest -q -o addopts='' tests/architecture
+      - name: Compile database migration offline
         env:
           DATABASE_URL: postgresql://ci:percent%21safe@localhost/svos
         run: python -m alembic upgrade head --sql >/tmp/svos-migration.sql
-      - name: Reject committed secret files
+      - name: Repository hygiene
+        run: git diff --check
+
+  tests:
+    name: Tests (${{ matrix.tier }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        tier: [unit, integration]
+        include:
+          - tier: unit
+            paths: "tests/production tests/svos tests/execution --ignore=tests/svos/test_pipeline.py"
+          - tier: integration
+            paths: "tests/database tests/integration tests/test_agtrade_cli.py tests/test_dashboard_app.py"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python -m pytest -q -o addopts='' ${{ matrix.paths }} --junitxml=test-results/${{ matrix.tier }}.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.tier }}
+          path: test-results/
+          retention-days: 30
+
+  security:
+    name: Security and dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Reject tracked secrets
         run: |
           test ! -f .env
-          ! git grep -nE "(VANTAGE|METAAPI|TELEGRAM)_(TOKEN|PASSWORD|SECRET)[[:space:]]*=[[:space:]]*['\"][^'\"]+['\"]" -- ':!*.md'
-      - name: Whitespace integrity
-        run: git diff --check
+          ! git grep -nE '(TOKEN|PASSWORD|SECRET|API_KEY)[[:space:]]*=[[:space:]]*["'"'][^"'"']+["'"']' -- '*.py' '*.yml' '*.yaml'
+      - name: Dependency audit
+        # MetaApi SDK 29 pins Socket.IO 4.x. These findings are accepted only
+        # while broker execution remains live-disabled; see the readiness report.
+        run: >-
+          python -m pip_audit -r requirements.lock --disable-pip
+          --ignore-vuln CVE-2026-48802 --ignore-vuln CVE-2026-48809
+          --ignore-vuln CVE-2025-61765 --ignore-vuln CVE-2026-48804
+      - name: Static security scan
+        run: python -m bandit -q -ll -r application production shared svos infrastructure
+
+  docs-and-package:
+    name: Documentation and package contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+      - run: python scripts/lint_docs.py --root docs --index docs/index.md
+      - run: python scripts/check_docs_drift.py --root .
+      - run: python scripts/validate_strategy_package.py --self-test
+
+  required:
+    name: Required CI
+    if: always()
+    needs: [quality, tests, security, docs-and-package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce all gates
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: test "$RESULTS" = "success,success,success,success"

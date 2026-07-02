@@ -4,6 +4,21 @@
 
 ---
 
+## ⚠ Known drift vs. actual deployment (added 2026-07-01)
+
+This document describes a strict sequential A→B→C→D ladder, gated on Strategy A's
+paper-trade result. `config/strategy_portfolio.yaml` has since diverged from that: it
+runs **five** strategies concurrently in tiered demo/shadow execution — ST-A2 (demo,
+tier1), LondonBreakout (demo, tier2), NYMomentum (demo, tier2), AdaptiveSMC (shadow,
+tier3), VWAPMeanReversion (shadow, tier3) — none of which map onto this ladder's B/C/D
+strategies, and none of which have cleared this document's Phase-0 gates. See specs
+under `docs/strategy_audit/strategies/`. This is a tracked governance gap (CLAUDE.md
+§1, `docs/VERDICT_LOG.md` 2026-07-01 entry), not resolved by this note — reconciling
+"what this roadmap says should be blocked" against "what the config actually runs" is
+open work for the owner, not something to silently pick a side on.
+
+---
+
 ## Purpose
 
 Define the four-strategy portfolio roadmap for this trading system. Each strategy

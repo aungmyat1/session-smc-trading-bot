@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from svos.shared.support import append_jsonl, now_iso, read_jsonl
+from shared.serialization import append_jsonl, now_iso, read_jsonl
 
 
 @dataclass(slots=True)

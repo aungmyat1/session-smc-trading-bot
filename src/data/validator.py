@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
+import re
 
 import pandas as pd
 
@@ -44,7 +46,16 @@ def validate_candles(frame: pd.DataFrame, expected_freq: str = "1min") -> Valida
 
     ts_sorted = ts.sort_values().reset_index(drop=True)
     diffs = ts_sorted.diff().dropna()
-    expected_delta = pd.Timedelta(expected_freq)
+    match = re.fullmatch(r"\s*(\d+)\s*(min|m|h|hour|hours|d|day|days)\s*", expected_freq, re.IGNORECASE)
+    if match is None:
+        raise ValueError(f"unsupported candle frequency: {expected_freq}")
+    amount = int(match.group(1))
+    unit = match.group(2).lower()
+    expected_delta = timedelta(
+        days=amount if unit in {"d", "day", "days"} else 0,
+        hours=amount if unit in {"h", "hour", "hours"} else 0,
+        minutes=amount if unit in {"min", "m"} else 0,
+    )
     gaps = diffs[diffs > expected_delta]
     gap_count = int(gaps.count())
     stats["gap_count"] = gap_count

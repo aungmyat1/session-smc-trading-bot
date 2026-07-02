@@ -25,6 +25,7 @@ REPORT_TYPE_TO_DIR = {
     "system-health": "system_health",
     "incident": "incidents",
     "live-readiness": "live_readiness",
+    "production-preflight": "production_preflight",
 }
 
 STATIC_REPORTS = {
@@ -68,7 +69,8 @@ def scan_reports() -> list[ReportRecord]:
         directory = REPORTS_ROOT / dirname
         if not directory.exists():
             continue
-        for path in sorted(directory.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+        pattern = "**/*.md" if report_type == "production-preflight" else "*.md"
+        for path in sorted(directory.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True):
             records.append(_build_record(path, report_type))
     for report_type, relative_path in STATIC_REPORTS.items():
         path = ROOT / relative_path
@@ -131,11 +133,15 @@ def latest_reports() -> dict[str, Any]:
     control = load_control_state()
     latest = payload.get("latest", {})
     recommendation = "CONTINUE"
-    for key in ("live-readiness", "daily", "risk", "system-health"):
+    for key in ("production-preflight", "live-readiness", "daily", "risk", "system-health"):
         record = latest.get(key)
         if not record:
             continue
         text = read_report(record["report_id"]).get("content", "")
+        if "Verdict:" in text:
+            marker = text.split("Verdict:", 1)[1].split("`", 2)
+            recommendation = recommendation_badge(marker[1] if len(marker) > 1 else "REVIEW")
+            break
         if "Final verdict:" in text:
             marker = text.split("Final verdict:", 1)[1].split("`", 2)
             recommendation = recommendation_badge(marker[1] if len(marker) > 1 else "REVIEW")

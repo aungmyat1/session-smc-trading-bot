@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 _log = logging.getLogger("journal.db")
 

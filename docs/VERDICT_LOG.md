@@ -1,16 +1,19 @@
 # Verdict Log — Session & SMC Trading Bot
 
-Date: 2026-06-21 (original) | Updated: 2026-06-29
+Date: 2026-06-21 (original) | Updated: 2026-07-01
 Status: Authoritative
 Version: append-only
 Owner: Quant Research
 Authority: Level 7 — Research Evidence
 Note: This log is append-only. Never modify or delete existing rows.
-Gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread stress
+Gate (effective 2026-07-01): n > 200 AND net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15%
+at BOTH standard AND 2× spread stress.
+Prior gate (rows recorded before 2026-07-01): n ≥ 50 AND net PF > 1.0 at BOTH standard
+AND 2× spread stress. Historical rows are not retroactively re-graded — read each row's
+verdict against the gate in force on its date.
 
 One row per trial. Never delete entries. Every parameter change = new row.
 Fee model: VT Markets Standard — spread + 0.6pip commission RT.
-Gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread stress.
 
 Reference failures from simple-smc-ag-trading-bot (do not re-run):
 - T27: EURUSD session-box sweep only — net PF=0.58 FAIL

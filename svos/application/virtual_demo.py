@@ -24,7 +24,7 @@ from typing import Any
 
 from svos.application.run_manifest import RunManifestBuilder
 from svos.reports.builders import VirtualDemoReportBuilder
-from svos.shared.support import now_iso
+from shared.serialization import now_iso
 
 
 _DRIFT_THRESHOLD = 0.10   # 10% PnL drift triggers FAIL

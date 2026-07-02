@@ -24,8 +24,8 @@ except ImportError:
 
 from execution.mt5_connector import MT5Connector
 from execution.vantage_demo_executor import VantageDemoExecutor
-from execution.trade_manager import TradeManager
 from execution.trade_journal import DemoTradeJournal
+from production.engine import TradeManager
 
 _JOURNAL_CANDIDATES = [
     _ROOT / "logs" / "strategy_demo_trades.jsonl",

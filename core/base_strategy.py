@@ -10,7 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from core.signal import Signal
+from shared.strategy_api import Signal
 
 
 class BaseStrategy(ABC):
