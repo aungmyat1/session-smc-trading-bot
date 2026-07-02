@@ -55,11 +55,11 @@ Evidence:
 - [../research/svos/engine.py](../research/svos/engine.py)
 Evidence:
 
-- [docs/strategy_validation/validators/ambiguity_validator.py](docs/strategy_validation/validators/ambiguity_validator.py)
-- [docs/strategy_validation/validators/completeness_validator.py](docs/strategy_validation/validators/completeness_validator.py)
-- [docs/strategy_validation/validators/consistency_validator.py](docs/strategy_validation/validators/consistency_validator.py)
-- [docs/strategy_validation/validators/measurability_validator.py](docs/strategy_validation/validators/measurability_validator.py)
-- [docs/strategy_validation/validators/risk_validator.py](docs/strategy_validation/validators/risk_validator.py)
+- [../strategy_validation/validators/ambiguity_validator.py](../strategy_validation/validators/ambiguity_validator.py)
+- [../strategy_validation/validators/completeness_validator.py](../strategy_validation/validators/completeness_validator.py)
+- [../strategy_validation/validators/consistency_validator.py](../strategy_validation/validators/consistency_validator.py)
+- [../strategy_validation/validators/measurability_validator.py](../strategy_validation/validators/measurability_validator.py)
+- [../strategy_validation/validators/risk_validator.py](../strategy_validation/validators/risk_validator.py)
 Reference expectation:
 
 - After audit, the strategy enters an enhancement/editor stage before replay.
@@ -92,8 +92,8 @@ Evidence:
 
 - [../research/svos/engine.py](../research/svos/engine.py)
 - [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
-- [docs/dashboard/app.py](docs/dashboard/app.py)
-- [docs/dashboard/index.html](docs/dashboard/index.html)
+- [../dashboard/app.py](../dashboard/app.py)
+- [../dashboard/index.html](../dashboard/index.html)
 Assessment:
 
 - Matches the reference direction.
@@ -111,11 +111,11 @@ Evidence:
 
 Evidence:
 - Strong alignment.
--- [../docs/strategy_validation/validators/ambiguity_validator.py](../docs/strategy_validation/validators/ambiguity_validator.py)
--- [../docs/strategy_validation/validators/completeness_validator.py](../docs/strategy_validation/validators/completeness_validator.py)
--- [../docs/strategy_validation/validators/consistency_validator.py](../docs/strategy_validation/validators/consistency_validator.py)
--- [../docs/strategy_validation/validators/measurability_validator.py](../docs/strategy_validation/validators/measurability_validator.py)
--- [../docs/strategy_validation/validators/risk_validator.py](../docs/strategy_validation/validators/risk_validator.py)
+-- [../strategy_validation/validators/ambiguity_validator.py](../strategy_validation/validators/ambiguity_validator.py)
+-- [../strategy_validation/validators/completeness_validator.py](../strategy_validation/validators/completeness_validator.py)
+-- [../strategy_validation/validators/consistency_validator.py](../strategy_validation/validators/consistency_validator.py)
+-- [../strategy_validation/validators/measurability_validator.py](../strategy_validation/validators/measurability_validator.py)
+-- [../strategy_validation/validators/risk_validator.py](../strategy_validation/validators/risk_validator.py)
 
 ### 5. Interactive AI clarification/editor loop
 
@@ -279,8 +279,8 @@ What to confirm:
 
 Inspect:
 
-- [../docs/dashboard/app.py](../docs/dashboard/app.py)
-- [../docs/dashboard/index.html](../docs/dashboard/index.html)
+- [../dashboard/app.py](../dashboard/app.py)
+- [../dashboard/index.html](../dashboard/index.html)
 
 What to confirm:
 

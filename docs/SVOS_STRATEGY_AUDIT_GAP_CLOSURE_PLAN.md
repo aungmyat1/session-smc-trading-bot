@@ -77,8 +77,8 @@ Implementation steps:
 
 Primary files:
 
-- [docs/docs/strategy_validation/pipeline/strategy_validation_pipeline.py](docs/docs/strategy_validation/pipeline/strategy_validation_pipeline.py)
-- [docs/docs/docs/research/svos/engine.py](docs/docs/docs/research/svos/engine.py)
+- [../strategy_validation/pipeline/strategy_validation_pipeline.py](../strategy_validation/pipeline/strategy_validation_pipeline.py)
+- [../research/svos/engine.py](../research/svos/engine.py)
 
 Definition of done:
 
@@ -117,7 +117,7 @@ Primary files to add or extend:
 
 - `strategy_validation/ai/question_engine.py`
 - `strategy_validation/ai/editor_engine.py`
-- [docs/docs/docs/research/svos/engine.py](docs/docs/docs/research/svos/engine.py)
+- [../research/svos/engine.py](../research/svos/engine.py)
 
 Definition of done:
 
@@ -177,9 +177,9 @@ Implementation steps:
 
 Primary files:
 
-- [docs/strategy_validation/models.py](docs/strategy_validation/models.py)
-- [docs/strategy_validation/reports/report_generator.py](docs/strategy_validation/reports/report_generator.py)
-- [docs/docs/dashboard/index.html](docs/docs/dashboard/index.html)
+- [../strategy_validation/models.py](../strategy_validation/models.py)
+- [../strategy_validation/reports/report_generator.py](../strategy_validation/reports/report_generator.py)
+- [../dashboard/index.html](../dashboard/index.html)
 
 Definition of done:
 
@@ -204,7 +204,7 @@ Primary files:
 
 -- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
 -- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
--- [docs/docs/dashboard/index.html](docs/docs/dashboard/index.html)
+-- [../dashboard/index.html](../dashboard/index.html)
 
 Definition of done:
 
@@ -253,8 +253,8 @@ Why later:
 
 Inspect:
 
-- [docs/docs/docs/research/svos/engine.py](docs/docs/docs/research/svos/engine.py)
-- [docs/docs/strategy_validation/pipeline/strategy_validation_pipeline.py](docs/docs/strategy_validation/pipeline/strategy_validation_pipeline.py)
+- [../research/svos/engine.py](../research/svos/engine.py)
+- [../strategy_validation/pipeline/strategy_validation_pipeline.py](../strategy_validation/pipeline/strategy_validation_pipeline.py)
 
 Confirm:
 
@@ -293,8 +293,8 @@ Extend tests for:
 
 Primary test files:
 
-- [tests/strategy_validation/test_pipeline.py](tests/strategy_validation/test_pipeline.py:1)
-- [tests/test_dashboard_app.py](tests/test_dashboard_app.py:1)
+- [../tests/strategy_validation/test_pipeline.py](../tests/strategy_validation/test_pipeline.py:1)
+- [../tests/test_dashboard_app.py](../tests/test_dashboard_app.py:1)
 
 ## Success Criteria
 

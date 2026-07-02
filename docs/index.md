@@ -124,15 +124,15 @@ Inventory and governance:
 
 Individual strategy specs (detail files — flow, parameters, rules — are co-located in each strategy directory):
 
-- [ST-A2 — Session Liquidity Reversal](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [London Breakout](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [NY Momentum](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [Adaptive SMC](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [VWAP Breakout](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [VWAP Mean Reversion](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
-- [SMC Order Block + FVG Session](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
+- [ST-A2 — Session Liquidity Reversal](strategy_audit/strategies/ST-A2 %28Session Liquidity Reversal%29/strategy_spec.md)
+- [London Breakout](strategy_audit/strategies/London Breakout/strategy_spec.md)
+- [NY Momentum](strategy_audit/strategies/NY Momentum/strategy_spec.md)
+- [Adaptive SMC](strategy_audit/strategies/Adaptive SMC %28AdaptiveSMC%29/strategy_spec.md)
+- [VWAP Breakout](strategy_audit/strategies/VWAP Breakout %28VWAPBreakout%29/strategy_spec.md)
+- [VWAP Mean Reversion](strategy_audit/strategies/VWAP Mean Reversion %28VWAPMeanReversion%29/strategy_spec.md)
+- [SMC Order Block + FVG Session](strategy_audit/strategies/SMC Order Block + FVG Session %28SVOSReady%29/strategy_spec.md)
 - [D2E3](strategy_audit/strategies/D2E3/strategy_spec.md)
-- [11-Phase SMC Session Chain](docs/docs/docs/docs/docs/docs/docs/docs/docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md)
+- [11-Phase SMC Session Chain](strategy_audit/strategies/11-Phase SMC Session Chain %28Strategy B _ session_smc%29/strategy_spec.md)
 
 ---
 

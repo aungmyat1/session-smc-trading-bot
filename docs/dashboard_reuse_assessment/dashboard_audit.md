@@ -31,14 +31,14 @@ The React dashboard is visually more reusable, but it is fundamentally a strateg
 
 ### Frontend frameworks
 
-- Legacy dashboard: server-rendered static HTML with inline CSS and vanilla JavaScript in [dashboard/index.html](dashboard/index.html:1)
-- New dashboard: React 19 + TypeScript + Vite + Tailwind-style utility classes in [New Dashborad/package.json](New%20Dashborad/package.json:1) and [New Dashborad/src/App.tsx](New%20Dashborad/src/App.tsx:1)
+- Legacy dashboard: server-rendered static HTML with inline CSS and vanilla JavaScript in [dashboard/index.html](../../dashboard/index.html:1)
+- New dashboard: React 19 + TypeScript + Vite + Tailwind-style utility classes in [New Dashborad/package.json](../../New%20Dashborad/package.json:1) and [New Dashborad/src/App.tsx](../../New%20Dashborad/src/App.tsx:1)
 
 ### Backend frameworks
 
-- Active backend: Flask app in [dashboard/app.py](dashboard/app.py:1)
-- Auxiliary services: Python modules for strategy overlay, reports, audit log, control state, Gemini helpers in [dashboard/strategy_service.py](dashboard/strategy_service.py:1), [dashboard/report_service.py](dashboard/report_service.py:1), [dashboard/control_state.py](dashboard/control_state.py:1), [dashboard/gemini_service.py](dashboard/gemini_service.py:1)
-- Obsolete prototype backend: Express server in [New Dashborad/server.ts](New%20Dashborad/server.ts:1)
+- Active backend: Flask app in [dashboard/app.py](../../dashboard/app.py:1)
+- Auxiliary services: Python modules for strategy overlay, reports, audit log, control state, Gemini helpers in [dashboard/strategy_service.py](../../dashboard/strategy_service.py:1), [dashboard/report_service.py](../../dashboard/report_service.py:1), [dashboard/control_state.py](../../dashboard/control_state.py:1), [dashboard/gemini_service.py](../../dashboard/gemini_service.py:1)
+- Obsolete prototype backend: Express server in [New Dashborad/server.ts](../../New%20Dashborad/server.ts:1)
 
 ### Routing
 
@@ -53,7 +53,7 @@ The React dashboard is visually more reusable, but it is fundamentally a strateg
 
 ### State management
 
-- Legacy dashboard: ephemeral browser state plus repeated polling every 30 seconds via `refreshAll()` in [dashboard/index.html](dashboard/index.html:2169)
+- Legacy dashboard: ephemeral browser state plus repeated polling every 30 seconds via `refreshAll()` in [dashboard/index.html](../../dashboard/index.html:2169)
 - React dashboard: local component state with `useState` and `useEffect`; no Redux, no React Query, no API client abstraction
 - Server-side mutable state:
   - JSON overlay for strategies
@@ -63,7 +63,7 @@ The React dashboard is visually more reusable, but it is fundamentally a strateg
 
 ### Authentication
 
-- Flask applies bearer token plus actor and role headers only on selected mutating endpoints via `_require_operator()` in [dashboard/app.py](dashboard/app.py:81)
+- Flask applies bearer token plus actor and role headers only on selected mutating endpoints via `_require_operator()` in [dashboard/app.py](../../dashboard/app.py:81)
 - Read endpoints are mostly unauthenticated
 - New dashboard strategy mutation endpoints under `/api/new-dashboard/*` currently have no authentication decorator
 - React frontend has no auth flow, session handling, or token management
