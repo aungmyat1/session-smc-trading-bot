@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload all reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: governance-reports-${{ github.run_number }}
           path: |
