@@ -5,8 +5,12 @@ Status: Authoritative
 Version: 2.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 2 — Architectural
+Authority: Level 3 — Architectural
 Related: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
+
+Governing product truth:
+`docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. SVOS is the Strategy
+Research and Validating System; Production is the simple execution engine.
 
 This document is the authoritative architecture and lifecycle reference for the
 repository.
@@ -58,7 +62,7 @@ not yet the active runtime vocabulary unless the code implements them.
 | `AUDIT` | Rule quality gate |
 | `REFINEMENT` | Specification improvement |
 | `HISTORICAL_REPLAY` | Logic verification |
-| `STATISTICAL_VALIDATION` | Backtest, n≥50, PF>1.0 at 2× |
+| `STATISTICAL_VALIDATION` | Transitional combined identifier; target architecture separates Backtest execution from Statistical Validation decision |
 | `ROBUSTNESS_VALIDATION` | Walk-forward, MC, parameter stability |
 | `VIRTUAL_DEMO` | **Offline** replay via bot interfaces — no broker |
 | `PRODUCTION_APPROVAL` | Record-only approval stage during current construction scope |
@@ -80,6 +84,8 @@ Historical Replay
   ↓
 Backtest
   ↓
+Statistical Validation
+  ↓
 Robustness
   ↓
 Verification Ready
@@ -95,7 +101,9 @@ The current implementation is reflected in:
 - `scripts/run_current_strategy_svos.py`
 - `scripts/run_svos_pipeline.py`
 
-In the current codebase, `virtual_demo` and `production_approval` remain SVOS
+In the current codebase, Backtest and Statistical Validation share transitional
+implementation paths. They remain distinct architectural responsibilities.
+`virtual_demo` and `production_approval` remain SVOS
 pipeline stages for backward compatibility.
 
 In practical terms, the repository is designed as a research gate rather than a

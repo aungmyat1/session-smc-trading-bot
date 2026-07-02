@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 1 — Product
+Authority: Level 2 — Product Vocabulary
 Related: DOC_AUTHORITY.md, SYSTEM_ARCHITECTURE.md, CORE_ARCHITECTURE.md
 
 ---
@@ -22,10 +22,10 @@ glossary must not be changed to match legacy documents.
 
 ## Platform Terms
 
-**SVOS** — Strategy Validation Operating System. The research qualification
-subsystem responsible for intake, audit, refinement, replay, backtest, and
-robustness validation. Does NOT include broker execution, risk qualification,
-or deployment.
+**SVOS** — Strategy Research and Validating System. System 1 owns Strategy
+Idea, Strategy Audit, Historical Replay, Backtest, Statistical Validation,
+Robustness Testing, Virtual Demo Trading, and Production Approval. It does not
+place live broker orders.
 
 **EVF** — Execution Validation Framework. The execution qualification
 subsystem responsible for virtual execution, broker simulation,
@@ -51,7 +51,19 @@ No other module may mutate lifecycle state. No direct YAML writes allowed.
 
 ---
 
-## Lifecycle Stages (Canonical)
+## Product Lifecycle (Original Truth)
+
+```text
+Strategy Idea → Strategy Audit → Historical Replay → Backtest
+→ Statistical Validation → Robustness Testing → Virtual Demo Trading
+→ Production Approval
+```
+
+Backtest produces simulated performance results. Statistical Validation is the
+separate decision stage that evaluates whether those results provide sufficient
+evidence of an edge. They must not be collapsed in architecture documentation.
+
+## Implemented Lifecycle Identifiers
 
 The canonical lifecycle is implemented in `svos/lifecycle/manager.py`.
 These are the only valid stage identifiers for code, configuration, and
@@ -89,9 +101,15 @@ ROBUSTNESS_VALIDATION, VIRTUAL_DEMO, or REVALIDATION.
 Tests event sequencing, session logic, and entry/exit timing. Does not
 measure profitability.
 
-**STATISTICAL_VALIDATION** — Edge validation via backtesting. Realistic fees
-required. Phase-0 gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2×
-spread stress. Single-spread PASS is insufficient.
+**BACKTEST** — A product-lifecycle responsibility that runs the approved replay
+logic against historical data with realistic costs and produces performance
+measurements. The transitional state enum does not yet expose a separate
+`BACKTEST` identifier; this is an implementation gap, not permission to collapse
+the lifecycle.
+
+**STATISTICAL_VALIDATION** — The distinct evidence gate that evaluates backtest
+results. Phase-0 gate: n ≥ 50 AND net PF > 1.0 at BOTH standard AND 2× spread
+stress. Single-spread PASS is insufficient.
 
 **ROBUSTNESS_VALIDATION** — Walk-forward, Monte Carlo, parameter stability,
 and regime analysis. Records stable regions and failure boundaries.

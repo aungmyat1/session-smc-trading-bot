@@ -6,21 +6,27 @@ Status: target deployment workflow
 ## Target Flow
 
 ```text
-Research
+Strategy Idea
   ↓
-SVOS Validation
+Strategy Audit
   ↓
-Artifact Creation
+Historical Replay
   ↓
-Registry
+Backtest
   ↓
-Deployment Approval
+Statistical Validation
   ↓
-Production Import
+Robustness Testing
   ↓
-Health Check
+Virtual Demo Trading
   ↓
-Execution
+Production Approval
+  ↓
+Approved Strategy Package
+  ↓
+Strategy Package Loader
+  ↓
+Trading Engine → Risk Manager → Execution Manager → Broker API → Position Management
 ```
 
 ## Required Rules
@@ -55,8 +61,8 @@ Current deployment behavior is mixed:
 - fetch or import artifact
 - validate checksum and manifest
 - verify environment compatibility
-- activate strategy runtime
-- emit deployment and health status
+- load the approved strategy package
+- run only the simple execution chain
 
 ## Recommended First Implementation
 

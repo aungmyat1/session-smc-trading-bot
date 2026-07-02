@@ -76,6 +76,9 @@ Future architecture tests should forbid SVOS code from importing:
 
 ## Target Graph
 
+In the target graph, `PROD` is only the six-component simple execution machine.
+Operational dashboards and monitoring sit outside that boundary.
+
 ```mermaid
 flowchart TD
     CLI[agtrade] --> APP[application]

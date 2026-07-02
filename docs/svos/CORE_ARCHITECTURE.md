@@ -4,8 +4,12 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 3 — Implementation
+Authority: Level 4 — Implementation
 Related: SYSTEM_ARCHITECTURE.md, ADR-0001-STABILIZATION-FOUNDATION.md, DOC_AUTHORITY.md
+
+Product conformance: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` governs.
+The missing standalone `BACKTEST` state below is recorded implementation debt;
+Backtest and Statistical Validation are distinct in the product lifecycle.
 
 Scope: subsystem 1 of the incremental SVOS delivery plan
 
@@ -57,6 +61,11 @@ Stage vocabulary also includes `PRODUCTION_APPROVAL`, `REVALIDATION`, and
 `RETIRED`, but `PRODUCTION_APPROVAL` is record-only and not currently reachable
 through forward promotion during construction.
 ```
+
+The target product progression inserts `BACKTEST` between
+`HISTORICAL_REPLAY` and `STATISTICAL_VALIDATION`. Until the state machine is
+migrated, `STATISTICAL_VALIDATION` is a transitional combined implementation
+identifier and must not redefine the Original Truth.
 
 ```mermaid
 stateDiagram-v2

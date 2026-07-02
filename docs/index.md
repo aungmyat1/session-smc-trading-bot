@@ -20,12 +20,13 @@ repository. It is a **navigation layer**, not a new authority source.
 
 Before touching any code, strategy, or governance decision:
 
-1. [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) — conflict resolution, 8-level authority hierarchy
-2. [GLOSSARY.md](00_Project/GLOSSARY.md) — canonical term definitions
-3. [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) — platform-level design
-4. [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md) — coding standards, workflow, branch policy
-5. [AGENT_RULES.md](AGENT_RULES.md) — mandatory rules for AI agents touching this repo
-6. [project_manifest.yaml](../docs/project_manifest.yaml) — machine-readable project state (~600 tokens)
+1. [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) — conflict resolution and authority hierarchy
+2. [TWO_SYSTEM_ARCHITECTURE_TRUTH.md](00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md) — original SVOS and Production scope
+3. [GLOSSARY.md](00_Project/GLOSSARY.md) — canonical term definitions
+4. [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) — platform-level design
+5. [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md) — coding standards, workflow, branch policy
+6. [AGENT_RULES.md](AGENT_RULES.md) — mandatory rules for AI agents touching this repo
+7. [project_manifest.yaml](../docs/project_manifest.yaml) — machine-readable project state (~600 tokens)
 
 ---
 

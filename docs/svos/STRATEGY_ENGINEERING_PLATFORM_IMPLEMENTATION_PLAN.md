@@ -5,8 +5,12 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Lead
-Authority: Level 1 — Product
+Authority: Level 2 — Product Implementation Plan
 Supersedes: CURRENT_SCOPE.md, IMPLEMENTATION_STATUS.md, ESTIMATED_DEVELOPMENT_ROADMAP.md (all archived)
+
+Governing scope: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. This plan
+implements that truth and may not broaden Production beyond the simple execution
+chain or combine Backtest with Statistical Validation.
 
 Current readiness: **NOT READY — platform construction only**
 
@@ -37,7 +41,8 @@ Strategy Input
   -> Specification and Versioning
   -> Strategy Audit and Refinement
   -> Historical Replay
-  -> Backtest and Statistical Validation
+  -> Backtest
+  -> Statistical Validation
   -> Robustness Validation
   -> Offline Virtual Demo
   -> Production Approval
@@ -192,17 +197,22 @@ qualifying evidence.
 - Fail on missing data, temporal violations, invalid order geometry, or signal
   disagreement outside policy tolerance.
 
-### Stage 3 — Backtest and Statistical Validation
+### Stage 3 — Backtest
 
 - Use the replay-approved strategy version and frozen dataset.
 - Apply spread and commission; a result without costs is invalid.
+- Produce immutable performance measurements for the Statistical Validation
+  stage; Backtest does not approve its own output.
+
+### Stage 4 — Statistical Validation
+
 - Canonical Phase-0 minimum: `n >= 50` and net PF strictly above `1.0` at both
   standard and 2x cost stress, plus policy-defined expectancy and drawdown
   limits.
 - Preserve genuine failed results. Parameter changes create a new version/run;
   no mid-trial tuning is permitted.
 
-### Stage 4 — Robustness Validation
+### Stage 5 — Robustness Validation
 
 - Run walk-forward, parameter stability, regime slices, Monte Carlo/bootstrap,
   and execution-cost sensitivity.
@@ -211,7 +221,7 @@ qualifying evidence.
 - Invalidate this and all downstream evidence when relevant code, data,
   parameters, policy, or costs change.
 
-### Stage 5 — Offline Virtual Demo
+### Stage 6 — Offline Virtual Demo
 
 - Reuse the bot-facing signal, order, risk, and position interfaces.
 - Replay sequential market events with deterministic spread, commission,
@@ -220,7 +230,7 @@ qualifying evidence.
 - Compare expected backtest behavior with simulated execution and report drift.
 - No Vantage credentials or network access are available to this worker.
 
-### Stage 6 — Production Approval
+### Stage 7 — Production Approval
 
 - Require current PASS evidence from every prior hard gate.
 - Require matching strategy, code, policy, dataset, and cost-model lineage.

@@ -5,6 +5,11 @@ Status: Authoritative
 Version: 1.1
 Load once per agent session. Replaces reading SYSTEM_ARCHITECTURE + CORE_ARCHITECTURE.
 
+Original Truth: SVOS means Strategy Research and Validating System. The product
+lifecycle has separate Backtest and Statistical Validation responsibilities;
+Production is only the simple execution engine defined in
+`00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`.
+
 ---
 
 ## 1. Platform Goal
@@ -75,6 +80,9 @@ DRAFT → INTAKE → AUDIT → REFINEMENT → HISTORICAL_REPLAY
 Failure loops: any stage failure → REFINEMENT → re-enter failed stage.
 
 VIRTUAL_DEMO is OFFLINE ONLY. No broker. No network. Fully deterministic.
+
+This is the transitional code enum. Target migration inserts a distinct
+`BACKTEST` stage before `STATISTICAL_VALIDATION` to match the Original Truth.
 
 ---
 
