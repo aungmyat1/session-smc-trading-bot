@@ -1,0 +1,18 @@
+provider = "oidc"
+oidc_issuer_url = "https://issuer.example.com"
+client_id = "dashboard-client-id"
+client_secret = "replace-me"
+cookie_secret = "replace-me-with-32-byte-base64"
+http_address = "127.0.0.1:4180"
+redirect_url = "https://dashboard.example.internal/oauth2/callback"
+email_domains = [ "*" ]
+upstreams = [ "static://202" ]
+scope = "openid email profile groups"
+cookie_secure = true
+cookie_samesite = "lax"
+set_xauthrequest = true
+pass_access_token = false
+pass_authorization_header = false
+skip_provider_button = true
+reverse_proxy = true
+

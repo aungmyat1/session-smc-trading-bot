@@ -1,0 +1,17 @@
+[Unit]
+Description=OAuth2 Proxy for Session SMC Unified Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=smc
+Group=smc
+WorkingDirectory=/opt/session-smc-trading-bot
+ExecStart=/usr/local/bin/oauth2-proxy --config /opt/session-smc-trading-bot/deploy/dashboard/oauth2-proxy.cfg
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

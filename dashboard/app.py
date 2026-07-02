@@ -48,14 +48,14 @@ sys.path.insert(0, str(_ROOT))
 _SUBPROCESS_TIMEOUT = int(os.getenv("DASHBOARD_SUBPROCESS_TIMEOUT", "120"))
 
 try:
-    from flask import Flask, jsonify, request, send_from_directory
+    from flask import Flask, jsonify, make_response, request, send_from_directory
     from flask_cors import CORS
 except ImportError:
     print("Flask not installed. Run: pip install flask flask-cors")
     sys.exit(1)
 
 from dashboard.runtime import dashboard_bind_host, dashboard_public_host, dashboard_url
-from dashboard.auth import require_operator
+from dashboard.auth import build_session_payload, ensure_csrf_cookie, require_operator
 from dashboard.audit_log import tail_audit_log, write_audit_log
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state, mark_incident_reviewed
 from dashboard.report_service import generate as generate_reports_payload
@@ -1237,6 +1237,15 @@ def api_new_dashboard_reports():
         "generated_at": reports.get("generated_at", ""),
         "fetched_at": _now_iso(),
     })
+
+
+@app.route("/api/session/me")
+def api_session_me():
+    payload = build_session_payload(app)
+    response = make_response(jsonify({**payload, "fetched_at": _now_iso()}))
+    if payload.get("authenticated") and payload.get("auth_mode") == "proxy":
+        ensure_csrf_cookie(response)
+    return response
 
 
 @app.route("/api/live-dashboard")
