@@ -67,7 +67,9 @@ migration.
 - Local DuckDB research files (`research.db`, `research_sweep.db`,
   `research_db/feature_database.duckdb`) — a separate, already-isolated data path; out of scope
   for this Postgres-only migration.
-- `data/trade_journal.db` — flagged as a likely orphan in the prior audit; no action here.
+- `data/trade_journal.db` — active production/demo journal and reconciliation
+  state. It remains on VPS 1 with the production runtime during this
+  Postgres-only migration and requires an explicit backup/retention policy.
 
 ## Post-cutover application changes (not performed by this planning pass)
 

@@ -39,7 +39,15 @@ No DDL/DML executed. No rows inserted, updated, or deleted.
 | `config` | `system_config` | 32 kB | not checked | Shared config table |
 | `public` | `alembic_version` | 24 kB | 1 row | Alembic migration marker |
 
-**Applications accessing `vmassit`:** `db/control_plane.py` and `db/models.py` (SQLAlchemy models for all 12 schemas above), read by `svos/lifecycle/manager.py`, `execution/governance_guard.py` (read-only), `dashboard/app.py`, and research/backtest scripts under `svos/`, `research/`. No separate production-only database or schema exists in this cluster.
+**Applications accessing `vmassit`:** the Postgres path is implemented through
+`db/control_plane.py`, `db/models.py`, evidence repositories, migrations, and
+research/control-plane callers configured for authoritative Postgres mode.
+The active `execution/governance_guard.py` instead uses the file-backed
+`StrategyRegistryService`/`GovernanceService`, and the dashboard's
+`SVOSOperationalAPI` explicitly constructs `SVOSPlatform` with
+`PersistenceMode.LOCAL_COMPAT`; those active production-facing paths are not
+current `vmassit` consumers. No separate production-only database or schema
+exists in this cluster.
 
 **Live broker/trading state is NOT in Postgres.** Per `docs/migration/safety_state.md`, the demo runner's actual position/order state lives in `logs/bot_state.json` (file-based), not in any table above. `execution.virtual_order`/`virtual_fill`/`virtual_position` are Phase 5 **simulator** records (per repo `CLAUDE.md` §2 Phase 5 definition), not live trades.
 

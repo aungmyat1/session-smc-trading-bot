@@ -21,7 +21,12 @@ Locally observed process environment and runtime state:
 | Live capital submission | disabled |
 | Broker state file | connected at snapshot time |
 | Execution state | idle; last decision `no_signals` |
-| Emergency/circuit halt | not active in `logs/bot_state.json` |
+| Emergency/circuit halt | no active control-state snapshot was present; authoritative source is `reports/control_state.json` |
+
+The active runner and dashboard use `dashboard.control_state` and
+`reports/control_state.json` for emergency-stop authority. `logs/bot_state.json`
+belongs to the legacy risk-manager path and must not be used to determine the
+active emergency-stop state during cutover or incident response.
 
 The runtime does contact MetaAPI for market/broker data and logged recurring
 subscription timeouts. `LIVE_TRADING=false` and `DEMO_ONLY=true` prevent order
@@ -100,4 +105,3 @@ Live trading remains disabled and the guarded demo configuration is intact.
 The system is not production-approved: no strategy is approved/current, the
 active demo runner conflicts with catalog state, and recurring MetaAPI errors
 remain. The migration must fail closed and preserve these guards throughout.
-
