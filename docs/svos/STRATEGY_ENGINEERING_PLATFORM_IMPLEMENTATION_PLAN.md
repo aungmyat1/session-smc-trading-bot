@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Lead
-Authority: Level 1 — Product
+Authority: Level 2 — Product Implementation Plan
 Supersedes: CURRENT_SCOPE.md, IMPLEMENTATION_STATUS.md, ESTIMATED_DEVELOPMENT_ROADMAP.md (all archived)
 
 Governing scope: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. This plan

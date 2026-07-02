@@ -31,14 +31,15 @@ document must be updated or archived, not both followed.
 | Level | Authority | Documents |
 |---|---|---|
 | 0 | Root authority | `docs/00_Project/DOC_AUTHORITY.md` (this document) |
-| 1 | Product authority | `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` (two-system scope and lifecycle); `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` (implementation plan, subordinate where scope conflicts) |
-| 2 | Architectural authority | `docs/SYSTEM_ARCHITECTURE.md` |
-| 3 | Implementation authority | `docs/svos/CORE_ARCHITECTURE.md` |
-| 4 | Decision authority | `docs/svos/ADR-*.md` |
-| 5 | Phase specification authority | `docs/STAGE1_AUDIT_SPEC.md`, `docs/HISTORICAL_REPLAY.md`, `docs/BACKTEST_SPEC.md`, etc. |
-| 6 | Module documentation | `pipeline/README.md`, `db/README.md`, etc. |
-| 7 | Historical reports and evidence | `reports/`, `research/` |
-| 8 | Superseded / archive | `docs/Archive/` — never authoritative |
+| 1 | Original product architecture truth | `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` |
+| 2 | Product implementation plan | `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` |
+| 3 | Architectural authority | `docs/SYSTEM_ARCHITECTURE.md` |
+| 4 | Implementation authority | `docs/svos/CORE_ARCHITECTURE.md` |
+| 5 | Decision authority | `docs/svos/ADR-*.md` |
+| 6 | Phase specification authority | `docs/STAGE1_AUDIT_SPEC.md`, `docs/HISTORICAL_REPLAY.md`, `docs/BACKTEST_SPEC.md`, etc. |
+| 7 | Module documentation | `pipeline/README.md`, `db/README.md`, etc. |
+| 8 | Historical reports and evidence | `reports/`, `research/` |
+| 9 | Superseded / archive | `docs/Archive/` — never authoritative |
 
 **Rule:** A document at level N may not contradict a document at level N−1 or
 above. If such a contradiction is found, the lower-level document must be

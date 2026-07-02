@@ -20,7 +20,7 @@ repository. It is a **navigation layer**, not a new authority source.
 
 Before touching any code, strategy, or governance decision:
 
-1. [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) — conflict resolution, 8-level authority hierarchy
+1. [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) — conflict resolution and authority hierarchy
 2. [TWO_SYSTEM_ARCHITECTURE_TRUTH.md](00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md) — original SVOS and Production scope
 3. [GLOSSARY.md](00_Project/GLOSSARY.md) — canonical term definitions
 4. [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) — platform-level design

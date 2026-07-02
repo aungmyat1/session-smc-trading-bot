@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 1 — Product
+Authority: Level 2 — Product Vocabulary
 Related: DOC_AUTHORITY.md, SYSTEM_ARCHITECTURE.md, CORE_ARCHITECTURE.md
 
 ---

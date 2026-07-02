@@ -4,7 +4,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 5 — Lifecycle Reference
+Authority: Level 6 — Lifecycle Reference
 Note: Stage names in this document must be aligned with canonical lifecycle enums.
 See DOC_AUTHORITY.md §Canonical Lifecycle Vocabulary.
 Related: CORE_ARCHITECTURE.md, SYSTEM_ARCHITECTURE.md

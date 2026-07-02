@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform
-Authority: Level 5 — Phase Specification
+Authority: Level 6 — Phase Specification
 Note: EVF is a separate subsystem from SVOS VIRTUAL_DEMO. VIRTUAL_DEMO is
 offline research; EVF validates execution quality after research qualification.
 Related: SVOS_DESIGN_REFERENCE.md, HISTORICAL_REPLAY.md

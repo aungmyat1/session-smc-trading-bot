@@ -4,7 +4,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 3 — Implementation
+Authority: Level 4 — Implementation
 Related: SYSTEM_ARCHITECTURE.md, ADR-0001-STABILIZATION-FOUNDATION.md, DOC_AUTHORITY.md
 
 Product conformance: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` governs.

@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 1.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 5 — Pipeline Reference
+Authority: Level 6 — Pipeline Reference
 Note: Phase numbers in this document are illustrative summaries.
 Use canonical stage enum names (see DOC_AUTHORITY.md §Canonical Lifecycle Vocabulary).
 Related: SYSTEM_ARCHITECTURE.md, CORE_ARCHITECTURE.md, STAGE1_AUDIT_SPEC.md

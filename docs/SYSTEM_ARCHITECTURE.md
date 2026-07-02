@@ -5,7 +5,7 @@ Status: Authoritative
 Version: 2.0
 Updated: 2026-06-29
 Owner: Platform Architecture
-Authority: Level 2 — Architectural
+Authority: Level 3 — Architectural
 Related: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
 
 Governing product truth:
