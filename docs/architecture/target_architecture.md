@@ -3,6 +3,9 @@
 Date: 2026-07-01
 Status: proposed migration target
 
+Governing truth: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. If this
+document conflicts with that authority, the original truth wins.
+
 ## Objective
 
 Split the repository into three explicit ownership layers:
@@ -20,35 +23,29 @@ Core rule:
 ## Logical System Model
 
 ```text
-                    SVOS Platform
-                   Research / Validation
+       SVOS — Strategy Research and Validating System
 
-      Strategy Research
+      Strategy Idea
+      Strategy Audit
       Historical Replay
-      Backtesting
-      Optimization
-      Monte Carlo
+      Backtest
+      Statistical Validation
       Robustness Testing
-      AI Strategy Improvement
-      Validation Reports
-      Strategy Registry
+      Virtual Demo Trading
+      Production Approval
 
                  |
                  | versioned strategy artifact
                  v
 
-             Production VM
-           Live Trading Engine
+        Production — Simple Execution Engine
 
-      Market Connection
-      Strategy Runtime
-      Risk Engine
-      Execution Engine
-      Position Manager
-      Portfolio
-      Monitoring
-      Dashboard
-      Alerts
+      Trading Engine
+      Strategy Package Loader
+      Risk Manager
+      Execution Manager
+      Broker API
+      Position Management
 ```
 
 ## Target Repository Ownership

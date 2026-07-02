@@ -31,7 +31,7 @@ document must be updated or archived, not both followed.
 | Level | Authority | Documents |
 |---|---|---|
 | 0 | Root authority | `docs/00_Project/DOC_AUTHORITY.md` (this document) |
-| 1 | Product authority | `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` |
+| 1 | Product authority | `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` (two-system scope and lifecycle); `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` (implementation plan, subordinate where scope conflicts) |
 | 2 | Architectural authority | `docs/SYSTEM_ARCHITECTURE.md` |
 | 3 | Implementation authority | `docs/svos/CORE_ARCHITECTURE.md` |
 | 4 | Decision authority | `docs/svos/ADR-*.md` |
@@ -136,6 +136,7 @@ AI agents MUST follow these rules when working in this repository.
 
 ## Related Documents
 
+- `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` — owner-supplied original two-system truth
 - `docs/00_Project/GLOSSARY.md` — canonical domain term definitions
 - `docs/SYSTEM_ARCHITECTURE.md` — authoritative lifecycle and architecture reference
 - `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` — governing product plan
