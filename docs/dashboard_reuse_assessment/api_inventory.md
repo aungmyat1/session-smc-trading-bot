@@ -58,7 +58,7 @@ No WebSocket endpoints were found.
 
 ## Historical Express Prototype API
 
-Located in [New Dashborad/server.ts](/home/aungp/session-smc-trading-bot/New%20Dashborad/server.ts:166).
+Located in [New Dashborad/server.ts](New%20Dashborad/server.ts:166).
 
 | Method | URL | Purpose | Reuse |
 | --- | --- | --- | --- |

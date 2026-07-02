@@ -1,0 +1,663 @@
+# Documentation Graph
+
+- README.md
+- CURRENT_ARCHITECTURE.md
+- CLAUDE.md
+- LOOKAHEAD_AUDIT.md
+- New Dashborad/README.md
+- reports/FINAL_DATASET_VALIDATION.md
+- reports/LOSER_ANALYSIS.md
+- reports/ST_A2_MANUAL_AUDIT_20_TRADES.md
+- reports/WINNER_ANALYSIS.md
+- reports/PHASE5_TRADE_SUMMARY.md
+- reports/DUKASCOPY_3Y_DOWNLOAD_STATUS.md
+- reports/dataset_validation_report.md
+- reports/daily_status.md
+- reports/ST_A2_TRADE_AUTOPSY.md
+- reports/STA2_2025_VALIDATION_FINAL_REPORT.md
+- reports/STA2_BASELINE_REPORT.md
+- reports/PHASE6_PERFORMANCE_ANALYSIS.md
+- reports/SESSION_ANALYSIS.md
+- reports/SETUP_A_PARQUET_REPORT.md
+- reports/PHASE9_FAILURE_ANALYSIS.md
+- reports/ST_A2_REAL_DATA_SANITY_CHECK.md
+- reports/data_layer_verification.md
+- reports/PHASE3_STA2_CONFIGURATION_AUDIT.md
+- reports/production_readiness_report.md
+- reports/PHASE2_DATASET_VALIDATION.md
+- reports/TIMEFRAME_BUILD_REPORT.md
+- reports/quality_report.md
+- reports/live_vs_backtest.md
+- reports/PHASE7_STRATEGY_QUALITY.md
+- reports/EURUSD_2024_DOWNLOAD_REPORT.md
+- reports/testing_report.md
+- reports/PHASE1_ENVIRONMENT_CHECK.md
+- reports/PHASE8_COMPARISON_REPORT.md
+- reports/ST_A2_REAL_DATA_VALIDATION_VERDICT.md
+- .github/pull_request_template.md
+- strategies/README.md
+- docs/ENTRY_ENGINE_AUDIT.md
+- docs/RESEARCH_ENGINE.md
+- docs/documentation_gap_analysis.md
+- docs/documentation_health_report_v2.md
+- docs/RESEARCH_FEATURE_DATABASE.md
+- docs/DATABASE_ARCHITECTURE_VERIFICATION.md
+- docs/VALIDATION_GATE_ENGINE.md
+- docs/ST_B_RESEARCH_PLAN.md
+- docs/BIAS_FILTER_AUDIT.md
+- docs/VPS_DEPLOYMENT_RUNBOOK.md
+- docs/OPS02_ACTIVATION_CHECKLIST.md
+- docs/TIMEFRAME_GENERATION.md
+- docs/SVOS_EVF_USER_MANUAL.md
+- docs/SPREAD_RESEARCH_FINAL_REPORT.md
+- docs/SMC_FEATURE_SPEC.md
+- docs/STRATEGY_B_SMC.md
+- docs/TIMEZONE_AUDIT.md
+- docs/documentation_readiness_report.md
+- docs/RISK_SPEC.md
+- docs/EXECUTION_LAYER_VALIDATION_SPEC.md
+- docs/IMPLEMENTATION_STATUS.md
+- docs/STAGE1_AUDIT_SPEC.md
+- docs/archive_candidates.md
+- docs/PROJECT_OBJECTIVE.md
+- docs/_full_inventory_files.md
+- docs/EXPERIMENT_RESULTS.md
+- docs/SVOS_DESIGN_REFERENCE.md
+- docs/architecture_summary.md
+- docs/SYSTEM_BOUNDARIES.md
+- docs/BACKTEST_FAILURE_ANALYSIS.md
+- docs/AUDIT_IMPLEMENTATION_PLAN_2026-07-01.md
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md
+- docs/STRATEGY_A_SESSION.md
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md
+- docs/AGENT_RULES.md
+- docs/current_status.md
+- docs/BACKTEST_RESULTS.md
+- docs/project_readiness_assessment.md
+- docs/BACKTEST_COST_REVALIDATION_REPORT.md
+- docs/EXECUTION_SPEC.md
+- docs/TASK_QUEUE.md
+- docs/REPOSITORY_AUDIT.md
+- docs/HISTORICAL_DATA_ARCHITECTURE.md
+- docs/SVOS_LIFECYCLE_WORKFLOW.md
+- docs/OPERATING_MANUAL.md
+- docs/BACKTEST_SPEC.md
+- docs/HISTORICAL_REPLAY.md
+- docs/documentation_inventory.md
+- docs/INCIDENT_RESPONSE.md
+- docs/SVOS_STRATEGY_AUDIT_LOOP_REPORT.md
+- docs/STRATEGY_AUDIT_FRAMEWORK.md
+- docs/QUANT_PLATFORM_ARCHITECTURE.md
+- docs/REPORT_SYSTEM.md
+- docs/SYSTEM_ARCHITECTURE.md
+- docs/OPS02_REVISED_GATE.md
+- docs/DEPLOYMENT_READINESS.md
+- docs/PROJECT_READINESS_V1_REVALIDATION.md
+- docs/DEVELOPER_HANDBOOK.md
+- docs/READINESS_CRITERIA.md
+- docs/AI_WORKFLOW_ARCHITECTURE.md
+- docs/ISOP_CONTROL_PANEL.md
+- docs/project_overview.md
+- docs/repository_readiness_report.md
+- docs/LIVE_CAPITAL_SCALING_PLAN.md
+- docs/WALK_FORWARD_RESEARCH_PLAN.md
+- docs/REPLAY_INTEGRATION_PLAN.md
+- docs/STRATEGY_PORTFOLIO_ROADMAP.md
+- docs/migration_summary.md
+- docs/SIGNAL_SPEC.md
+- docs/STRATEGY_VALIDATION_ENGINE.md
+- docs/SWEEP_DETECTOR_AUDIT.md
+- docs/SPREAD_CAPTURE_PLAN.md
+- docs/documentation_health_report.md
+- docs/VANTAGE_DEMO_CONNECTION_CHECKLIST.md
+- docs/index.md
+- docs/VERDICT_LOG.md
+- docs/CHANGE_CONTROL_SYSTEM.md
+- docs/DOWNLOADER_USAGE.md
+- docs/FORWARD_TEST_VALIDATION.md
+- .pytest_cache/README.md
+- db/README.md
+- shared/README.md
+- data/README.md
+- pipeline/README.md
+- research/README.md
+- research/EXP05_B_RESULTS.md
+- research/EXP05_RECOMMENDATION.md
+- research/EXP05_D_RESULTS.md
+- research/EXP05_E_RESULTS.md
+- research/SPREAD_CAPTURE_INTERIM.md
+- research/EXP05_A_RESULTS.md
+- research/EXP05_C_RESULTS.md
+- research/EXP05_FINAL_COMPARISON.md
+- archive/README.md
+- agent/implementation_rules.md
+- agent/prompt_templates.md
+- agent/coding_rules.md
+- backtest_output_d2_optimized/REPORT.md
+- deploy/gcp-vm1/README.md
+- New Dashborad/Two system on one Dashboard/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/react-dom/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/postcss-value-parser/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/fdir/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tinyglobby/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/gensync/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/update-browserslist-db/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/typescript/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/typescript/SECURITY.md
+- New Dashborad/Two system on one Dashboard/node_modules/react/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tapable/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/electron-to-chromium/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/debug/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/undici-types/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/detect-libc/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/fraction.js/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/fraction.js/CHANGELOG.md
+- New Dashborad/Two system on one Dashboard/node_modules/lightningcss/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/caniuse-lite/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/node-releases/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/react-refresh/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/graceful-fs/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/jiti/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/yallist/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/escalade/readme.md
+- New Dashborad/Two system on one Dashboard/node_modules/lucide-react/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/rollup/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/rollup/LICENSE.md
+- New Dashborad/Two system on one Dashboard/node_modules/semver/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/ms/readme.md
+- New Dashborad/Two system on one Dashboard/node_modules/ms/license.md
+- New Dashborad/Two system on one Dashboard/node_modules/nanoid/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/enhanced-resolve/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/source-map-js/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/jsesc/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/baseline-browser-mapping/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/vite/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/vite/LICENSE.md
+- New Dashborad/Two system on one Dashboard/node_modules/picocolors/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/browserslist/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/postcss/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/json5/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/json5/LICENSE.md
+- New Dashborad/Two system on one Dashboard/node_modules/scheduler/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/lru-cache/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/autoprefixer/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/magic-string/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/convert-source-map/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tsx/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/lightningcss-linux-x64-musl/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tailwindcss/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/picomatch/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/esbuild/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/esbuild/LICENSE.md
+- New Dashborad/Two system on one Dashboard/node_modules/lightningcss-linux-x64-gnu/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/js-tokens/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/js-tokens/CHANGELOG.md
+- New Dashborad/Two system on one Dashboard/node_modules/@rolldown/pluginutils/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@rollup/rollup-linux-x64-gnu/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@rollup/rollup-linux-x64-musl/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/plugin-transform-react-jsx-source/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/template/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/compat-data/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/core/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/generator/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/parser/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/parser/CHANGELOG.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/code-frame/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-globals/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-compilation-targets/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/traverse/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helpers/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-module-transforms/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/types/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-validator-option/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-plugin-utils/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-string-parser/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-validator-identifier/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/helper-module-imports/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@babel/plugin-transform-react-jsx-self/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@esbuild/linux-x64/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/babel__traverse/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/babel__generator/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/estree/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/babel__core/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/node/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@types/babel__template/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@vitejs/plugin-react/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@jridgewell/remapping/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@jridgewell/sourcemap-codec/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@jridgewell/gen-mapping/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@jridgewell/trace-mapping/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@jridgewell/resolve-uri/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@tailwindcss/oxide-linux-x64-musl/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@tailwindcss/node/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@tailwindcss/oxide-linux-x64-gnu/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/@tailwindcss/vite/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tsx/node_modules/esbuild/README.md
+- New Dashborad/Two system on one Dashboard/node_modules/tsx/node_modules/esbuild/LICENSE.md
+- New Dashborad/Two system on one Dashboard/node_modules/tsx/node_modules/@esbuild/linux-x64/README.md
+- New Dashborad/Two system on one Dashboard/src/docs/UPGRADE_SPEC.md
+- reports/registry_audit_validation/registry_audit.md
+- reports/change_control/46ed0304ba937343e11cc8aab598a82045322a90.md
+- reports/svos/platform/incidents/INC-20260629-LIVE-CONFIG-DRIFT/incident.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/run_summary.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/04_robustness.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/05_virtual_demo.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/01_strategy_audit.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/02_historical_replay.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/06_production_approval.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260628T193027.905087Z-a333558ec4/03_backtest.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/failure_analysis.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/run_summary.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/04_robustness.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/05_virtual_demo.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/01_strategy_audit.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/02_historical_replay.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/improvement_report.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/06_production_approval.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/03_backtest.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/final_qualification.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/00_strategy_summary.md
+- reports/svos/SVOS-SAMPLE/1.0.0/20260630T183638.769996Z-e2bf91d10d/strategy_evolution.md
+- session_smc/asian_session_deployment_runbook_v2/asian_session_deployment_runbook_v2.md
+- session_smc/asian_session_deployment_runbook_v2/PASTE_INTO_CLAUDE_CODE.md
+- scripts/replay/README.md
+- scripts/data/README.md
+- scripts/analytics/README.md
+- docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md
+- docs/00_Project/GLOSSARY.md
+- docs/00_Project/DOC_AUTHORITY.md
+- docs/architecture/remaining_real_world_rollout_tasks.md
+- docs/architecture/system_architecture.md
+- docs/architecture/module_boundaries.md
+- docs/architecture/production_svos_rollout_index.md
+- docs/architecture/deployment_flow.md
+- docs/architecture/production_svos_implementation_plan.md
+- docs/architecture/strategy_registry.md
+- docs/architecture/migration_plan.md
+- docs/architecture/dashboard_boundary.md
+- docs/architecture/shared_library_design.md
+- docs/architecture/risk_assessment.md
+- docs/architecture/current_state.md
+- docs/architecture/dependency_graph.md
+- docs/architecture/production_svos_implementation_completion_report.md
+- docs/architecture/api_contracts.md
+- docs/architecture/module_inventory.md
+- docs/architecture/target_architecture.md
+- docs/migration/current_test_status.md
+- docs/migration/baseline.md
+- docs/migration/database_cutover_readiness.md
+- docs/migration/database_target_architecture.md
+- docs/migration/database_inventory.md
+- docs/migration/postgres_cutover_plan.md
+- docs/migration/safety_state.md
+- docs/implementation/UNIFIED_DASHBOARD_FULL_IMPLEMENTATION_PLAN.md
+- docs/implementation/UNIFIED_DASHBOARD_IMPLEMENTATION_PLAN.md
+- docs/implementation/UNIFIED_DASHBOARD_DEPLOYMENT.md
+- docs/implementation/INSTITUTIONAL_TRADING_PLATFORM_PLAN.md
+- docs/templates/daily_report_template.md
+- docs/templates/implementation_spec_template.md
+- docs/templates/incident_report_template.md
+- docs/templates/strategy_report_template.md
+- docs/templates/live_readiness_template.md
+- docs/templates/weekly_report_template.md
+- docs/templates/risk_report_template.md
+- docs/svos/PREFLIGHT_STATUS.md
+- docs/svos/DOC_AUDIT_2026-06-29.md
+- docs/svos/DOC_HEALTH_REPORT_2026-06-29.md
+- docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md
+- docs/svos/DEPLOYMENT_TOPOLOGY.md
+- docs/svos/CORE_ARCHITECTURE.md
+- docs/svos/STABILIZATION_STATUS.md
+- docs/svos/CURRENT_STATE.md
+- docs/svos/PROJECT_STATUS_REPORT_2026-06-29.md
+- docs/svos/ADR-0001-STABILIZATION-FOUNDATION.md
+- docs/svos/PLATFORM_IMPLEMENTATION_REQUIREMENTS.md
+- docs/audit/deployment_topology_validation.md
+- docs/audit/module_boundary_analysis.md
+- docs/audit/system_health_baseline.md
+- docs/audit/strategy_execution_audit.md
+- docs/audit/current_repository_structure.md
+- docs/audit/database_topology.md
+- docs/audit/dashboard_backend_mapping.md
+- docs/audit/architecture_gap_report.md
+- docs/audit/dependency_boundary_report.md
+- docs/audit/function_inventory.md
+- docs/archive/README.md
+- docs/dashboard_reuse_assessment/component_inventory.md
+- docs/dashboard_reuse_assessment/final_recommendation.md
+- docs/dashboard_reuse_assessment/dashboard_audit.md
+- docs/dashboard_reuse_assessment/migration_plan.md
+- docs/dashboard_reuse_assessment/technical_debt.md
+- docs/dashboard_reuse_assessment/dashboard_inventory.md
+- docs/dashboard_reuse_assessment/api_inventory.md
+- docs/strategy_audit/parameters.md
+- docs/strategy_audit/rules.md
+- docs/strategy_audit/01_strategy_inventory.md
+- docs/strategy_audit/03_governance_and_risk.md
+- docs/strategy_audit/02_execution_flow.md
+- docs/operations/deployment_runbook.md
+- docs/operations/current_operational_status.md
+- docs/operations/production_readiness_report.md
+- docs/operations/github_operating_model.md
+- docs/operations/monitoring_endpoints.md
+- docs/Archive/INDEX.md
+- docs/examples/strategy_validation_sample_report/validation_report.md
+- docs/svos/architecture-review-2026-06-29/02_DATABASE_ASSESSMENT.md
+- docs/svos/architecture-review-2026-06-29/README.md
+- docs/svos/architecture-review-2026-06-29/05_RISK_ASSESSMENT.md
+- docs/svos/architecture-review-2026-06-29/04_GAP_ANALYSIS.md
+- docs/svos/architecture-review-2026-06-29/01_ARCHITECTURE_ASSESSMENT.md
+- docs/svos/architecture-review-2026-06-29/06_UPGRADE_ROADMAP.md
+- docs/svos/architecture-review-2026-06-29/03_CODE_QUALITY.md
+- docs/svos/architecture-review-2026-06-29/00_EXECUTIVE_SUMMARY.md
+- docs/archive/stratos-svos-prototype/README.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/flow.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/risk.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/parameters.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/rules.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/quality.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/flow.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/parameters.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/rules.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/strategy_spec.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/flow.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/parameters.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/rules.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/strategy_spec.md
+- docs/strategy_audit/strategies/D2E3/flow.md
+- docs/strategy_audit/strategies/D2E3/parameters.md
+- docs/strategy_audit/strategies/D2E3/rules.md
+- docs/strategy_audit/strategies/D2E3/strategy_spec.md
+- docs/strategy_audit/strategies/SMC Order Block + FVG Session (SVOSReady)/strategy_spec.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/flow.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/risk.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/parameters.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/rules.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/quality.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/strategy_spec.md
+- docs/strategy_audit/strategies/London Breakout/flow.md
+- docs/strategy_audit/strategies/London Breakout/risk.md
+- docs/strategy_audit/strategies/London Breakout/parameters.md
+- docs/strategy_audit/strategies/London Breakout/rules.md
+- docs/strategy_audit/strategies/London Breakout/quality.md
+- docs/strategy_audit/strategies/London Breakout/strategy_spec.md
+- docs/strategy_audit/strategies/NY Momentum/flow.md
+- docs/strategy_audit/strategies/NY Momentum/risk.md
+- docs/strategy_audit/strategies/NY Momentum/parameters.md
+- docs/strategy_audit/strategies/NY Momentum/rules.md
+- docs/strategy_audit/strategies/NY Momentum/quality.md
+- docs/strategy_audit/strategies/NY Momentum/strategy_spec.md
+- docs/strategy_audit/strategies/VWAP Breakout (VWAPBreakout)/strategy_spec.md
+- docs/Archive/HISTORICAL_EVIDENCE/VALIDATION_01_SINGLE_DAY.md
+- docs/Archive/HISTORICAL_EVIDENCE/HISTORICAL_DATA_AUDIT.md
+- docs/Archive/HISTORICAL_EVIDENCE/DEMO_GATE_DECISION.md
+- docs/Archive/HISTORICAL_EVIDENCE/CLEANUP_SUMMARY.md
+- docs/Archive/HISTORICAL_EVIDENCE/DEP_02_CONNECTION_REPORT.md
+- docs/Archive/HISTORICAL_EVIDENCE/PRE_E6_BASELINE.md
+- docs/Archive/HISTORICAL_EVIDENCE/HISTORICAL_DATA_PIPELINE_FINAL_REPORT.md
+- docs/Archive/HISTORICAL_EVIDENCE/ADAPTIVE_ENGINE_V1.md
+- docs/Archive/HISTORICAL_EVIDENCE/DRY_RUN_2023_03_14.md
+- docs/Archive/HISTORICAL_EVIDENCE/PHASE22_COLLECTION_HEALTH.md
+- docs/Archive/HISTORICAL_EVIDENCE/BUG01_RUNTIME_VALIDATION.md
+- docs/Archive/SUPERSEDED/PROJECT_OBJECTIVE_FASTEST_PATH.md
+- docs/Archive/SUPERSEDED/IMPLEMENTATION_STATUS.md
+- docs/Archive/SUPERSEDED/PROJECT_STATUS.md
+- docs/Archive/SUPERSEDED/PROJECT_LIVE_STATUS_TIMELINE.md
+- docs/Archive/SUPERSEDED/CURRENT_SCOPE.md
+- docs/Archive/SUPERSEDED/ESTIMATED_DEVELOPMENT_ROADMAP.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_VANTAGE_DEMO_RUNBOOK.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_DEMO_GO_LIVE_REPORT.md
+- docs/Archive/ST-A2_LEGACY/TRIAL_ST_A2_D1_SPEC.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_D1_IMPLEMENTATION_REPORT.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_CONFIRMATION.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_D1_COMPARISON_REPORT.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_DEMO_RISK_POLICY.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_OPPORTUNITY_ANALYSIS.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_D1_FINAL_VERDICT.md
+- docs/Archive/ST-A2_LEGACY/ST_A2_FIRST_30_TRADES_PLAN.md
+- examples/svos_sample/README.md
+- examples/svos_sample/strategy.md
+- svos/api/README.md
+- data/labels/README.md
+- data/metadata/README.md
+- data/replay/README.md
+- data/cache/README.md
+- data/analytics/README.md
+- data/backtests/README.md
+- archive/session-smc-trading-bot-updated/DEPLOYMENT_CHECKLIST.md
+- archive/session-smc-trading-bot-updated/CLAUDE.md
+- archive/session-smc-trading-bot-updated/DATA_AUDIT.md
+- archive/session-smc-trading-bot-updated/LOOKAHEAD_AUDIT.md
+- archive/docs-phase-complete/E6_DECISION_MATRIX.md
+- archive/docs-phase-complete/OPS01_PREFLIGHT.md
+- archive/docs-phase-complete/OPS01_HEARTBEAT_AUDIT.md
+- archive/docs-phase-complete/OPS01_RECONNECT_AUDIT.md
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md
+- archive/docs-phase-complete/E6_RUNBOOK.md
+- archive/docs-phase-complete/E6_READINESS_AUDIT.md
+- archive/docs-phase-complete/E6_COMPARISON_REPORT.md
+- archive/docs-phase-complete/OPS01_RUNTIME_SETUP.md
+- archive/docs-phase-complete/OPS01_MONITORING_CHECKLIST.md
+- archive/docs-phase-complete/E6_COST_REVALIDATION_PLAN.md
+- archive/docs-phase-complete/OPS01_DAY2_REPORT.md
+- archive/docs-phase-complete/OPS01_DAY0_BASELINE.md
+- archive/docs-phase-complete/DEPLOYMENT_CHECKLIST.md
+- archive/docs-phase-complete/OPS01_INFRASTRUCTURE_AUDIT.md
+- archive/docs-phase-complete/E6_DATASET_FREEZE.md
+- archive/docs-phase-complete/E6_PAIR_ANALYSIS.md
+- archive/docs-phase-complete/DATA_AUDIT.md
+- archive/docs-phase-complete/E6_SESSION_ANALYSIS.md
+- archive/docs-phase-complete/E6_EXECUTION_CHECKLIST.md
+- archive/docs-phase-complete/OPS01_DAILY_TEMPLATE.md
+- archive/session-smc-trading-bot-updated/reports/daily_status.md
+- archive/session-smc-trading-bot-updated/reports/live_vs_backtest.md
+- archive/session-smc-trading-bot-updated/docs/ENTRY_ENGINE_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_C_DATA_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_A_AUDIT_CONFIRMATION.md
+- archive/session-smc-trading-bot-updated/docs/E6_DECISION_MATRIX.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_PREFLIGHT.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_HEARTBEAT_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_VANTAGE_DEMO_RUNBOOK.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_RECONNECT_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/ST_B_RESEARCH_PLAN.md
+- archive/session-smc-trading-bot-updated/docs/PHASE4_ACCOUNT_ISOLATION.md
+- archive/session-smc-trading-bot-updated/docs/BIAS_FILTER_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_DAY1_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/E6_RUNBOOK.md
+- archive/session-smc-trading-bot-updated/docs/OPS02_ACTIVATION_CHECKLIST.md
+- archive/session-smc-trading-bot-updated/docs/E6_READINESS_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_DEMO_GO_LIVE_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/SPREAD_RESEARCH_FINAL_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/VALIDATION_01_SINGLE_DAY.md
+- archive/session-smc-trading-bot-updated/docs/STRATEGY_B_SMC.md
+- archive/session-smc-trading-bot-updated/docs/TIMEZONE_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/E6_COMPARISON_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_RUNTIME_SETUP.md
+- archive/session-smc-trading-bot-updated/docs/RISK_SPEC.md
+- archive/session-smc-trading-bot-updated/docs/HISTORICAL_REPLAY_FINAL_VERDICT.md
+- archive/session-smc-trading-bot-updated/docs/EXPERIMENT_RESULTS.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_G_DEPLOYMENT_READINESS.md
+- archive/session-smc-trading-bot-updated/docs/PROJECT_STATUS.md
+- archive/session-smc-trading-bot-updated/docs/PHASE2_DEPENDENCY_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/BACKTEST_FAILURE_ANALYSIS.md
+- archive/session-smc-trading-bot-updated/docs/STRATEGY_A_SESSION.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_D_REPLAY_RESULTS.md
+- archive/session-smc-trading-bot-updated/docs/AGENT_RULES.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_CONFIRMATION.md
+- archive/session-smc-trading-bot-updated/docs/PHASE1_REPOSITORY_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_MONITORING_CHECKLIST.md
+- archive/session-smc-trading-bot-updated/docs/BACKTEST_RESULTS.md
+- archive/session-smc-trading-bot-updated/docs/BACKTEST_COST_REVALIDATION_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/EXECUTION_SPEC.md
+- archive/session-smc-trading-bot-updated/docs/E6_COST_REVALIDATION_PLAN.md
+- archive/session-smc-trading-bot-updated/docs/TASK_QUEUE.md
+- archive/session-smc-trading-bot-updated/docs/DEMO_GATE_DECISION.md
+- archive/session-smc-trading-bot-updated/docs/BACKTEST_SPEC.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_F_PERFORMANCE_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_DAY2_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/INCIDENT_RESPONSE.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_DAY0_BASELINE.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_DEMO_RISK_POLICY.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_OPPORTUNITY_ANALYSIS.md
+- archive/session-smc-trading-bot-updated/docs/DEP_02_CONNECTION_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/OPS02_REVISED_GATE.md
+- archive/session-smc-trading-bot-updated/docs/DEPLOYMENT_READINESS.md
+- archive/session-smc-trading-bot-updated/docs/PHASE5_STARTUP_VALIDATION.md
+- archive/session-smc-trading-bot-updated/docs/ST_A2_FIRST_30_TRADES_PLAN.md
+- archive/session-smc-trading-bot-updated/docs/PHASE3_CONFIGURATION_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/PRE_E6_BASELINE.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_INFRASTRUCTURE_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/ADAPTIVE_ENGINE_V1.md
+- archive/session-smc-trading-bot-updated/docs/DRY_RUN_2023_03_14.md
+- archive/session-smc-trading-bot-updated/docs/LIVE_CAPITAL_SCALING_PLAN.md
+- archive/session-smc-trading-bot-updated/docs/E6_DATASET_FREEZE.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_B_REPLAY_ENGINE_REVIEW.md
+- archive/session-smc-trading-bot-updated/docs/E6_PAIR_ANALYSIS.md
+- archive/session-smc-trading-bot-updated/docs/STRATEGY_PORTFOLIO_ROADMAP.md
+- archive/session-smc-trading-bot-updated/docs/E6_SESSION_ANALYSIS.md
+- archive/session-smc-trading-bot-updated/docs/SIGNAL_SPEC.md
+- archive/session-smc-trading-bot-updated/docs/PHASE_E_SIGNAL_REVIEW.md
+- archive/session-smc-trading-bot-updated/docs/E6_EXECUTION_CHECKLIST.md
+- archive/session-smc-trading-bot-updated/docs/SWEEP_DETECTOR_AUDIT.md
+- archive/session-smc-trading-bot-updated/docs/SPREAD_CAPTURE_PLAN.md
+- archive/session-smc-trading-bot-updated/docs/VANTAGE_DEMO_CONNECTION_CHECKLIST.md
+- archive/session-smc-trading-bot-updated/docs/PHASE22_COLLECTION_HEALTH.md
+- archive/session-smc-trading-bot-updated/docs/BUG01_RUNTIME_VALIDATION.md
+- archive/session-smc-trading-bot-updated/docs/VERDICT_LOG.md
+- archive/session-smc-trading-bot-updated/docs/OPS01_DAILY_TEMPLATE.md
+- archive/session-smc-trading-bot-updated/docs/FORWARD_TEST_VALIDATION.md
+- archive/session-smc-trading-bot-updated/research/EXP05_B_RESULTS.md
+- archive/session-smc-trading-bot-updated/research/EXP05_RECOMMENDATION.md
+- archive/session-smc-trading-bot-updated/research/EXP05_D_RESULTS.md
+- archive/session-smc-trading-bot-updated/research/EXP05_E_RESULTS.md
+- archive/session-smc-trading-bot-updated/research/SPREAD_CAPTURE_INTERIM.md
+- archive/session-smc-trading-bot-updated/research/EXP05_A_RESULTS.md
+- archive/session-smc-trading-bot-updated/research/EXP05_C_RESULTS.md
+- archive/session-smc-trading-bot-updated/research/EXP05_FINAL_COMPARISON.md
+- archive/session-smc-trading-bot-updated/docs/replay_results/PORTFOLIO_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/replay_results/DATA_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/replay_results/FINAL_VERDICT.md
+- archive/session-smc-trading-bot-updated/docs/replay_results/EURUSD_REPORT.md
+- archive/session-smc-trading-bot-updated/docs/replay_results/GBPUSD_REPORT.md
+- archive/Database-F-prototype/reports/ST_A2_REPLAY_AUDIT.md
+- archive/Database-F-prototype/reports/DATASET_VALIDATION_REPORT.md
+- archive/Database-F-prototype/reports/STA2_BASELINE_REPORT.md
+- archive/Database-F-prototype/reports/ST_A2_REPLAY_ENGINE_V2_AUDIT.md
+- archive/Database-F-prototype/reports/HISTORICAL_PIPELINE_COMPLETION_REPORT.md
+- archive/Database-F-prototype/docs/DATABASE_SETUP.md
+- archive/Database-F-prototype/docs/DATABASE_ARCHITECTURE.md
+- archive/Database-F-prototype/docs/DATABASE_IMPLEMENTATION_FINAL_REPORT.md
+- .venv/lib/python3.12/site-packages/pyparsing/ai/best_practices.md
+- .venv/lib/python3.12/site-packages/httpcore-1.0.9.dist-info/licenses/LICENSE.md
+- .venv/lib/python3.12/site-packages/uvicorn-0.49.0.dist-info/licenses/LICENSE.md
+- .venv/lib/python3.12/site-packages/pip-26.1.2.dist-info/licenses/src/pip/_vendor/idna/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/philox/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/distributions/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md
+- .venv/lib/python3.12/site-packages/numpy-2.4.6.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md
+- .venv/lib/python3.12/site-packages/idna-3.18.dist-info/licenses/LICENSE.md
+- .venv/lib/python3.12/site-packages/httpx-0.28.1.dist-info/licenses/LICENSE.md
+- .venv/lib/python3.12/site-packages/pip/_vendor/idna/LICENSE.md
+- .venv/lib/python3.12/site-packages/werkzeug/debug/shared/ICON_LICENSE.md
+- .venv/lib/python3.12/site-packages/flask/sansio/README.md
+- .venv/lib/python3.12/site-packages/numpy/random/LICENSE.md
+- .venv/lib/python3.12/site-packages/pyarrow/tests/data/orc/README.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/SKILL.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/streaming.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/other-tools.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/path-operations.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/responses.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/pydantic.md
+- .venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/references/dependencies.md
+- .venv/lib/python3.12/site-packages/starlette-1.3.1.dist-info/licenses/LICENSE.md
+- .venv/lib/python3.12/site-packages/playwright/driver/README.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/README.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/trace/SKILL.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/SKILL.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/video-recording.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/session-management.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/spec-driven-testing.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/running-code.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/request-mocking.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/playwright-tests.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/element-attributes.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/test-generation.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/tracing.md
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/references/storage-state.md
+- .venv/lib/python3.12/site-packages/cyclonedx/contrib/README.md
+- .venv/lib/python3.12/site-packages/cyclonedx/schema/_res/README.md
+
+## Missing file references (from scan)
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> strategy_validation/validators/ambiguity_validator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> strategy_validation/validators/completeness_validator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> strategy_validation/validators/consistency_validator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> strategy_validation/validators/measurability_validator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> strategy_validation/validators/risk_validator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> dashboard/app.py#L69
+- docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md -> dashboard/index.html#L616
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> strategy_validation/pipeline/strategy_validation_pipeline.py#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> research/svos/engine.py#L645
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> research/svos/engine.py#L778
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> strategy_validation/models.py#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> strategy_validation/reports/report_generator.py#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> dashboard/index.html#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> dashboard/index.html#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> research/svos/engine.py#L645
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> strategy_validation/pipeline/strategy_validation_pipeline.py#L1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> /home/aungp/session-smc-trading-bot/tests/strategy_validation/test_pipeline.py:1
+- docs/SVOS_STRATEGY_AUDIT_GAP_CLOSURE_PLAN.md -> /home/aungp/session-smc-trading-bot/tests/test_dashboard_app.py:1
+- docs/index.md -> strategy_audit/strategies/ST-A2%20%28Session%20Liquidity%20Reversal%29/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/London%20Breakout/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/NY%20Momentum/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/Adaptive%20SMC%20%28AdaptiveSMC%29/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/VWAP%20Breakout%20%28VWAPBreakout%29/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/VWAP%20Mean%20Reversion%20%28VWAPMeanReversion%29/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/SMC%20Order%20Block%20%2B%20FVG%20Session%20%28SVOSReady%29/strategy_spec.md
+- docs/index.md -> strategy_audit/strategies/11-Phase%20SMC%20Session%20Chain%20%28Strategy%20B%20_%20session_smc%29/strategy_spec.md
+- New Dashborad/Two system on one Dashboard/README.md -> .env.local
+- New Dashborad/Two system on one Dashboard/node_modules/fdir/README.md -> /documentation.md
+- New Dashborad/Two system on one Dashboard/node_modules/fdir/README.md -> /BENCHMARKS.md
+- New Dashborad/Two system on one Dashboard/node_modules/debug/README.md -> ./examples/node/app.js
+- New Dashborad/Two system on one Dashboard/node_modules/debug/README.md -> ./examples/node/worker.js
+- New Dashborad/Two system on one Dashboard/node_modules/debug/README.md -> ./examples/node/stdout.js
+- New Dashborad/Two system on one Dashboard/node_modules/jiti/README.md -> ./src/babel.ts
+- New Dashborad/Two system on one Dashboard/node_modules/jiti/README.md -> ./test/fixtures/jsx
+- New Dashborad/Two system on one Dashboard/node_modules/rollup/README.md -> CONTRIBUTING.md
+- New Dashborad/Two system on one Dashboard/node_modules/rollup/README.md -> CONTRIBUTING.md
+- New Dashborad/Two system on one Dashboard/node_modules/nanoid/README.md -> ./README.ru.md
+- New Dashborad/Two system on one Dashboard/node_modules/nanoid/README.md -> ./README.zh-CN.md
+- New Dashborad/Two system on one Dashboard/node_modules/nanoid/README.md -> ./README.id-ID.md
+- New Dashborad/Two system on one Dashboard/node_modules/source-map-js/README.md -> media/downloads.png
+- New Dashborad/Two system on one Dashboard/node_modules/baseline-browser-mapping/README.md -> src/data/downstream-browsers.json
+- New Dashborad/Two system on one Dashboard/node_modules/json5/README.md -> ./SECURITY.md
+- New Dashborad/Two system on one Dashboard/node_modules/magic-string/README.md -> <(https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
+- New Dashborad/Two system on one Dashboard/node_modules/picomatch/README.md -> ../../issues/new
+- New Dashborad/Two system on one Dashboard/node_modules/picomatch/README.md -> .github/contributing.md
+- New Dashborad/Two system on one Dashboard/node_modules/picomatch/README.md -> .verb.md
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/index.html:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/New%20Dashborad/package.json:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/New%20Dashborad/src/App.tsx:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/app.py:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/strategy_service.py:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/report_service.py:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/control_state.py:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/gemini_service.py:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/New%20Dashborad/server.ts:1
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/index.html:2169
+- docs/dashboard_reuse_assessment/dashboard_audit.md -> /home/aungp/session-smc-trading-bot/dashboard/app.py:81
+- docs/dashboard_reuse_assessment/api_inventory.md -> /home/aungp/session-smc-trading-bot/New%20Dashborad/server.ts:166
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../bot.py#L290
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../bot.py#L295
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../execution/metaapi_client.py#L141
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../monitoring/telegram.py
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../execution/metaapi_client.py
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../bot.py
+- archive/docs-phase-complete/OPS01_DAY1_REPORT.md -> ../tests/test_bug01_rpc_timeout.py
+- .venv/lib/python3.12/site-packages/playwright/driver/package/lib/tools/cli-client/skill/SKILL.md -> .playwright-cli/page-2026-02-14T19-22-42-679Z.yml
+- .venv/lib/python3.12/site-packages/cyclonedx/schema/_res/README.md -> ../../../tools/schema-downloader.py

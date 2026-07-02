@@ -35,6 +35,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from monitoring.logging_utils import build_gzip_timed_rotating_handler
+from approval_package.package_validator import validate_package
 
 load_dotenv()
 
@@ -160,7 +161,17 @@ def _build_execution_client(
 async def run_bot(
     market_client: MetaAPIClient | None = None,
     broker: BrokerInterface | None = None,
+    approved_package_path: str | Path | None = None,
 ) -> None:
+    package_path = approved_package_path or os.getenv("APPROVED_STRATEGY_PACKAGE", "")
+    package_result = validate_package(package_path) if package_path else None
+    if package_result is None:
+        logger.error("Bot startup rejected: APPROVED_STRATEGY_PACKAGE is not configured")
+        raise PermissionError("bot requires an approved strategy package")
+    if not package_result.valid:
+        logger.error("Bot startup rejected: %s", "; ".join(package_result.reasons))
+        package_result.require_valid()
+    logger.info("Approved strategy package accepted: %s", package_result.package_path)
     telegram = TelegramAlerter(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
     await telegram.start()
 

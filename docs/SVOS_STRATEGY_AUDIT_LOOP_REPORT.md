@@ -176,14 +176,15 @@ The correct governance interpretation is:
 
 This workflow is already referenced in:
 
-- [docs/SVOS_LIFECYCLE_WORKFLOW.md](/home/aungp/session-smc-trading-bot/docs/SVOS_LIFECYCLE_WORKFLOW.md:1)
-- [docs/SVOS_EVF_USER_MANUAL.md](/home/aungp/session-smc-trading-bot/docs/SVOS_EVF_USER_MANUAL.md:1)
-- [docs/SYSTEM_ARCHITECTURE.md](/home/aungp/session-smc-trading-bot/docs/SYSTEM_ARCHITECTURE.md:1)
-- [docs/STRATEGY_VALIDATION_ENGINE.md](/home/aungp/session-smc-trading-bot/docs/STRATEGY_VALIDATION_ENGINE.md:1)
+
+- [SVOS_LIFECYCLE_WORKFLOW.md](SVOS_LIFECYCLE_WORKFLOW.md)
+- [SVOS_EVF_USER_MANUAL.md](SVOS_EVF_USER_MANUAL.md)
+- [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
+- [STRATEGY_VALIDATION_ENGINE.md](STRATEGY_VALIDATION_ENGINE.md)
 
 The executable Stage 1 implementation that supports this loop now lives in:
 
-- [strategy_validation](/home/aungp/session-smc-trading-bot/strategy_validation)
+- [../strategy_validation](../strategy_validation)
 
 ## Conclusion
 

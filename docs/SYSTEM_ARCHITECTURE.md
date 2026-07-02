@@ -1,12 +1,13 @@
 # System Architecture
 
-Date: 2026-06-28
+---
+Owner: Platform Architecture
 Status: Authoritative
 Version: 2.0
-Updated: 2026-06-29
-Owner: Platform Architecture
-Authority: Level 3 — Architectural
-Related: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
+Last Reviewed: 2026-06-29
+Next Review: TODO
+Related Documents: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
+---
 
 Governing product truth:
 `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. SVOS is the Strategy

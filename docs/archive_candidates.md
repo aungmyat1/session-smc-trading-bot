@@ -1,0 +1,74 @@
+# Archive Candidates
+
+The following orphaned documentation files were detected by the automated scan. These are *candidates* for archival — DO NOT MOVE THEM AUTOMATICALLY. Review each and confirm before relocating to `docs/archive/`.
+
+- docs/AUDIT_IMPLEMENTATION_PLAN_2026-07-01.md
+- docs/IMPLEMENTATION_STATUS.md
+- docs/PROJECT_OBJECTIVE.md
+- docs/PROJECT_READINESS_V1_REVALIDATION.md
+- docs/SYSTEM_BOUNDARIES.md
+- docs/audit/architecture_gap_report.md
+- docs/audit/current_repository_structure.md
+- docs/audit/dashboard_backend_mapping.md
+- docs/audit/database_topology.md
+- docs/audit/dependency_boundary_report.md
+- docs/audit/deployment_topology_validation.md
+- docs/audit/function_inventory.md
+- docs/audit/module_boundary_analysis.md
+- docs/audit/system_health_baseline.md
+- docs/current_status.md
+- docs/dashboard_reuse_assessment/api_inventory.md
+- docs/dashboard_reuse_assessment/component_inventory.md
+- docs/dashboard_reuse_assessment/dashboard_inventory.md
+- docs/dashboard_reuse_assessment/final_recommendation.md
+- docs/dashboard_reuse_assessment/migration_plan.md
+- docs/dashboard_reuse_assessment/technical_debt.md
+- docs/documentation_gap_analysis.md
+- docs/documentation_health_report.md
+- docs/examples/strategy_validation_sample_report/validation_report.md
+- docs/implementation/UNIFIED_DASHBOARD_DEPLOYMENT.md
+- docs/implementation/UNIFIED_DASHBOARD_FULL_IMPLEMENTATION_PLAN.md
+- docs/implementation/UNIFIED_DASHBOARD_IMPLEMENTATION_PLAN.md
+- docs/migration/database_cutover_readiness.md
+- docs/migration/database_inventory.md
+- docs/migration/database_target_architecture.md
+- docs/migration/postgres_cutover_plan.md
+- docs/migration_summary.md
+- docs/project_readiness_assessment.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/flow.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/parameters.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/quality.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/risk.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/rules.md
+- docs/strategy_audit/strategies/11-Phase SMC Session Chain (Strategy B _ session_smc)/strategy_spec.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/flow.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/parameters.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/rules.md
+- docs/strategy_audit/strategies/Adaptive SMC (AdaptiveSMC)/strategy_spec.md
+- docs/strategy_audit/strategies/D2E3/flow.md
+- docs/strategy_audit/strategies/D2E3/parameters.md
+- docs/strategy_audit/strategies/D2E3/rules.md
+- docs/strategy_audit/strategies/London Breakout/flow.md
+- docs/strategy_audit/strategies/London Breakout/parameters.md
+- docs/strategy_audit/strategies/London Breakout/quality.md
+- docs/strategy_audit/strategies/London Breakout/risk.md
+- docs/strategy_audit/strategies/London Breakout/rules.md
+- docs/strategy_audit/strategies/London Breakout/strategy_spec.md
+- docs/strategy_audit/strategies/NY Momentum/flow.md
+- docs/strategy_audit/strategies/NY Momentum/parameters.md
+- docs/strategy_audit/strategies/NY Momentum/quality.md
+- docs/strategy_audit/strategies/NY Momentum/risk.md
+- docs/strategy_audit/strategies/NY Momentum/rules.md
+- docs/strategy_audit/strategies/NY Momentum/strategy_spec.md
+- docs/strategy_audit/strategies/SMC Order Block + FVG Session (SVOSReady)/strategy_spec.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/flow.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/parameters.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/quality.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/risk.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/rules.md
+- docs/strategy_audit/strategies/ST-A2 (Session Liquidity Reversal)/strategy_spec.md
+- docs/strategy_audit/strategies/VWAP Breakout (VWAPBreakout)/strategy_spec.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/flow.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/parameters.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/rules.md
+- docs/strategy_audit/strategies/VWAP Mean Reversion (VWAPMeanReversion)/strategy_spec.md

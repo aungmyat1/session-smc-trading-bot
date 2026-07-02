@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import os
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -18,9 +20,9 @@ try:
 except ImportError:  # pragma: no cover - optional dependency in minimal runtimes
     pass
 
-from execution.mt5_connector import MT5Connector
-from execution.vantage_demo_executor import VantageDemoExecutor
-from production.engine import TradeManager
+from execution.mt5_connector import MT5Connector  # noqa: E402
+from execution.vantage_demo_executor import VantageDemoExecutor  # noqa: E402
+from production.engine import TradeManager  # noqa: E402
 
 JOURNAL_PATHS = [
     ROOT / "logs" / "trades.jsonl",
@@ -36,6 +38,12 @@ DEFAULT_TIMEFRAME = "M15"
 DEFAULT_CANDLE_COUNT = 120
 BROKER_TIMEOUT_S = 45
 RPC_TIMEOUT_S = 20
+SNAPSHOT_TIMEOUT_S = max(1.0, float(os.getenv("DASHBOARD_BROKER_SNAPSHOT_TIMEOUT_S", "8")))
+CLEANUP_TIMEOUT_S = max(0.5, float(os.getenv("DASHBOARD_BROKER_CLEANUP_TIMEOUT_S", "2")))
+
+_broker_cache_lock = threading.Lock()
+_last_good_broker_snapshot: dict[str, Any] | None = None
+_broker_refresh: dict[str, Any] | None = None
 
 try:
     import yaml
@@ -241,21 +249,48 @@ def _hold_time_label(open_time: Any) -> str:
     return f"{mins}m"
 
 
+def _empty_broker_snapshot(chart_symbol: str, timeframe: str, status: str, detail: str) -> dict[str, Any]:
+    return {
+        "available": False,
+        "status": status,
+        "detail": detail[:240],
+        "account": {},
+        "positions": [],
+        "orders": [],
+        "market_watch": [],
+        "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": []},
+        "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
+    }
+
+
+def _degraded_broker_snapshot(fallback: dict[str, Any], detail: str) -> dict[str, Any]:
+    global _last_good_broker_snapshot
+    with _broker_cache_lock:
+        cached = copy.deepcopy(_last_good_broker_snapshot)
+    if cached is None:
+        return fallback
+    cached.update(
+        {
+            "available": False,
+            "status": "DEGRADED",
+            "detail": f"{detail[:180]}; showing last successful snapshot",
+            "stale": True,
+            "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
+        }
+    )
+    return cached
+
+
 async def _fetch_broker_snapshot_async(symbols: list[str], chart_symbol: str, timeframe: str, candle_count: int) -> dict[str, Any]:
     token = os.getenv("METAAPI_TOKEN", "").strip()
     account_id = os.getenv("VANTAGE_DEMO_METAAPI_ID", "").strip()
     if not token or not account_id:
-        return {
-            "available": False,
-            "status": "UNCONFIGURED",
-            "detail": "METAAPI_TOKEN or VANTAGE_DEMO_METAAPI_ID missing",
-            "account": {},
-            "positions": [],
-            "orders": [],
-            "market_watch": [],
-            "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": []},
-            "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
-        }
+        return _empty_broker_snapshot(
+            chart_symbol,
+            timeframe,
+            "UNCONFIGURED",
+            "METAAPI_TOKEN or VANTAGE_DEMO_METAAPI_ID missing",
+        )
 
     connector = MT5Connector(mode="demo")
     try:
@@ -342,39 +377,67 @@ async def _fetch_broker_snapshot_async(symbols: list[str], chart_symbol: str, ti
             "heartbeat": heartbeat,
         }
     except Exception as exc:
-        return {
-            "available": False,
-            "status": "DISCONNECTED",
-            "detail": str(exc)[:240],
-            "account": {},
-            "positions": [],
-            "orders": [],
-            "market_watch": [],
-            "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": []},
-            "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
-        }
+        return _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", str(exc))
     finally:
         try:
-            await connector.disconnect()
+            await asyncio.wait_for(connector.disconnect(), timeout=CLEANUP_TIMEOUT_S)
         except Exception:
             pass
 
 
 def _fetch_broker_snapshot(symbols: list[str], chart_symbol: str, timeframe: str, candle_count: int) -> dict[str, Any]:
-    try:
-        return asyncio.run(_fetch_broker_snapshot_async(symbols, chart_symbol, timeframe, candle_count))
-    except Exception as exc:
-        return {
-            "available": False,
-            "status": "DISCONNECTED",
-            "detail": f"broker snapshot failed: {exc}",
-            "account": {},
-            "positions": [],
-            "orders": [],
-            "market_watch": [],
-            "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": []},
-            "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
-        }
+    global _broker_refresh, _last_good_broker_snapshot
+
+    def refresh_worker(refresh: dict[str, Any]) -> None:
+        global _last_good_broker_snapshot
+        try:
+            snapshot = asyncio.run(_fetch_broker_snapshot_async(symbols, chart_symbol, timeframe, candle_count))
+        except BaseException as exc:  # keep a failed background refresh from escaping the worker
+            snapshot = _empty_broker_snapshot(
+                chart_symbol,
+                timeframe,
+                "DISCONNECTED",
+                f"broker snapshot failed: {exc}",
+            )
+        if snapshot.get("available"):
+            snapshot["cached_at"] = _now_iso()
+            snapshot["stale"] = False
+            with _broker_cache_lock:
+                _last_good_broker_snapshot = copy.deepcopy(snapshot)
+        refresh["result"] = snapshot
+        refresh["event"].set()
+
+    with _broker_cache_lock:
+        refresh = _broker_refresh
+        if refresh is None or refresh["event"].is_set():
+            refresh = {"event": threading.Event(), "result": None}
+            _broker_refresh = refresh
+            threading.Thread(
+                target=refresh_worker,
+                args=(refresh,),
+                name="dashboard-broker-refresh",
+                daemon=True,
+            ).start()
+            wait_for_refresh = True
+        else:
+            wait_for_refresh = False
+
+    if wait_for_refresh:
+        refresh["event"].wait(timeout=SNAPSHOT_TIMEOUT_S)
+    if refresh["event"].is_set():
+        snapshot = refresh.get("result")
+        if isinstance(snapshot, dict):
+            if snapshot.get("available"):
+                return copy.deepcopy(snapshot)
+            return _degraded_broker_snapshot(snapshot, str(snapshot.get("detail") or "broker unavailable"))
+
+    detail = (
+        f"broker snapshot exceeded {SNAPSHOT_TIMEOUT_S:g}s deadline"
+        if wait_for_refresh
+        else "broker snapshot refresh still in progress"
+    )
+    fallback = _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", detail)
+    return _degraded_broker_snapshot(fallback, detail)
 
 
 def _portfolio_payload(account: dict[str, Any], closed_records: list[dict[str, Any]], positions: list[dict[str, Any]]) -> dict[str, Any]:
