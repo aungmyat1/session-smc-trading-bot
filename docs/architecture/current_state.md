@@ -6,6 +6,11 @@ Method: repository structure review, import-path inspection, deployment script r
 
 ## Executive Summary
 
+Governing target truth is
+`docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. This audit describes legacy
+and transitional reality; it does not authorize a broader Production system or
+collapse Backtest with Statistical Validation.
+
 `session-smc-trading-bot` is currently a transitional mixed-boundary platform.
 
 It contains:
@@ -120,10 +125,10 @@ These share many common runtime primitives but do not yet converge on one produc
 
 ```text
 strategy spec
-  -> strategy_audit
-  -> svos.application.intake / audit
+  -> Strategy Audit
   -> svos.application.replay
   -> svos.application.backtest
+  -> Statistical Validation gate
   -> svos.application.robustness
   -> svos.application.virtual_demo
   -> svos.registry + governance + reports

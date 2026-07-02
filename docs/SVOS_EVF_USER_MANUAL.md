@@ -11,7 +11,7 @@ Date: 2026-06-27
 
 This manual covers the two validation layers in this repo:
 
-- SVOS, the Strategy Validation Operating System
+- SVOS, the Strategy Research and Validating System
 - EVF, the Execution Validation Framework
 
 It describes what each system validates, how to run it, what its practical

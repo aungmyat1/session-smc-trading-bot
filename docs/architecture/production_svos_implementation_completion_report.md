@@ -6,8 +6,10 @@ Status: repo-side implementation substantially complete for live-ready-disabled 
 ## Scope of this report
 
 This report summarizes what has been implemented inside the repository for the
-Production Trading Engine + SVOS separation plan, what has been validated, and
+simple Production execution engine + SVOS separation plan, what has been validated, and
 what remains outside the current repo-only execution boundary.
+
+Scope is governed by `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`.
 
 The target scope completed here is:
 

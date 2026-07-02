@@ -25,10 +25,15 @@ application may import the other.
 
 ## Production boundary
 
-Production owns broker connectivity, execution permission, orders, risk,
-positions, runtime health, deployment import, and live-status projection.
+Production is the simple execution machine and owns exactly this functional
+chain: Trading Engine → Strategy Package Loader → Risk Manager → Execution
+Manager → Broker API → Position Management.
 Production must not import replay, optimization, research, strategy audit,
 strategy validation, datasets, or `svos`.
+
+Health, deployment automation, dashboards, and alerts are external operational
+surfaces around the machine. They may observe or protect the chain but are not
+additional trading-engine responsibilities.
 
 During migration, `production.engine` is the stable facade over legacy
 `execution` modules. Moving those implementations is deferred until callers
@@ -36,8 +41,10 @@ use the facade, which preserves public APIs and trading behavior.
 
 ## SVOS boundary
 
-SVOS owns intake, replay, simulation, backtest, robustness, optimization,
-validation, evidence, approval, packaging, registry, and research reports.
+SVOS is the Strategy Research and Validating System. It owns Strategy Idea,
+Strategy Audit, Historical Replay, Backtest, Statistical Validation,
+Robustness Testing, Virtual Demo Trading, Production Approval, evidence,
+packaging, registry, and research reports.
 SVOS must not import live broker connectors, production order/position
 managers, or production runtime services. Simulation adapters are allowed.
 

@@ -10,6 +10,11 @@ Note: EVF is a separate subsystem from SVOS VIRTUAL_DEMO. VIRTUAL_DEMO is
 offline research; EVF validates execution quality after research qualification.
 Related: SVOS_DESIGN_REFERENCE.md, HISTORICAL_REPLAY.md
 
+Conformance: execution-layer validation is evidence produced within SVOS
+Virtual Demo Trading. It is not a third production-like system or an additional
+lifecycle stage between Robustness Testing and Virtual Demo Trading. System 2
+remains the simple execution engine defined by the Original Truth.
+
 ---
 
 ## The Core Distinction
@@ -50,22 +55,16 @@ Historical Replay       (event-by-event validation)
 Backtest                (statistical validation)
   │
   ▼
+Statistical Validation  (evidence gate)
+  │
+  ▼
 Robustness Testing      (OOS, walk-forward, Monte Carlo)
   │
   ▼
-Execution Layer Validation
+Virtual Demo Trading    (includes execution-layer validation)
   │
   ▼
-Demo Forward Test
-  │
-  ▼
-Production Readiness Review
-  │
-  ▼
-Small Live Allocation
-  │
-  ▼
-Capital Scaling
+Production Approval
 ```
 
 ---

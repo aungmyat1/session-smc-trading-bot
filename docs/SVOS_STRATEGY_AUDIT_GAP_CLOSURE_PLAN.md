@@ -5,7 +5,7 @@ Date: 2026-06-28
 ## Objective
 
 Close the remaining gaps between the current repository implementation and the
-professional Strategy Validation Operating System workflow validated in
+professional Strategy Research and Validating System workflow validated in
 [docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md](/home/aungp/session-smc-trading-bot/docs/SVOS_STRATEGY_AUDIT_WORKFLOW_VALIDATION.md:1).
 
 The target is not to invent a new workflow. The target is to make the current

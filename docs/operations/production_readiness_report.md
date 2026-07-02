@@ -6,6 +6,10 @@ Owner: Platform Operations
 Verdict: ready for controlled disabled infrastructure rehearsal; not ready for
 paper execution or live trading
 
+Readiness is assessed against the Original Truth: the SVOS eight-stage research
+and validation lifecycle and the simple six-component Production execution
+machine.
+
 ## Scores
 
 | Dimension | Score | Assessment |

@@ -1,4 +1,4 @@
-# Strategy Validation Operating System — Design Reference
+# Strategy Research and Validating System — Design Reference
 # Recorded 2026-06-29 | Do not modify — this is the canonical design intent
 
 Status: Authoritative
@@ -19,9 +19,10 @@ Related: SYSTEM_ARCHITECTURE.md, CORE_ARCHITECTURE.md, STAGE1_AUDIT_SPEC.md
 | **1. Strategy Audit** | Validate the strategy specification | *Can this strategy be implemented objectively?* | Objective, complete rule set with ambiguities removed |
 | **2. Historical Replay** | Validate rule behavior | *Does the strategy behave as intended on historical charts?* | Correct signal generation and behavioral accuracy |
 | **3. Backtest** | Validate statistical edge | *Has the strategy been profitable after realistic trading costs?* | Performance metrics: Profit Factor, Expectancy, Drawdown |
-| **4. Robustness Tests** | Validate generalization | *Does the edge persist under different parameters and market conditions?* | Stability and robustness assessment |
-| **5. Virtual Demo Trading** | Validate execution | *Can the complete trading system execute the strategy reliably in live-like conditions?* | Execution accuracy, latency, slippage, operational reliability |
-| **6. Production Approval** | Validate deployment readiness | *Is there sufficient evidence to trade with real capital?* | Formal production readiness report and deployment decision |
+| **4. Statistical Validation** | Validate the backtest evidence | *Is the measured edge statistically sufficient under the defined gates?* | PASS/FAIL evidence decision |
+| **5. Robustness Tests** | Validate generalization | *Does the edge persist under different parameters and market conditions?* | Stability and robustness assessment |
+| **6. Virtual Demo Trading** | Validate execution | *Can the complete trading system execute the strategy reliably in live-like conditions?* | Execution accuracy, latency, slippage, operational reliability |
+| **7. Production Approval** | Validate deployment readiness | *Is there sufficient evidence to release an approved package?* | Formal approval and versioned strategy package |
 
 Each stage answers exactly one question. If the answer is not clearly yes, the
 strategy does not advance.
@@ -36,11 +37,12 @@ class of risk before the next, more expensive stage runs:
 | Strategy Audit | Design risk — the specification is ambiguous or unimplementable |
 | Historical Replay | Behavioral risk — the rules don't fire as written on real charts |
 | Backtest | Performance risk — no statistical edge after realistic costs |
+| Statistical Validation | Evidence risk — backtest results do not clear the required gates |
 | Robustness Tests | Overfitting risk — the edge doesn't generalize across conditions |
 | Virtual Demo Trading | Execution risk — the system breaks under live operational conditions |
 | Production Approval | Deployment risk — insufficient evidence to commit real capital |
 
-A strategy that reaches Stage 6 has had six independent risk classes eliminated.
+A strategy that reaches Stage 7 has had seven independent risk classes eliminated.
 That is the only basis on which capital commitment is justified.
 
 ---
@@ -51,7 +53,8 @@ Professional quantitative firms do not take a strategy directly to backtesting.
 They run a research pipeline where each stage must pass before the strategy is
 allowed to move forward. This platform mirrors that: a **Strategy Validation
 Operating System (SVOS)** that treats strategy validation as an operating
-discipline, not a one-shot script.
+discipline, not a one-shot script. SVOS means **Strategy Research and Validating
+System**.
 
 The central principle: **a strategy is not advanced because it completed a step;
 it is advanced only after it has satisfied objective quality gates, with every
@@ -74,18 +77,21 @@ Phase 1 ─ Strategy Enhancement     (AI Suggestions + Rule Opt)
 Phase 2 ─ Historical Replay        (Every trade inspected)        PASS / FAIL / FIX
       │
       ▼
-Phase 3 ─ Backtesting              (Statistical Validation)       PASS / FAIL / FIX
+Phase 3 ─ Backtest                 (Performance Measurement)      PASS / FAIL / FIX
       │
       ▼
-Phase 4 ─ Robustness Tests         (Walk Forward, Monte Carlo,
+Phase 4 ─ Statistical Validation   (Evidence Gate)                PASS / FAIL / FIX
+      │
+      ▼
+Phase 5 ─ Robustness Tests         (Walk Forward, Monte Carlo,
            Parameter Stability, Regime Analysis, Execution Cost)   PASS / FAIL / FIX
       │
       ▼
-Phase 5 ─ Demo Trading             (Live Market Validation,
+Phase 6 ─ Virtual Demo Trading     (Execution Validation,
            Drift Detection)                                         PASS / FAIL
       │
       ▼
-Phase 6 ─ Production Approval      (Live Capital)                 [RECORD ONLY]
+Phase 7 ─ Production Approval      (Package Approval)             [RECORD ONLY]
 ```
 
 ---

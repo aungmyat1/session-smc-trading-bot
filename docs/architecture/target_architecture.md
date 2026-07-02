@@ -10,8 +10,8 @@ document conflicts with that authority, the original truth wins.
 
 Split the repository into three explicit ownership layers:
 
-1. Production Trading Engine
-2. SVOS Strategy Validation Operating System
+1. Production execution engine (simple trading bot)
+2. SVOS Strategy Research and Validating System
 3. Shared Trading Libraries
 
 Core rule:

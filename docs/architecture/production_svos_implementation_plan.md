@@ -5,13 +5,18 @@ Status: active migration plan
 
 ## Goal
 
-Separate the Production Trading Engine from SVOS without changing validated
+Separate the simple Production execution engine from SVOS without changing validated
 strategy behavior or breaking existing operator entry points.
+
+The governing scope is `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`.
 
 ## Invariants
 
-- Production executes approved artifacts and never performs research.
-- SVOS researches, validates, approves, and publishes; it never submits live orders.
+- Production contains only Trading Engine, Strategy Package Loader, Risk
+  Manager, Execution Manager, Broker API, and Position Management behavior.
+- SVOS follows Strategy Idea → Strategy Audit → Historical Replay → Backtest →
+  Statistical Validation → Robustness Testing → Virtual Demo Trading →
+  Production Approval; it never submits live orders.
 - Both depend on pure `shared` contracts and replaceable `infrastructure` adapters.
 - `LIVE_TRADING=false` and `DEMO_ONLY=true` remain frozen during migration.
 - Existing public imports remain compatibility facades until callers migrate.

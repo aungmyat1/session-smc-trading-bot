@@ -5,6 +5,10 @@ Status: Current
 Owner: Platform Operations  
 Scope: Fresh repository and GitHub audit performed before Phase 2 changes
 
+Architecture truth: SVOS is the Strategy Research and Validating System;
+Production is the simple six-component execution machine. Operational services
+described here surround that machine and do not broaden its responsibility.
+
 ## Executive status
 
 The repository has sound SVOS/Production package boundaries and a working

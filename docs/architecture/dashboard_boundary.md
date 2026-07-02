@@ -24,6 +24,10 @@ Current problems:
 
 ## Production Dashboard Should Show
 
+The Production dashboard is an external operator surface. It observes the
+simple execution machine but is not part of the Production trading-engine
+responsibility chain defined by the Original Truth.
+
 - live positions
 - open and historical orders
 - broker connection state
