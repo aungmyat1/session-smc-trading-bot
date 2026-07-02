@@ -3,7 +3,7 @@ Vantage demo runner for strategy adapters.
 
 Legacy entrypoint kept for backwards compatibility.
 Preferred command:
-    python3 scripts/run_strategy_demo.py
+    python3 scripts/run_portfolio.py --mode demo --strategy-package <approved-package>
 
 Execution modes (TRADING_MODE env var or --mode flag):
 
@@ -35,6 +35,8 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+LEGACY_ENTRYPOINT = True
 
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))

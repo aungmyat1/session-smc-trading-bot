@@ -40,10 +40,11 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from approval_package.package_validator import validate_package
-
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
+
+from approval_package.package_validator import validate_package
+from scripts.validate_strategy_identity import package_strategy_id, validate_strategy_identity
 
 try:
     from dotenv import load_dotenv
@@ -110,7 +111,7 @@ def _resolve_strategy_package(args: argparse.Namespace) -> str | None:
     return package_path.strip() or None
 
 
-def _ensure_strategy_package(package_path: str | None) -> None:
+def _ensure_strategy_package(package_path: str | None, runner_strategy_id: str | None = None) -> str:
     if not package_path:
         raise PermissionError(
             "approved strategy package is required for demo execution"
@@ -118,7 +119,15 @@ def _ensure_strategy_package(package_path: str | None) -> None:
     result = validate_package(package_path)
     if not result.valid:
         raise PermissionError("approved package rejected: " + "; ".join(result.reasons))
+    strategy_id = (runner_strategy_id or package_strategy_id(package_path)).strip()
+    identity = validate_strategy_identity(
+        root=_ROOT,
+        package_path=package_path,
+        runner_strategy_id=strategy_id,
+    )
+    identity.require_valid()
     _log.info("Approved strategy package accepted: %s", result.package_path)
+    return identity.strategy_id
 
 _CFG = _load_strategy_config()
 _STRAT_CFG: dict = _CFG.get("strategies", {})
@@ -187,6 +196,7 @@ async def _tick(
     manager:     TradeManager,
     journal:     DemoTradeJournal,
     risk_state:  dict,
+    allowed_strategy_id: str | None = None,
 ) -> dict:
 
     # Daily reset
@@ -245,6 +255,8 @@ async def _tick(
     raw_signals = []
 
     for strategy_name, scfg in _STRATEGY_MAP.items():
+        if allowed_strategy_id and strategy_name != allowed_strategy_id:
+            continue
         if not scfg.get("enabled", True):
             continue
         strategy = get_strategy(strategy_name)
@@ -378,7 +390,7 @@ async def _tick(
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
-async def run(mode: str, interval: int) -> None:
+async def run(mode: str, interval: int, strategy_id: str | None = None) -> None:
     _log.info("Portfolio runner starting. MODE=%s  strategies=%s  symbols=%s",
               mode.upper(), list(_STRATEGY_MAP), _ALL_SYMBOLS)
 
@@ -397,8 +409,15 @@ async def run(mode: str, interval: int) -> None:
     try:
         while True:
             try:
-                risk_state = await _tick(mode, connector, executor, manager,
-                                         journal, risk_state)
+                risk_state = await _tick(
+                    mode,
+                    connector,
+                    executor,
+                    manager,
+                    journal,
+                    risk_state,
+                    allowed_strategy_id=strategy_id,
+                )
             except Exception as exc:
                 _log.error("Tick error: %s", exc, exc_info=True)
             await asyncio.sleep(interval)
@@ -416,6 +435,8 @@ def main() -> None:
     parser.add_argument("--interval", type=int, default=INTERVAL)
     parser.add_argument("--strategy-package", default=os.environ.get("APPROVED_STRATEGY_PACKAGE", ""),
                         help="Path to approved strategy package for demo execution")
+    parser.add_argument("--strategy-id", default=os.environ.get("RUNNER_STRATEGY_ID", ""),
+                        help="Canonical strategy ID; defaults to package metadata")
     parser.add_argument("--dry-run", action="store_true", default=False,
                         help="Alias for --mode shadow")
     args = parser.parse_args()
@@ -433,14 +454,15 @@ def main() -> None:
         sys.exit(1)
 
     package_path = _resolve_strategy_package(args)
-    if mode == "demo":
+    strategy_id: str | None = None
+    if mode == "demo" or package_path:
         try:
-            _ensure_strategy_package(package_path)
+            strategy_id = _ensure_strategy_package(package_path, args.strategy_id or None)
         except PermissionError as exc:
             print(f"ERROR: {exc}")
             sys.exit(1)
 
-    asyncio.run(run(mode, args.interval))
+    asyncio.run(run(mode, args.interval, strategy_id))
 
 
 if __name__ == "__main__":
