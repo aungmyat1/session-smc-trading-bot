@@ -10,6 +10,7 @@ It preserves the existing SVOS, EVF, trades, and status behavior while adding:
 - Reports center backed by `scripts/generate_reports.py`
 - Emergency control state with confirm-token protection
 - Audit logging for dashboard-triggered actions
+- Supported-symbol visibility through `GET /api/symbols`, including separate research and execution eligibility
 
 Primary backend files:
 
@@ -29,3 +30,4 @@ Safety notes:
 - Report generation is read-only and writes only report artifacts.
 - Emergency stop changes dashboard control state and audit logs only.
 - Existing SVOS/EVF confirm-token behavior remains in place.
+- BTCUSDT is displayed as crypto and research-only; the dashboard does not provide an execution-enable control.

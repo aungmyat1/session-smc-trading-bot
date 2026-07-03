@@ -45,6 +45,8 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
 ## Architecture
 
 - [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
+- [SUPPORTED_SYMBOLS.md](SUPPORTED_SYMBOLS.md) — canonical symbol scopes and market metadata
+- [VIRTUAL_DEMO_GUIDE.md](VIRTUAL_DEMO_GUIDE.md) — offline virtual-demo procedure, including BTCUSDT
 - [CORE_ARCHITECTURE.md](svos/CORE_ARCHITECTURE.md) — SVOS lifecycle state machine (Mermaid diagram)
 - [QUANT_PLATFORM_ARCHITECTURE.md](QUANT_PLATFORM_ARCHITECTURE.md)
 - [AI_WORKFLOW_ARCHITECTURE.md](AI_WORKFLOW_ARCHITECTURE.md)
