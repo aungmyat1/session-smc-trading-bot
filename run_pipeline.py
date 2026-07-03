@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from src.research_feature_database import FeatureDatabasePaths, build_feature_database
+from shared.configuration.symbols import enabled_symbols
 
 
 def _discover_default_symbols(raw_root: Path, processed_root: Path) -> list[str]:
@@ -11,7 +12,7 @@ def _discover_default_symbols(raw_root: Path, processed_root: Path) -> list[str]
     if raw_root.exists():
         for path in raw_root.glob("**/*M1*.csv"):
             name = path.name.upper()
-            for candidate in ("EURUSD", "GBPUSD", "XAUUSD"):
+            for candidate in enabled_symbols("research"):
                 if candidate in name:
                     symbols.add(candidate)
     if processed_root.exists():
@@ -19,13 +20,13 @@ def _discover_default_symbols(raw_root: Path, processed_root: Path) -> list[str]
             if sym_dir.is_dir():
                 symbols.add(sym_dir.name.upper())
     if not symbols:
-        symbols.update({"EURUSD", "GBPUSD", "XAUUSD"})
+        symbols.update(enabled_symbols("research"))
     return sorted(symbols)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the M1 research feature database")
-    parser.add_argument("--symbols", nargs="+", default=None, help="Symbols to include, e.g. EURUSD GBPUSD XAUUSD")
+    parser.add_argument("--symbols", nargs="+", default=None, help="Research symbols to include, e.g. EURUSD GBPUSD XAUUSD BTCUSDT")
     parser.add_argument("--swing-lookback", type=int, default=5, help="Centered swing lookback on each side")
     parser.add_argument("--raw-root", default="data/raw", help="Input raw data root")
     parser.add_argument("--processed-root", default="data/processed", help="Fallback processed data root")
@@ -49,4 +50,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -32,6 +32,7 @@ include = [
   "demo_runtime*",
   "historical_replay*",
   "research*",
+  "replay*",
   "session_smc*",
   "shared*",
   "strategies*",

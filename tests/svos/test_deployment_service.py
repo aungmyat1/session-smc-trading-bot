@@ -4,6 +4,8 @@ import json
 import tarfile
 from pathlib import Path
 
+import pytest
+
 from svos.deployment.service import DeploymentStatusService
 
 
@@ -12,8 +14,19 @@ def _catalog_text() -> str:
 current_strategy: ST-A2
 strategies:
   ST-A2:
-    status: walk_forward
+    status: production_approval
+    svos_stage: PRODUCTION_APPROVAL
     approved: true
+    approval:
+      decision: APPROVED
+      approved_at: "2026-01-01T00:00:00+00:00"
+      expires_at: "2099-01-01T00:00:00+00:00"
+      revoked: false
+    adapter_id: ST-A2
+    adapter_version: "2.1"
+    parameters: {session: London}
+    risk_policy: {policy_id: test-demo, max_risk_pct: 0.3}
+    evidence: [{stage: VIRTUAL_DEMO, status: PASS, artifact_hash: fixture}]
     current: true
     version: "2.1"
     owner: quant
@@ -50,15 +63,40 @@ def test_build_strategy_package_creates_immutable_archive_and_manifest(tmp_path:
     assert package["archive_sha256"]
     assert Path(package["content_addressed_path"]).exists()
     manifest = json.loads(Path(package["manifest_path"]).read_text(encoding="utf-8"))
-    assert manifest["package_format"] == "strategy-package/v1"
+    assert manifest["package_format"] == "strategy-package/v2"
     assert manifest["live_trading_enabled"] is False
 
     with tarfile.open(Path(package["archive_path"]), "r:gz") as archive:
         names = sorted(archive.getnames())
     assert "manifest.json" in names
-    assert "catalog_manifest.json" in names
+    assert "approval.json" in names
     assert "strategy_spec.md" in names
-    assert "validations.json" in names
+    assert "evidence_manifest.json" in names
+
+
+def test_build_strategy_package_requires_system1_private_key(tmp_path: Path, monkeypatch) -> None:
+    catalog = _setup_repo(tmp_path)
+    monkeypatch.delenv("SVOS_PACKAGE_SIGNING_PRIVATE_KEY", raising=False)
+
+    service = DeploymentStatusService(root=tmp_path, catalog_path=catalog)
+
+    with pytest.raises(ValueError, match="signing key"):
+        service.build_strategy_package("ST-A2", actor="unit-test")
+
+
+def test_build_strategy_package_requires_governance_approval_stage(tmp_path: Path) -> None:
+    catalog = _setup_repo(tmp_path)
+    catalog.write_text(
+        _catalog_text().replace("status: production_approval", "status: walk_forward").replace(
+            "svos_stage: PRODUCTION_APPROVAL", "svos_stage: ROBUSTNESS_VALIDATION"
+        ),
+        encoding="utf-8",
+    )
+
+    service = DeploymentStatusService(root=tmp_path, catalog_path=catalog)
+
+    with pytest.raises(PermissionError, match="PRODUCTION_APPROVAL"):
+        service.build_strategy_package("ST-A2", actor="unit-test")
 
 
 def test_create_deployment_and_record_report_round_trip(tmp_path: Path) -> None:
@@ -84,17 +122,13 @@ def test_create_deployment_and_record_report_round_trip(tmp_path: Path) -> None:
     assert status["reports"][0]["summary"] == "Dry-run validation completed"
 
 
-def test_gcs_transport_and_kms_style_signing_contracts_can_be_enabled_with_env(tmp_path: Path, monkeypatch) -> None:
+def test_gcs_transport_preserves_canonical_hmac_signature(tmp_path: Path, monkeypatch) -> None:
     catalog = _setup_repo(tmp_path)
     mirror_root = tmp_path / "gcs-mirror"
     monkeypatch.setenv("SVOS_PACKAGE_TRANSPORT", "gcs")
     monkeypatch.setenv("SVOS_GCS_BUCKET", "prod-strategy-artifacts")
     monkeypatch.setenv("SVOS_GCS_PREFIX", "packages")
     monkeypatch.setenv("SVOS_GCS_MIRROR_ROOT", str(mirror_root))
-    monkeypatch.setenv(
-        "SVOS_KMS_KEY_VERSION",
-        "projects/demo/locations/global/keyRings/svos/cryptoKeys/strategy/cryptoKeyVersions/1",
-    )
 
     service = DeploymentStatusService(root=tmp_path, catalog_path=catalog)
     package = service.build_strategy_package("ST-A2", actor="unit-test")
@@ -102,8 +136,8 @@ def test_gcs_transport_and_kms_style_signing_contracts_can_be_enabled_with_env(t
 
     assert package["transport"] == "gcs"
     assert package["registry_uri"].startswith("gs://prod-strategy-artifacts/packages/ST-A2/2.1/")
-    assert package["signature_scheme"] == "gcp-kms-asymmetric-attestation"
-    assert package["signature_key_ref"].endswith("/cryptoKeyVersions/1")
+    assert package["signature_scheme"] == "ed25519"
+    assert package["signature_key_ref"] == "env:SVOS_PACKAGE_SIGNING_PRIVATE_KEY"
     assert Path(package["mirror_path"]).exists()
     assert deployment["package_transport"] == "gcs"
     assert deployment["package_registry_uri"] == package["registry_uri"]

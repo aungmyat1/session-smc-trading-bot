@@ -12,6 +12,8 @@ from production.engine import (
     TradeManager,
     TradingPermissionService,
     runtime_module_inventory,
+    RuntimeAuthority,
+    LEGACY_RUNTIME_ENTRYPOINTS,
 )
 from execution.control_plane import TradingPermissionService as LegacyTradingPermissionService
 from execution.execution_state import ExecutionStateStore as LegacyExecutionStateStore
@@ -45,3 +47,11 @@ def test_engine_facade_exports_deployment_import_surface() -> None:
     assert ImportedDeploymentPackage.__name__ == "ImportedDeploymentPackage"
     assert ProductionPreflightVerifier.__name__ == "ProductionPreflightVerifier"
     assert PreflightVerificationResult.__name__ == "PreflightVerificationResult"
+
+
+def test_engine_facade_exposes_single_runtime_authority_and_legacy_inventory() -> None:
+    assert RuntimeAuthority.__name__ == "RuntimeAuthority"
+    assert "production.engine.runtime" in runtime_module_inventory()
+    assert "bot.py" in LEGACY_RUNTIME_ENTRYPOINTS
+    assert "scripts/run_st_a2_demo.py" in LEGACY_RUNTIME_ENTRYPOINTS
+    assert "scripts/run_d2_e3_demo.py" in LEGACY_RUNTIME_ENTRYPOINTS

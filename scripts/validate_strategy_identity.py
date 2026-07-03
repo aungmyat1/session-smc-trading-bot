@@ -6,6 +6,7 @@ import argparse
 import json
 import re
 import tempfile
+import tarfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,14 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 def package_strategy_id(package_path: Path | str) -> str:
     directory = Path(package_path)
+    if directory.is_file():
+        try:
+            with tarfile.open(directory, "r:gz") as archive:
+                member = archive.extractfile("manifest.json")
+                manifest = json.loads(member.read()) if member is not None else {}
+            return str(manifest.get("strategy_id", "")).strip()
+        except (OSError, tarfile.TarError, json.JSONDecodeError):
+            return ""
     spec = _load_yaml(directory / "strategy_spec.yaml")
     try:
         status = json.loads((directory / "approval_status.json").read_text(encoding="utf-8"))
@@ -38,6 +47,21 @@ def package_strategy_id(package_path: Path | str) -> str:
             if value:
                 return str(value).strip()
     return ""
+
+
+def package_symbols(package_path: Path | str) -> tuple[str, ...]:
+    path = Path(package_path)
+    if path.is_file():
+        try:
+            with tarfile.open(path, "r:gz") as archive:
+                member = archive.extractfile("manifest.json")
+                manifest = json.loads(member.read()) if member is not None else {}
+            return tuple(str(value).strip().upper() for value in manifest.get("symbols", []) if str(value).strip())
+        except (OSError, tarfile.TarError, json.JSONDecodeError):
+            return ()
+    spec = _load_yaml(path / "strategy_spec.yaml")
+    value = spec.get("pair") or spec.get("symbol")
+    return (str(value).strip().upper(),) if value else ()
 
 
 @dataclass(frozen=True, slots=True)
