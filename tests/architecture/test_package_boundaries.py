@@ -131,7 +131,7 @@ def test_active_code_avoids_legacy_shared_import_paths() -> None:
 def test_production_engine_facade_import_policy() -> None:
     facade_dir = ROOT / "production" / "engine"
     allowed_prefixes = ("execution", "production", "__future__")
-    allowed_stdlib = {"asyncio", "collections", "dataclasses", "enum", "json", "os", "pathlib", "typing", "uuid"}
+    allowed_stdlib = {"asyncio", "collections", "dataclasses", "datetime", "enum", "hashlib", "inspect", "json", "os", "pathlib", "tarfile", "typing", "uuid"}
     violations: list[str] = []
     for path in _python_files(facade_dir):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path.relative_to(ROOT)))

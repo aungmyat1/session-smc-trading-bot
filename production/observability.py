@@ -54,7 +54,14 @@ class ProductionObservabilityService:
             "# HELP agtrade_heartbeat_age_seconds Age of the latest runtime heartbeat.",
             "# TYPE agtrade_heartbeat_age_seconds gauge",
             f"agtrade_heartbeat_age_seconds {float(age) if age is not None else -1}",
+            "# HELP agtrade_broker_writes_enabled Broker write capability (must remain 0).",
+            "# TYPE agtrade_broker_writes_enabled gauge",
+            "agtrade_broker_writes_enabled 0",
         ]
+        metric_state = read_json(self.root / "data" / "production" / "metrics.json", {})
+        for name in ("stale_prices", "rejected_intents", "order_outcomes", "reconciliation_drift", "recovery_blocked", "audit_failures"):
+            value = float(metric_state.get(name, 0))
+            lines.extend((f"# TYPE agtrade_{name} gauge", f"agtrade_{name} {value}"))
         return "\n".join(lines) + "\n"
 
     @staticmethod

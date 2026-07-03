@@ -36,6 +36,12 @@ from production.engine.services import (
     TradeManager,
     TradingPermissionService,
 )
+from production.engine.adapter_registry import AdapterRegistry, AdapterRegistration
+from production.engine.contracts import DisabledVantageAdapter, ExecutionSignal, MarketEvent, RUNTIME_API_VERSION, SignalAction
+from production.engine.orders import OrderService
+from production.engine.positions import PositionService
+from production.engine.risk import AccountSnapshot, MarketSnapshot, RiskContext, RiskFirewall
+from production.engine.coordinator import ExecutionCoordinator
 
 __all__ = [
     "ACTIVE_RUNTIME_MODULES",
@@ -72,4 +78,8 @@ __all__ = [
     "TradeManager",
     "TradingPermissionService",
     "runtime_module_inventory",
+    "AccountSnapshot", "AdapterRegistration", "AdapterRegistry", "DisabledVantageAdapter",
+    "ExecutionSignal", "MarketEvent", "MarketSnapshot", "OrderService", "PositionService",
+    "ExecutionCoordinator",
+    "RUNTIME_API_VERSION", "RiskContext", "RiskFirewall", "SignalAction",
 ]

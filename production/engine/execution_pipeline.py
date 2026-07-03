@@ -100,6 +100,8 @@ class CanonicalExecutionPipeline:
         adapter: ExecutionAdapter,
         event_sink: EventSink | None = None,
         clock: Callable[[], str] | None = None,
+        package_validator: Callable[[], None] | None = None,
+        risk_context_provider: Callable[[], Any] | None = None,
     ) -> None:
         try:
             self.mode = ExecutionMode(mode)
@@ -111,8 +113,14 @@ class CanonicalExecutionPipeline:
         self.adapter = adapter
         self.event_sink = event_sink
         self.clock = clock or now_iso
+        self.package_validator = package_validator
+        self.risk_context_provider = risk_context_provider
         self._context: RuntimeContext | None = None
         self.events: list[NormalizedExecutionEvent] = []
+
+    @property
+    def context(self) -> RuntimeContext | None:
+        return self._context
 
     async def run(self, context: RuntimeContext, workload: PipelineWorkload) -> None:
         if self._context is not None:
@@ -127,8 +135,21 @@ class CanonicalExecutionPipeline:
     async def submit(self, intent: ExecutionIntent) -> AdapterResult:
         if self._context is None:
             raise RuntimeError("canonical execution pipeline has not started")
+        if self.package_validator is not None:
+            try:
+                self.package_validator()
+            except (PermissionError, ValueError) as exc:
+                self._emit("package_rejected", intent=intent, approved=False, reason=str(exc), status="REJECTED")
+                return AdapterResult("REJECTED", details={"reason": "PACKAGE_REVALIDATION_FAILED"})
+        if not intent.intent_id or not intent.strategy_id or not intent.symbol or intent.quantity <= 0:
+            self._emit("intent_rejected", intent=intent, approved=False, reason="INVALID_INTENT", status="REJECTED")
+            return AdapterResult("REJECTED", details={"reason": "INVALID_INTENT"})
+        if self._context is not None and (intent.strategy_id != self._context.strategy_id or intent.symbol not in self._context.symbols):
+            self._emit("intent_rejected", intent=intent, approved=False, reason="PACKAGE_SCOPE_MISMATCH", status="REJECTED")
+            return AdapterResult("REJECTED", details={"reason": "PACKAGE_SCOPE_MISMATCH"})
         self._emit("intent_received", intent=intent, status="RECEIVED")
-        decision_value = self.risk_gate.evaluate(intent)
+        context = self.risk_context_provider() if self.risk_context_provider is not None else None
+        decision_value = self.risk_gate.evaluate(intent, context) if context is not None else self.risk_gate.evaluate(intent)
         decision = await decision_value if isinstance(decision_value, Awaitable) else decision_value
         self._emit(
             "risk_decision",

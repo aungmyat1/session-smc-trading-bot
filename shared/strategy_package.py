@@ -22,6 +22,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 PACKAGE_FORMAT = "strategy-package/v2"
+RUNTIME_API_VERSION = "system2-runtime/v1"
 SIGNATURE_SCHEME = "ed25519"
 REQUIRED_MEMBERS = frozenset(
     {
@@ -110,6 +111,10 @@ def build_canonical_package(
     approval: Mapping[str, Any],
     signing_key: str,
     provenance: Mapping[str, Any] | None = None,
+    adapter_code_sha256: str | None = None,
+    runtime_api_version: str = RUNTIME_API_VERSION,
+    instruments: list[str] | tuple[str, ...] | None = None,
+    timeframes: list[str] | tuple[str, ...] | None = None,
 ) -> CanonicalPackageBuild:
     """Build a deterministic canonical archive from already-approved evidence."""
 
@@ -154,6 +159,11 @@ def build_canonical_package(
         "provenance.json": _json_bytes(dict(provenance or {"source_format": PACKAGE_FORMAT})),
     }
     semantic_hashes = _member_hashes(semantic_files)
+    resolved_adapter_hash = adapter_code_sha256 or hashlib.sha256(f"{adapter_id}:{adapter_version}".encode()).hexdigest()
+    resolved_instruments = list(instruments or package_symbols)
+    resolved_timeframes = list(timeframes or parameters.get("timeframes", []))
+    execution_policy_hash = hashlib.sha256(_canonical_json(dict(risk_policy))).hexdigest()
+    parameter_hash = hashlib.sha256(_canonical_json(dict(parameters))).hexdigest()
     package_id = hashlib.sha256(
         _canonical_json(
             {
@@ -162,6 +172,10 @@ def build_canonical_package(
                 "strategy_version": strategy_version,
                 "adapter_id": adapter_id,
                 "adapter_version": adapter_version,
+                "adapter_code_sha256": resolved_adapter_hash,
+                "runtime_api_version": runtime_api_version,
+                "instruments": resolved_instruments,
+                "timeframes": resolved_timeframes,
                 "symbols": package_symbols,
                 "members": semantic_hashes,
             }
@@ -174,7 +188,13 @@ def build_canonical_package(
         "strategy_version": strategy_version,
         "adapter_id": adapter_id,
         "adapter_version": adapter_version,
+        "adapter_code_sha256": resolved_adapter_hash,
+        "runtime_api_version": runtime_api_version,
         "symbols": package_symbols,
+        "instruments": resolved_instruments,
+        "timeframes": resolved_timeframes,
+        "parameter_sha256": parameter_hash,
+        "execution_policy_sha256": execution_policy_hash,
         "live_trading_enabled": False,
         "members": semantic_hashes,
     }
@@ -262,8 +282,17 @@ def validate_canonical_package(
     for key in ("package_id", "strategy_id", "strategy_version", "adapter_id", "adapter_version"):
         if not str(manifest.get(key, "")).strip():
             reasons.append(f"manifest field is required: {key}")
+    code_hash = str(manifest.get("adapter_code_sha256", ""))
+    if len(code_hash) != 64 or any(ch not in "0123456789abcdef" for ch in code_hash.lower()):
+        reasons.append("manifest adapter_code_sha256 must be a SHA-256 hex digest")
+    if manifest.get("runtime_api_version") != RUNTIME_API_VERSION:
+        reasons.append(f"runtime_api_version must be {RUNTIME_API_VERSION}")
     if not isinstance(manifest.get("symbols"), list) or not manifest.get("symbols"):
         reasons.append("manifest symbols must be a non-empty list")
+    if not isinstance(manifest.get("instruments"), list) or not manifest.get("instruments"):
+        reasons.append("manifest instruments must be a non-empty list")
+    if not isinstance(manifest.get("timeframes"), list):
+        reasons.append("manifest timeframes must be a list")
     if expected_strategy_id and manifest.get("strategy_id") != expected_strategy_id:
         reasons.append("strategy identity mismatch")
     if expected_adapter_version and manifest.get("adapter_version") != expected_adapter_version:
@@ -282,6 +311,10 @@ def validate_canonical_package(
                     "strategy_version": manifest.get("strategy_version"),
                     "adapter_id": manifest.get("adapter_id"),
                     "adapter_version": manifest.get("adapter_version"),
+                    "adapter_code_sha256": manifest.get("adapter_code_sha256"),
+                    "runtime_api_version": manifest.get("runtime_api_version"),
+                    "instruments": manifest.get("instruments"),
+                    "timeframes": manifest.get("timeframes"),
                     "symbols": manifest.get("symbols"),
                     "members": semantic_hashes,
                 }
@@ -323,6 +356,12 @@ def validate_canonical_package(
         payload = load_json(name)
         if not payload:
             reasons.append(f"{name} must contain a non-empty object")
+    parameters = load_json("parameters.json")
+    risk_policy = load_json("risk_policy.json")
+    if manifest.get("parameter_sha256") != hashlib.sha256(_canonical_json(parameters)).hexdigest():
+        reasons.append("parameter hash does not match parameters.json")
+    if manifest.get("execution_policy_sha256") != hashlib.sha256(_canonical_json(risk_policy)).hexdigest():
+        reasons.append("execution policy hash does not match risk_policy.json")
 
     return CanonicalPackageValidation(
         not reasons,

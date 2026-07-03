@@ -69,6 +69,10 @@ class RuntimeContext:
     symbols: tuple[str, ...]
     broker_adapter: str
     risk_enforcer: str
+    adapter_id: str = ""
+    adapter_version: str = ""
+    adapter_code_sha256: str = ""
+    runtime_api_version: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +154,15 @@ class RuntimeAuthority:
     def persisted_state(self) -> dict[str, Any]:
         return read_json(self.state_path, self._snapshot.to_dict())
 
+    def revalidate_package(self) -> None:
+        """Fail closed when the package changes, expires, or becomes revoked."""
+        current = self._validate_package_content()
+        if self._validation is not None and (
+            current.package_id != self._validation.package_id
+            or current.archive_sha256 != self._validation.archive_sha256
+        ):
+            raise PermissionError("canonical package changed after runtime startup")
+
     async def run(self, runtime_factory: RuntimeFactory) -> None:
         """Validate, acquire ownership, run, and safely release one runtime."""
 
@@ -191,6 +204,9 @@ class RuntimeAuthority:
 
     def _validate_startup(self) -> CanonicalPackageValidation:
         self._transition(RuntimeState.VALIDATING_PACKAGE, "validating canonical strategy package")
+        return self._validate_package_content()
+
+    def _validate_package_content(self) -> CanonicalPackageValidation:
         if self.broker_adapter not in SUPPORTED_BROKER_ADAPTERS:
             raise ValueError(f"unsupported broker adapter selection: {self.broker_adapter}")
         if self.risk_enforcer not in SUPPORTED_RISK_ENFORCERS:
@@ -225,10 +241,15 @@ class RuntimeAuthority:
             symbols=tuple(str(value) for value in manifest.get("symbols", [])),
             broker_adapter=self.broker_adapter,
             risk_enforcer=self.risk_enforcer,
+            adapter_id=str(manifest.get("adapter_id", "")),
+            adapter_version=str(manifest.get("adapter_version", "")),
+            adapter_code_sha256=str(manifest.get("adapter_code_sha256", "")),
+            runtime_api_version=str(manifest.get("runtime_api_version", "")),
         )
 
     def _acquire_ownership(self) -> None:
         self.state_root.mkdir(parents=True, exist_ok=True)
+        self._remove_stale_lock()
         try:
             descriptor = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         except FileExistsError as exc:
@@ -239,6 +260,22 @@ class RuntimeAuthority:
             handle.write("\n")
         self._owns_lock = True
         self._emit("runtime_ownership_acquired")
+
+    def _remove_stale_lock(self) -> None:
+        if not self.lock_path.exists():
+            return
+        try:
+            lock = json.loads(self.lock_path.read_text(encoding="utf-8"))
+            pid = int(lock.get("pid", 0))
+            if pid > 0:
+                os.kill(pid, 0)
+                return
+        except ProcessLookupError:
+            pass
+        except (OSError, ValueError, json.JSONDecodeError):
+            return
+        self.lock_path.unlink(missing_ok=True)
+        self._emit("stale_runtime_lock_recovered")
 
     def _release_ownership(self) -> None:
         if not self._owns_lock:

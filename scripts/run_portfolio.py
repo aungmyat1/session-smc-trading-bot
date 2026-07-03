@@ -58,7 +58,10 @@ except ImportError:
 # ── Register all strategies ───────────────────────────────────────────────────
 from core.strategy_registry import register_strategy, get_strategy
 from strategies.adapters.st_a2_adapter      import ST2Adapter
-from strategies.adapters.day_trading_maneuvers_adapter import DayTradingManeuversAdapter
+try:
+    from strategies.adapters.day_trading_maneuvers_adapter import DayTradingManeuversAdapter
+except ImportError:  # Optional adapter is not part of the canonical runtime.
+    DayTradingManeuversAdapter = None
 from strategies.adapters.london_breakout_adapter import LondonBreakoutAdapter
 from strategies.adapters.ny_momentum_adapter     import NYMomentumAdapter
 from strategies.adapters.adaptive_smc_adapter    import AdaptiveSMCAdapter
@@ -67,16 +70,17 @@ from strategies.adapters.vwap_adapter            import (
     VWAPBreakoutAdapter,
 )
 
-for _adapter in [
+for _adapter_type in [
     ST2Adapter(),
-    DayTradingManeuversAdapter(),
+    DayTradingManeuversAdapter() if DayTradingManeuversAdapter is not None else None,
     LondonBreakoutAdapter(),
     NYMomentumAdapter(),
     AdaptiveSMCAdapter(),
     VWAPMeanReversionAdapter(),
     VWAPBreakoutAdapter(),
 ]:
-    register_strategy(_adapter)
+    if _adapter_type is not None:
+        register_strategy(_adapter_type)
 
 # ── Portfolio control layer ───────────────────────────────────────────────────
 from core.signal_router     import SignalRouter
