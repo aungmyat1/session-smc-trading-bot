@@ -7,6 +7,7 @@ from pathlib import Path
 
 from approval_package.package_builder import REQUIRED_EVIDENCE
 from approval_package.package_signature import verify_files
+from shared.strategy_package import validate_canonical_package
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,13 @@ class PackageValidationResult:
 
 def validate_package(path: Path | str, *, signing_key: str | None = None, now: datetime | None = None) -> PackageValidationResult:
     directory = Path(path)
+    if directory.is_file():
+        canonical = validate_canonical_package(
+            directory,
+            signing_key=signing_key or "",
+            now=now,
+        )
+        return PackageValidationResult(canonical.valid, canonical.reasons, canonical.archive_path)
     reasons: list[str] = []
     required = (*REQUIRED_EVIDENCE, "approval_status.json", "signature.txt")
     missing = [name for name in required if not (directory / name).is_file()]

@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from shared.configuration.symbols import validate_symbol
+
 
 class ReplayConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -19,8 +21,9 @@ class ReplayConfig(BaseModel):
     @classmethod
     def supported_pair(cls, value: str) -> str:
         pair = value.upper().replace("/", "")
-        if pair not in {"EURUSD", "GBPUSD", "XAUUSD"}:
-            raise ValueError("pair must be EURUSD, GBPUSD, or XAUUSD")
+        validation = validate_symbol(pair, scope="research")
+        if not validation.valid:
+            raise ValueError("; ".join(validation.errors))
         return pair
 
     @model_validator(mode="after")

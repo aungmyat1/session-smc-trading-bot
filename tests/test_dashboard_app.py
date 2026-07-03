@@ -19,6 +19,8 @@ def _write(path: Path, content: str) -> None:
 
 
 def _setup_dashboard_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SVOS_PACKAGE_SIGNING_PRIVATE_KEY", "11" * 32)
+    monkeypatch.setenv("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY", "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737")
     for rel in [
         "config",
         "logs",
@@ -45,8 +47,19 @@ def _setup_dashboard_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 current_strategy: ST-A2
 strategies:
   ST-A2:
-    status: walk_forward
+    status: production_approval
+    svos_stage: PRODUCTION_APPROVAL
     approved: true
+    approval:
+      decision: APPROVED
+      approved_at: "2026-01-01T00:00:00+00:00"
+      expires_at: "2099-01-01T00:00:00+00:00"
+      revoked: false
+    adapter_id: ST-A2
+    adapter_version: "2.1"
+    parameters: {session: London}
+    risk_policy: {policy_id: test-demo, max_risk_pct: 0.3}
+    evidence: [{stage: VIRTUAL_DEMO, status: PASS, artifact_hash: fixture}]
     current: true
     version: "2.1"
     description: Session liquidity reversal production candidate

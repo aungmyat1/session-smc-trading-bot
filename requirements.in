@@ -24,8 +24,8 @@ flask-cors>=4,<7
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
 
-# Gemini AI — new-dashboard strategy intake and failure diagnosis
-google-generativeai>=0.8
+# Gemini AI — current unified SDK for Developer API and Vertex AI
+google-genai>=2.10,<3
 
 # Future isolated Vantage/MetaAPI execution adapter
 metaapi-cloud-sdk>=29,<30

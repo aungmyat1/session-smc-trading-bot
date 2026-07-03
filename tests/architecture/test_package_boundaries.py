@@ -131,6 +131,7 @@ def test_active_code_avoids_legacy_shared_import_paths() -> None:
 def test_production_engine_facade_import_policy() -> None:
     facade_dir = ROOT / "production" / "engine"
     allowed_prefixes = ("execution", "production", "__future__")
+    allowed_stdlib = {"asyncio", "collections", "dataclasses", "datetime", "enum", "hashlib", "inspect", "json", "os", "pathlib", "tarfile", "typing", "uuid"}
     violations: list[str] = []
     for path in _python_files(facade_dir):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path.relative_to(ROOT)))
@@ -139,6 +140,8 @@ def test_production_engine_facade_import_policy() -> None:
                 if module.startswith("shared."):
                     continue
                 if module == "shared":
+                    continue
+                if module.split(".", 1)[0] in allowed_stdlib:
                     continue
                 if not any(module == prefix or module.startswith(f"{prefix}.") for prefix in allowed_prefixes):
                     violations.append(f"{path.relative_to(ROOT)} imports {module}")

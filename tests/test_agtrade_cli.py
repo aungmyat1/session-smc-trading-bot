@@ -85,6 +85,8 @@ Exit Rules: Close at target
 def test_agtrade_production_import_and_preflight_workflows(tmp_path, capsys, monkeypatch):
     monkeypatch.setenv("LIVE_TRADING", "false")
     monkeypatch.setenv("DEMO_ONLY", "true")
+    monkeypatch.setenv("SVOS_PACKAGE_SIGNING_PRIVATE_KEY", "11" * 32)
+    monkeypatch.setenv("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY", "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737")
     catalog = tmp_path / "config" / "strategy_catalog.yaml"
     catalog.parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / "docs" / "specs").mkdir(parents=True, exist_ok=True)
@@ -95,8 +97,19 @@ def test_agtrade_production_import_and_preflight_workflows(tmp_path, capsys, mon
 current_strategy: ST-A2
 strategies:
   ST-A2:
-    status: walk_forward
+    status: production_approval
+    svos_stage: PRODUCTION_APPROVAL
     approved: true
+    approval:
+      decision: APPROVED
+      approved_at: "2026-01-01T00:00:00+00:00"
+      expires_at: "2099-01-01T00:00:00+00:00"
+      revoked: false
+    adapter_id: ST-A2
+    adapter_version: "2.1"
+    parameters: {session: London}
+    risk_policy: {policy_id: test-demo, max_risk_pct: 0.3}
+    evidence: [{stage: VIRTUAL_DEMO, status: PASS, artifact_hash: fixture}]
     current: true
     version: "2.1"
     owner: quant

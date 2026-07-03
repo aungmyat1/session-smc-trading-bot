@@ -5,14 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import tarfile
-import hmac
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from shared.serialization import now_iso, read_json, write_json
-from infrastructure.google_cloud import GoogleCloudError, KMSAsymmetricAdapter
+from shared.strategy_package import REQUIRED_MEMBERS, validate_canonical_package
+from shared.configuration.symbols import validate_symbol
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,16 +38,7 @@ class PreflightVerificationResult:
 class ProductionPreflightVerifier:
     """Verify a staged deployment package before any activation workflow exists."""
 
-    _REQUIRED_FILES = frozenset(
-        {
-            "manifest.json",
-            "catalog_manifest.json",
-            "registry_record.json",
-            "signature.json",
-            "strategy_spec.md",
-            "validations.json",
-        }
-    )
+    _REQUIRED_FILES = REQUIRED_MEMBERS
 
     def __init__(self, *, root: Path | str) -> None:
         self.root = Path(root)
@@ -60,20 +51,31 @@ class ProductionPreflightVerifier:
         if not archive_path.exists():
             raise FileNotFoundError(archive_path)
 
-        names, manifest, signature = self._read_archive_metadata(archive_path)
         actual_sha = self._file_sha256(archive_path)
         expected_sha = str(import_state.get("archive_sha256", ""))
+        names, _, _ = self._read_archive_metadata(archive_path)
+        revocations = read_json(self.root / "data" / "production" / "revoked_packages.json", {})
+        revoked_ids = set(revocations.get("package_ids", [])) if isinstance(revocations, dict) else set()
+        canonical = validate_canonical_package(
+            archive_path,
+            signing_key=os.getenv("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY", ""),
+            expected_strategy_id=str(import_state.get("strategy", "")) or None,
+            revoked_package_ids=revoked_ids,
+        )
+        symbol_checks = [validate_symbol(symbol, scope="execution") for symbol in canonical.manifest.get("symbols", [])]
+        execution_symbols_allowed = bool(symbol_checks) and all(item.valid for item in symbol_checks)
 
         checks = [
             self._check("archive_exists", archive_path.exists(), f"archive={archive_path}"),
             self._check("archive_checksum_matches_import", actual_sha == expected_sha, f"expected={expected_sha} actual={actual_sha}"),
             self._check("required_files_present", self._REQUIRED_FILES.issubset(names), f"missing={sorted(self._REQUIRED_FILES - names)}"),
-            self._check("manifest_format", str(manifest.get("package_format", "")) == "strategy-package/v1", f"package_format={manifest.get('package_format', '')}"),
-            self._check("manifest_live_disabled", bool(manifest.get("live_trading_enabled", True)) is False, f"live_trading_enabled={manifest.get('live_trading_enabled')}"),
-            self._check("manifest_strategy_present", bool(str(manifest.get("strategy", "")).strip()), f"strategy={manifest.get('strategy', '')}"),
-            self._check("manifest_version_present", bool(str(manifest.get("version", "")).strip()), f"version={manifest.get('version', '')}"),
-            self._check("signature_present", bool(str(signature.get("signature", "")).strip()), f"scheme={signature.get('scheme', '')}"),
-            self._verify_signature(manifest, signature),
+            self._check("canonical_package_verified", canonical.valid, "; ".join(canonical.reasons) or "strategy-package/v2 verified"),
+            self._check("manifest_format", str(canonical.manifest.get("package_format", "")) == "strategy-package/v2", f"package_format={canonical.manifest.get('package_format', '')}"),
+            self._check("manifest_live_disabled", canonical.manifest.get("live_trading_enabled") is False, f"live_trading_enabled={canonical.manifest.get('live_trading_enabled')}"),
+            self._check("manifest_strategy_present", bool(str(canonical.manifest.get("strategy_id", "")).strip()), f"strategy={canonical.manifest.get('strategy_id', '')}"),
+            self._check("manifest_version_present", bool(str(canonical.manifest.get("strategy_version", "")).strip()), f"version={canonical.manifest.get('strategy_version', '')}"),
+            self._check("approval_current", canonical.approval.get("decision") == "APPROVED" and canonical.approval.get("revoked") is False, f"decision={canonical.approval.get('decision', '')} revoked={canonical.approval.get('revoked')}"),
+            self._check("symbols_execution_enabled", execution_symbols_allowed, "; ".join(error for item in symbol_checks for error in item.errors) or "all package symbols are enabled for execution"),
         ]
 
         verified = all(item["passed"] for item in checks)
@@ -85,7 +87,7 @@ class ProductionPreflightVerifier:
             verdict=verdict,
             verified=verified,
             checks=checks,
-            manifest=manifest,
+            manifest=canonical.manifest,
             archive_sha256=actual_sha,
             verified_at=now_iso(),
         )
@@ -136,11 +138,14 @@ class ProductionPreflightVerifier:
 
     @classmethod
     def _read_archive_metadata(cls, archive_path: Path) -> tuple[set[str], dict[str, Any], dict[str, Any]]:
-        with tarfile.open(archive_path, "r:gz") as archive:
-            names = set(archive.getnames())
-            manifest = cls._read_json_member(archive, "manifest.json")
-            signature = cls._read_json_member(archive, "signature.json")
-        return names, manifest, signature
+        try:
+            with tarfile.open(archive_path, "r:gz") as archive:
+                names = set(archive.getnames())
+                manifest = cls._read_json_member(archive, "manifest.json")
+                signature = cls._read_json_member(archive, "signature.json")
+            return names, manifest, signature
+        except (OSError, tarfile.TarError):
+            return set(), {}, {}
 
     @staticmethod
     def _read_json_member(archive: tarfile.TarFile, name: str) -> dict[str, Any]:
@@ -171,34 +176,6 @@ class ProductionPreflightVerifier:
             "passed": passed,
             "detail": detail,
         }
-
-    @classmethod
-    def _verify_signature(cls, manifest: dict[str, Any], envelope: dict[str, Any]) -> dict[str, Any]:
-        canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        digest = hashlib.sha256(canonical).digest()
-        digest_hex = digest.hex()
-        scheme = str(envelope.get("scheme", ""))
-        signature = str(envelope.get("signature", ""))
-        recorded_digest = str(envelope.get("digest_sha256", ""))
-        valid = recorded_digest == digest_hex
-        if scheme == "sha256-attestation":
-            valid = valid and hmac.compare_digest(signature, digest_hex)
-        elif scheme == "hmac-sha256":
-            key = os.getenv("SVOS_PACKAGE_SIGNING_KEY", "").encode("utf-8")
-            valid = valid and bool(key) and hmac.compare_digest(signature, hmac.new(key, canonical, hashlib.sha256).hexdigest())
-        elif scheme == "gcp-kms-asymmetric-sha256":
-            key_ref = str(envelope.get("key_ref", ""))
-            try:
-                valid = valid and bool(key_ref) and KMSAsymmetricAdapter().verify_digest(key_ref, digest, signature)
-            except GoogleCloudError as exc:
-                return cls._check("signature_verified", False, f"scheme={scheme} verification_error={exc}")
-        elif scheme == "gcp-kms-asymmetric-attestation":
-            key_ref = str(envelope.get("key_ref", ""))
-            expected = hashlib.sha256(f"{key_ref}:{digest_hex}".encode("utf-8")).hexdigest()
-            valid = valid and hmac.compare_digest(signature, expected)
-        else:
-            valid = False
-        return cls._check("signature_verified", valid, f"scheme={scheme} key_ref={envelope.get('key_ref', '')}")
 
     @staticmethod
     def _markdown_report(result: PreflightVerificationResult) -> str:

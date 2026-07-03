@@ -19,6 +19,16 @@ strategies:
     status: production_approval
     svos_stage: PRODUCTION_APPROVAL
     approved: true
+    approval:
+      decision: APPROVED
+      approved_at: "2026-01-01T00:00:00+00:00"
+      expires_at: "2099-01-01T00:00:00+00:00"
+      revoked: false
+    adapter_id: Test
+    adapter_version: 1.0.0
+    parameters: {symbol: EURUSD}
+    risk_policy: {policy_id: test-demo}
+    evidence: [{stage: VIRTUAL_DEMO, status: PASS, artifact_hash: fixture}]
     version: 1.0.0
     deployment_target: production-disabled
     strategy_spec_path: docs/spec.md

@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tempfile
+import tarfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,14 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 def package_strategy_id(package_path: Path | str) -> str:
     directory = Path(package_path)
+    if directory.is_file():
+        try:
+            with tarfile.open(directory, "r:gz") as archive:
+                member = archive.extractfile("manifest.json")
+                manifest = json.loads(member.read()) if member is not None else {}
+            return str(manifest.get("strategy_id", "")).strip()
+        except (OSError, tarfile.TarError, json.JSONDecodeError):
+            return ""
     spec = _load_yaml(directory / "strategy_spec.yaml")
     try:
         status = json.loads((directory / "approval_status.json").read_text(encoding="utf-8"))
@@ -37,6 +47,21 @@ def package_strategy_id(package_path: Path | str) -> str:
             if value:
                 return str(value).strip()
     return ""
+
+
+def package_symbols(package_path: Path | str) -> tuple[str, ...]:
+    path = Path(package_path)
+    if path.is_file():
+        try:
+            with tarfile.open(path, "r:gz") as archive:
+                member = archive.extractfile("manifest.json")
+                manifest = json.loads(member.read()) if member is not None else {}
+            return tuple(str(value).strip().upper() for value in manifest.get("symbols", []) if str(value).strip())
+        except (OSError, tarfile.TarError, json.JSONDecodeError):
+            return ()
+    spec = _load_yaml(path / "strategy_spec.yaml")
+    value = spec.get("pair") or spec.get("symbol")
+    return (str(value).strip().upper(),) if value else ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,14 +136,42 @@ def validate_strategy_identity(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--strategy-package", required=True)
-    parser.add_argument("--strategy-id", required=True)
+    parser.add_argument("--strategy-package")
+    parser.add_argument("--strategy-id")
     parser.add_argument("--root", default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
+    if args.self_test:
+        return _self_test()
+    if not args.strategy_package or not args.strategy_id:
+        parser.error("--strategy-package and --strategy-id are required unless --self-test is used")
     result = validate_strategy_identity(root=args.root, package_path=args.strategy_package, runner_strategy_id=args.strategy_id)
     print("PASS" if result.valid else "FAIL")
     print(json.dumps(result.to_dict(), indent=2, sort_keys=True))
     return 0 if result.valid else 1
+
+
+def _self_test() -> int:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        config = root / "config"
+        config.mkdir()
+        (config / "strategy_catalog.yaml").write_text("strategies:\n  SELF-TEST: {}\n", encoding="utf-8")
+        (config / "strategy_portfolio.yaml").write_text("strategies:\n  SELF-TEST:\n    enabled: true\n", encoding="utf-8")
+        state = root / "data" / "svos" / "registry" / "SELF-TEST" / "state.json"
+        state.parent.mkdir(parents=True)
+        state.write_text(json.dumps({"strategy": "SELF-TEST"}), encoding="utf-8")
+        package = root / "package"
+        package.mkdir()
+        (package / "strategy_spec.yaml").write_text("strategy_id: SELF-TEST\n", encoding="utf-8")
+        (package / "approval_status.json").write_text(json.dumps({"approval_status": "APPROVED"}), encoding="utf-8")
+        passed = validate_strategy_identity(root=root, package_path=package, runner_strategy_id="SELF-TEST")
+        mismatch = validate_strategy_identity(root=root, package_path=package, runner_strategy_id="OTHER")
+        if not passed.valid or mismatch.valid:
+            print("FAIL")
+            return 1
+    print("PASS")
+    return 0
 
 
 if __name__ == "__main__":

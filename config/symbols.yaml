@@ -1,0 +1,65 @@
+version: 1
+supported_symbols:
+  forex: [EURUSD, GBPUSD]
+  metals: [XAUUSD]
+  crypto: [BTCUSDT]
+symbols:
+  EURUSD:
+    asset_class: forex
+    base_currency: EUR
+    quote_currency: USD
+    market_type: spot_fx
+    session_model: forex_24_5
+    timezone: UTC
+    pip_model: forex_pip
+    default_data_timeframe: M1
+    research_allowed: true
+    execution_allowed: true
+    live_execution_allowed: true
+    sessions: [UTC, Asian, London, NewYork, New York]
+  GBPUSD:
+    asset_class: forex
+    base_currency: GBP
+    quote_currency: USD
+    market_type: spot_fx
+    session_model: forex_24_5
+    timezone: UTC
+    pip_model: forex_pip
+    default_data_timeframe: M1
+    research_allowed: true
+    execution_allowed: true
+    live_execution_allowed: true
+    sessions: [UTC, Asian, London, NewYork, New York]
+  XAUUSD:
+    asset_class: metals
+    base_currency: XAU
+    quote_currency: USD
+    market_type: spot_metal
+    session_model: forex_24_5
+    timezone: UTC
+    pip_model: metal_point
+    default_data_timeframe: M1
+    research_allowed: true
+    execution_allowed: true
+    live_execution_allowed: true
+    sessions: [UTC, Asian, London, NewYork, New York]
+  BTCUSDT:
+    asset_class: crypto
+    base_currency: BTC
+    quote_currency: USDT
+    market_type: spot_or_perpetual_research
+    session_model: crypto_24_7
+    timezone: UTC
+    pip_model: crypto_tick
+    default_data_timeframe: M1
+    research_allowed: true
+    execution_allowed: false
+    live_execution_allowed: false
+    sessions: [UTC, Crypto24h]
+    data_source: null
+    fee_model: null
+    tick_size: null
+    price_precision: null
+    slippage_model: null
+    trading_hours: null
+    funding_cost: null

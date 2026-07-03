@@ -95,6 +95,10 @@ from execution_simulator.broker.virtual_broker import VirtualBroker
 from monitoring.telegram import TelegramAlerter
 from strategy.session_liquidity.session_strategy import run_strategy
 
+# ADR-0003: compatibility implementation only. Runtime lifecycle ownership
+# belongs to production.engine.RuntimeAuthority.
+LEGACY_RUNTIME_ENTRYPOINT = True
+
 
 # ── Broker wiring ───────────────────────────────────────────────────────────
 

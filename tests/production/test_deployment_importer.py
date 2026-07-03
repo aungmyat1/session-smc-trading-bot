@@ -11,8 +11,19 @@ def _catalog_text() -> str:
 current_strategy: ST-A2
 strategies:
   ST-A2:
-    status: walk_forward
+    status: production_approval
+    svos_stage: PRODUCTION_APPROVAL
     approved: true
+    approval:
+      decision: APPROVED
+      approved_at: "2026-01-01T00:00:00+00:00"
+      expires_at: "2099-01-01T00:00:00+00:00"
+      revoked: false
+    adapter_id: ST-A2
+    adapter_version: "2.1"
+    parameters: {session: London}
+    risk_policy: {policy_id: test-demo, max_risk_pct: 0.3}
+    evidence: [{stage: VIRTUAL_DEMO, status: PASS, artifact_hash: fixture}]
     current: true
     version: "2.1"
     owner: quant

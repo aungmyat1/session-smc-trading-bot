@@ -23,6 +23,8 @@ from shared.serialization import append_jsonl, now_iso, read_json, read_jsonl, s
 from svos.adapters.artifacts import FilesystemArtifactStore
 from infrastructure.google_cloud import GCSArtifactAdapter, KMSAsymmetricAdapter
 from svos.registry.service import StrategyRegistryService
+from shared.strategy_package import build_canonical_package
+from shared.configuration.symbols import validate_symbol
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,59 +169,77 @@ class DeploymentStatusService:
         record = self.registry.get_strategy_record(strategy).to_dict()
         validations = self.validation_history(strategy, version_label)
         version_id = str(version_record.get("version_id", ""))
-        built_at = now_iso()
-
+        if manifest.get("approved") is not True or record.get("current_stage") != "PRODUCTION_APPROVAL":
+            raise PermissionError("canonical package requires governance approval at PRODUCTION_APPROVAL")
         spec_path = get_strategy_spec_path(strategy, self.catalog_path)
         spec_text = get_strategy_spec_text(strategy, self.catalog_path) or ""
-        dependency_lock = self._dependency_lock_payload()
         source_manifest_hash = stable_manifest_hash(
             {"strategy": strategy, "version": version_label, "manifest": manifest}
         )
-        package_id = stable_manifest_hash(
-            {
-                "strategy": strategy,
-                "version": version_label,
-                "version_id": version_id,
-                "source_manifest_hash": source_manifest_hash,
+        approval = dict(manifest.get("approval", {}) or {})
+        if not approval:
+            approval = {
+                "decision": "APPROVED" if manifest.get("approved") is True else "REJECTED",
+                "approved_at": manifest.get("approved_at", version_record.get("created_at", "")),
+                "expires_at": manifest.get("approval_expires_at", ""),
+                "revoked": bool(manifest.get("revoked", False)),
+                "authority": "svos-governance",
             }
-        )
-
-        package_manifest = {
-            "package_format": "strategy-package/v1",
-            "package_id": package_id,
-            "strategy": strategy,
-            "version": version_label,
-            "version_id": version_id,
-            "built_at": built_at,
-            "built_by": actor,
-            "deployment_target": manifest.get("deployment_target", "unknown"),
-            "current_stage": record.get("current_stage", ""),
-            "approved": bool(manifest.get("approved", False)),
+        parameters = dict(manifest.get("parameters", {}) or {}) or {
+            "symbols": list(manifest.get("symbols", []) or []),
+            "timeframes": list(manifest.get("timeframes", []) or []),
+        }
+        parameters.setdefault("symbols", list(manifest.get("symbols", []) or []))
+        for symbol in parameters["symbols"]:
+            validation = validate_symbol(symbol, scope="execution")
+            if not validation.valid:
+                raise ValueError("; ".join(validation.errors))
+        risk_policy = dict(manifest.get("risk_policy", {}) or {}) or {
+            "policy_id": "catalog-requirements",
+            "requirements": dict(manifest.get("requirements", {}) or {}),
             "live_trading_enabled": False,
+        }
+        evidence_records = validations or list(manifest.get("evidence", []) or [])
+        if not evidence_records:
+            raise ValueError("canonical package requires explicit qualification evidence")
+        evidence_manifest = {
+            "records": evidence_records,
             "source_manifest_hash": source_manifest_hash,
-            "validation_count": len(validations),
-            "specification_path": str(spec_path) if spec_path is not None else "",
         }
-        signature = self._sign_payload(package_manifest)
-
-        files = {
-            "manifest.json": json.dumps(package_manifest, indent=2, sort_keys=True) + "\n",
-            "catalog_manifest.json": json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-            "registry_record.json": json.dumps(record, indent=2, sort_keys=True) + "\n",
-            "validations.json": json.dumps(validations, indent=2, sort_keys=True) + "\n",
-            "signature.json": json.dumps(signature.to_dict(), indent=2, sort_keys=True) + "\n",
-            "strategy_spec.md": spec_text,
-            "dependency_lock.txt": dependency_lock,
-        }
-
-        archive_bytes = self._build_deterministic_archive(files)
+        signing_key = os.getenv("SVOS_PACKAGE_SIGNING_PRIVATE_KEY", "")
+        temporary_archive = self.deployment_root / "packages" / strategy / version_label / ".canonical-package.tmp.tar.gz"
+        build = build_canonical_package(
+            temporary_archive,
+            strategy_id=strategy,
+            strategy_version=version_label,
+            adapter_id=str(manifest.get("adapter_id", strategy)),
+            adapter_version=str(manifest.get("adapter_version", version_label)),
+            strategy_spec=spec_text,
+            parameters=parameters,
+            risk_policy=risk_policy,
+            evidence=evidence_manifest,
+            approval=approval,
+            signing_key=signing_key,
+            provenance={
+                "source_format": "svos-registry-and-catalog",
+                "source_manifest_hash": source_manifest_hash,
+                "version_id": version_id,
+                "built_by": actor,
+                "specification_path": str(spec_path) if spec_path is not None else "",
+            },
+        )
+        package_id = build.package_id
+        package_manifest = build.manifest
         package_dir = self.deployment_root / "packages" / strategy / version_label / package_id
         package_dir.mkdir(parents=True, exist_ok=True)
         archive_path = package_dir / "strategy_package.tar.gz"
-        archive_path.write_bytes(archive_bytes)
+        temporary_archive.replace(archive_path)
         manifest_path = package_dir / "manifest.json"
         write_json(manifest_path, package_manifest)
-        write_json(package_dir / "signature.json", signature.to_dict())
+        with tarfile.open(archive_path, "r:gz") as archive:
+            signature_member = archive.extractfile("signature.json")
+            signature_payload = json.loads(signature_member.read()) if signature_member is not None else {}
+        write_json(package_dir / "signature.json", signature_payload)
 
         stored = self.package_artifacts.put(archive_path)
         published = self._publish_package_archive(
@@ -229,11 +249,12 @@ class DeploymentStatusService:
             archive_path=archive_path,
         )
         payload = {
+            "package_format": "strategy-package/v2",
             "package_id": package_id,
             "strategy": strategy,
             "version": version_label,
             "version_id": version_id,
-            "built_at": built_at,
+            "built_at": str(approval.get("approved_at", "")),
             "built_by": actor,
             "current_stage": record.get("current_stage", ""),
             "approved": bool(manifest.get("approved", False)),
@@ -243,10 +264,10 @@ class DeploymentStatusService:
             "content_addressed_path": str(stored.path),
             "archive_sha256": stored.sha256,
             "archive_size_bytes": stored.size_bytes,
-            "signature_scheme": signature.scheme,
-            "signature_value": signature.signature,
-            "signature_key_ref": signature.key_ref,
-            "digest_sha256": signature.digest_sha256,
+            "signature_scheme": str(signature_payload.get("scheme", "")),
+            "signature_value": str(signature_payload.get("signature", "")),
+            "signature_key_ref": "env:SVOS_PACKAGE_SIGNING_PRIVATE_KEY",
+            "digest_sha256": str(signature_payload.get("digest_sha256", "")),
             "validation_count": len(validations),
             "live_trading_enabled": False,
             "transport": published.transport,
@@ -466,7 +487,11 @@ class DeploymentStatusService:
 
     def _find_package(self, strategy: str, version: str) -> dict[str, Any] | None:
         for item in reversed(read_jsonl(self._packages_path())):
-            if item.get("strategy") == strategy and item.get("version") == version:
+            if (
+                item.get("strategy") == strategy
+                and item.get("version") == version
+                and item.get("package_format") == "strategy-package/v2"
+            ):
                 return item
         return None
 

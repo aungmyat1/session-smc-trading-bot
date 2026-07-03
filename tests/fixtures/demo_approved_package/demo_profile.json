@@ -1,0 +1,8 @@
+{
+  "account_type": "demo",
+  "broker_connection_allowed": false,
+  "dry_run_only": true,
+  "live_eligible": false,
+  "order_submission_allowed": false,
+  "profile": "DEMO_ONLY"
+}
