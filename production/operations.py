@@ -60,11 +60,24 @@ class PostgresOperationsRepository:
             raise OperationsUnavailable("checkpoint read failed") from exc
 
     def list_records(self, record_type: str, *, limit: int = 100) -> list[Mapping[str, Any]]:
-        allowed = {"execution_event", "runtime", "market_data_health", "intent", "risk_decision", "order_record", "fill", "position_record", "reconciliation", "incident", "recovery_checkpoint"}
-        if record_type not in allowed:
+        queries = {
+            "execution_event": "SELECT * FROM operations.execution_event ORDER BY created_at DESC LIMIT :n",
+            "runtime": "SELECT * FROM operations.runtime ORDER BY created_at DESC LIMIT :n",
+            "market_data_health": "SELECT * FROM operations.market_data_health ORDER BY created_at DESC LIMIT :n",
+            "intent": "SELECT * FROM operations.intent ORDER BY created_at DESC LIMIT :n",
+            "risk_decision": "SELECT * FROM operations.risk_decision ORDER BY created_at DESC LIMIT :n",
+            "order_record": "SELECT * FROM operations.order_record ORDER BY created_at DESC LIMIT :n",
+            "fill": "SELECT * FROM operations.fill ORDER BY created_at DESC LIMIT :n",
+            "position_record": "SELECT * FROM operations.position_record ORDER BY created_at DESC LIMIT :n",
+            "reconciliation": "SELECT * FROM operations.reconciliation ORDER BY created_at DESC LIMIT :n",
+            "incident": "SELECT * FROM operations.incident ORDER BY opened_at DESC LIMIT :n",
+            "recovery_checkpoint": "SELECT * FROM operations.recovery_checkpoint ORDER BY created_at DESC LIMIT :n",
+        }
+        query = queries.get(record_type)
+        if query is None:
             raise ValueError("unsupported operations record type")
         try:
-            rows = self.session.execute(text(f"SELECT * FROM operations.{record_type} ORDER BY created_at DESC LIMIT :n"), {"n": min(max(limit, 1), 1000)}).mappings()
+            rows = self.session.execute(text(query), {"n": min(max(limit, 1), 1000)}).mappings()
             return [dict(row) for row in rows]
         except Exception as exc:
             raise OperationsUnavailable("operations query failed") from exc
