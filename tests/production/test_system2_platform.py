@@ -42,6 +42,11 @@ def test_risk_firewall_approves_complete_safe_context_and_fails_closed() -> None
     assert RiskFirewall({}).evaluate(_intent(), _context()).reason == "POLICY_INCOMPLETE"
     assert RiskFirewall(POLICY).evaluate(_intent()).reason == "RISK_CONTEXT_UNAVAILABLE"
     assert RiskFirewall(POLICY).evaluate(_intent(), _context(spread_pips=5)).reason == "SPREAD_LIMIT"
+    naive = _context(timestamp=datetime.now())
+    assert RiskFirewall(POLICY).evaluate(_intent(), naive).reason == "TIMEZONE_REQUIRED"
+    close = ExecutionIntent("close-1", "S", "EURUSD", "close", 0.01)
+    occupied = RiskContext(_context().account, _context().market, ({"symbol": "EURUSD"},))
+    assert RiskFirewall(POLICY).evaluate(close, occupied).approved
 
 
 @pytest.mark.asyncio
@@ -62,6 +67,11 @@ async def test_position_service_enforces_one_position_per_symbol() -> None:
     result = await positions.open({"symbol": "EURUSD"}, idempotency_key="one")
     assert result.state == "REJECTED_DISABLED"
     assert positions.snapshot() == []
+    with pytest.raises(KeyError):
+        await positions.partial_close("EURUSD", 0.01)
+    with pytest.raises(KeyError):
+        await positions.modify("EURUSD", stop_loss=1.0)
+    assert positions.reconcile([{"symbol": "EURUSD"}, {"symbol": "GBPUSD", "magic": None}])["consistent"]
 
 
 def test_adapter_registry_checks_version_hash_and_runtime_api() -> None:

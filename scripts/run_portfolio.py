@@ -688,7 +688,7 @@ def main() -> None:
             )
 
     async def _execute(intent: ExecutionIntent) -> AdapterResult:
-        if mode == "shadow":
+        if intent.metadata.get("execution_mode", mode) == "shadow":
             return AdapterResult(
                 "SIMULATED",
                 reference=f"virtual:{intent.intent_id}",

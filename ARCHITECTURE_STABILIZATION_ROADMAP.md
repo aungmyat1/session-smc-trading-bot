@@ -41,9 +41,9 @@ No implementation phase may begin until its ADR is accepted. An ADR records auth
 | Workstream | Source risk | Proposed ADR | Priority | Primary system |
 |---|---|---|---:|---|
 | WS1 | Executed artifact differs from approved artifact | ADR-0002: Canonical Strategy Package and Handoff | P0 | Boundary |
-| WS2 | Runtime loss controls do not reflect closed trades | ADR-0003: Broker-Truth Risk Feedback | P0 | System 2 |
-| WS3 | Alternate entrypoint enables broker writes | ADR-0004: Default-Deny Broker Write Boundary | P0 | System 2 |
-| WS4 | Replay passes while demo behavior differs | ADR-0005: Runtime-Equivalent Replay | P0 | Both, without dependency inversion |
+| WS2 | Runtime loss controls do not reflect closed trades | ADR-0011: Broker-Truth Risk Feedback | P0 | System 2 |
+| WS3 | Alternate entrypoint enables broker writes | ADR-0012: Default-Deny Broker Write Boundary | P0 | System 2 |
+| WS4 | Replay passes while demo behavior differs | ADR-0013: Runtime-Equivalent Replay | P0 | Both, without dependency inversion |
 | WS5 | Restart duplicates or loses an ambiguous order | ADR-0006: Durable Execution and Recovery Authority | P0 | System 2 |
 | WS6 | Dashboard reports stale or conflicting state | ADR-0007: Operational Read-Model Authority | P1 | Observation boundary |
 | WS7 | Research and production cannot be independently deployed | ADR-0008: Independent System Deployment and Data Ownership | P1 | Both |
@@ -142,7 +142,7 @@ The ADR must decide:
 
 **Source risk:** Runtime loss controls do not reflect closed trades.
 
-**Proposed ADR:** `docs/svos/ADR-0003-BROKER-TRUTH-RISK-FEEDBACK.md`
+**Proposed ADR:** `docs/svos/ADR-0011-BROKER-TRUTH-RISK-FEEDBACK.md`
 
 The ADR must decide:
 
@@ -179,7 +179,7 @@ The ADR must decide:
 
 **Estimated PR sequence:**
 
-- PR #29: ADR-0003 and event/reconciliation contracts.
+- PR #29: ADR-0011 and event/reconciliation contracts.
 - PR #30: virtual-broker close-result integration.
 - PR #31: canonical demo-runtime integration.
 - PR #32: loss-limit qualification and evidence report.
@@ -188,7 +188,7 @@ The ADR must decide:
 
 **Source risk:** An alternate entrypoint can enable broker writes through lower-level environment flags.
 
-**Proposed ADR:** `docs/svos/ADR-0004-DEFAULT-DENY-BROKER-WRITES.md`
+**Proposed ADR:** `docs/svos/ADR-0012-DEFAULT-DENY-BROKER-WRITES.md`
 
 The ADR must decide:
 
@@ -201,7 +201,7 @@ The ADR must decide:
 
 **Implementation phases:**
 
-1. Decision: map every broker-write method and caller; accept ADR-0004.
+1. Decision: map every broker-write method and caller; accept ADR-0012.
 2. Boundary: define a capability/token contract with no valid live token in current builds.
 3. Adoption: route virtual and demo writes through the boundary.
 4. Containment: make legacy clients non-write-capable or inaccessible to active entrypoints.
@@ -225,7 +225,7 @@ The ADR must decide:
 
 **Estimated PR sequence:**
 
-- PR #26: ADR-0004 and broker-write inventory.
+- PR #26: ADR-0012 and broker-write inventory.
 - PR #27: default-deny capability boundary with virtual adapter.
 - PR #28: demo adapter adoption and legacy containment.
 
@@ -233,7 +233,7 @@ The ADR must decide:
 
 **Source risk:** Replay can pass while demo behavior differs.
 
-**Proposed ADR:** `docs/svos/ADR-0005-RUNTIME-EQUIVALENT-REPLAY.md`
+**Proposed ADR:** `docs/svos/ADR-0013-RUNTIME-EQUIVALENT-REPLAY.md`
 
 The ADR must decide:
 
@@ -270,7 +270,7 @@ The ADR must decide:
 
 **Estimated PR sequence:**
 
-- PR #35: ADR-0005 and replay component decision matrix.
+- PR #35: ADR-0013 and replay component decision matrix.
 - PR #36: canonical runtime ports and virtual assembly.
 - PR #37: deterministic evidence/report generation.
 - PR #38: replay qualification suite and baseline report.

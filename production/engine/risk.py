@@ -52,7 +52,10 @@ class RiskFirewall:
         if context is None or context.account is None or context.market is None:
             return RiskDecision(False, "RISK_CONTEXT_UNAVAILABLE")
         account, market = context.account, context.market
-        current = self.now().astimezone(timezone.utc)
+        now_value = self.now()
+        if now_value.tzinfo is None or market.timestamp.tzinfo is None:
+            return RiskDecision(False, "TIMEZONE_REQUIRED")
+        current = now_value.astimezone(timezone.utc)
         age = (current - market.timestamp.astimezone(timezone.utc)).total_seconds()
         checks: list[tuple[bool, str]] = [
             (account.healthy, "ACCOUNT_UNHEALTHY"),
@@ -71,13 +74,17 @@ class RiskFirewall:
         sessions = tuple(self.policy.get("sessions", ()))
         if sessions:
             checks.append((market.session in sessions, "SESSION_BLOCK"))
-        risk_pct = float(intent.metadata.get("risk_percent", 0.0))
-        checks.append((0 < risk_pct <= float(self.policy["max_risk_percent"]), "RISK_PERCENT_LIMIT"))
-        if intent.side.lower() in {"buy", "long"}:
-            checks.append((intent.stop_loss is not None and intent.take_profit is not None and intent.stop_loss < intent.take_profit, "INVALID_ORDER_GEOMETRY"))
-        elif intent.side.lower() in {"sell", "short"}:
-            checks.append((intent.stop_loss is not None and intent.take_profit is not None and intent.stop_loss > intent.take_profit, "INVALID_ORDER_GEOMETRY"))
+        side = intent.side.lower()
+        if side in {"close", "exit"}:
+            checks = [check for check in checks if check[1] not in {"POSITION_LIMIT", "POSITION_EXISTS_FOR_SYMBOL"}]
         else:
+            risk_pct = float(intent.metadata.get("risk_percent", 0.0))
+            checks.append((0 < risk_pct <= float(self.policy["max_risk_percent"]), "RISK_PERCENT_LIMIT"))
+        if side in {"buy", "long"}:
+            checks.append((intent.stop_loss is not None and intent.take_profit is not None and intent.stop_loss < intent.take_profit, "INVALID_ORDER_GEOMETRY"))
+        elif side in {"sell", "short"}:
+            checks.append((intent.stop_loss is not None and intent.take_profit is not None and intent.stop_loss > intent.take_profit, "INVALID_ORDER_GEOMETRY"))
+        elif side not in {"close", "exit"}:
             checks.append((False, "INVALID_SIDE"))
         for passed, reason in checks:
             if not passed:

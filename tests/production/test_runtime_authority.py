@@ -89,8 +89,12 @@ async def test_duplicate_runtime_owner_is_rejected(tmp_path: Path) -> None:
 
     first_task = asyncio.create_task(first.run(holding_runtime))
     await entered.wait()
+    state_before = first.state_path.read_bytes()
+    events_before = first.events_path.read_bytes()
     with pytest.raises(RuntimeOwnershipError):
         await second.run(lambda _context: asyncio.sleep(0))
+    assert first.state_path.read_bytes() == state_before
+    assert first.events_path.read_bytes() == events_before
     release.set()
     await first_task
     assert first.snapshot().state == RuntimeState.STOPPED

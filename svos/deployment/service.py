@@ -191,7 +191,7 @@ class DeploymentStatusService:
         }
         parameters.setdefault("symbols", list(manifest.get("symbols", []) or []))
         for symbol in parameters["symbols"]:
-            validation = validate_symbol(symbol, scope="research")
+            validation = validate_symbol(symbol, scope="execution")
             if not validation.valid:
                 raise ValueError("; ".join(validation.errors))
         risk_policy = dict(manifest.get("risk_policy", {}) or {}) or {

@@ -31,10 +31,13 @@ def main() -> int:
     parser.add_argument("--strategy-id")
     args = parser.parse_args()
     candles = load_m1_candles(args.data, start=args.start, end=args.end)
+    verifying_public_key = os.environ.get("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY", "").strip()
+    if not verifying_public_key:
+        parser.error("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY is required")
     authority = RuntimeAuthority(
         root=Path.cwd(),
         package_path=args.strategy_package,
-        verifying_public_key=os.environ.get("SVOS_PACKAGE_VERIFYING_PUBLIC_KEY", ""),
+        verifying_public_key=verifying_public_key,
         expected_strategy_id=args.strategy_id,
     )
     output = Path(args.output)

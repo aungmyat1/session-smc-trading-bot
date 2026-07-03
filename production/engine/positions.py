@@ -36,14 +36,25 @@ class PositionService:
     async def partial_close(self, symbol: str, quantity: float):
         if quantity <= 0:
             raise ValueError("partial close quantity must be positive")
+        if symbol not in self._positions:
+            raise KeyError(symbol)
         return await self.orders.modify(str(self._positions[symbol].get("order_id", "")), {"partial_close": quantity})
 
     async def modify(self, symbol: str, *, stop_loss: float | None = None, take_profit: float | None = None):
+        if symbol not in self._positions:
+            raise KeyError(symbol)
         return await self.orders.modify(str(self._positions[symbol].get("order_id", "")), {"stop_loss": stop_loss, "take_profit": take_profit})
 
     def reconcile(self, broker_positions: list[Mapping[str, Any]]) -> dict[str, Any]:
         local = set(self._positions)
-        remote = {str(v.get("symbol", "")) for v in broker_positions if int(v.get("magic", self.MAGIC)) == self.MAGIC}
+        remote: set[str] = set()
+        for position in broker_positions:
+            try:
+                managed = int(position["magic"]) == self.MAGIC
+            except (KeyError, TypeError, ValueError):
+                managed = False
+            if managed and position.get("symbol"):
+                remote.add(str(position["symbol"]))
         return {"consistent": local == remote, "missing_remote": sorted(local - remote), "unknown_remote": sorted(remote - local)}
 
     def snapshot(self) -> list[dict[str, Any]]:

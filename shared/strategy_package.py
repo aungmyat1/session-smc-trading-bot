@@ -161,7 +161,7 @@ def build_canonical_package(
     semantic_hashes = _member_hashes(semantic_files)
     resolved_adapter_hash = adapter_code_sha256 or hashlib.sha256(f"{adapter_id}:{adapter_version}".encode()).hexdigest()
     resolved_instruments = list(instruments or package_symbols)
-    resolved_timeframes = list(timeframes or parameters.get("timeframes", []))
+    resolved_timeframes = list(timeframes or parameters.get("timeframes", ["M15"]))
     execution_policy_hash = hashlib.sha256(_canonical_json(dict(risk_policy))).hexdigest()
     parameter_hash = hashlib.sha256(_canonical_json(dict(parameters))).hexdigest()
     package_id = hashlib.sha256(
@@ -291,8 +291,8 @@ def validate_canonical_package(
         reasons.append("manifest symbols must be a non-empty list")
     if not isinstance(manifest.get("instruments"), list) or not manifest.get("instruments"):
         reasons.append("manifest instruments must be a non-empty list")
-    if not isinstance(manifest.get("timeframes"), list):
-        reasons.append("manifest timeframes must be a list")
+    if not isinstance(manifest.get("timeframes"), list) or not manifest.get("timeframes"):
+        reasons.append("manifest timeframes must be a non-empty list")
     if expected_strategy_id and manifest.get("strategy_id") != expected_strategy_id:
         reasons.append("strategy identity mismatch")
     if expected_adapter_version and manifest.get("adapter_version") != expected_adapter_version:

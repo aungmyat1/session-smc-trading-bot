@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from datetime import datetime
 import os
 import sys
 from pathlib import Path
@@ -63,10 +64,19 @@ def migrate_legacy_package(
             path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in evidence_files
         }
     }
+    approved_at = str(status.get("approved_at", "")).strip()
+    expires_at = str(status.get("expires_at", "")).strip()
+    for name, value in (("approved_at", approved_at), ("expires_at", expires_at)):
+        if not value:
+            raise ValueError(f"legacy approval status is missing {name}")
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(f"legacy approval status has invalid {name}: {value}") from exc
     approval = {
         "decision": str(status.get("approval_status", "")).upper(),
-        "approved_at": status.get("approved_at", ""),
-        "expires_at": status.get("expires_at", ""),
+        "approved_at": approved_at,
+        "expires_at": expires_at,
         "revoked": False,
         "authority": "legacy-package-migration",
     }

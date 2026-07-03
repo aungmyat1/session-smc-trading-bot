@@ -27,7 +27,7 @@ class ExecutionCoordinator:
         self.quantity_resolver = quantity_resolver
         self.max_signal_age_seconds = max_signal_age_seconds
         self.clock = clock or (lambda: datetime.now(timezone.utc))
-        self._seen: set[str] = set()
+        self._seen: dict[str, datetime] = {}
 
     async def run(self) -> None:
         await self.market_data.connect()
@@ -44,13 +44,18 @@ class ExecutionCoordinator:
             await self.market_data.disconnect()
 
     async def submit_signal(self, signal: ExecutionSignal) -> AdapterResult:
+        now_value = self.clock()
+        if now_value.tzinfo is None or signal.timestamp.tzinfo is None:
+            return AdapterResult("REJECTED", details={"reason": "TIMEZONE_REQUIRED"})
+        now = now_value.astimezone(timezone.utc)
+        cutoff = now.timestamp() - self.max_signal_age_seconds
+        self._seen = {key: stamp for key, stamp in self._seen.items() if stamp.timestamp() >= cutoff}
         if signal.signal_id in self._seen:
             return AdapterResult("REJECTED", details={"reason": "DUPLICATE_SIGNAL"})
-        now = self.clock().astimezone(timezone.utc)
         age = (now - signal.timestamp.astimezone(timezone.utc)).total_seconds()
         if age < 0 or age > self.max_signal_age_seconds:
             return AdapterResult("REJECTED", details={"reason": "STALE_SIGNAL"})
-        self._seen.add(signal.signal_id)
+        self._seen[signal.signal_id] = now
         side = "buy" if signal.action is SignalAction.BUY else "sell" if signal.action is SignalAction.SELL else "close"
         intent_id = hashlib.sha256(f"{signal.signal_id}:{signal.symbol}:{signal.action}".encode()).hexdigest()
         intent = ExecutionIntent(

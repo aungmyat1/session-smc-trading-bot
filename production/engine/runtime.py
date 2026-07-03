@@ -187,11 +187,12 @@ class RuntimeAuthority:
             self._transition(RuntimeState.FAILED, str(exc))
             raise
         finally:
-            if self._snapshot.state in {RuntimeState.RUNNING, RuntimeState.STARTING, RuntimeState.READY}:
-                self._transition(RuntimeState.STOPPING, "runtime adapter stopped")
-            self._release_ownership()
-            if self._snapshot.state not in {RuntimeState.REJECTED, RuntimeState.FAILED}:
-                self._transition(RuntimeState.STOPPED, "safe shutdown complete")
+            if self._owns_lock:
+                if self._snapshot.state in {RuntimeState.RUNNING, RuntimeState.STARTING, RuntimeState.READY}:
+                    self._transition(RuntimeState.STOPPING, "runtime adapter stopped")
+                self._release_ownership()
+                if self._snapshot.state not in {RuntimeState.REJECTED, RuntimeState.FAILED}:
+                    self._transition(RuntimeState.STOPPED, "safe shutdown complete")
 
     async def run_pipeline(self, pipeline_factory: PipelineFactory, workload: "PipelineWorkload") -> None:
         """Validate the package, then construct and invoke the canonical pipeline."""
