@@ -3,8 +3,8 @@
 ---
 Owner: Platform Architecture
 Status: Authoritative
-Version: 2.0
-Last Reviewed: 2026-06-29
+Version: 2.1
+Last Reviewed: 2026-07-03
 Next Review: TODO
 Related Documents: DOC_AUTHORITY.md, CORE_ARCHITECTURE.md, IMPLEMENTATION_PLAN.md
 ---
@@ -15,6 +15,35 @@ Research and Validating System; Production is the simple execution engine.
 
 This document is the authoritative architecture and lifecycle reference for the
 repository.
+
+## Current Delivery Order
+
+Implementation is sequenced **System 2 first, System 1 second**:
+
+```text
+System 2 stabilization
+  Package Loader -> Runtime Authority -> Execution Pipeline
+  -> Demo/Paper Adapter -> Risk Firewall -> Trade Journal
+  -> Runtime Dashboard -> Safety Qualification
+        |
+        | stable demo-readiness gate
+        v
+System 1 continuation
+  Strategy Development -> Replay -> Backtest -> Optimization
+  -> Robustness -> Approval -> Approved Strategy Package
+        |
+        v
+System 2 executes the approved package
+```
+
+The first wave proves the execution machine with signed fixtures and non-live
+adapters; it does not research or approve a strategy. System 1 remains the sole
+producer and approval authority for real strategy packages. System 2 remains a
+read-only package consumer and execution authority.
+
+`LIVE_TRADING=false` and `DEMO_ONLY=true` remain mandatory. Real-capital order
+submission is outside this delivery sequence until explicit owner approval and
+all governing gates are satisfied.
 
 Branching note:
 
@@ -41,6 +70,9 @@ Related workflow governance documents:
 - Current implementation: `SVOS transitional v1.7`
 - Transitional strategy projection: `config/strategy_catalog.yaml`
 - Target authoritative strategy state: PostgreSQL control-plane repositories
+- Current implementation priority: System 2 controlled demo/paper readiness
+- Deferred until that gate: new System 1 replay, backtest, optimization, and
+  approval implementation
 
 The repository is currently transitioning from a unified SVOS-driven validation
 pipeline into the full target separation of:
