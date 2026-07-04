@@ -116,10 +116,18 @@ reason in the logs (`halt_reason` field — e.g. `CONSECUTIVE_LOSS_LIMIT`, daily
 
 Use the dashboard's emergency-stop endpoint — never edit `reports/control_state.json` by hand.
 
+**Changed 2026-07-04**: these endpoints now require an authenticated operator identity
+(`dashboard/rbac.py`), not just the CONFIRM token — a request without a valid `Authorization`
+header now returns `401`/`503` before the token is even checked. Set `SVOS_OPERATOR_TOKEN` in the
+dashboard host's environment and pass it as a bearer token, along with your actor name and a role
+of `risk_operator` or `admin`:
+
 ```bash
+AUTH_HEADERS=(-H "Authorization: Bearer $SVOS_OPERATOR_TOKEN" -H "X-SVOS-Actor: <your name>" -H "X-SVOS-Role: risk_operator")
+
 # Activate (requires the exact confirm token)
 curl -X POST http://127.0.0.1:8090/api/emergency-stop \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
   -d '{"reason": "<real reason>", "confirm_token": "CONFIRM-EMERGENCY-STOP", "scope": "block_only"}'
 # scope: "block_only" (no new orders, existing positions untouched) or
 #        "close_positions" (also closes managed positions — confirm this is intended)
@@ -129,14 +137,43 @@ curl http://127.0.0.1:8090/api/control/state
 
 # Clear (requires its own exact token, after the underlying issue is resolved)
 curl -X POST http://127.0.0.1:8090/api/emergency-stop/clear \
-  -H "Content-Type: application/json" \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
   -d '{"reason": "<real reason>", "confirm_token": "CONFIRM-CLEAR-EMERGENCY-STOP"}'
 ```
 
 The runner checks this state every tick (`_tick()`'s emergency-stop branch) — expect it to take
-effect within one tick interval (≤60s), not instantly. **Note**: as of this runbook's writing, no
-frontend button on the Gai dashboard actually calls these endpoints yet (Operator Controls is not
-yet built — see `docs/systems/system2/ROADMAP.md`); use `curl` directly until it is.
+effect within one tick interval (≤60s), not instantly.
+
+**Also new 2026-07-04** — named, RBAC + CONFIRM-token-gated aliases onto the same state machine
+(`/api/control/*`), for when the intent is narrower than a full emergency stop:
+
+```bash
+# Pause new order entry only (same effect as scope=block_only above)
+curl -X POST http://127.0.0.1:8090/api/control/pause \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
+  -d '{"reason": "<real reason>", "confirm_token": "CONFIRM-PAUSE-TRADING"}'
+
+# Resume
+curl -X POST http://127.0.0.1:8090/api/control/resume \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
+  -d '{"reason": "<real reason>", "confirm_token": "CONFIRM-RESUME-TRADING"}'
+
+# Emergency close all managed positions (same effect as scope=close_positions above)
+curl -X POST http://127.0.0.1:8090/api/control/close-all \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
+  -d '{"reason": "<real reason>", "confirm_token": "CONFIRM-CLOSE-ALL-POSITIONS"}'
+
+# Toggle the one currently-running strategy specifically (409 if <strategy_id> isn't the one
+# actually running — check GET /overview's execution.strategy first)
+curl -X POST http://127.0.0.1:8090/api/control/toggle-strategy \
+  -H "Content-Type: application/json" "${AUTH_HEADERS[@]}" \
+  -d '{"strategy_id": "ST-A2", "action": "pause", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-ST-A2"}'
+```
+
+**Note**: as of this runbook's writing, no frontend button on the Gai dashboard actually calls any
+of these endpoints yet (Operator Controls frontend integration is not yet built — see
+`docs/systems/system2/ROADMAP.md`); use `curl` directly until it is. A live event feed of every
+control action (and much more) is now available by subscribing to `ws://127.0.0.1:8090/ws`.
 
 ## 7. Rolling back deployments
 

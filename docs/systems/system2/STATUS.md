@@ -79,6 +79,46 @@
   errors. 6 new tests (`tests/test_status_server.py`); full suite 1575 passed, same 29 pre-existing
   failures; both services healthy throughout; the verification dev server was stopped afterward
   (not a production deployment mechanism — building/serving the frontend for real remains open).
+- **Real-Time Operations Layer, Phases 1-5 — 2026-07-04:** owner-directed consolidated build (no
+  Redis, no new services — extends the one deployed backend, `dashboard/status_server.py`).
+  - `dashboard/events.py` (new): unified `BaseEvent` schema (`execution`/`strategy`/`system`
+    source tags) + in-process `EventBroadcaster` (one `asyncio.Queue` per WebSocket client, bounded
+    at 500, drops oldest for a saturated client only — never blocks the publisher) + `EventPoller`,
+    which collects from the durable stores that already exist (`operations_recorder.get_recent_events`,
+    `control_state.load_control_state`, the runner's state file's `broker_status`) since the runner
+    and dashboard are separate OS processes with no shared memory.
+  - `GET /ws` (WebSocket) + a 2s background poll loop landed in `status_server.py`; five new REST
+    endpoints — `/overview`, `/live/trades`, `/svos/status`, `/strategies/performance`,
+    `/system/health` — each delegates to an existing service (`TradeJournalDB`, `load_control_state`,
+    `strategy_service.list_strategies`, or an alias of the Phase 5 `/api/operations/*` handlers); new
+    `TradeJournalDB.summary_by_strategy()` is the one new piece of business logic, a per-strategy
+    breakdown using the same query pattern as the existing `summary()`.
+  - `dashboard/rbac.py` (new): FastAPI-native `require_role()` dependency reusing
+    `dashboard/auth.py`'s actual `_ROLE_ACTIONS`/`_permitted_actions` model (not a second, divergent
+    one) — bearer-token or trusted-proxy identity, same CSRF double-submit check for proxy mode.
+    `strategy:toggle`/`trading:pause`/`trading:resume` added to `_ROLE_ACTIONS` for `risk_operator`/
+    `admin`.
+  - New RBAC + CONFIRM-token-gated operator controls: `POST /api/control/{pause,resume,close-all,
+    toggle-strategy}` — each a thin, named entry point onto the *same* `activate_emergency_stop`/
+    `clear_emergency_stop` state machine (scope `block_only` for pause, `close_positions` for
+    close-all), not a parallel control state. `toggle-strategy` is the one new capability, validated
+    against whichever strategy is actually running (single-strategy deployment) rather than
+    pretending multi-strategy control exists. The pre-existing `/api/emergency-stop[/clear]`
+    endpoints were retrofitted with the same `Depends(require_role("risk_operator","admin"))` — they
+    had no RBAC before this pass, only a CONFIRM token.
+  - Verified live against the running `live-dashboard.service` (not just `TestClient`): all 5 new
+    GET endpoints return HTTP 200 with real data; `/ws` accepts a real connection; unauthenticated
+    `POST /api/emergency-stop` and `POST /api/control/pause` both now return 401 (previously
+    unauthenticated). 0 restarts on `live-dashboard.service` and `smc-demo-runner.service` throughout.
+  - Load-tested (Phase 5): 25 concurrent subscribers × 2000 published events, 0 loss, when consumers
+    get realistic scheduling opportunities; separately confirmed the documented overload-protection
+    path (a burst exceeding one client's 500-deep queue drops only that client's oldest entries,
+    never raises) is a deliberate safety net, not a bug.
+  - Tests: `tests/dashboard/test_events.py` (7), `tests/dashboard/test_rbac.py` (5),
+    `tests/test_status_server.py` additions (operator-control RBAC/CONFIRM-token matrix, all 5 new
+    endpoints, WebSocket delivery), `tests/core/test_trade_journal_db.py::test_summary_by_strategy_*`.
+  - Not yet done: no frontend widget subscribes to `/ws`; the remaining Flask-side mutation routes
+    (position close/protect/cancel, activation) are not yet ported to `dashboard/rbac.py`.
 - **Still open, unchanged from `SYSTEM2_MASTER_PLAN.md`:** durable/transactional risk *ledger for
   risk_state/portfolio_state specifically* (JSON persistence remains a mitigation, not this item —
   Sprint 2.3 covers order/event/recovery durability, not this), real broker-truth reconciliation
@@ -107,14 +147,16 @@
 
 ## Test results (this milestone)
 
-Full suite: 1530 passed, 8 failed, 4 skipped. All 8 failures are pre-existing and unrelated to this
-milestone's changes (7 in `tests/svos/test_pipeline.py`, 1 in
-`tests/core/test_smc_ob_fvg_session_adapter.py` — files not touched by this work; likely stem from
-other already-uncommitted changes in this checkout, e.g. `svos/application/refinement.py`).
-Everything touched by this milestone (execution/, core/portfolio_manager.py, dashboard/,
-scripts/run_st_a2_demo.py and their tests) passes: 220+ tests across `tests/execution/`,
-`tests/core/`, `tests/scripts/test_run_st_a2_demo_close_detection.py`, `tests/portfolio/`, plus the
-full `tests/test_dashboard_app.py` suite (40 tests).
+Real-Time Operations Layer pass: full suite 1591 passed, 29 failed, 4 skipped. Confirmed via
+`git stash` that the same 29 failures occur with this milestone's changes removed entirely
+(`tests/database/test_db_preflight.py`, `tests/svos/test_lifecycle_authority.py`,
+`tests/svos/test_pipeline.py`, `tests/core/test_smc_ob_fvg_session_adapter.py` — none touched by
+this work). Everything touched by this milestone (`dashboard/events.py`, `dashboard/rbac.py`,
+`dashboard/status_server.py`, `dashboard/auth.py`, `core/trade_journal_db.py`) passes: 21/21 in
+the three dashboard test files plus the new `summary_by_strategy` test.
+
+Prior milestone (Phase 1-3/Sprint 2.x) results: 1530 passed, 8 failed (pre-existing, unrelated), 4
+skipped — see history above for detail.
 
 ## Production readiness estimate
 
@@ -133,27 +175,19 @@ substantial, separately-scoped piece of work.
 
 ## Next implementation milestones (in order)
 
-1. **Real-Time Operations Layer** (renamed from "WebSocket/Event Streaming," owner feedback
-   2026-07-04 — scope was too price-stream-centric) — the LIVE tab now works correctly over polling
-   (Phase 6), but still polls every 1.5s against `/api/new-dashboard/live-state` with no push
-   mechanism. Rather than just streaming prices, this should unify every runtime event behind one
-   subscription instead of the dashboard polling many endpoints: **Trading** (order created/filled,
-   position opened/closed), **Strategy** (started/stopped/heartbeat/warning), **Risk** (daily-loss
-   update, circuit breaker, cooldown, emergency stop), **Platform** (broker disconnect/reconnect,
-   PostgreSQL reconnect, runner restart), **System** (service restart, health degraded, disk/memory
-   warning). Most of these already have a durable source to stream from —
-   `execution/operations_recorder.py`'s Postgres tables (Sprint 2.3) for Trading/Strategy/Risk
-   events, `TelegramAlerter`'s call sites for Platform/System events (not yet persisted, see Phase 5
-   note) — this is substantially a wiring/transport task, not a new-data-source task.
-2. **Authentication & RBAC** — **must land before Operator Controls** (owner feedback: "little value
-   in start/stop actions if any user can invoke them"). Apply the CONFIRM-token pattern consistently
-   across all mutation-class dashboard endpoints, not just `/api/emergency-stop`; no frontend login
-   exists yet either (`dashboard/auth.py` has no session UI wired to it).
-3. **Operator Controls** (Start/Stop/Pause/Resume/Emergency Stop) — `SocketContext.tsx`'s action
-   functions (`pauseTrading`, `triggerKillSwitch`, `updateRiskControls`, etc.) all target endpoints
-   that don't exist on the deployed backend yet; building these, **on top of the authentication
-   framework from step 2**, is what "Capital Risk Policies"/"Deploy Strategy Contract" panel
-   actually needs to become live-editable rather than display-only.
+1. **~~Real-Time Operations Layer~~ — backend/transport landed 2026-07-04.** `/ws` + the 5 new
+   REST endpoints are live and RBAC-gated (see entry above). **Remaining for this milestone:** no
+   frontend widget subscribes to `/ws` yet — that's frontend integration work, unscoped so far.
+2. **~~Authentication & RBAC~~ — landed 2026-07-04 for the FastAPI backend.** `dashboard/rbac.py`
+   now gates `/api/emergency-stop[/clear]` and all `/api/control/*` routes. **Remaining:** no
+   frontend login/session UI exists yet; the Flask backend's own mutation routes (position
+   close/protect/cancel, activation) still rely on `dashboard/auth.py`'s `require_operator` alone
+   without a CONFIRM token on several of them (`SYSTEM2_MASTER_PLAN.md`'s Authentication row).
+3. **Operator Controls — backend landed 2026-07-04** (`/api/control/pause`, `/resume`,
+   `/close-all`, `/toggle-strategy`, all RBAC + CONFIRM-token gated). **Remaining:** no frontend
+   widget calls these yet — `SocketContext.tsx`'s action functions (`pauseTrading`,
+   `triggerKillSwitch`, `updateRiskControls`, etc.) still target endpoints that don't match this
+   naming; wiring the Gai dashboard's controls panel to the real endpoints is the next step here.
 4. **Monitoring & Observability** — feed `/api/v1/production/health` from the actual tick loop
    (still a heartbeat-file gap), add freshness timestamps to dashboard widgets, surface
    `/api/operations/events` in the console-logs panel (backend ready, not yet consumed by the LIVE tab).

@@ -15,9 +15,17 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+_OPERATOR_HEADERS = {
+    "Authorization": "Bearer test-operator-token",
+    "X-SVOS-Actor": "tester",
+    "X-SVOS-Role": "risk_operator",
+}
+
+
 def test_metrics_endpoint_and_emergency_routes(tmp_path, monkeypatch):
     monkeypatch.setattr(status_server, "ROOT", tmp_path)
     monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
     _write(
         tmp_path / "logs" / "strategy_demo_state.json",
         json.dumps(
@@ -31,13 +39,19 @@ def test_metrics_endpoint_and_emergency_routes(tmp_path, monkeypatch):
     )
     client = TestClient(status_server.app)
 
-    denied = client.post("/api/emergency-stop", json={"reason": "manual pause"})
+    unauthenticated = client.post("/api/emergency-stop", json={"reason": "manual pause"})
+    assert unauthenticated.status_code == 401
+
+    denied = client.post(
+        "/api/emergency-stop", json={"reason": "manual pause"}, headers=_OPERATOR_HEADERS
+    )
     assert denied.status_code == 403
     assert denied.json()["required"] == "CONFIRM-EMERGENCY-STOP"
 
     accepted = client.post(
         "/api/emergency-stop",
         json={"reason": "manual pause", "confirm_token": "CONFIRM-EMERGENCY-STOP"},
+        headers=_OPERATOR_HEADERS,
     )
     assert accepted.status_code == 200
     assert accepted.json()["emergency_stop"]["active"] is True
@@ -63,9 +77,77 @@ def test_metrics_endpoint_and_emergency_routes(tmp_path, monkeypatch):
     cleared = client.post(
         "/api/emergency-stop/clear",
         json={"reason": "resume", "confirm_token": "CONFIRM-CLEAR-EMERGENCY-STOP"},
+        headers=_OPERATOR_HEADERS,
     )
     assert cleared.status_code == 200
     assert cleared.json()["emergency_stop"]["active"] is False
+
+
+def test_operator_control_endpoints_require_role_and_confirm_token(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
+    _write(
+        tmp_path / "logs" / "strategy_demo_state.json",
+        json.dumps({"status": "running", "strategy": "ST-A2"}),
+    )
+    client = TestClient(status_server.app)
+
+    forbidden_role_headers = {**_OPERATOR_HEADERS, "X-SVOS-Role": "research_operator"}
+    forbidden = client.post(
+        "/api/control/pause",
+        json={"confirm_token": "CONFIRM-PAUSE-TRADING"},
+        headers=forbidden_role_headers,
+    )
+    assert forbidden.status_code == 403
+
+    paused = client.post(
+        "/api/control/pause", json={"confirm_token": "CONFIRM-PAUSE-TRADING"}, headers=_OPERATOR_HEADERS
+    )
+    assert paused.status_code == 200
+    assert paused.json()["status"] == "paused"
+    assert paused.json()["emergency_stop"]["scope"] == "block_only"
+
+    resumed = client.post(
+        "/api/control/resume", json={"confirm_token": "CONFIRM-RESUME-TRADING"}, headers=_OPERATOR_HEADERS
+    )
+    assert resumed.status_code == 200
+    assert resumed.json()["status"] == "resumed"
+
+    close_all = client.post(
+        "/api/control/close-all",
+        json={"confirm_token": "CONFIRM-CLOSE-ALL-POSITIONS"},
+        headers=_OPERATOR_HEADERS,
+    )
+    assert close_all.status_code == 200
+    assert close_all.json()["emergency_stop"]["scope"] == "close_positions"
+    client.post(
+        "/api/control/resume", json={"confirm_token": "CONFIRM-RESUME-TRADING"}, headers=_OPERATOR_HEADERS
+    )
+
+    mismatch = client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "OtherStrategy", "action": "pause", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-OtherStrategy"},
+        headers=_OPERATOR_HEADERS,
+    )
+    assert mismatch.status_code == 409
+    assert mismatch.json()["status"] == "no_op"
+
+    bad_token = client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "ST-A2", "action": "pause", "confirm_token": "wrong-token"},
+        headers=_OPERATOR_HEADERS,
+    )
+    assert bad_token.status_code == 403
+
+    toggled = client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "ST-A2", "action": "pause", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-ST-A2"},
+        headers=_OPERATOR_HEADERS,
+    )
+    assert toggled.status_code == 200
+    assert toggled.json()["status"] == "strategy_paused"
+    assert toggled.json()["emergency_stop"]["active"] is True
 
 
 def test_new_dashboard_live_state_delegates_to_live_state_adapter(tmp_path, monkeypatch):
@@ -171,6 +253,42 @@ def test_all_operations_endpoints_return_200_with_consistent_envelope(tmp_path, 
             assert response.status_code == 200, endpoint
             body = response.json()
             assert set(body.keys()) == {"data", "source", "fetched_at", "unavailable"}, endpoint
+
+
+def test_realtime_operations_layer_endpoints_return_200_with_real_sources(tmp_path, monkeypatch):
+    """Real-Time Operations Layer Phase 2: /overview, /live/trades, /svos/status,
+    /strategies/performance, /system/health must all be reachable and each
+    delegate to an existing service rather than recomputing data."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    fake_snapshot = {
+        "portfolio": {"summary": {}, "daily_statistics": {}}, "positions": {"items": [], "count": 0},
+        "orders": {}, "execution_monitor": {}, "trade_history": {"trades": []}, "risk_dashboard": {},
+    }
+    with (
+        patch.object(status_server.live_dashboard_service, "load_snapshot", return_value=fake_snapshot),
+        patch.object(status_server, "get_recent_events", return_value=[]),
+        patch.object(status_server, "get_recent_runtimes", return_value=[]),
+    ):
+        client = TestClient(status_server.app)
+        for path in ("/overview", "/live/trades", "/svos/status", "/strategies/performance", "/system/health"):
+            response = client.get(path)
+            assert response.status_code == 200, path
+
+
+def test_websocket_ws_endpoint_delivers_published_events(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    client = TestClient(status_server.app)
+    from dashboard.events import make_system_event
+
+    with client.websocket_connect("/ws") as websocket:
+        status_server._event_broadcaster.publish(make_system_event("test_event", note="hello"))
+        message = websocket.receive_json()
+
+    assert message["event_type"] == "test_event"
+    assert message["source_system"] == "system"
+    assert message["payload"]["note"] == "hello"
 
 
 def test_load_log_prefers_most_recently_written_file_not_first_existing(tmp_path, monkeypatch):

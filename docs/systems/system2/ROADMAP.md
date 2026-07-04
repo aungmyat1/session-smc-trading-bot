@@ -15,21 +15,23 @@
 | 2.x | Deployment fix: `smc-demo-runner.service` | **Done, 2026-07-04** — was crash-looping since creation on an unapproved strategy name, never actually running anything in production; fixed to run `ST-A2`, verified stable (0 restarts, broker connected, clean tick cycles). See `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md` |
 | 2.y | Execution Pipeline Consolidation, Tier 1 | **Done, 2026-07-04** — one canonical lifecycle confirmed and documented; 411-line dead "Production Platform v2" cluster removed; two dormant-but-real stacks (`bot.py`, `adaptive/run_shadow.py`) documented, deliberately not touched (Tier 3, owner decision needed). See `EXECUTION_PIPELINE_INVENTORY.md`, `CANONICAL_EXECUTION_PIPELINE.md`, `PIPELINE_CONSOLIDATION_PLAN.md` |
 | 3 | Consolidate dashboard/API/strategy-loader duplication | **Backend done, frontend integrated (LIVE tab)** — 8 `/api/operations/*` endpoints (Phase 5) plus `/api/new-dashboard/live-state` (Phase 6) now on `status_server.py`, the only deployed backend; the Gai dashboard's LIVE tab consumes the latter end-to-end, browser-verified (2026-07-04). `app.py`/`live_app.py` themselves not yet retired; SVOS/Suggestions tabs and Operator Controls remain unwired |
-| 4 | Observability and deployment hygiene | **Partial** — `operations.*` Postgres tables (Sprint 2.3) have a read path (Phase 5) but the LIVE tab doesn't surface it yet (console-logs panel still empty); `/api/v1/production/health` heartbeat-file gap remains |
+| 4 | Observability and deployment hygiene | **Partial** — `operations.*` Postgres tables (Sprint 2.3) have a read path (Phase 5), now also a real-time push path (`/ws`, below), but the LIVE tab doesn't surface either yet (console-logs panel still empty); `/api/v1/production/health` heartbeat-file gap remains |
+| 5 | Real-Time Operations Layer (backend) | **Done, 2026-07-04** — `dashboard/events.py` (unified event schema + in-process broadcaster/poller), `GET /ws`, and 5 new REST endpoints landed in `status_server.py`; no Redis, no new services, per owner decision. Load-tested: 0 event loss, 25 concurrent subscribers. Frontend integration not started |
+| 6 | Authentication & RBAC (FastAPI backend) | **Done, 2026-07-04** — `dashboard/rbac.py` reuses `dashboard/auth.py`'s role model; gates `/api/emergency-stop[/clear]` and all `/api/control/*`. Flask backend's other mutation routes and any frontend login UI remain open |
+| 7 | Operator Controls (backend) | **Done, 2026-07-04** — `/api/control/{pause,resume,close-all,toggle-strategy}`, RBAC + CONFIRM-token gated, delegating to the existing `activate_emergency_stop`/`clear_emergency_stop` state machine. Frontend wiring (`SocketContext.tsx`) not started |
 
-### Next implementation milestones (in order — not started, sequencing only)
+### Next implementation milestones (in order)
 
-1. **Real-Time Operations Layer** (renamed from "WebSocket/Event Streaming," owner feedback
-   2026-07-04) — unify Trading/Strategy/Risk/Platform/System runtime events behind one subscription
-   the dashboard consumes instead of polling many endpoints; see `STATUS.md` for the full event
-   taxonomy and existing durable sources (`operations.*` Postgres tables, Sprint 2.3) this can build on.
-2. **Authentication & RBAC** — must land **before** Operator Controls (owner feedback: no value in
-   start/stop actions any user can invoke). Consistent CONFIRM-token contract across all
-   mutation-class endpoints; no frontend login/session UI exists yet either.
-3. **Operator Controls** (Start/Stop/Pause/Resume/Emergency Stop) — `SocketContext.tsx`'s action
-   functions already exist frontend-side but target backend endpoints that don't exist yet; built on
-   top of the Authentication framework from step 2; needed before the "Capital Risk Policies"/"Deploy
-   Strategy Contract" panels can become live-editable.
+1. **Real-Time Operations Layer, frontend integration** — backend/transport is done (Phase 5 row
+   above); no Gai dashboard widget subscribes to `/ws` yet. See `STATUS.md` for the full event
+   taxonomy landed.
+2. **Authentication & RBAC, remaining scope** — FastAPI backend done (Phase 6 row above); still
+   needed: a frontend login/session UI, and porting the Flask backend's other mutation routes
+   (position close/protect/cancel, activation) onto the same RBAC + CONFIRM-token pattern.
+3. **Operator Controls, frontend integration** — backend done (Phase 7 row above);
+   `SocketContext.tsx`'s action functions (`pauseTrading`, `triggerKillSwitch`, `updateRiskControls`,
+   etc.) need to be repointed at the real `/api/control/*` endpoints; needed before the "Capital Risk
+   Policies"/"Deploy Strategy Contract" panels can become live-editable.
 4. **Monitoring & Observability** — feed `/api/v1/production/health` from the real tick loop; add
    freshness timestamps to every widget; wire `/api/operations/events` into the console-logs panel.
 5. **Extended Multi-Day Demo Validation**, then **Production Candidate Review** (checklist:

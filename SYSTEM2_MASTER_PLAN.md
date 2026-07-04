@@ -220,11 +220,11 @@ should be retired) · **Duplicate** (two+ implementations of the same concern co
 | Dashboard Backend | **Duplicate** | 3 backend processes with overlapping routes (`/api/live-dashboard/*` duplicated verbatim in `app.py` and `live_app.py`; `/api/status` and `/api/emergency-stop*` duplicated in `app.py` and `status_server.py`) |
 | Dashboard Frontend | **Partial** | New Dashboard SPA is genuinely wired to real data via `app.py`, but `app.py` is not confirmed deployed — frontend is unreachable on the live host today |
 | APIs | **Duplicate** | Route duplication across the 3 backends; inconsistent auth — only emergency-stop routes enforce a CONFIRM token, other real mutations (activate, position close/protect/cancel, promote/demote) rely on role auth alone |
-| WebSocket | **Missing** | No push mechanism anywhere; confirmed 15-30s polling only (acceptable at current trade frequency, but a real gap if real-time monitoring is ever assumed) |
+| WebSocket | **Implemented** (2026-07-04) | Real-Time Operations Layer: `dashboard/status_server.py`'s `/ws` endpoint, in-process `EventBroadcaster`/`EventPoller` (`dashboard/events.py`) — no Redis, no new services. Server-side collection is poll-based against durable stores (`operations.*`, `control_state.json`, runner state file) every 2s since the runner and dashboard are separate OS processes; the browser connection itself is genuine push. Load-tested: 0 events lost across 25 concurrent subscribers × 2000 events |
 | Persistence | **Partial** | Order state (`ExecutionStateStore`) and process lifecycle (`RuntimeAuthority`) are durable; risk/portfolio accounting is in-memory only; `TradeManager`'s default store-root path diverges from the root the dashboard reads |
 | Restart Recovery | **Implemented** (legacy/deployed, 2026-07-04) / **Broken** (canonical) | `execution/startup_recovery.py` performs real broker-truth reconciliation before the deployed runner's tick loop starts, never resubmitting; `recover_incomplete()` is still never called by the undeployed canonical `run_portfolio.py` |
-| Operator Controls | **Partial** | Emergency-stop fully wired end-to-end for the legacy runner only; manual position close/modify/cancel work via a separate, functioning broker connection regardless of which runner is active |
-| Authentication | **Partial** | Real HMAC/CSRF/role-based auth on dashboard mutation routes; missing the CONFIRM-token layer on several real mutations (activation, position close/protect/cancel) that this repo's own CLAUDE.md §4 implies should have one |
+| Operator Controls | **Partial** | Emergency-stop, pause/resume, close-all, and toggle-strategy (`/api/control/*`, 2026-07-04) are fully wired end-to-end for the legacy runner and now RBAC + CONFIRM-token gated (see Authentication row); manual position close/modify/cancel work via a separate, functioning broker connection regardless of which runner is active; activation/position mutations elsewhere still lack a CONFIRM token |
+| Authentication | **Partial** | Real HMAC/CSRF/role-based auth on dashboard mutation routes; `dashboard/rbac.py` (2026-07-04) brings the same role model to the FastAPI backend (`status_server.py`) — `/api/emergency-stop[/clear]` and all new `/api/control/*` routes now require `Depends(require_role(...))` in addition to their CONFIRM token. Still missing: a frontend login/session UI, and the CONFIRM-token layer on several other real mutations (activation, position close/protect/cancel) that this repo's own CLAUDE.md §4 implies should have one |
 | Secrets | **Implemented** | `.env` gitignored and CI-enforced; no tracked secrets; GCP Secret Manager adapter exists (used by SVOS deployment/signing, not confirmed wired to broker credential loading) |
 | Cloud Deployment | **Broken** (for the canonical architecture) / **Partial** (overall) | The canonical runner has no systemd unit anywhere — the architecture this plan should be built around is not deployed; only the legacy runner + `status_server.py` dashboard are live on VPS 1 |
 
@@ -244,8 +244,9 @@ components are:
    (`execution/startup_recovery.py`) — resolves each ambiguous `ExecutionRecord` against actual
    broker positions before the tick loop starts, never resubmits. **Still missing for
    `run_portfolio.py`**, which never calls `recover_incomplete()` at all.
-3. **Real-time push (WebSocket/SSE).** Entirely absent; a deliberate design gap today, not a bug —
-   flagged here so it's an explicit decision, not a silent one, if real-time monitoring is ever assumed.
+3. **~~Real-time push (WebSocket/SSE).~~ Implemented 2026-07-04** as the Real-Time Operations
+   Layer — see WebSocket row above. Remaining gap: no frontend widget subscribes to `/ws` yet
+   (backend/transport only; frontend integration is separate, unscoped work).
 4. **A single systemd unit for the canonical execution architecture.** `run_portfolio.py` has
    zero deployment footprint — this is a deployment gap, not a code gap.
 
@@ -734,13 +735,23 @@ Updated in place as items land; do not fork a second copy of this checklist else
   tab widget renders the health grid yet (Backend Ready, not connected).
 
 **Security**
-- [ ] Authentication implemented — `dashboard/auth.py` exists but no frontend session/login UI
-  exists; `status_server.py`'s mutation routes don't enforce it at all.
-- [ ] RBAC implemented — same gap.
+- [~] Authentication implemented — `dashboard/rbac.py` (2026-07-04) brings `dashboard/auth.py`'s
+  bearer-token/trusted-proxy identity model to the FastAPI backend; `status_server.py`'s
+  emergency-stop and all `/api/control/*` mutation routes now enforce it (`Depends(require_role
+  (...))`, verified live: unauthenticated POST returns 401). Still missing: a frontend
+  session/login UI, and other Flask-side mutations (position close/protect/cancel, activation)
+  are not yet ported to the same FastAPI dependency.
+- [~] RBAC implemented — same role model (`research_operator`/`incident_operator`/
+  `risk_operator`/`admin`) now enforced on both backends; `strategy:toggle`/`trading:pause`/
+  `trading:resume` added to `_ROLE_ACTIONS` (`dashboard/auth.py`) for the new controls. Not yet
+  wired onto the remaining unauthenticated Flask mutation routes noted above.
 - [x] Audit logging enabled — `operations.execution_event`/`recovery_checkpoint` (Sprint 2.3),
   `TradeJournalDB`, dashboard control-state changes.
-- [ ] Operator confirmations enforced — only `/api/emergency-stop[/clear]` has a CONFIRM-token;
-  no other mutation-class endpoint exists yet to even need one (Operator Controls milestone).
+- [x] Operator confirmations enforced (2026-07-04) — `/api/emergency-stop[/clear]` plus the new
+  `/api/control/pause`, `/api/control/resume`, `/api/control/close-all`,
+  `/api/control/toggle-strategy` all require an exact-match CONFIRM token in addition to RBAC.
+  Other mutation-class endpoints outside this family (activation, position close/protect/cancel)
+  still lack one.
 
 **Observability**
 - [x] Monitoring available — `/api/operations/*` (Phase 5), `/metrics` (Prometheus format).
@@ -765,5 +776,7 @@ Updated in place as items land; do not fork a second copy of this checklist else
   restore-from-backup procedure) but no full-platform DR *rehearsal evidence* exists yet.
 
 **Status: not yet a Production Candidate.** Roughly two-thirds of the Execution Platform and
-Dashboard sections are done; Security and most of Operations remain open, consistent with
-Authentication & RBAC and Operator Controls being the next explicit milestones.
+Dashboard sections are done; Security is now partially closed (Real-Time Operations Layer,
+2026-07-04 — RBAC + CONFIRM tokens on the emergency-stop/control family, WebSocket event
+streaming) but a frontend login UI and the remaining unauthenticated Flask mutation routes are
+still open, alongside most of Operations.

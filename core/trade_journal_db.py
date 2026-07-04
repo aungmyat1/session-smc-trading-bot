@@ -294,6 +294,38 @@ class TradeJournalDB:
             "sharpe": round(self._sharpe(returns), 3),
         }
 
+    def summary_by_strategy(self) -> list[dict]:
+        """Per-strategy breakdown of the same metrics summary() reports overall —
+        added for the dashboard's /strategies/performance endpoint."""
+        with self._connect() as conn:
+            names = [r[0] for r in conn.execute(
+                "SELECT DISTINCT strategy_name FROM trades WHERE strategy_name IS NOT NULL AND strategy_name != ''"
+            ).fetchall()]
+            results = []
+            for name in sorted(names):
+                row = conn.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status='OPEN') AS open_count,
+                        COUNT(*) FILTER (WHERE status='CLOSED') AS closed_count,
+                        COUNT(*) FILTER (WHERE status='CLOSED' AND r_multiple > 0) AS wins,
+                        COUNT(*) FILTER (WHERE status='CLOSED' AND r_multiple < 0) AS losses,
+                        AVG(CASE WHEN status='CLOSED' THEN r_multiple END) AS avg_r,
+                        SUM(CASE WHEN status='CLOSED' THEN profit_loss END) AS total_pnl
+                    FROM trades WHERE strategy_name = ?
+                """, (name,)).fetchone()
+                wins, losses = row["wins"] or 0, row["losses"] or 0
+                results.append({
+                    "strategy_name": name,
+                    "open_trades": row["open_count"] or 0,
+                    "closed_trades": row["closed_count"] or 0,
+                    "wins": wins,
+                    "losses": losses,
+                    "win_rate_pct": round(wins / (wins + losses) * 100, 1) if (wins + losses) else 0.0,
+                    "avg_r": round(row["avg_r"] or 0.0, 3),
+                    "total_pnl": round(row["total_pnl"] or 0.0, 2),
+                })
+        return results
+
     def _sum_r(self, closed: bool, side: str) -> float:
         cond = "r_multiple > 0" if side == "win" else "r_multiple < 0"
         with self._connect() as conn:

@@ -10,10 +10,10 @@ from core.signal import Signal
 from core.trade_journal_db import TradeJournalDB
 
 
-def _sig(symbol="EURUSD", action="BUY") -> Signal:
+def _sig(symbol="EURUSD", action="BUY", strategy_name="ST-A2") -> Signal:
     return Signal(
         timestamp=datetime.now(timezone.utc).isoformat(),
-        strategy_name="ST-A2",
+        strategy_name=strategy_name,
         symbol=symbol,
         action=action,
         entry_price=1.10000,
@@ -199,6 +199,25 @@ class TestSummary:
         assert s["expectancy_r"] == pytest.approx(0.667, abs=0.01)
         assert s["max_drawdown_r"] == pytest.approx(1.0, abs=0.01)
         assert s["sharpe"] > 0
+
+    def test_summary_by_strategy_breaks_down_per_strategy(self, db):
+        tid_a1 = db.record_signal(_sig(strategy_name="ST-A2"), execution_result="OPEN")
+        db.update_close(tid_a1, 1.11, profit_loss=20.0, r_multiple=2.0)
+        tid_a2 = db.record_signal(_sig(strategy_name="ST-A2"), execution_result="OPEN")
+        db.update_close(tid_a2, 1.09, profit_loss=-10.0, r_multiple=-1.0)
+        db.record_signal(_sig(strategy_name="LondonBreakout"), execution_result="OPEN")
+
+        rows = {r["strategy_name"]: r for r in db.summary_by_strategy()}
+
+        assert set(rows) == {"ST-A2", "LondonBreakout"}
+        assert rows["ST-A2"]["closed_trades"] == 2
+        assert rows["ST-A2"]["wins"] == 1
+        assert rows["ST-A2"]["losses"] == 1
+        assert rows["ST-A2"]["win_rate_pct"] == pytest.approx(50.0)
+        assert rows["ST-A2"]["total_pnl"] == pytest.approx(10.0)
+        assert rows["LondonBreakout"]["open_trades"] == 1
+        assert rows["LondonBreakout"]["closed_trades"] == 0
+        assert rows["LondonBreakout"]["win_rate_pct"] == 0.0
 
 
 class TestXAUUSD:

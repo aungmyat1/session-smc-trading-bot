@@ -17,7 +17,9 @@ Run:
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import sys
 import time
 from datetime import datetime, timezone
@@ -25,12 +27,14 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from core.trade_journal_db import TradeJournalDB
-from dashboard import live_dashboard_service, live_state_adapter
+from dashboard import live_dashboard_service, live_state_adapter, strategy_service
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
+from dashboard.events import EventBroadcaster, EventPoller
+from dashboard.rbac import require_role
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
 from approval_package.package_validator import validate_package
 from demo_runtime.demo_health_check import evaluate_demo_readiness
@@ -48,6 +52,44 @@ except Exception:
     _STRAT_CFG: dict = {}
 
 app = FastAPI(docs_url=None, redoc_url=None)
+_log_events = logging.getLogger("dashboard.status_server.events")
+
+# ── Real-Time Operations Layer (Phase 1/3) ────────────────────────────────────
+# In-process broadcaster, no Redis — see dashboard/events.py's module docstring
+# for why. One background poll loop feeds every connected WebSocket client.
+_event_broadcaster = EventBroadcaster()
+_event_poller = EventPoller(_event_broadcaster)
+_EVENT_POLL_INTERVAL_S = 2.0
+
+
+@app.on_event("startup")
+async def _start_event_poll_loop() -> None:
+    async def _loop() -> None:
+        while True:
+            try:
+                _event_poller.poll_once()
+            except Exception as exc:  # never let one bad poll kill the loop
+                _log_events.warning("event poll iteration failed: %s", exc)
+            await asyncio.sleep(_EVENT_POLL_INTERVAL_S)
+
+    asyncio.create_task(_loop())
+
+
+@app.websocket("/ws")
+async def ws_events(websocket: WebSocket) -> None:
+    """Single unified event stream — Trading/Strategy/Risk/Platform/System
+    events, all sources, one connection. Replaces client-side polling of
+    many endpoints (owner framing, 2026-07-04)."""
+    await websocket.accept()
+    queue = _event_broadcaster.subscribe()
+    try:
+        while True:
+            event = await queue.get()
+            await websocket.send_json(event.to_dict())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        _event_broadcaster.unsubscribe(queue)
 
 
 @app.get("/api/project-readiness")
@@ -1537,7 +1579,7 @@ async def api_readiness_report():
 
 
 @app.post("/api/emergency-stop")
-async def api_emergency_stop(body: dict):
+async def api_emergency_stop(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
     confirm = str(body.get("confirm_token", "")).strip()
     if confirm != "CONFIRM-EMERGENCY-STOP":
         return JSONResponse(
@@ -1548,12 +1590,12 @@ async def api_emergency_stop(body: dict):
     scope = str(body.get("scope", "block_only")).strip().lower() or "block_only"
     if scope not in {"block_only", "close_positions"}:
         return JSONResponse({"error": "Invalid emergency-stop scope", "scope": scope}, status_code=400)
-    state = activate_emergency_stop(reason=reason, activated_by="status_server", scope=scope)
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope=scope)
     return {"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
 
 
 @app.post("/api/emergency-stop/clear")
-async def api_emergency_stop_clear(body: dict):
+async def api_emergency_stop_clear(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
     confirm = str(body.get("confirm_token", "")).strip()
     if confirm != "CONFIRM-CLEAR-EMERGENCY-STOP":
         return JSONResponse(
@@ -1561,8 +1603,89 @@ async def api_emergency_stop_clear(body: dict):
             status_code=403,
         )
     reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
-    state = clear_emergency_stop(reason=reason, cleared_by="status_server")
+    state = clear_emergency_stop(reason=reason, cleared_by=identity["actor"] or "status_server")
     return {"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+# ── Operator Controls (Phase 4, Real-Time Operations Layer) ──────────────────
+# Pause/resume/close-all are named, RBAC-gated entry points onto the SAME
+# emergency_stop state machine above (scope=block_only for pause, scope=
+# close_positions for close-all) — no parallel control state invented.
+# toggle-strategy is the one genuinely new capability: this deployment runs a
+# single strategy at a time (logs/strategy_demo_state.json's "strategy" key),
+# so toggling is validated against whichever strategy is actually running
+# rather than pretending multi-strategy control exists.
+
+@app.post("/api/control/pause")
+async def api_control_pause(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-PAUSE-TRADING":
+        return JSONResponse(
+            {"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-PAUSE-TRADING"},
+            status_code=403,
+        )
+    reason = str(body.get("reason", "Operator pause")).strip() or "Operator pause"
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only")
+    return {"status": "paused", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/api/control/resume")
+async def api_control_resume(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-RESUME-TRADING":
+        return JSONResponse(
+            {"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-RESUME-TRADING"},
+            status_code=403,
+        )
+    reason = str(body.get("reason", "Operator resume")).strip() or "Operator resume"
+    state = clear_emergency_stop(reason=reason, cleared_by=identity["actor"] or "status_server")
+    return {"status": "resumed", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/api/control/close-all")
+async def api_control_close_all(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
+    confirm = str(body.get("confirm_token", "")).strip()
+    if confirm != "CONFIRM-CLOSE-ALL-POSITIONS":
+        return JSONResponse(
+            {"error": "Invalid or missing CONFIRM token", "required": "CONFIRM-CLOSE-ALL-POSITIONS"},
+            status_code=403,
+        )
+    reason = str(body.get("reason", "Operator emergency close-all")).strip() or "Operator emergency close-all"
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="close_positions")
+    return {"status": "closing_all", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/api/control/toggle-strategy")
+async def api_control_toggle_strategy(body: dict, identity: dict = Depends(require_role("risk_operator", "admin"))):
+    strategy_id = str(body.get("strategy_id", "")).strip()
+    action = str(body.get("action", "")).strip().lower()
+    if not strategy_id or action not in {"pause", "resume"}:
+        return JSONResponse({"error": "strategy_id and action ('pause'|'resume') are required"}, status_code=400)
+    confirm = str(body.get("confirm_token", "")).strip()
+    required_token = f"CONFIRM-TOGGLE-STRATEGY-{strategy_id}"
+    if confirm != required_token:
+        return JSONResponse({"error": "Invalid or missing CONFIRM token", "required": required_token}, status_code=403)
+    running_strategy = str(_load_state().get("strategy", "")).strip()
+    if strategy_id != running_strategy:
+        return JSONResponse(
+            {
+                "status": "no_op",
+                "reason": f"'{strategy_id}' is not the currently running strategy ('{running_strategy}')",
+                "running_strategy": running_strategy,
+            },
+            status_code=409,
+        )
+    reason = str(body.get("reason", "")).strip() or f"Strategy toggle: {strategy_id} {action}d by operator"
+    if action == "pause":
+        state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only")
+    else:
+        state = clear_emergency_stop(reason=reason, cleared_by=identity["actor"] or "status_server")
+    return {
+        "status": f"strategy_{action}d",
+        "strategy_id": strategy_id,
+        "emergency_stop": state["emergency_stop"],
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 # ── Operations Control Center (Phase 5) ───────────────────────────────────────
@@ -1751,6 +1874,83 @@ async def api_operations_events(limit: int = 50):
         source="execution.operations_recorder (Postgres operations.execution_event/recovery_checkpoint/runtime)",
         unavailable=["telegram_alert_history (monitoring/telegram.py sends alerts but persists no queryable history)"],
     )
+
+
+# ── Unified dashboard API (Phase 2/3) ─────────────────────────────────────────
+# Named endpoints requested by the Real-Time Operations Layer prompt. Every
+# one is a thin aggregation over the same services /api/operations/* already
+# uses (Phase 5) plus dashboard/strategy_service.py for SVOS state — nothing
+# here recomputes business logic owned elsewhere.
+
+@app.get("/overview")
+async def overview():
+    """One-shot summary combining execution + SVOS + risk + health — the
+    initial-load payload a dashboard page would fetch once, then switch to
+    /ws for live updates."""
+    state = _load_state()
+    health = _health_summary()
+    journal_summary = TradeJournalDB().summary()
+    control = load_control_state()
+    strategies = strategy_service.list_strategies()
+    return _envelope(
+        {
+            "execution": {
+                "strategy": state.get("strategy", ""), "mode": state.get("mode", ""),
+                "status": state.get("status", "unknown"), "broker_status": state.get("broker_status", "unknown"),
+                "open_positions": len(state.get("open_positions", [])),
+            },
+            "risk": {"halted": _load_risk_state_file().get("halted", False), "emergency_stop": control.get("emergency_stop", {})},
+            "svos": {"strategy_count": len(strategies)},
+            "journal_summary": journal_summary,
+            "health_score": health["score"],
+        },
+        source="dashboard.status_server aggregating _load_state/_health_summary/TradeJournalDB/control_state/strategy_service",
+    )
+
+
+@app.get("/live/trades")
+async def live_trades():
+    """Alias of the Phase 5 /api/operations/trades content under the name
+    this prompt asked for — same source, not a second implementation."""
+    return await api_operations_trades()
+
+
+@app.get("/svos/status")
+async def svos_status():
+    """SVOS lifecycle/catalog status per strategy — reuses
+    dashboard/strategy_service.py::list_strategies(), the same source
+    dashboard/live_state_adapter.py already uses for strategyPackages."""
+    strategies = strategy_service.list_strategies()
+    return _envelope(
+        {
+            "strategies": [
+                {
+                    "id": s.get("id", ""), "name": s.get("name", s.get("id", "")),
+                    "status": s.get("status", ""), "version": s.get("version", ""),
+                    "validation_score": (s.get("evidence") or {}).get("validation_score", 0),
+                }
+                for s in strategies
+            ],
+        },
+        source="dashboard.strategy_service.list_strategies (config/strategy_catalog.yaml + SVOS reports)",
+    )
+
+
+@app.get("/strategies/performance")
+async def strategies_performance():
+    """Per-strategy trade performance — reuses TradeJournalDB, the same
+    SQLite journal every other trade-history view in this dashboard reads."""
+    return _envelope(
+        {"strategies": TradeJournalDB().summary_by_strategy()},
+        source="core.trade_journal_db.TradeJournalDB.summary_by_strategy",
+    )
+
+
+@app.get("/system/health")
+async def system_health():
+    """Alias of the Phase 5 /api/operations/health content under the name
+    this prompt asked for."""
+    return await api_operations_health()
 
 
 @app.get("/metrics", response_class=PlainTextResponse)
