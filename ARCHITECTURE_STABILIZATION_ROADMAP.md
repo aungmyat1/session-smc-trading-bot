@@ -1,20 +1,32 @@
 # Architecture Stabilization Roadmap
 
 - Date: 2026-07-03
-- Status: Review
+- Status: Authoritative
 - Source: `PROJECT_GAP_ANALYSIS.md`
 - Scope: Architecture decisions and implementation sequencing only
 - Safety: This roadmap does not authorize live trading, broker connectivity, deployment, or strategy changes
 
+## Owner delivery directive — System 2 first
+
+System 2 controlled demo readiness is the immediate priority. System 1 replay,
+backtest, optimization, robustness, and approval implementation resumes only
+after System 2 passes the stable demo-readiness gate.
+
+System 1 remains the only producer of approved strategy packages. System 2 may
+verify and execute those packages but may not research, optimize, edit, or approve
+strategies. Signed synthetic fixtures are permitted only for System 2 tests.
+
+Live trading with real capital remains disabled. This roadmap does not authorize
+`LIVE_TRADING=true`, `DEMO_ONLY=false`, or any live broker adapter.
+
 > **Owner sequencing amendment — 2026-07-03:** ADR-0003 is assigned to
 > **Single Runtime Authority** by explicit owner instruction. The earlier
-> proposed ADR-0003 broker-truth workstream in this planning document remains
-> unimplemented and must be renumbered before future authorization.
+> broker-truth workstream is now proposed as ADR-0011 and remains unimplemented.
 
 > **Owner sequencing amendment — 2026-07-03:** ADR-0004 is assigned to
 > **Canonical Execution Pipeline** by explicit owner instruction. The earlier
-> ADR-0004 default-deny broker-write workstream and ADR-0005 runtime-replay
-> proposal remain future work and must be renumbered before authorization.
+> default-deny broker-write and runtime-replay proposals are now ADR-0012 and
+> ADR-0013 respectively and remain future work.
 
 ## 1. Purpose
 
@@ -43,7 +55,7 @@ No implementation phase may begin until its ADR is accepted. An ADR records auth
 | WS1 | Executed artifact differs from approved artifact | ADR-0002: Canonical Strategy Package and Handoff | P0 | Boundary |
 | WS2 | Runtime loss controls do not reflect closed trades | ADR-0011: Broker-Truth Risk Feedback | P0 | System 2 |
 | WS3 | Alternate entrypoint enables broker writes | ADR-0012: Default-Deny Broker Write Boundary | P0 | System 2 |
-| WS4 | Replay passes while demo behavior differs | ADR-0013: Runtime-Equivalent Replay | P0 | Both, without dependency inversion |
+| WS4 | Replay passes while demo behavior differs | ADR-0013: Runtime-Equivalent Replay | Deferred until System 2 gate | System 1 second wave |
 | WS5 | Restart duplicates or loses an ambiguous order | ADR-0006: Durable Execution and Recovery Authority | P0 | System 2 |
 | WS6 | Dashboard reports stale or conflicting state | ADR-0007: Operational Read-Model Authority | P1 | Observation boundary |
 | WS7 | Research and production cannot be independently deployed | ADR-0008: Independent System Deployment and Data Ownership | P1 | Both |
@@ -73,16 +85,19 @@ PR #20: Demo Smoke Test only        PR #21: CircleCI parity (independent)
           |                |
           +-------+--------+
                   v
-          WS4 Runtime Replay
-                  |
-                  v
-          Replay Qualification
-                  |
-                  v
-          Demo Qualification
-                  |
-                  v
           WS6 Dashboard Read Model
+                  |
+                  v
+       SYSTEM 2 STABLE DEMO READY
+                  |
+                  v
+     SYSTEM 1 REPLAY/BACKTEST/APPROVAL
+                  |
+                  v
+       Approved Strategy Package
+                  |
+                  v
+       System 2 controlled execution
 ```
 
 WS8 runs incrementally throughout the roadmap but may not weaken an existing gate to unblock another workstream.
@@ -467,38 +482,37 @@ The eight risk ADRs require three supporting decisions. These do not replace the
 
 ### Supporting ADR A — Canonical runtime composition
 
-Proposed file: `docs/svos/ADR-0010-CANONICAL-RUNTIME-COMPOSITION.md`.
+Proposed file: `docs/svos/ADR-0014-CANONICAL-RUNTIME-COMPOSITION.md`.
 
 It should define the one System 2 order path through package guard, configuration validation, governance, permission, risk, durable execution state, broker abstraction, journal, reconciliation, and monitoring. It is the shared prerequisite for WS2, WS4, and WS5.
 
 ### Supporting ADR B — Lifecycle responsibility mapping
 
-Proposed file: `docs/svos/ADR-0011-LIFECYCLE-RESPONSIBILITY-MAPPING.md`.
+Proposed file: `docs/svos/ADR-0015-LIFECYCLE-RESPONSIBILITY-MAPPING.md`.
 
 It must resolve how Backtest and Statistical Validation remain distinct responsibilities without inventing an unauthorized stage name, and how `REFINEMENT` is integrated. This is a System 1 decision and must not move validation logic into System 2.
 
 ### Supporting ADR C — Fail-closed runtime configuration
 
-Proposed file: `docs/svos/ADR-0012-RUNTIME-CONFIGURATION-AUTHORITY.md`.
+Proposed file: `docs/svos/ADR-0016-RUNTIME-CONFIGURATION-AUTHORITY.md`.
 
 It should establish one validated startup configuration, eliminate silent production fallbacks, separate secrets from non-secret configuration, and require all checks to finish before external connection.
 
 ## 7. Integrated implementation and PR roadmap
 
-PR numbers after #21 are estimates and may shift. Dependency order is normative; numbering is not.
+Delivery order is normative; individual PR numbers may shift.
 
-| Wave | Estimated PRs | Outcome | Promotion gate |
+| Wave | System | Outcome | Promotion gate |
 |---|---|---|---|
-| 0 | #20 | Demo Smoke Test remains isolated | Offline preflight evidence |
-| 1 | #21 | CircleCI parity and dual required checks | CI parity |
-| 2 | #22–#25 | Canonical signed package adopted across the handoff | Artifact Integrity |
-| 3 | #26–#28 | Broker writes default-denied; virtual/demo explicitly scoped | Runtime Safety |
-| 4 | #29–#34 | Closed-trade feedback, durable state, reconciliation, and restart recovery | Operational Integrity |
-| 5 | #35–#38 | Runtime-equivalent deterministic replay and evidence | Replay Qualified |
-| 6 | #39–#41 | Independent build/deployment boundaries and least privilege | System Separation |
-| 7 | #42–#45 | Authoritative read model and operational dashboard | Operational Visibility |
-| 8 | #46+ | Full quality baseline and incremental debt reduction | Quality Qualified |
-| 9 | Later qualification PRs | Demo execution validation and observation | Demo Qualified, then Long-running Demo |
+| 1 | System 2 | Canonical package loader and verification | Artifact Integrity |
+| 2 | System 2 | Single Runtime Authority and canonical pipeline | Runtime Safety |
+| 3 | System 2 | Demo/paper adapter, risk firewall, journal, and reconciliation | Operational Integrity |
+| 4 | System 2 | Runtime dashboard, recovery, and safety qualification | **Stable Demo Ready** |
+| 5 | System 1 | Registry, audit/refinement, replay, and backtest | Research Capable |
+| 6 | System 1 | Statistical Validation, optimization, robustness, and offline Virtual Demo | Qualification Capable |
+| 7 | Boundary | Approval and signed package handoff | Approval Capable |
+| 8 | System 2 | Controlled broker-demo observation after separate gate | Demo Qualified |
+| 9 | Deferred | Real-capital execution | Explicit owner approval plus all gates |
 
 ## 8. Merge and promotion policy
 

@@ -13,6 +13,8 @@ Serves:
   GET /api/evf           — EVF panel data (last validation report)
   GET /api/trades        — Live trade status (journal + open positions)
   GET /api/status        — System health summary
+  GET /api/new-dashboard/live-state — Real-data feed for the Gai dashboard's
+                           LiveDashboardState contract (see live_state_adapter.py)
   GET /api/rgm           — Risk qualification and emergency state
   GET /api/governance    — Approval / promotion control-plane state
   GET /api/smo           — Monitoring, incidents, drift-facing summary
@@ -61,7 +63,7 @@ from dashboard.control_state import activate_emergency_stop, clear_emergency_sto
 from dashboard.report_service import generate as generate_reports_payload
 from dashboard.report_service import latest_reports, load_index, mark_reviewed, read_report
 from dashboard.status_mapper import health_to_status
-from dashboard import strategy_service, gemini_service, pipeline_service, live_dashboard_service
+from dashboard import strategy_service, gemini_service, pipeline_service, live_dashboard_service, live_state_adapter
 import scripts.health_check as health_check
 from production import (
     DeploymentImportService,
@@ -1237,6 +1239,20 @@ def api_new_dashboard_reports():
         "generated_at": reports.get("generated_at", ""),
         "fetched_at": _now_iso(),
     })
+
+
+@app.route("/api/new-dashboard/live-state")
+def api_new_dashboard_live_state():
+    """Real-data feed for the Gai dashboard's `LiveDashboardState` contract.
+
+    Deliberately NOT `/api/status` — that path already serves an unrelated
+    SVOS/EVF summary (see `api_status` above and `status_server.py`'s own
+    `/api/status`). See docs/dashboard/DASHBOARD_BACKEND_MAPPING.md.
+    """
+    chart_symbol = str(request.args.get("symbol", "")).strip() or None
+    timeframe = str(request.args.get("timeframe", "M15")).strip() or "M15"
+    count = request.args.get("count", default=120, type=int) or 120
+    return jsonify(live_state_adapter.build_live_state(chart_symbol=chart_symbol, timeframe=timeframe, candle_count=max(10, min(count, 500))))
 
 
 @app.route("/api/session/me")

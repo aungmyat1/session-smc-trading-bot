@@ -1,0 +1,26 @@
+# SVOS LLM provider configuration
+# ------------------------------------------------------------------
+# Authoritative: this file declares which LLM provider(s) the SVOS
+# research surface may call. The default provider is `disabled`, which
+# is the safe initial state — the platform must not call any external
+# service without an explicit `enabled: true` flag.
+#
+# Per AGENTS.md §0 / §Stage-1, AI is advisory only. It produces drafts;
+# it does not mutate strategy state, lifecycle, or catalog.
+# ------------------------------------------------------------------
+provider: disabled          # disabled | deepseek | gemini
+deepseek:
+  base_url: https://api.deepseek.com
+  model: deepseek-chat      # deepseek-chat (V3) or deepseek-reasoner (R1)
+  temperature: 0.2
+  max_tokens: 2048
+  timeout_s: 60
+# Draft generation policy
+draft:
+  max_input_chars: 32000
+  include_section_skeleton: true
+  require_human_acceptance: true
+# Token accounting (informational; SDK returns actual usage per call)
+cost:
+  input_per_1k_usd: 0.00014   # DeepSeek-V3 cache miss list price
+  output_per_1k_usd: 0.00028  # DeepSeek-V3 list price

@@ -426,6 +426,29 @@ class TestDailyReset:
         assert reset_called
 
 
+class TestDeprecatedRunnerBlocked:
+    """Sprint 2.2 (SYSTEM2_MASTER_PLAN.md Phase 2): run() must refuse to start
+    by default so this undeployed, unsafe-wiring runner can't be mistaken for
+    the canonical scripts/run_st_a2_demo.py."""
+
+    def test_run_refuses_to_start_without_explicit_override(self, monkeypatch):
+        from scripts.run_portfolio import run
+        monkeypatch.delenv("RUN_PORTFOLIO_ALLOW_START", raising=False)
+        with pytest.raises(RuntimeError, match="run_st_a2_demo.py"):
+            asyncio.run(run("shadow", 60, execution_pipeline=MagicMock()))
+
+    def test_run_starts_connecting_when_explicitly_overridden(self, monkeypatch):
+        from scripts.run_portfolio import run
+        monkeypatch.setenv("RUN_PORTFOLIO_ALLOW_START", "true")
+        with patch("scripts.run_portfolio.MT5Connector") as connector_cls:
+            connector_cls.return_value.connect = AsyncMock(side_effect=RuntimeError("no broker in test"))
+            # run() catches the connect() failure internally and returns —
+            # reaching connect() at all (rather than raising at the guard)
+            # proves the override lets it past the deprecation block.
+            asyncio.run(run("shadow", 60, execution_pipeline=MagicMock()))
+            connector_cls.return_value.connect.assert_awaited_once()
+
+
 class TestLiveBlocked:
     """TRADING_MODE=live must exit(1)."""
 

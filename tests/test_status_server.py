@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -65,3 +66,130 @@ def test_metrics_endpoint_and_emergency_routes(tmp_path, monkeypatch):
     )
     assert cleared.status_code == 200
     assert cleared.json()["emergency_stop"]["active"] is False
+
+
+def test_new_dashboard_live_state_delegates_to_live_state_adapter(tmp_path, monkeypatch):
+    """Phase 6 dashboard integration: the deployed backend's copy of
+    /api/new-dashboard/live-state must be a pure passthrough to
+    live_state_adapter.build_live_state(), not a reimplementation."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    fake_state = {"pairs": {}, "selectedPair": "EURUSD", "health": {}, "unavailable": []}
+    with patch.object(status_server.live_state_adapter, "build_live_state", return_value=fake_state) as mock_build:
+        client = TestClient(status_server.app)
+        response = client.get("/api/new-dashboard/live-state?symbol=EURUSD&timeframe=M15&candle_count=50")
+    assert response.status_code == 200
+    assert response.json() == fake_state
+    mock_build.assert_called_once_with(chart_symbol="EURUSD", timeframe="M15", candle_count=50)
+
+
+def _base_operations_state(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "logs" / "strategy_demo_state.json",
+        json.dumps(
+            {
+                "status": "running", "strategy": "ST-A2", "mode": "demo",
+                "started_at": "2026-07-04T17:00:00+00:00",
+                "last_tick_at": "2026-07-04T17:05:00+00:00",
+                "broker_status": "connected", "open_positions": [], "pairs": ["EURUSD"],
+            }
+        ),
+    )
+
+
+def test_operations_health_reports_uptime_and_deployment_info(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    client = TestClient(status_server.app)
+
+    response = client.get("/api/operations/health")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"]
+    assert body["data"]["execution_runner"]["strategy"] == "ST-A2"
+    assert body["data"]["execution_runner"]["uptime_seconds"] is not None
+    assert "redis" in " ".join(body["unavailable"])
+
+
+def test_operations_risk_reads_persisted_state_not_live_recalculation(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    _write(
+        tmp_path / "logs" / "risk_state.json",
+        json.dumps({"consecutive_losses": 2, "halted": True, "halt_reason": "CONSECUTIVE_LOSS_LIMIT"}),
+    )
+    _write(tmp_path / "logs" / "portfolio_state.json", json.dumps({"weekly_pnl_pct": -0.01, "open_symbols": ["EURUSD"]}))
+    with patch.object(status_server.live_dashboard_service, "load_snapshot", return_value={"risk_dashboard": {}}):
+        client = TestClient(status_server.app)
+        response = client.get("/api/operations/risk")
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["consecutive_losses"] == 2
+    assert data["halted"] is True
+    assert data["halt_reason"] == "CONSECUTIVE_LOSS_LIMIT"
+    assert data["open_symbols"] == ["EURUSD"]
+
+
+def test_operations_events_reads_from_operations_recorder(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    with (
+        patch.object(status_server, "get_recent_events", return_value=[{"type": "execution_event", "event_type": "pipeline_started"}]) as mock_events,
+        patch.object(status_server, "get_recent_runtimes", return_value=[{"runtime_id": "abc", "status": "running"}]) as mock_runtimes,
+    ):
+        client = TestClient(status_server.app)
+        response = client.get("/api/operations/events?limit=10")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["events"][0]["event_type"] == "pipeline_started"
+    assert body["data"]["startup_events"][0]["runtime_id"] == "abc"
+    assert "telegram_alert_history" in " ".join(body["unavailable"])
+    mock_events.assert_called_once_with(limit=10)
+    mock_runtimes.assert_called_once_with(limit=10)
+
+
+def test_all_operations_endpoints_return_200_with_consistent_envelope(tmp_path, monkeypatch):
+    """Smoke test across the full Phase 5 endpoint family."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    fake_snapshot = {
+        "portfolio": {"summary": {}, "daily_statistics": {}}, "positions": {"items": [], "count": 0},
+        "orders": {}, "execution_monitor": {}, "trade_history": {"trades": []}, "risk_dashboard": {},
+    }
+    with (
+        patch.object(status_server.live_dashboard_service, "load_snapshot", return_value=fake_snapshot),
+        patch.object(status_server, "get_recent_events", return_value=[]),
+        patch.object(status_server, "get_recent_runtimes", return_value=[]),
+    ):
+        client = TestClient(status_server.app)
+        for endpoint in ("health", "account", "positions", "orders", "trades", "strategy", "risk", "events"):
+            response = client.get(f"/api/operations/{endpoint}")
+            assert response.status_code == 200, endpoint
+            body = response.json()
+            assert set(body.keys()) == {"data", "source", "fetched_at", "unavailable"}, endpoint
+
+
+def test_load_log_prefers_most_recently_written_file_not_first_existing(tmp_path, monkeypatch):
+    """Bug fixed 2026-07-04: the deployed /dashboard/ route was showing a stale,
+    3-day-old log (smc_ob_fvg_demo.log) instead of the actually-live
+    strategy_demo.log, because the old code returned the first candidate that
+    merely *existed* rather than the one actually being written to."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    stale = logs_dir / "smc_ob_fvg_demo.log"
+    fresh = logs_dir / "strategy_demo.log"
+    stale.write_text("OLD STALE LINE\n")
+    fresh.write_text("CURRENT LIVE LINE\n")
+    import os
+    import time
+    old_time = time.time() - 3 * 24 * 3600
+    os.utime(stale, (old_time, old_time))
+
+    result = status_server._load_log(n=5)
+
+    assert result == ["CURRENT LIVE LINE"]

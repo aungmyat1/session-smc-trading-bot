@@ -39,6 +39,10 @@ class ReplayConfig:
             raise ValueError("run_id must be non-empty and must not contain path separators")
         if self.end_time < self.start_time:
             raise ValueError("end_time must not precede start_time")
+        if not self.data_path.is_file():
+            raise ValueError(f"historical data file does not exist: {self.data_path}")
+        if not self.strategy_package_path.is_file():
+            raise ValueError(f"strategy package provenance file does not exist: {self.strategy_package_path}")
 
     @property
     def run_dir(self) -> Path:

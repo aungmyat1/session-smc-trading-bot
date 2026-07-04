@@ -97,6 +97,7 @@ class VantageDemoExecutor:
                 "direction":  p.get("type", "").replace("POSITION_TYPE_", "").lower(),
                 "lots":       p.get("volume"),
                 "entry":      p.get("openPrice"),
+                "current_price": p.get("currentPrice"),
                 "sl":         p.get("stopLoss"),
                 "tp":         p.get("takeProfit"),
                 "profit":     p.get("profit"),

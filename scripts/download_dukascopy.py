@@ -21,9 +21,9 @@ CLAUDE.md §0: do not download data without explicit user instruction.
 import argparse
 import asyncio
 import json
-import io
 import logging
 import lzma
+import os
 import struct
 import sys
 from datetime import datetime, timezone
@@ -51,6 +51,8 @@ PRICE_DIV = {
     "GBPUSD": 100_000,
     "USDJPY": 100_000,
     "XAUUSD": 1_000,
+    # Dukascopy BTCUSD integer quotes have one decimal place (e.g. 306621 -> 30662.1).
+    "BTCUSD": 10,
 }
 
 # Dukascopy internal symbol names
@@ -59,6 +61,7 @@ DUKA_SYM = {
     "GBPUSD": "GBPUSD",
     "USDJPY": "USDJPY",
     "XAUUSD": "XAUUSD",
+    "BTCUSD": "BTCUSD",
 }
 
 TICK_SCHEMA = pa.schema([
@@ -170,31 +173,65 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
 
     price_div = PRICE_DIV[sym]
     _, days_in_month = monthrange(year, month)
-    hours = [
-        (year, month, d, h)
-        for d in range(1, days_in_month + 1)
-        for h in range(24)
-    ]
+    hours_requested = days_in_month * 24
 
-    log.info("Downloading %s %d-%02d (%d hours)...", sym, year, month, len(hours))
+    log.info("Downloading %s %d-%02d (%d hours)...", sym, year, month, hours_requested)
     started_at = datetime.now(timezone.utc)
     started_perf = perf_counter()
 
     sem = asyncio.Semaphore(workers)
     connector = aiohttp.TCPConnector(limit=workers * 2)
-    async with aiohttp.ClientSession(connector=connector) as http:
-        tasks = [
-            _fetch_hour(http, sem, sym, y, m, d, h, price_div)
-            for y, m, d, h in hours
-        ]
-        results = await asyncio.gather(*tasks)
-
-    all_ticks = []
     hour_stats = []
-    for batch in results:
-        ticks, stats = batch
-        hour_stats.append(stats)
-        all_ticks.extend(ticks)
+    total_rows = 0
+    tmp_path = out_path.with_suffix(".parquet.tmp")
+    tmp_path.unlink(missing_ok=True)
+    writer = pq.ParquetWriter(tmp_path, TICK_SCHEMA, compression="snappy")
+    try:
+        async with aiohttp.ClientSession(connector=connector) as http:
+            # Fetch only one UTC day at a time. A whole BTC month can exceed VPS RAM
+            # when represented as Python tuples, while a day remains comfortably bounded.
+            for day in range(1, days_in_month + 1):
+                results = await asyncio.gather(*[
+                    _fetch_hour(http, sem, sym, year, month, day, hour, price_div)
+                    for hour in range(24)
+                ])
+                day_failures = sum(1 for _ticks, stats in results if stats["status"] == "failed")
+                if day_failures:
+                    raise RuntimeError(
+                        f"{sym} {year}-{month:02d}-{day:02d}: {day_failures} hour(s) exhausted retries"
+                    )
+                day_ticks = []
+                for ticks, stats in results:
+                    hour_stats.append(stats)
+                    day_ticks.extend(ticks)
+                if not day_ticks:
+                    continue
+                day_ticks.sort(key=lambda tick: tick[0])
+                table = pa.table(
+                    {
+                        "timestamp_ms": pa.array((tick[0] for tick in day_ticks), type=pa.int64()),
+                        "ask": pa.array((tick[1] for tick in day_ticks), type=pa.float32()),
+                        "bid": pa.array((tick[2] for tick in day_ticks), type=pa.float32()),
+                        "ask_vol": pa.array((tick[3] for tick in day_ticks), type=pa.float32()),
+                        "bid_vol": pa.array((tick[4] for tick in day_ticks), type=pa.float32()),
+                    },
+                    schema=TICK_SCHEMA,
+                )
+                writer.write_table(table, row_group_size=100_000)
+                total_rows += len(day_ticks)
+    except BaseException:
+        writer.close()
+        tmp_path.unlink(missing_ok=True)
+        raise
+    writer.close()
+
+    failed_hours = sum(1 for item in hour_stats if item["status"] == "failed")
+    if failed_hours:
+        tmp_path.unlink(missing_ok=True)
+        raise RuntimeError(
+            f"{sym} {year}-{month:02d}: {failed_hours} hour(s) exhausted retries; "
+            "month was not published"
+        )
 
     elapsed_seconds = perf_counter() - started_perf
     month_meta = {
@@ -207,43 +244,31 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
         "started_at": started_at.isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "elapsed_seconds": round(elapsed_seconds, 3),
-        "rows": len(all_ticks),
-        "hours_requested": len(hours),
+        "rows": total_rows,
+        "hours_requested": hours_requested,
         "hours_ok": sum(1 for item in hour_stats if item["status"] == "ok"),
         "hours_missing": sum(1 for item in hour_stats if item["status"] == "missing"),
-        "hours_failed": sum(1 for item in hour_stats if item["status"] == "failed"),
+        "hours_failed": failed_hours,
         "retries": sum(item["retries"] for item in hour_stats),
         "max_attempts": max((item["attempts"] for item in hour_stats), default=0),
-        "avg_rows_per_hour": round(len(all_ticks) / len(hours), 2) if hours else 0.0,
-        "rows_per_second": round(len(all_ticks) / elapsed_seconds, 2) if elapsed_seconds > 0 else None,
+        "avg_rows_per_hour": round(total_rows / hours_requested, 2) if hours_requested else 0.0,
+        "rows_per_second": round(total_rows / elapsed_seconds, 2) if elapsed_seconds > 0 else None,
         "cached": False,
     }
 
-    if not all_ticks:
+    if not total_rows:
+        tmp_path.unlink(missing_ok=True)
         log.warning("No ticks for %s %d-%02d (weekend/holiday month?)", sym, year, month)
         meta_path.write_text(json.dumps(month_meta, indent=2))
         log.info("Wrote acquisition metadata → %s", meta_path)
         return 0
 
-    all_ticks.sort(key=lambda t: t[0])
-
-    ts_ms   = pa.array([t[0] for t in all_ticks], type=pa.int64())
-    ask_arr = pa.array([t[1] for t in all_ticks], type=pa.float32())
-    bid_arr = pa.array([t[2] for t in all_ticks], type=pa.float32())
-    av_arr  = pa.array([t[3] for t in all_ticks], type=pa.float32())
-    bv_arr  = pa.array([t[4] for t in all_ticks], type=pa.float32())
-
-    table = pa.table(
-        {"timestamp_ms": ts_ms, "ask": ask_arr, "bid": bid_arr,
-         "ask_vol": av_arr, "bid_vol": bv_arr},
-        schema=TICK_SCHEMA,
-    )
-    pq.write_table(table, out_path, compression="snappy", row_group_size=100_000)
-    log.info("Wrote %s %d-%02d → %d ticks → %s", sym, year, month, len(all_ticks), out_path)
+    os.replace(tmp_path, out_path)
+    log.info("Wrote %s %d-%02d → %d ticks → %s", sym, year, month, total_rows, out_path)
 
     meta_path.write_text(json.dumps(month_meta, indent=2))
     log.info("Wrote acquisition metadata → %s", meta_path)
-    return len(all_ticks)
+    return total_rows
 
 
 def _parse_ym(s: str):

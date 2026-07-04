@@ -48,3 +48,9 @@ htmlcov/
 # OS
 .DS_Store
 backtest_output_d2_data/
+
+# Continue AI config (contains API keys)
+.continue/
+
+# Runtime state, not source (dashboard/control_state.py rewrites this continuously)
+reports/control_state.json

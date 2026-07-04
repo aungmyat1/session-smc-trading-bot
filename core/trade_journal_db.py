@@ -210,6 +210,25 @@ class TradeJournalDB:
             ).fetchall()
         return [_row_to_dict(r) for r in rows]
 
+    def get_broker_order_ids(self) -> set[str]:
+        """All non-empty broker_order_id values ever journaled, regardless of
+        status. Used by startup recovery to tell an already-journaled broker
+        position apart from a truly orphaned one, without a row-count limit."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT broker_order_id FROM trades "
+                "WHERE broker_order_id IS NOT NULL AND broker_order_id != ''"
+            ).fetchall()
+        return {str(row[0]) for row in rows}
+
+    def get_trade_by_broker_order_id(self, broker_order_id: str) -> Optional[dict]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM trades WHERE broker_order_id = ? ORDER BY timestamp DESC LIMIT 1",
+                (broker_order_id,),
+            ).fetchone()
+        return _row_to_dict(row) if row else None
+
     def get_trades_by_symbol(self, symbol: str) -> list[dict]:
         with self._connect() as conn:
             rows = conn.execute(

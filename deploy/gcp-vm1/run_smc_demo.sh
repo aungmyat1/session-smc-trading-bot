@@ -12,6 +12,6 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
 fi
 
 exec "$PYTHON_BIN" scripts/run_strategy_demo.py \
-  --strategy SMCOrderBlockFVGSession \
+  --strategy ST-A2 \
   --mode demo \
   --interval 60

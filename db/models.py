@@ -23,7 +23,10 @@ v3 (new control-plane additions)
   experiments : Experiment, ParameterSet, ExperimentResultBinding
   robustness  : WalkForwardResult, MonteCarloResult, SensitivityResult
   execution   : VirtualOrder, VirtualFill, VirtualPosition, DriftObservation
-  operations  : Deployment, Incident
+  operations  : Deployment, Incident, Runtime, MarketDataHealth, Intent, RiskDecision,
+                OrderRecord, Fill, PositionRecord, Reconciliation, RecoveryCheckpoint,
+                ExecutionEvent  (migration 004 — System 2 operations recording, added
+                Sprint 2.3 / SYSTEM2_MASTER_PLAN.md Phase 2; ORM previously missing for these)
 """
 from __future__ import annotations
 
@@ -848,3 +851,134 @@ class Incident(Base):
     opened_at     = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     resolved_at   = Column(DateTime(timezone=True))
     resolution    = Column(Text)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# operations schema (migration 004) ── System 2 execution recording
+# Added Sprint 2.3 (SYSTEM2_MASTER_PLAN.md Phase 2): the migration already
+# existed (`db/migrations/versions/004_system2_operations.py`) but had no ORM
+# layer. Each table is a typed key column or two plus a JSONB `payload` for
+# everything else — mirrors the migration's `_record()` helper exactly.
+# ═══════════════════════════════════════════════════════════════════════════
+
+class Runtime(Base):
+    """operations.runtime — one row per runner process start."""
+    __tablename__ = "runtime"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    runtime_id = Column(String(100), nullable=False)
+    status     = Column(String(30), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class MarketDataHealth(Base):
+    """operations.market_data_health — price feed health checks."""
+    __tablename__ = "market_data_health"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    symbol     = Column(String(20), nullable=False)
+    status     = Column(String(30), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class Intent(Base):
+    """operations.intent — strategy intent, one row per ExecutionIntent submitted."""
+    __tablename__ = "intent"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    intent_id  = Column(String(150), nullable=False, unique=True)
+    symbol     = Column(String(20), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class RiskDecision(Base):
+    """operations.risk_decision — risk engine approval/rejection, keyed by intent_id."""
+    __tablename__ = "risk_decision"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    intent_id  = Column(String(150), nullable=False)
+    approved   = Column(Boolean, nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class OrderRecord(Base):
+    """operations.order_record — order lifecycle; idempotency_key prevents duplicate rows
+    for the same submission (Sprint 2.3 "no duplicate order" requirement)."""
+    __tablename__ = "order_record"
+    __table_args__ = {"schema": "operations"}
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id        = Column(String(150))
+    idempotency_key = Column(String(200), nullable=False, unique=True)
+    status          = Column(String(40), nullable=False)
+    payload         = Column(JSONB, nullable=False, default=dict)
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class Fill(Base):
+    """operations.fill — broker fill result, keyed by order_id."""
+    __tablename__ = "fill"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    order_id   = Column(String(150), nullable=False)
+    status     = Column(String(40), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class PositionRecord(Base):
+    """operations.position_record — current/recent position state snapshot."""
+    __tablename__ = "position_record"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    symbol     = Column(String(20), nullable=False)
+    status     = Column(String(40), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class Reconciliation(Base):
+    """operations.reconciliation — periodic broker-truth vs. local-state comparison."""
+    __tablename__ = "reconciliation"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    runtime_id = Column(String(100), nullable=False)
+    consistent = Column(Boolean, nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class RecoveryCheckpoint(Base):
+    """operations.recovery_checkpoint — one row per ExecutionRecord resolved by
+    execution/startup_recovery.py::reconcile_pending_executions() after a restart."""
+    __tablename__ = "recovery_checkpoint"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    runtime_id = Column(String(100), nullable=False)
+    state      = Column(JSONB, nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class ExecutionEvent(Base):
+    """operations.execution_event — generic append-only log of every
+    CanonicalExecutionPipeline NormalizedExecutionEvent."""
+    __tablename__ = "execution_event"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type = Column(String(80), nullable=False)
+    payload    = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from replay.historical_feed import HistoricalFeed
@@ -36,11 +38,11 @@ class ReplaySession:
         self._hash_records: list[dict[str, Any]] = []
 
     @staticmethod
-    def _file_digest(path: Any) -> str:
+    def _file_digest(path: Path) -> str:
         source = path.read_bytes()
         return hashlib.sha256(source).hexdigest()
 
-    def _emit(self, event_type: ReplayEventType, timestamp: Any, payload: dict[str, Any]) -> None:
+    def _emit(self, event_type: ReplayEventType, timestamp: datetime, payload: dict[str, Any]) -> None:
         event = ReplayEvent(self.config.run_id, event_type, timestamp, payload, self._sequence)
         self.journal.append(event)
         stable = event.to_dict()
@@ -65,6 +67,8 @@ class ReplaySession:
         warnings = ["Strategy execution is not connected in ADR-0010; only market bars are emitted."]
         try:
             self._emit(ReplayEventType.REPLAY_STARTED, self.config.start_time, {"strategy_execution": "not_connected"})
+            if not self._bars:
+                raise ValueError("No candles matched the requested symbol, timeframe, and replay window.")
             for bar in self._bars:
                 current = self.clock.step()
                 if current != bar.timestamp:

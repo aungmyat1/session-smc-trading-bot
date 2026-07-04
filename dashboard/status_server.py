@@ -3,7 +3,8 @@ Live Trading Status Dashboard — Vantage Demo (MetaAPI)
 Adapted from github.com/aungmyat1/simple-smc-ag-trading-bot/dashboard/server.py
 
 Pairs:   EURUSD · GBPUSD · XAUUSD
-Strategy: SMCOrderBlockFVGSession (BOS → OB → FVG → Zone → Kill-zone → Signal)
+Strategy: ST-A2 (Session Liquidity Reversal) — see docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md
+for why this replaced the never-registered SMCOrderBlockFVGSession name (fixed 2026-07-04)
 
 Data sources (all local, no runtime MetaAPI calls):
   logs/strategy_demo_state.json  — account, positions, session, last signal
@@ -28,10 +29,12 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from core.trade_journal_db import TradeJournalDB
+from dashboard import live_dashboard_service, live_state_adapter
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
 from approval_package.package_validator import validate_package
 from demo_runtime.demo_health_check import evaluate_demo_readiness
+from execution.operations_recorder import get_recent_events, get_recent_runtimes
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -160,13 +163,18 @@ def _load_trades(n: int = 25) -> list[dict]:
 
 
 def _load_log(n: int = 30) -> list[str]:
-    for log_name in ("smc_ob_fvg_demo.log", "strategy_demo.log"):
-        p = ROOT / "logs" / log_name
-        if p.exists():
-            try:
-                return p.read_text().splitlines()[-n:]
-            except Exception:
-                pass
+    # Pick whichever candidate was written to most recently, not the first one
+    # that merely exists — smc_ob_fvg_demo.log is a stale file from a much
+    # earlier deployment (last written 2026-07-01) that was masking the
+    # actually-live strategy_demo.log (run_st_a2_demo.py's real log target)
+    # on the deployed dashboard. Fixed 2026-07-04.
+    candidates = [ROOT / "logs" / name for name in ("strategy_demo.log", "smc_ob_fvg_demo.log")]
+    existing = [p for p in candidates if p.exists()]
+    for p in sorted(existing, key=lambda path: path.stat().st_mtime, reverse=True):
+        try:
+            return p.read_text().splitlines()[-n:]
+        except Exception:
+            continue
     return ["(log not found — runner not started yet)"]
 
 
@@ -1052,7 +1060,8 @@ def _strategy_section(utc_now: datetime) -> str:
     <summary style="cursor:pointer;font-size:10px;font-weight:700;letter-spacing:.12em;
       text-transform:uppercase;color:var(--muted);padding-bottom:10px;list-style:none;
       display:flex;justify-content:space-between;align-items:center">
-      <span>Strategy Guide — SMCOrderBlockFVGSession</span>
+      <span>Strategy Reference — SMC Order Block + FVG Methodology (concept reference; see the
+        header above for the currently active strategy)</span>
       <span style="font-size:11px;color:var(--blue)">▼ expand</span>
     </summary>
 
@@ -1111,7 +1120,7 @@ def _build_html(state: dict, pipes: dict, dfs: dict,
     badge_cls = "badge-live" if live else "badge-demo"
     badge_lbl = "LIVE" if live else "DEMO"
     session   = state.get("session_gate", "closed")
-    strategy  = state.get("strategy", "SMCOrderBlockFVGSession")
+    strategy  = state.get("strategy", "unknown")
     runner_ok = bool(state.get("status") == "running")
     runner_pid= state.get("pid", "?")
     control = load_control_state()
@@ -1481,6 +1490,14 @@ async def api_status():
     }
 
 
+@app.get("/api/new-dashboard/live-state")
+async def api_new_dashboard_live_state(symbol: str | None = None, timeframe: str = "M15", candle_count: int = 120):
+    """LiveDashboardState-shaped payload for the Gai dashboard's LIVE tab
+    (`New Dashborad/Gai dashboard/src/context/SocketContext.tsx`). Thin passthrough
+    to dashboard/live_state_adapter.py::build_live_state() — no logic duplicated here."""
+    return live_state_adapter.build_live_state(chart_symbol=symbol, timeframe=timeframe, candle_count=candle_count)
+
+
 @app.get("/api/control/state")
 async def api_control_state():
     return load_control_state()
@@ -1546,6 +1563,194 @@ async def api_emergency_stop_clear(body: dict):
     reason = str(body.get("reason", "Operator review complete")).strip() or "Operator review complete"
     state = clear_emergency_stop(reason=reason, cleared_by="status_server")
     return {"status": "cleared", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
+
+
+# ── Operations Control Center (Phase 5) ───────────────────────────────────────
+# Every endpoint below reads from an existing service — dashboard.live_dashboard_service
+# (real broker round-trip, already used by /api/new-dashboard/live-state), the runner's
+# own state file, TradeJournalDB, ExecutionStateStore, or the operations.* Postgres
+# schema (Sprint 2.3) — none of them recompute business logic already owned elsewhere.
+
+import socket as _socket
+import subprocess as _subprocess
+
+try:
+    _GIT_SHA = _subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True, timeout=2,
+    ).stdout.strip() or "unknown"
+except Exception:
+    _GIT_SHA = "unknown"
+
+_DEPLOYMENT_HOSTNAME = _socket.gethostname()
+
+
+def _envelope(data: dict, *, source: str, unavailable: list[str] | None = None) -> dict:
+    return {
+        "data": data,
+        "source": source,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "unavailable": unavailable or [],
+    }
+
+
+def _load_risk_state_file() -> dict:
+    p = ROOT / "logs" / "risk_state.json"
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {}
+
+
+def _load_portfolio_state_file() -> dict:
+    p = ROOT / "logs" / "portfolio_state.json"
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {}
+
+
+@app.get("/api/operations/health")
+async def api_operations_health():
+    """Platform Health (Capability 1): reuses _health_summary(), adds
+    uptime/deployment info not currently exposed anywhere."""
+    state = _load_state()
+    health = _health_summary()
+    started_at = str(state.get("started_at", "")).strip()
+    uptime_s = None
+    if started_at:
+        try:
+            started = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+            uptime_s = max(0, int((datetime.now(timezone.utc) - started).total_seconds()))
+        except ValueError:
+            uptime_s = None
+    return _envelope(
+        {
+            "health_score": health["score"],
+            "checks": health["checks"],
+            "broker": {"status": state.get("broker_status", "unknown")},
+            "database": health["checks"].get("reconciliation_status", "unknown"),
+            "redis": "N/A — no Redis in this architecture",
+            "dashboard_backend": {"status": "active", "host": _DEPLOYMENT_HOSTNAME},
+            "execution_runner": {
+                "status": state.get("status", "unknown"),
+                "strategy": state.get("strategy", ""),
+                "mode": state.get("mode", ""),
+                "uptime_seconds": uptime_s,
+            },
+            "deployment": {
+                "git_sha": _GIT_SHA,
+                "systemd_unit": "smc-demo-runner.service",
+                "host": _DEPLOYMENT_HOSTNAME,
+            },
+        },
+        source="dashboard.status_server._health_summary + logs/strategy_demo_state.json",
+        unavailable=["redis (no Redis in this architecture)"],
+    )
+
+
+@app.get("/api/operations/account")
+async def api_operations_account():
+    """Trading Operations — Account Summary (Capability 2)."""
+    snapshot = live_dashboard_service.load_snapshot()
+    return _envelope(
+        snapshot.get("portfolio", {}).get("summary", {}),
+        source="dashboard.live_dashboard_service.load_snapshot (live broker round-trip)",
+    )
+
+
+@app.get("/api/operations/positions")
+async def api_operations_positions():
+    """Trading Operations — Open Positions (Capability 2)."""
+    snapshot = live_dashboard_service.load_snapshot()
+    return _envelope(snapshot.get("positions", {}), source="dashboard.live_dashboard_service.load_snapshot")
+
+
+@app.get("/api/operations/orders")
+async def api_operations_orders():
+    """Trading Operations — Active/Pending Orders + Recent Executions (Capability 2)."""
+    snapshot = live_dashboard_service.load_snapshot()
+    return _envelope(
+        {"orders": snapshot.get("orders", {}), "execution_monitor": snapshot.get("execution_monitor", {})},
+        source="dashboard.live_dashboard_service.load_snapshot",
+    )
+
+
+@app.get("/api/operations/trades")
+async def api_operations_trades():
+    """Trading Operations — Trade History + Daily Summary (Capability 2)."""
+    journal_summary = TradeJournalDB().summary()
+    snapshot = live_dashboard_service.load_snapshot()
+    return _envelope(
+        {
+            "history": snapshot.get("trade_history", {}),
+            "daily_statistics": snapshot.get("portfolio", {}).get("daily_statistics", {}),
+            "journal_summary": journal_summary,
+        },
+        source="core.trade_journal_db.TradeJournalDB + dashboard.live_dashboard_service.load_snapshot",
+    )
+
+
+@app.get("/api/operations/strategy")
+async def api_operations_strategy():
+    """Strategy Operations (Capability 3): the canonical runner's own state
+    file is the source of truth — not the separate broker-side snapshot."""
+    state = _load_state()
+    tick_age = _last_tick_age_seconds(state)
+    return _envelope(
+        {
+            "strategy": state.get("strategy", ""),
+            "strategy_version": _STRAT_CFG.get("version", "") if isinstance(_STRAT_CFG, dict) else "",
+            "mode": state.get("mode", ""),
+            "runtime_state": state.get("status", "unknown"),
+            "enabled": not bool(load_control_state().get("emergency_stop", {}).get("active")),
+            "last_heartbeat": state.get("last_tick_at", ""),
+            "heartbeat_age_seconds": tick_age,
+            "symbols": state.get("pairs", []),
+            "execution_statistics": TradeJournalDB().summary(),
+            "initialization_state": state.get("last_decision", "unknown"),
+        },
+        source="logs/strategy_demo_state.json + core.trade_journal_db.TradeJournalDB",
+    )
+
+
+@app.get("/api/operations/risk")
+async def api_operations_risk():
+    """Risk Operations (Capability 4): reads persisted risk/portfolio state
+    directly — no dashboard-side recalculation of loss/exposure figures."""
+    risk_state = _load_risk_state_file()
+    portfolio_state = _load_portfolio_state_file()
+    control = load_control_state()
+    snapshot_risk = live_dashboard_service.load_snapshot().get("risk_dashboard", {})
+    return _envelope(
+        {
+            "daily_loss_pct": risk_state.get("daily_loss_pct", portfolio_state.get("daily_pnl_pct", 0.0)),
+            "weekly_pnl_pct": portfolio_state.get("weekly_pnl_pct", 0.0),
+            "monthly_pnl_pct": portfolio_state.get("monthly_pnl_pct", 0.0),
+            "consecutive_losses": risk_state.get("consecutive_losses", 0),
+            "halted": risk_state.get("halted", False),
+            "halt_reason": risk_state.get("halt_reason", ""),
+            "open_symbols": portfolio_state.get("open_symbols", []),
+            "emergency_stop": control.get("emergency_stop", {}),
+            "risk_dashboard": snapshot_risk,
+        },
+        source="logs/risk_state.json + logs/portfolio_state.json + dashboard.live_dashboard_service",
+        unavailable=["per-strategy CircuitBreaker cooldown detail (in-process to the runner, not cross-process readable today)"],
+    )
+
+
+@app.get("/api/operations/events")
+async def api_operations_events(limit: int = 50):
+    """Operational Events (Capability 5): operations.execution_event +
+    operations.recovery_checkpoint (Postgres, Sprint 2.3) are the durable,
+    queryable event source. Telegram sends alerts but persists no history —
+    reported honestly as unavailable, not fabricated."""
+    events = get_recent_events(limit=limit)
+    runtimes = get_recent_runtimes(limit=10)
+    return _envelope(
+        {"events": events, "startup_events": runtimes},
+        source="execution.operations_recorder (Postgres operations.execution_event/recovery_checkpoint/runtime)",
+        unavailable=["telegram_alert_history (monitoring/telegram.py sends alerts but persists no queryable history)"],
+    )
 
 
 @app.get("/metrics", response_class=PlainTextResponse)

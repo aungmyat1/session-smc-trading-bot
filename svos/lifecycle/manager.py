@@ -99,3 +99,16 @@ class StrategyLifecycleManager:
             raise LifecycleTransitionError(
                 f"Illegal lifecycle transition: {current.value} -> {target.value}. Allowed next stages: {allowed}."
             )
+
+    def validate_transition_from_names(self, strategy: str, to_stage: str) -> None:
+        """Validate a transition from a strategy name string.
+
+        Convenience method for LifecycleAuthority that performs the same
+        validation as validate_transition() using only string names.
+        The from_stage is not validated by the lifecycle vocabulary alone;
+        this is a wrapper for string-stage validation.
+
+        Raises LifecycleTransitionError if the stage name is invalid.
+        """
+        self.normalize_stage(to_stage)
+

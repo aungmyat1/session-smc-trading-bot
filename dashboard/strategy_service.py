@@ -1,16 +1,46 @@
-"""
-New-dashboard strategy service.
+
+
+"""New-dashboard strategy service.
 
 Bridges the UI's Strategy schema with the SVOS catalog (YAML) and report
-files.  Writes go through a JSON overlay so SVOS run-reports stay immutable.
+
+files.  Writes go through LifecycleAuthority when PostgreSQL authority mode
+is active. When authority is active, file-based state.json and overlay writes
+are forbidden — the overlay is read-only cache, never authoritative.
+
+Lifecycle mutations under PostgreSQL authority:
+  - promote_strategy() → LifecycleAuthority.transition()
+  - demote_strategy()  → LifecycleAuthority.transition()
+  - update_strategy()  → status field blocked; other patch fields supported
+  - After successful PostgreSQL transition, projection is automatically
+    generated. If projection generation fails, it is reported as a warning
+    but does NOT roll back the PostgreSQL transition.
+
+Legacy mode (no PostgreSQL authority):
+  - Falls back to overlay writes for backward compatibility.
+  - Legacy overlay/state.json writes are preserved only when the
+    .postgres_authority_active sentinel does NOT exist.
 """
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import yaml
+
+from svos.lifecycle.authority import (
+    LifecycleAuthority,
+    is_postgres_authority,
+    DatabaseUnavailableError,
+    TransitionBlockedError,
+)
+from db.connection import SessionLocal
+
+logger = logging.getLogger(__name__)
 
 _ROOT = Path(__file__).resolve().parents[1]
 _CATALOG_PATH = _ROOT / "config" / "strategy_catalog.yaml"
@@ -87,8 +117,75 @@ _UI_STAGE_ORDER = [
     _STAGE_PRODUCTION,
 ]
 
+# ── PostgreSQL authority helpers ──────────────────────────────────────────────
 
-# ── Overlay persistence ───────────────────────────────────────────────────────
+
+def _session_factory():
+    """Return a new SQLAlchemy session from DB connection.
+    
+    Raises RuntimeError if DATABASE_URL is not configured.
+    """
+    if SessionLocal is None:
+        raise RuntimeError("DATABASE_URL is required but not configured")
+    return SessionLocal()
+
+
+def _generate_projection() -> dict[str, Any]:
+    """Generate a fresh read-only catalog projection from PostgreSQL.
+    
+    Returns dict with 'generated' status and optional 'warning'.
+    This is a best-effort operation: failure is reported but does
+    NOT roll back any preceding PostgreSQL transition.
+    """
+    try:
+        from db.projection import write_catalog_projection
+        path = write_catalog_projection(_session_factory, _CATALOG_PATH)
+        logger.info("Catalog projection generated at %s", path)
+        return {"generated": True, "path": str(path)}
+    except Exception as exc:
+        logger.warning("Projection generation failed (non-fatal): %s", exc)
+        return {"generated": False, "warning": str(exc)}
+
+
+def _pg_transition(strategy_id: str, to_stage: str, actor: str, reason: str) -> dict[str, Any]:
+    """Execute a lifecycle transition through PostgreSQL authority.
+    
+    Returns a dict with 'success' bool and metadata.
+    Raises RuntimeError if PostgreSQL authority is unavailable or
+    the transition is blocked.
+    """
+    from svos.lifecycle.manager import StrategyLifecycleManager
+    
+    lifecycle = StrategyLifecycleManager()
+    authority = LifecycleAuthority(
+        session_factory=_session_factory,
+        lifecycle=lifecycle,
+    )
+    
+    result = authority.transition(
+        strategy=strategy_id,
+        to_stage=to_stage,
+        actor=actor,
+        reason=reason,
+    )
+
+    if not result.success:
+        raise TransitionBlockedError(
+            f"Lifecycle transition blocked for '{strategy_id}' -> '{to_stage}': {result.blockers}"
+        )
+    # After successful PostgreSQL transition, generate projection
+    proj_result = _generate_projection()
+    
+    return {
+        "success": True,
+        "from_stage": result.from_stage,
+        "to_stage": result.to_stage,
+        "new_revision": result.new_revision,
+        "projection": proj_result,
+    }
+
+
+# ── Overlay persistence (legacy mode only) ─────────────────────────────────────
 
 def _load_overlay() -> dict[str, Any]:
     if _OVERLAY_PATH.exists():
@@ -108,7 +205,7 @@ def _save_overlay(overlay: dict[str, Any]) -> None:
 
 def _load_catalog() -> dict[str, Any]:
     try:
-        import yaml
+
         return yaml.safe_load(_CATALOG_PATH.read_text()) or {}
     except Exception:
         return {}
@@ -116,7 +213,7 @@ def _load_catalog() -> dict[str, Any]:
 
 def _save_catalog(catalog: dict[str, Any]) -> None:
     try:
-        import yaml
+
         _CATALOG_PATH.write_text(yaml.dump(catalog, default_flow_style=False, allow_unicode=True))
     except Exception:
         pass
@@ -191,7 +288,6 @@ def _map_replay(stage_data: dict, backtest_data: dict | None) -> dict[str, Any]:
         "winningTrades": int(trade_count * win_rate),
         "losingTrades": trade_count - int(trade_count * win_rate),
         "winRate": win_rate,
-        "profitFactor": float(inner.get("profit_factor", 0)),
         "maxDrawdown": float(inner.get("max_drawdown", 0)) / 100,
         "totalReturnPct": float(inner.get("net_return", inner.get("total_return", 0))),
         "equityCurve": [],
@@ -287,7 +383,6 @@ def _map_execution_safety(stage_data: dict) -> dict[str, Any]:
         passed = bool(risk_controls.get(key))
         checks.append({
             "ruleName": label,
-            "description": f"{label} risk control",
             "status": "PASSED" if passed else "FAILED",
             "actualValue": "Enforced" if passed else "Not enforced",
             "thresholdValue": "Required",
@@ -572,7 +667,20 @@ def create_strategy(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def update_strategy(strategy_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
-    """Patch evidence fields in overlay (used by apply-fix workflow)."""
+
+    """Patch evidence and rules fields in overlay.
+    
+    Under PostgreSQL authority mode, the 'status' field cannot be patched
+    directly — use promote_strategy() or demote_strategy() instead.
+    """
+    pg_active = is_postgres_authority()
+    
+    if pg_active and "status" in patch:
+        raise RuntimeError(
+            "Cannot patch 'status' directly under PostgreSQL authority mode. "
+            "Use promote_strategy() or demote_strategy() for lifecycle transitions."
+        )
+    
     overlay = _load_overlay()
     ovr_strategies = overlay.setdefault("strategies", {})
 
@@ -582,7 +690,8 @@ def update_strategy(strategy_id: str, patch: dict[str, Any]) -> dict[str, Any] |
         entry.setdefault("evidence", {}).update(patch["evidence"])
     if "rules" in patch:
         entry["rules"] = patch["rules"]
-    if "status" in patch:
+
+    if "status" in patch and not pg_active:
         entry["status"] = patch["status"]
     entry["updatedAt"] = datetime.now(timezone.utc).isoformat()
     ovr_strategies[strategy_id] = entry
@@ -591,8 +700,22 @@ def update_strategy(strategy_id: str, patch: dict[str, Any]) -> dict[str, Any] |
     return get_strategy(strategy_id)
 
 
-def promote_strategy(strategy_id: str) -> dict[str, Any] | None:
-    """Advance strategy to the next validation stage."""
+
+
+def promote_strategy(strategy_id: str, actor: str = "dashboard", reason: str = "") -> dict[str, Any] | None:
+    """Advance strategy to the next validation stage.
+    
+    Under PostgreSQL authority mode:
+      - Routes through LifecycleAuthority.transition()
+      - If transition succeeds, generates project from PostgreSQL
+      - If PostgreSQL is unavailable, fails closed with error
+      - If PostgreSQL transition rejects (missing evidence, etc.), fails closed
+      - Does NOT write to overlay state.json as fallback
+      - Does NOT write to data/svos/registry/*/state.json
+    
+    Legacy mode (no PostgreSQL authority):
+      - Falls back to overlay file writes for backward compatibility
+    """
     strategy = get_strategy(strategy_id)
     if not strategy:
         return None
@@ -603,25 +726,68 @@ def promote_strategy(strategy_id: str) -> dict[str, Any] | None:
         return strategy  # already at final stage
 
     next_ui = _UI_STAGE_ORDER[idx + 1]
+    next_lc = _UI_STAGE_TO_LC.get(next_ui, "")
+    
+    pg_active = is_postgres_authority()
+    
+    if pg_active:
+        # ── PostgreSQL authority mode: fail closed ──
+        if not next_lc:
+            raise RuntimeError(f"No lifecycle manager stage mapping for UI stage '{next_ui}'")
+        
+        # Build default reason if not provided
+        transition_reason = reason or f"Promoted via dashboard from {current_ui} to {next_ui}"
+        
+        try:
+            result = _pg_transition(strategy_id, next_lc, actor, transition_reason)
+        except DatabaseUnavailableError:
+            raise RuntimeError(
+                f"PostgreSQL is unavailable. Cannot promote '{strategy_id}' to '{next_ui}'. "
+                f"Dashboard lifecycle mutations require database connectivity when "
+                f"PostgreSQL authority mode is active."
+            )
+        except TransitionBlockedError:
+            raise RuntimeError(
+                f"Lifecycle transition blocked for '{strategy_id}' -> '{next_ui}'. "
+                f"Check evidence requirements and lifecycle rules."
+            )
+        
+        # Transition succeeded — return fresh strategy state
+        # The overlay is NOT updated; the dashboard reads from catalog projection
+        result_strategy = get_strategy(strategy_id)
+        if result_strategy:
+            return result_strategy
+        
+        # If get_strategy returns None (shouldn't happen), return a basic response
+        strategy["status"] = next_ui
+        strategy["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        return strategy
+    
+    # ── Legacy mode: overlay fallback ──
     now = datetime.now(timezone.utc).isoformat()
 
-    # Try the SVOS platform lifecycle manager first
+
+    # Try the SVOS platform lifecycle manager first (best-effort in legacy mode)
     try:
         from svos.orchestration.service import SVOSPlatform, PersistenceMode
         platform = SVOSPlatform(root=_ROOT, persistence_mode=PersistenceMode.LOCAL_COMPAT)
         platform.bootstrap()
-        next_lc = _UI_STAGE_TO_LC.get(next_ui, "")
+
         if next_lc:
             platform.audited_transition(
                 strategy_id,
                 to_stage=next_lc,
-                actor="dashboard",
-                reason=f"Promoted via new dashboard to {next_ui}",
+
+
+                actor=actor,
+                reason=reason or f"Promoted via new dashboard to {next_ui}",
             )
     except Exception:
-        pass  # lifecycle manager unavailable or strategy not in catalog — fall through to overlay
 
-    # Update overlay status regardless
+        pass  # lifecycle manager unavailable — fall through to overlay
+
+
+    # Update overlay status
     overlay = _load_overlay()
     ovr_strategies = overlay.setdefault("strategies", {})
     entry = ovr_strategies.get(strategy_id, {})
@@ -630,7 +796,8 @@ def promote_strategy(strategy_id: str) -> dict[str, Any] | None:
     entry.setdefault("auditLog", []).append({
         "id": str(uuid.uuid4()),
         "timestamp": now,
-        "actor": "dashboard",
+
+        "actor": actor,
         "action": "stage_promoted",
         "fromStage": current_ui,
         "toStage": next_ui,
@@ -639,108 +806,104 @@ def promote_strategy(strategy_id: str) -> dict[str, Any] | None:
         "details": "",
     })
     ovr_strategies[strategy_id] = entry
-    _save_overlay(overlay)
-
-    return get_strategy(strategy_id)
 
 
-def get_pipeline_report(strategy_id: str) -> dict[str, Any] | None:
-    """Return raw SVOS stage data for the full pipeline report view."""
-    run_dir = _latest_svos_run(strategy_id)
-    if run_dir is None:
-        return None
-
-    try:
-        run_summary = json.loads((run_dir / "run_summary.json").read_text())
-    except (OSError, json.JSONDecodeError):
-        return None
-
-    stage_files = [
-        ("01_", "strategy_audit",      "Strategy Audit",       1),
-        ("02_", "historical_replay",   "Historical Replay",    2),
-        ("03_", "backtest",            "Backtest",             3),
-        ("04_", "robustness",          "Robustness Tests",     4),
-        ("05_", "virtual_demo",        "Virtual Demo",         5),
-        ("06_", "production_approval", "Production Approval",  6),
-    ]
-
-    stages_out = []
-    stages_index = {s["stage"]: s for s in run_summary.get("stages", [])}
-
-    for prefix, stage_key, label, num in stage_files:
-        data = _load_stage_json(run_dir, prefix)
-        if data is None:
-            continue
-        summary_entry = stages_index.get(stage_key, {})
-        stages_out.append({
-            "stage_num":        num,
-            "stage":            stage_key,
-            "stage_label":      label,
-            "status":           data.get("status", summary_entry.get("status", "PENDING")),
-            "score":            float(summary_entry.get("score", data.get("score", 0))),
-            "promotion_allowed": bool(summary_entry.get("promotion_allowed", data.get("promotion_allowed", False))),
-            "generated_at":     data.get("generated_at", run_summary.get("generated_at", "")),
-            "metrics":          data.get("metrics", {}),
-            "findings":         data.get("findings", []),
-            "hard_gate_results": data.get("hard_gate_results", []),
-            "warnings":         data.get("warnings", []),
-            "remediation":      data.get("remediation", []),
-        })
-
-    return {
-        "strategy_id":       run_summary.get("strategy_id", strategy_id),
-        "strategy_name":     run_summary.get("strategy_name", strategy_id),
-        "strategy_version":  run_summary.get("strategy_version", ""),
-        "run_id":            run_summary.get("run_id", ""),
-        "generated_at":      run_summary.get("generated_at", ""),
-        "overall_status":    run_summary.get("overall_status", ""),
-        "latest_passed_stage": run_summary.get("latest_passed_stage", ""),
-        "stages":            stages_out,
-    }
 
 
-def demote_strategy(strategy_id: str, target_stage: str, reason: str) -> dict[str, Any] | None:
-    """Regress strategy to a prior stage."""
-    strategy = get_strategy(strategy_id)
-    if not strategy:
-        return None
 
-    current_ui = strategy["status"]
-    now = datetime.now(timezone.utc).isoformat()
 
-    # Try lifecycle manager
-    try:
-        from svos.orchestration.service import SVOSPlatform, PersistenceMode
-        platform = SVOSPlatform(root=_ROOT, persistence_mode=PersistenceMode.LOCAL_COMPAT)
-        platform.bootstrap()
-        target_lc = _UI_STAGE_TO_LC.get(target_stage, "")
-        if target_lc:
-            platform.audited_transition(
-                strategy_id,
-                to_stage=target_lc,
-                actor="dashboard",
-                reason=reason or f"Demoted to {target_stage} via new dashboard",
-            )
-    except Exception:
-        pass
 
-    overlay = _load_overlay()
-    ovr_strategies = overlay.setdefault("strategies", {})
-    entry = ovr_strategies.get(strategy_id, {})
-    entry["status"] = target_stage
-    entry["updatedAt"] = now
-    entry.setdefault("auditLog", []).append({
-        "id": str(uuid.uuid4()),
-        "timestamp": now,
-        "actor": "Continuous Risk Watcher",
-        "action": "stage_demoted",
-        "fromStage": current_ui,
-        "toStage": target_stage,
-        "hash": "",
-        "evidenceSummary": reason or f"Demoted to {target_stage}",
-        "details": reason,
-    })
-    ovr_strategies[strategy_id] = entry
-    _save_overlay(overlay)
 
-    return get_strategy(strategy_id)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

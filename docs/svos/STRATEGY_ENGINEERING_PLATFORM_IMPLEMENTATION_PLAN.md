@@ -2,8 +2,8 @@
 
 Date: 2026-06-29
 Status: Authoritative
-Version: 1.0
-Updated: 2026-06-29
+Version: 1.1
+Updated: 2026-07-03
 Owner: Platform Lead
 Authority: Level 2 — Product Implementation Plan
 Supersedes: CURRENT_SCOPE.md, IMPLEMENTATION_STATUS.md, ESTIMATED_DEVELOPMENT_ROADMAP.md (all archived)
@@ -12,7 +12,12 @@ Governing scope: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. This plan
 implements that truth and may not broaden Production beyond the simple execution
 chain or combine Backtest with Statistical Validation.
 
-Current readiness: **NOT READY — platform construction only**
+Current readiness: **SYSTEM 2 STABILIZATION — LIVE DISABLED**
+
+Owner priority amendment (2026-07-03): complete System 2 controlled demo/paper
+readiness before continuing System 1 platform construction. This changes delivery
+order, not system ownership: System 1 still produces approved packages and System
+2 still only verifies and executes them.
 
 Implementation prerequisites and reusable-component inventory:
 `docs/svos/PLATFORM_IMPLEMENTATION_REQUIREMENTS.md`.
@@ -33,8 +38,10 @@ honest outcomes:
 - a rejected or blocked strategy with findings, evidence, and a remediation
   route.
 
-The trading bot is not the product core. It is a downstream runtime that may
-load only a valid Production Approval package.
+The trading bot is the first implementation priority. It remains a downstream
+runtime that may load only a valid Production Approval package; signed synthetic
+fixtures may be used only for offline/demo readiness tests and are never approval
+evidence.
 
 ```text
 Strategy Input
@@ -412,50 +419,47 @@ credentials are unavailable to research, reporting, and dashboard processes.
 
 ## 7. Delivery Sequence
 
-### Phase A — Reset and platform spine
+### Wave 1 — System 2 controlled demo readiness
 
-- Record this objective as the governing scope.
-- Establish the two-node security boundary: VPS 1 for control/downstream
-  execution and VPS 2 for database/research/report workloads.
-- Copy and verify research datasets on VPS 2 without deleting the VPS 1 source;
-  back up PostgreSQL before any schema or exposure change.
-- Deactivate ST-A2 without deleting its assets.
-- Introduce canonical IDs, lifecycle vocabulary, and mutation authority.
-- Add architecture tests for state-write and broker-execution bypasses.
-- Preserve the current 1,170-test baseline.
+Implement in this order:
 
-### Phase B — Transactional registry, evidence, and reports
+1. canonical Approved Strategy Package loading and per-order revalidation;
+2. exclusive Single Runtime Authority and duplicate-process rejection;
+3. one Canonical Execution Pipeline for intent, risk, adapter, result, and event;
+4. demo/paper execution adapter with no real-capital path;
+5. fail-closed risk firewall and one-position-per-symbol enforcement;
+6. durable trade journal, decision events, and reconciliation state;
+7. read-only runtime dashboard status for package, runtime, orders, risk, health,
+   incidents, and recovery;
+8. safety, restart, rejection, idempotency, and architecture tests.
 
-- Add PostgreSQL/Alembic control schemas.
-- Import legacy state as non-qualifying evidence.
-- Implement run manifests, artifact hashes, report records, evidence bindings,
-  and the unified report index.
-- Upgrade the stage report schema and migrate the dashboard to read the report
-  service rather than scan ST-A2 paths.
+System 2 reaches **STABLE DEMO READY** only when it can start from a valid signed
+fixture package, reject invalid packages and duplicate runtime owners, enforce
+risk before every order, execute paper/demo orders through the canonical adapter,
+journal every decision, recover safely, and expose truthful dashboard status.
 
-### Phase C — Generic research qualification
+This wave must not implement or modify System 1 replay, backtest, optimization,
+robustness, strategy enhancement, or approval behavior.
 
-- Implement strategy specification and adapter contracts.
-- Put audit, replay, backtest, and robustness engines behind typed ports.
-- Establish deterministic golden fixtures and real dataset snapshots.
-- Implement dependency-aware evidence invalidation.
+### Wave 2 — System 1 continuation
 
-### Phase D — Virtual Demo and approval package
+After the System 2 gate passes:
 
-- Reuse bot-facing order/risk interfaces offline.
-- Implement deterministic execution-failure scenarios and drift comparison.
-- Complete Production Approval policy and Approved Strategy Package creation.
-- Prove synthetic and legacy evidence cannot approve a strategy.
+- complete transactional registry, evidence, reports, and lifecycle authority;
+- implement strategy specification, audit/refinement, historical replay,
+  backtest, Statistical Validation, robustness, and offline Virtual Demo;
+- preserve net-of-fees gates and immutable trial registration;
+- produce signed Approved Strategy Packages only from current qualifying evidence;
+- prove synthetic, demo-readiness, and legacy evidence cannot approve a strategy.
 
-### Phase E — Simple Vantage bot
+### Wave 3 — Approved package handoff
 
-- Implement package verification and Vantage broker adapter.
-- Keep demo/live submission disabled until separate execution and security gates
-  are satisfied.
-- Add runtime reporting, incident handling, drift detection, revocation, and
-  revalidation triggers.
+- System 1 publishes an approved, signed, immutable package;
+- System 2 verifies identity, signature, code/policy hashes, expiry, and revocation;
+- controlled broker-demo observation begins only after its separate execution gate;
+- real-capital live trading remains disabled pending explicit owner authorization.
 
-### Deferred until the core is research-capable
+### Deferred until System 2 is stable and System 1 is approval-capable
 
 - OIDC/RBAC and multi-user workflows;
 - four-eyes approval;
@@ -524,18 +528,13 @@ Deferral never permits broker demo or live execution without the missing gates.
 
 ## 9. Immediate Implementation Boundary
 
-Start with Phases A and B only:
+Work only on System 2 Wave 1 until the stable demo-readiness gate passes. Do not
+mix System 1 replay, backtest, optimization, robustness, or approval changes into
+System 2 stabilization changes.
 
-1. freeze broker execution;
-2. deactivate but preserve ST-A2;
-3. establish the strategy-neutral lifecycle authority;
-4. establish PostgreSQL strategy/evidence/report metadata;
-5. consolidate the report schema, immutable run package, and report index;
-6. migrate the dashboard to generic report reads;
-7. verify the complete test baseline.
-
-Do not revalidate ST-A2, optimize a strategy, or implement new trading logic
-until this platform foundation is complete.
+Broker execution stays controlled demo/paper only. Do not enable real-capital
+trading, change `LIVE_TRADING=false`, change `DEMO_ONLY=true`, promote a strategy,
+or treat a signed test fixture as Production Approval.
 
 ## 2026-07-01 implementation note
 
