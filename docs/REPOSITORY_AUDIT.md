@@ -232,7 +232,7 @@
 | `docs/BACKTEST_COST_REVALIDATION_REPORT.md` | **B** | Historical cost analysis |
 | `reports/` (all) | **A** | Generated replay/analysis reports |
 | `CLAUDE.md` | **A** | Operational rules for AI agents |
-| `LOOKAHEAD_AUDIT.md` | **A** | Root-level lookahead audit |
+| `docs/audit/LOOKAHEAD_AUDIT.md` | **A** | Lookahead audit (moved from repo root 2026-07-05) |
 | `DATA_AUDIT.md` | **B** | Pre-Dukascopy data audit (superseded) |
 | `DEPLOYMENT_CHECKLIST.md` | **B** | OPS-01 checklist (complete) |
 
