@@ -7,6 +7,7 @@ There is deliberately no live adapter in this build.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import AsyncIterable, Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
@@ -271,6 +272,15 @@ class EmergencyStopRiskGate:
     ) -> None:
         self.inner = inner
         self.state_loader = state_loader
+        # Determined once, not per-call: does `inner.evaluate` accept a
+        # second (context) positional argument? Forwarding context to a
+        # gate that only declares evaluate(self, intent) raises TypeError —
+        # checked here via signature inspection rather than relying on
+        # exception handling as control flow at call time.
+        try:
+            self._inner_accepts_context = len(inspect.signature(inner.evaluate).parameters) >= 2
+        except (TypeError, ValueError):
+            self._inner_accepts_context = False
 
     def evaluate(self, intent: ExecutionIntent, context: Any = None) -> RiskDecision | Awaitable[RiskDecision]:
         state = self.state_loader() or {}
@@ -285,7 +295,9 @@ class EmergencyStopRiskGate:
                     "source": str(emergency.get("source", "")),
                 },
             )
-        return self.inner.evaluate(intent, context) if context is not None else self.inner.evaluate(intent)
+        if context is not None and self._inner_accepts_context:
+            return self.inner.evaluate(intent, context)
+        return self.inner.evaluate(intent)
 
 
 async def submit_all(

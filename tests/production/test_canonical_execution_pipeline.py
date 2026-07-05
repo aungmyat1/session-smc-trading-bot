@@ -214,6 +214,34 @@ def test_emergency_stop_gate_reads_state_fresh_on_every_call_not_cached() -> Non
     assert second.approved is True
 
 
+def test_emergency_stop_gate_does_not_forward_context_to_a_single_arg_inner_gate() -> None:
+    """Regression: AllowAllRiskGate (and any other RiskGate declaring only
+    evaluate(self, intent)) must not receive a context arg it can't accept —
+    previously this raised TypeError whenever a context was supplied."""
+    gate = EmergencyStopRiskGate(AllowAllRiskGate(), state_loader=lambda: {"emergency_stop": {"active": False}})
+
+    decision = gate.evaluate(_intent(), context={"some": "context"})
+
+    assert decision.approved is True
+
+
+def test_emergency_stop_gate_forwards_context_to_a_context_aware_inner_gate() -> None:
+    class _ContextAwareGate:
+        def __init__(self) -> None:
+            self.received_context = None
+
+        def evaluate(self, _intent: ExecutionIntent, context: object = None) -> RiskDecision:
+            self.received_context = context
+            return RiskDecision(True, "approved with context")
+
+    inner = _ContextAwareGate()
+    gate = EmergencyStopRiskGate(inner, state_loader=lambda: {"emergency_stop": {"active": False}})
+
+    gate.evaluate(_intent(), context={"some": "context"})
+
+    assert inner.received_context == {"some": "context"}
+
+
 @pytest.mark.asyncio
 async def test_emergency_stop_gate_blocks_submission_through_the_full_pipeline() -> None:
     """End-to-end: with the gate wired into the pipeline exactly as
