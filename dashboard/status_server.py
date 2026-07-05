@@ -28,7 +28,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service
@@ -42,6 +43,12 @@ from execution.operations_recorder import get_recent_events, get_recent_runtimes
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Built Gai dashboard SPA (`New Dashborad/Gai dashboard/`, built via `vite build`) — distinct from
+# the older top-level `New Dashborad/dist/` that `dashboard/app.py` serves at its own
+# `/new-dashboard/` route on a separate, undeployed process. No collision: only one of these two
+# processes is ever running at a time (see SYSTEM2_MASTER_PLAN.md).
+_GAI_DASHBOARD_DIST = ROOT / "New Dashborad" / "Gai dashboard" / "dist"
 
 PAIRS = ["EURUSD", "GBPUSD", "XAUUSD"]
 _PIP  = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "USDJPY": 0.01, "XAUUSD": 0.1}
@@ -1509,6 +1516,24 @@ async def dashboard():
 
     html = _build_html(state, pipes, dfs, trades, log_lines, elapsed, now_str, utc_now)
     return HTMLResponse(content=html)
+
+
+if (_GAI_DASHBOARD_DIST / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_GAI_DASHBOARD_DIST / "assets")), name="gai-dashboard-assets")
+
+
+@app.get("/new-dashboard/")
+async def new_dashboard_spa():
+    """Serves the built Gai dashboard SPA (see `_GAI_DASHBOARD_DIST` above). Its data comes
+    entirely from same-origin `/api/new-dashboard/live-state` (already implemented) and
+    `/api/emergency-stop` (already implemented) — no proxy/CORS config needed. Note: a handful of
+    operator-control actions in the UI (strategy activate/pause, risk-controls, broker reconnect)
+    call routes that don't exist on this backend yet (tracked in
+    docs/systems/system2/ROADMAP.md) and will 404 if clicked."""
+    index_path = _GAI_DASHBOARD_DIST / "index.html"
+    if not index_path.is_file():
+        return JSONResponse({"error": "Gai dashboard not built — run `npm run build` in 'New Dashborad/Gai dashboard/'"}, status_code=503)
+    return FileResponse(str(index_path))
 
 
 @app.get("/api/status")

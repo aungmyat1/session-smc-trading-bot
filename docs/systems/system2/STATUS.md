@@ -140,10 +140,31 @@
   `unavailable` array — not fabricated. Deliberately mounted at `/api/new-dashboard/live-state`,
   **not** `/api/status` (already taken twice, incompatible contract — see mapping doc). Covered by
   `tests/test_dashboard_app.py::test_new_dashboard_live_state_uses_real_broker_and_journal_data`.
-- **Not yet done:** the Gai dashboard frontend has not been built, deployed, or repointed at this
-  new endpoint. No auth wiring, no WebSocket, no CONFIRM-token contract on its actions yet.
-  Fabricated-data surfaces (`SvosQuantLab`, `SuggestionsTab`, Manual Sandbox mode) are un-gated.
-  Full remaining scope: `docs/dashboard/DASHBOARD_IMPLEMENTATION_PLAN.md` Phases 0, 2-16.
+- **Not yet done (superseded for the LIVE tab, see below):** the Gai dashboard frontend has not
+  been built, deployed, or repointed at this new endpoint. No auth wiring, no WebSocket, no
+  CONFIRM-token contract on its actions yet. Fabricated-data surfaces (`SvosQuantLab`,
+  `SuggestionsTab`, Manual Sandbox mode) are un-gated. Full remaining scope:
+  `docs/dashboard/DASHBOARD_IMPLEMENTATION_PLAN.md` Phases 0, 2-16.
+- **Landed 2026-07-05: Gai dashboard SPA built and served from the deployed backend.**
+  - Frontend source: `New Dashborad/Gai dashboard/` (React 19 + Vite). Build command:
+    `npm install && npx vite build`, run from that directory — outputs to
+    `New Dashborad/Gai dashboard/dist/` (gitignored, not committed; rebuild on deploy).
+  - `dashboard/status_server.py` (the only actually-deployed backend, via `live-dashboard.service`)
+    now serves the built SPA at `GET /new-dashboard/`, with its JS/CSS bundle mounted at
+    `/assets` (`StaticFiles`). Distinct from `dashboard/app.py`'s own, unrelated `/new-dashboard/`
+    route (an older, undeployed dashboard) — no collision since only one of the two processes runs
+    at a time.
+  - The LIVE tab is fully live: it reads same-origin `/api/new-dashboard/live-state` (already
+    implemented) and posts to `/api/emergency-stop` (already implemented) — no proxy/CORS config
+    needed. Verified in production: `/new-dashboard/` and its bundled assets return 200 from
+    `live-dashboard.service`.
+  - **Known gap, not fixed by this change:** a handful of operator-control actions in the UI
+    (strategy activate/pause, risk-controls edit, broker reconnect) call `/api/action`,
+    `/api/live/strategy/*`, `/api/live/risk-controls`, `/api/live/broker/reconnect` — none of
+    which exist on `status_server.py` yet. Clicking those buttons will 404. Tracked in this
+    document's roadmap counterpart (`ROADMAP.md`, Phase 3 row) and
+    `docs/dashboard/DASHBOARD_IMPLEMENTATION_PLAN.md` Phase 13-ish (operator controls); not
+    scheduled here.
 
 ## Test results (this milestone)
 
