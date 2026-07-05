@@ -1,0 +1,25 @@
+---
+# Replay Validation Configuration
+# Used by replay_validation/runner.py to set gate thresholds.
+# All thresholds are evaluated net-of-fees (spread + commission applied).
+
+thresholds:
+  minimum_trades: 200          # Minimum number of completed trades for statistical significance
+  minimum_profit_factor: 1.25  # Net PF at standard spread — must exceed this to PASS
+  minimum_sharpe: 1.2          # Annualised Sharpe ratio minimum
+  max_drawdown_pct: 15.0       # Maximum historical drawdown as % of peak equity
+
+spread_config:
+  eurusd_pips: 1.0             # Standard one-way spread (RT = 2x)
+  gbpusd_pips: 1.5             # Standard one-way spread (RT = 3.0 pips)
+  commission_pips: 0.0         # Additional commission per side (0 = spread-inclusive)
+
+stress_test:
+  enabled: true
+  multiplier: 2.0              # Stress spread = standard * multiplier
+  minimum_profit_factor: 1.0   # PF gate at stress spread (lower than standard gate)
+
+output:
+  save_json: true
+  json_filename: "replay_validation_result.json"
+  log_level: "INFO"
