@@ -1593,7 +1593,7 @@ async def api_emergency_stop(body: dict, identity: dict = Depends(require_role("
     scope = str(body.get("scope", "block_only")).strip().lower() or "block_only"
     if scope not in {"block_only", "close_positions"}:
         return JSONResponse({"error": "Invalid emergency-stop scope", "scope": scope}, status_code=400)
-    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope=scope)
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope=scope, source="emergency_stop_endpoint")
     return {"status": "stopped", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
 
 
@@ -1628,7 +1628,7 @@ async def api_control_pause(body: dict, identity: dict = Depends(require_role("r
             status_code=403,
         )
     reason = str(body.get("reason", "Operator pause")).strip() or "Operator pause"
-    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only")
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only", source="control_pause")
     return {"status": "paused", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
 
 
@@ -1654,7 +1654,7 @@ async def api_control_close_all(body: dict, identity: dict = Depends(require_rol
             status_code=403,
         )
     reason = str(body.get("reason", "Operator emergency close-all")).strip() or "Operator emergency close-all"
-    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="close_positions")
+    state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="close_positions", source="control_close_all")
     return {"status": "closing_all", "emergency_stop": state["emergency_stop"], "fetched_at": datetime.now(timezone.utc).isoformat()}
 
 
@@ -1679,10 +1679,32 @@ async def api_control_toggle_strategy(body: dict, identity: dict = Depends(requi
             status_code=409,
         )
     reason = str(body.get("reason", "")).strip() or f"Strategy toggle: {strategy_id} {action}d by operator"
+    toggle_source = f"strategy_toggle:{strategy_id}"
     if action == "pause":
-        state = activate_emergency_stop(reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only")
+        state = activate_emergency_stop(
+            reason=reason, activated_by=identity["actor"] or "status_server", scope="block_only", source=toggle_source,
+        )
     else:
-        state = clear_emergency_stop(reason=reason, cleared_by=identity["actor"] or "status_server")
+        state = clear_emergency_stop(
+            reason=reason, cleared_by=identity["actor"] or "status_server", expected_source=toggle_source,
+        )
+        if state["emergency_stop"]["active"]:
+            # An emergency stop is active but wasn't created by this strategy's
+            # own toggle-pause — refuse rather than clearing something this
+            # action doesn't own (e.g. a global pause or close-all).
+            return JSONResponse(
+                {
+                    "status": "refused",
+                    "reason": (
+                        f"Active emergency stop was not created by this strategy toggle "
+                        f"(source={state['emergency_stop'].get('source') or 'unscoped'!r}) — "
+                        "resolve it via the control path that created it."
+                    ),
+                    "strategy_id": strategy_id,
+                    "emergency_stop": state["emergency_stop"],
+                },
+                status_code=409,
+            )
     return {
         "status": f"strategy_{action}d",
         "strategy_id": strategy_id,

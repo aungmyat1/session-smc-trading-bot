@@ -157,6 +157,60 @@ def test_operator_control_endpoints_require_role_and_confirm_token(tmp_path, mon
     assert toggled.json()["emergency_stop"]["active"] is True
 
 
+def test_strategy_toggle_resume_clears_its_own_emergency_stop(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
+    _write(tmp_path / "logs" / "strategy_demo_state.json", json.dumps({"status": "running", "strategy": "ST-A2"}))
+    client = TestClient(status_server.app)
+
+    client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "ST-A2", "action": "pause", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-ST-A2"},
+        headers=_OPERATOR_HEADERS,
+    )
+
+    resumed = client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "ST-A2", "action": "resume", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-ST-A2"},
+        headers=_OPERATOR_HEADERS,
+    )
+
+    assert resumed.status_code == 200
+    assert resumed.json()["status"] == "strategy_resumed"
+    assert resumed.json()["emergency_stop"]["active"] is False
+
+
+def test_strategy_toggle_resume_does_not_clear_unrelated_emergency_stop(tmp_path, monkeypatch):
+    """Regression test: a global pause (or close-all) must not be silently
+    cleared by an unrelated strategy's toggle-resume."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
+    _write(tmp_path / "logs" / "strategy_demo_state.json", json.dumps({"status": "running", "strategy": "ST-A2"}))
+    client = TestClient(status_server.app)
+
+    paused = client.post(
+        "/api/control/pause", json={"confirm_token": "CONFIRM-PAUSE-TRADING"}, headers=_OPERATOR_HEADERS
+    )
+    assert paused.json()["emergency_stop"]["source"] == "control_pause"
+
+    refused = client.post(
+        "/api/control/toggle-strategy",
+        json={"strategy_id": "ST-A2", "action": "resume", "confirm_token": "CONFIRM-TOGGLE-STRATEGY-ST-A2"},
+        headers=_OPERATOR_HEADERS,
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["status"] == "refused"
+    # Emergency stop remains active after the unrelated resume attempt.
+    assert refused.json()["emergency_stop"]["active"] is True
+    assert refused.json()["emergency_stop"]["source"] == "control_pause"
+
+    # Persisted state (not just the response body) still shows it active.
+    assert control_state.load_control_state()["emergency_stop"]["active"] is True
+
+
 def test_new_dashboard_live_state_delegates_to_live_state_adapter(tmp_path, monkeypatch):
     """Phase 6 dashboard integration: the deployed backend's copy of
     /api/new-dashboard/live-state must be a pure passthrough to
