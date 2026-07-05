@@ -1,8 +1,8 @@
 ---
 Date: 2026-07-02
 Status: Authoritative
-Version: 1.0
-Updated: 2026-07-02
+Version: 1.1
+Updated: 2026-07-03
 Owner: Lead Architect
 Authority: Level 1 — Product Architecture Truth
 Supersedes: Conflicting descriptions of SVOS and Production scope
@@ -14,6 +14,25 @@ Related: DOC_AUTHORITY.md, ../SYSTEM_ARCHITECTURE.md, ../architecture/target_arc
 This document records the original architectural truth supplied by the project
 owner. Every implementation plan, migration, dashboard, deployment workflow,
 and future architecture document must preserve this separation.
+
+## Delivery Priority — System 2 First
+
+The owner-directed implementation order is:
+
+1. finish and stabilize **System 2** through controlled demo/paper readiness;
+2. resume and complete **System 1** strategy development, replay, backtest,
+   optimization, robustness, and approval capabilities;
+3. allow System 1 to hand an approved, signed package to System 2 for execution.
+
+System 2 stabilization may use signed synthetic fixtures and paper/demo adapters
+to prove package loading, runtime ownership, execution ordering, risk, journaling,
+dashboard status, and recovery. It must not absorb System 1 replay, backtest,
+optimization, or approval logic. System 1 work continues after the System 2
+demo-readiness acceptance gate is stable.
+
+This priority does not authorize real-capital trading. Live trading remains
+disabled until all qualification and execution gates pass and the owner provides
+the explicit authorization required by repository policy.
 
 ## System 1 — SVOS
 
