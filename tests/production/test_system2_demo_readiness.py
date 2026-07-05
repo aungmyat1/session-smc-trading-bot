@@ -16,7 +16,8 @@ from production.engine.execution_pipeline import (
     RiskDecision,
 )
 from production.engine.runtime import RuntimeAuthority, RuntimeContext
-from shared.serialization import append_jsonl
+from production.api import ProductionReadAPI
+from shared.serialization import append_jsonl, write_json
 from shared.strategy_package import build_canonical_package
 
 PRIVATE_KEY = "11" * 32
@@ -125,3 +126,33 @@ async def test_risk_rejection_is_journaled_and_never_reaches_demo_adapter(tmp_pa
     assert decision["reason"] == "RISK_FIREWALL_REJECTED"
 
 
+def test_runtime_dashboard_status_is_read_only_and_package_scoped(tmp_path: Path) -> None:
+    state = {
+        "state": "STOPPED",
+        "package_id": "fixture-package",
+        "package_sha256": "a" * 64,
+        "strategy_id": "SYSTEM2-FIXTURE",
+        "strategy_version": "1.0.0",
+    }
+    write_json(tmp_path / "data/production/runtime/runtime-state.json", state)
+
+    class Repository:
+        def list_records(self, _record_type: str, *, limit: int = 100):
+            return []
+
+    class Observability:
+        def health(self):
+            return {"status": "PASS", "live_trading": False}
+
+        def metrics(self):
+            return "agtrade_broker_writes_enabled 0\n"
+
+    api = ProductionReadAPI(Repository(), Observability(), root=tmp_path)
+    assert api.status()["runtime"]["state"] == "STOPPED"
+    assert api.package() == {
+        "package_id": "fixture-package",
+        "package_sha256": "a" * 64,
+        "strategy_id": "SYSTEM2-FIXTURE",
+        "strategy_version": "1.0.0",
+    }
+    assert "agtrade_broker_writes_enabled 0" in api.metrics()
