@@ -251,6 +251,43 @@ class AllowAllRiskGate:
         return RiskDecision(True, "risk policy approved")
 
 
+class EmergencyStopRiskGate:
+    """Rejects every intent while a control-state emergency stop is active;
+    otherwise delegates to `inner`. SYSTEM2_MASTER_PLAN.md Phase 2's
+    documented "RiskFirewall" gap: a real, non-allow-all gate so the
+    emergency stop is enforced structurally at the point of submission, not
+    only by a caller remembering to check control_state before calling
+    pipeline.submit() at all.
+
+    `state_loader` is called fresh on every evaluate() — never cached — so a
+    stop activated or cleared mid-run takes effect on the very next intent.
+    """
+
+    def __init__(
+        self,
+        inner: RiskGate,
+        *,
+        state_loader: Callable[[], Mapping[str, Any]],
+    ) -> None:
+        self.inner = inner
+        self.state_loader = state_loader
+
+    def evaluate(self, intent: ExecutionIntent, context: Any = None) -> RiskDecision | Awaitable[RiskDecision]:
+        state = self.state_loader() or {}
+        emergency = state.get("emergency_stop") or {}
+        if emergency.get("active"):
+            return RiskDecision(
+                False,
+                "emergency stop active",
+                details={
+                    "reason": str(emergency.get("reason", "")),
+                    "activated_at": str(emergency.get("activated_at", "")),
+                    "source": str(emergency.get("source", "")),
+                },
+            )
+        return self.inner.evaluate(intent, context) if context is not None else self.inner.evaluate(intent)
+
+
 async def submit_all(
     pipeline: CanonicalExecutionPipeline,
     intents: AsyncIterable[ExecutionIntent],

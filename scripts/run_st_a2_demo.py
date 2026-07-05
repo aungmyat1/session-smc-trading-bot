@@ -83,9 +83,21 @@ _journal_db = TradeJournalDB()
 # ── Canonical execution pipeline (SYSTEM2_MASTER_PLAN.md Phase 2, Sprint 2.1) ─
 # Wraps the existing, already-risk-approved order placement in the canonical
 # System 2 pipeline for normalized event journaling. AllowAllRiskGate is
-# correct here, not a shortcut: CircuitBreaker/PortfolioManager/permission/
-# governance checks already ran earlier in _tick() before this point.
-from production.engine import AllowAllRiskGate, CanonicalExecutionPipeline, DemoExecutionAdapter, ExecutionIntent
+# correct as the *inner* gate: CircuitBreaker/PortfolioManager/permission/
+# governance checks already ran earlier in _tick() before this point, and
+# _tick() itself already returns before reaching here whenever the emergency
+# stop is active. EmergencyStopRiskGate wraps it as defense-in-depth (Sprint
+# 2.4, SYSTEM2_MASTER_PLAN.md Phase 2's documented "RiskFirewall" gap): a
+# structural, pipeline-level check that rejects submission on its own even if
+# some future caller of pipeline.submit() doesn't replicate _tick()'s
+# early-return exactly.
+from production.engine import (
+    AllowAllRiskGate,
+    CanonicalExecutionPipeline,
+    DemoExecutionAdapter,
+    EmergencyStopRiskGate,
+    ExecutionIntent,
+)
 from production.engine.runtime import RuntimeContext
 from shared.serialization import append_jsonl
 
@@ -308,6 +320,12 @@ async def _tick(
         state["status"] = "blocked"
         state["execution_status"] = "blocked"
         state["last_decision"] = "emergency_stop_active"
+        _log.info(
+            "Trading paused: emergency stop active (reason=%r, source=%r, activated_at=%s).",
+            str(emergency_state.get("reason", "")),
+            str(emergency_state.get("source", "")),
+            activation or "unknown",
+        )
         try:
             state["account"] = await executor.get_account_info()
         except Exception:
@@ -773,7 +791,7 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
 
     execution_pipeline = CanonicalExecutionPipeline(
         mode="demo",
-        risk_gate=AllowAllRiskGate(),
+        risk_gate=EmergencyStopRiskGate(AllowAllRiskGate(), state_loader=load_control_state),
         adapter=DemoExecutionAdapter(_execute_via_manager),
         event_sink=_event_sink,
     )
