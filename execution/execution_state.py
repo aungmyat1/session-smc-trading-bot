@@ -34,6 +34,28 @@ _ALLOWED_TRANSITIONS = {
 }
 
 
+def _shortest_path(start: str, goal: str) -> list[str] | None:
+    """BFS over `_ALLOWED_TRANSITIONS` for the shortest legal state sequence
+    from `start` to `goal` (inclusive of both ends), or None if unreachable."""
+    if start == goal:
+        return [start]
+    from collections import deque
+
+    frontier: deque[list[str]] = deque([[start]])
+    seen = {start}
+    while frontier:
+        path = frontier.popleft()
+        for nxt in _ALLOWED_TRANSITIONS.get(path[-1], ()):
+            if nxt in seen:
+                continue
+            new_path = path + [nxt]
+            if nxt == goal:
+                return new_path
+            seen.add(nxt)
+            frontier.append(new_path)
+    return None
+
+
 @dataclass(slots=True)
 class RetryPolicy:
     operation: str
@@ -147,6 +169,30 @@ class ExecutionStateStore:
             if record.state not in TERMINAL_STATES:
                 records.append(record)
         return records
+
+    def advance_to_terminal(
+        self,
+        execution_id: str,
+        terminal: str = "COMPLETED",
+        *,
+        metadata: dict[str, Any] | None = None,
+    ) -> ExecutionRecord:
+        """Walk the shortest valid path from the record's current state to
+        `terminal`, applying each transition in the state machine. Used by
+        startup reconciliation to resolve a record salvaged from an
+        interrupted run without bypassing the transition rules (e.g. a record
+        stuck at PARTIALLY_FILLED cannot jump straight to FAILED_TERMINAL —
+        it must pass through RECOVERY_PENDING first)."""
+        record = self.load(execution_id)
+        path = _shortest_path(record.state, terminal)
+        if path is None:
+            raise ValueError(f"no valid transition path from {record.state} to {terminal}")
+        for state in path[1:]:
+            record = self.transition(
+                execution_id, state,
+                metadata=metadata if state == path[-1] else None,
+            )
+        return record
 
     def timeline(self, execution_id: str) -> list[dict[str, Any]]:
         return list(self.load(execution_id).state_history)

@@ -26,12 +26,21 @@ def test_btcusdt_is_research_crypto_and_not_execution_enabled() -> None:
     assert not validate_symbol("BTCUSDT", scope="live_execution").valid
 
 
+def test_btcusd_is_dukascopy_research_only_crypto() -> None:
+    metadata = symbol_metadata("BTCUSD")
+    assert metadata.asset_class == "crypto"
+    assert metadata.market_type == "dukascopy_cfd_research"
+    assert metadata.session_model == "crypto_24_7"
+    assert "BTCUSD" in enabled_symbols("research")
+    assert "BTCUSD" not in enabled_symbols("execution")
+    assert not validate_symbol("BTCUSD", scope="live_execution").valid
+
+
 def test_btcusdt_uses_crypto_sessions_not_forex_sessions() -> None:
-    assert validate_symbol("BTCUSDT", session="Crypto24h").valid
-    assert validate_symbol("BTCUSDT", session="UTC").valid
-    rejected = validate_symbol("BTCUSDT", session="London")
+    for session in ("Asia", "London", "NewYork", "Overlap", "Weekend", "24_7"):
+        assert validate_symbol("BTCUSDT", session=session).valid
+    rejected = validate_symbol("BTCUSDT", session="Crypto24h")
     assert not rejected.valid
-    assert "not allowed" in rejected.errors[0]
 
 
 def test_crypto_validation_warns_when_market_assumptions_are_missing() -> None:

@@ -4,14 +4,25 @@ import argparse
 import json
 import tempfile
 from datetime import datetime, timezone
+from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
 from replay.replay_config import ReplayConfig, parse_timestamp
 from replay.replay_session import ReplaySession
+from research_db.readiness import check_database
 
 
 def _run(args: argparse.Namespace) -> int:
+    if not args.allow_incomplete_data:
+        readiness = check_database(
+            [args.symbol],
+            date.fromisoformat(args.start[:10]),
+            date.fromisoformat(args.end[:10]),
+        )
+        if readiness["status"] != "READY":
+            print(json.dumps({"status": "NOT_READY", "readiness": readiness}))
+            return 2
     config = ReplayConfig(
         run_id=args.run_id or f"replay-{uuid4().hex[:12]}", symbol=args.symbol, timeframe=args.timeframe,
         start_time=parse_timestamp(args.start), end_time=parse_timestamp(args.end), data_path=Path(args.data),
@@ -61,6 +72,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--strategy-package", required=True)
     run.add_argument("--run-id")
     run.add_argument("--output-dir", default="artifacts/replay")
+    run.add_argument(
+        "--allow-incomplete-data",
+        action="store_true",
+        help="research-only override; run despite a NOT_READY canonical database gate",
+    )
     return parser
 
 

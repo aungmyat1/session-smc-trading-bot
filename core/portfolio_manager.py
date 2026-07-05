@@ -129,6 +129,27 @@ class PortfolioManager:
     def any_loss_limit_hit(self) -> bool:
         return self.is_daily_loss_hit() or self.is_weekly_loss_hit() or self.is_monthly_loss_hit()
 
+    def export_state(self) -> dict:
+        """Serialize the in-memory counters this instance tracks — used to persist
+        state across process restarts (see scripts/run_st_a2_demo.py)."""
+        return {
+            "trades_today":    self._trades_today,
+            "open_symbols":    sorted(self._open_symbols),
+            "last_reset":      self._last_reset,
+            "daily_pnl_pct":   self._daily_pnl_pct,
+            "weekly_pnl_pct":  self._weekly_pnl_pct,
+            "monthly_pnl_pct": self._monthly_pnl_pct,
+        }
+
+    def load_state(self, data: dict) -> None:
+        """Restore counters previously produced by `export_state()`."""
+        self._trades_today    = data.get("trades_today", 0)
+        self._open_symbols    = set(data.get("open_symbols", []))
+        self._last_reset      = data.get("last_reset", "")
+        self._daily_pnl_pct   = data.get("daily_pnl_pct", 0.0)
+        self._weekly_pnl_pct  = data.get("weekly_pnl_pct", 0.0)
+        self._monthly_pnl_pct = data.get("monthly_pnl_pct", 0.0)
+
     def stats(self) -> dict:
         return {
             "trades_today":       self._trades_today,

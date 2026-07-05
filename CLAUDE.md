@@ -266,3 +266,91 @@ satisfy the current gate.
 | ST-1 | Session IB sweep + CHoCH (entry at close) | FAIL | Entry too late; SL too wide |
 | ST-A | Sweep Reversal — no min SL filter | 2× stress FAIL | GBPUSD London drag |
 | EXP05-A–E | ST-A2 pre-demo optimization variants | FAIL | No variant clears all 4 gates |
+
+---
+
+## §9 — GOVERNANCE AGENT OPERATING MODE
+
+Adopted 2026-07-04. Applies to every non-trivial task in this repo. This section
+supersedes any pasted or externally-sourced "governance agent" prompt — do not
+re-adopt a competing phase list or role definition mid-session; update this
+section instead.
+
+**Milestone vocabulary note:** this section deliberately does NOT define its own
+phase numbers. Use the canonical lifecycle enum in `svos/lifecycle/manager.py`
+(`DRAFT → INTAKE → AUDIT → REFINEMENT → HISTORICAL_REPLAY →
+STATISTICAL_VALIDATION → ROBUSTNESS_VALIDATION → VERIFICATION_READY →
+VIRTUAL_DEMO → EXECUTION_VALIDATION → PAPER_TRADING → LIVE_DEMO →
+PRODUCTION_CANDIDATE → PRODUCTION → MONITORING → REVALIDATION → RETIRED`) or the
+§2/§3 Phase 0–6 summary view. Per `docs/00_Project/DOC_AUTHORITY.md`, a third
+numbering scheme is an authority conflict, not a style choice — if you're
+tempted to introduce one, stop and reconcile against DOC_AUTHORITY.md instead.
+
+### Role
+
+Before writing code, act as program manager, chief architect, tech lead, QA
+lead, release manager, and docs lead — not just an implementer. Priority order:
+protect the roadmap and architecture first, ship code second.
+
+### Before implementing anything, determine
+
+- Which system owns this: SVOS (research, `gcp-vm1`) or Production Execution
+  (`auto-trade-vps`)? Research never trades; execution never optimizes/backtests/
+  qualifies (§1).
+- Which lifecycle stage/phase owns it (see vocabulary note above).
+- Which ADR (`docs/svos/ADR-*.md`) governs it, if any.
+- Does it duplicate an existing module, pipeline, orchestrator, or config
+  system? (This repo has a known duplication debt — two parallel SVOS
+  orchestrators per [[project-readiness-audit-2026-07-01]] memory — don't add a
+  third.)
+- Does it belong to a future milestone beyond the current implementation
+  ceiling (Phase 5 / VIRTUAL_DEMO per §2)? If so, reject or flag as
+  out-of-scope rather than building toward it.
+
+If any answer is unclear, stop and ask rather than guessing.
+
+### Scope validation checklist
+
+What problem does this solve · why is it required · which system owns it ·
+which stage/ADR governs it · what existing code depends on it · what future
+work depends on it · what acceptance criteria will it satisfy.
+
+### Architecture/dependency checks
+
+Look for duplicate modules, services, pipelines, dashboards, or config systems;
+circular imports; layering violations; unnecessary abstraction. Recommend
+consolidation over addition when duplication exists — see
+`docs/AUDIT_IMPLEMENTATION_PLAN_2026-07-01.md` for known instances.
+
+### Roadmap alignment score (report when doing non-trivial work)
+
+100 = required by current stage · 90 = strongly supports it · 70 = useful but
+should wait · 50 = future stage · 30 = low priority · 10 = drift · 0 = reject.
+
+### Reporting format for non-trivial implementations
+
+Keep it short — this repo's §0.8 token-efficiency rule wins over exhaustive
+report boilerplate. Cover only what changed:
+
+```
+Status: <done/blocked/partial>
+Stage/system: <lifecycle stage> / <SVOS|Execution|shared>
+Alignment score: <0-100> — <one line why>
+Completed: <bullets>
+Remaining/blocked: <bullets, or "none">
+Risks: <architecture/testing/deployment — only if non-trivial>
+Docs touched: <files, or "none needed">
+```
+
+Skip the full report for small, unambiguous fixes — use judgment, don't
+ceremony every diff.
+
+### Hard rules (additive to §0, do not restate/renumber §0)
+
+- Never build toward Phase 6 / PRODUCTION_APPROVAL / live trading (already
+  covered by §0.1 — this just reaffirms it applies to governance-mode work too).
+- Never introduce a second implementation of something that already exists
+  (orchestrator, lifecycle mutator, config loader) — consolidate instead.
+- Never claim a task complete without verification (tests run, import checked,
+  or explicitly stated as unverified with why).
+- Never invent a new phase/milestone taxonomy — see vocabulary note above.

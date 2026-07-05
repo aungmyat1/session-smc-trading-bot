@@ -1,5 +1,23 @@
 # ruff: noqa: E402
 """
+NOT DEPLOYED — no systemd unit exists for this runner (confirmed
+2026-07-04, SYSTEM2_MASTER_PLAN.md). `scripts/run_st_a2_demo.py` is the
+canonical, deployed runner (systemd: smc-demo-runner.service) and is the
+target this file's `CanonicalExecutionPipeline`/`RiskFirewall` architecture
+will be ported into (SYSTEM2_MASTER_PLAN.md Phase 2, decision recorded, not
+yet implemented) — not the other way around. Known gaps versus the deployed
+runner, left unfixed here deliberately (fixing code slated for retirement is
+wasted effort ahead of the Phase 2 port):
+  - No TradingPermissionService / emergency-stop check per tick.
+  - No ExecutionStateStore.recover_incomplete() call at startup — a crash
+    mid-order is never reconciled by this runner.
+  - `_breaker.record_trade(signal.strategy_name, won=True)` is called at
+    OPEN time (not close) below — the circuit breaker never sees a real
+    loss through this path and cannot halt on a losing streak.
+Do not deploy this runner as-is. Do not extend its trade-close handling
+independently of `execution/close_reconciliation.py` — that would recreate
+the two-runner drift Phase 2 exists to close.
+
 Multi-Strategy Portfolio Runner — 4-8 trades/day target.
 
 Strategies (demo execution):
@@ -595,6 +613,23 @@ async def run(
 ) -> None:
     if execution_pipeline is None:
         raise RuntimeError("canonical execution pipeline is required")
+    # Sprint 2.2 (SYSTEM2_MASTER_PLAN.md Phase 2): blocked by default so an
+    # operator or agent cannot start this undeployed, unsafe-wiring runner by
+    # accident. See this module's docstring for what's missing versus
+    # scripts/run_st_a2_demo.py (the deployed, canonical runner).
+    if os.environ.get("RUN_PORTFOLIO_ALLOW_START", "").lower() not in ("true", "1", "yes"):
+        raise RuntimeError(
+            "run_portfolio.py is deprecated and blocked by default: it is not deployed, has no "
+            "startup recovery, no emergency-stop check, and a hardcoded circuit-breaker outcome "
+            "at open time. Use scripts/run_st_a2_demo.py instead. If you are deliberately working "
+            "on the Sprint 2.2+ pipeline-port migration, set RUN_PORTFOLIO_ALLOW_START=true."
+        )
+    _log.warning(
+        "run_portfolio.py is NOT the deployed runner and has no startup recovery, "
+        "no emergency-stop check, and a hardcoded circuit-breaker outcome at open "
+        "time — see this module's docstring and SYSTEM2_MASTER_PLAN.md Phase 2. "
+        "Use scripts/run_st_a2_demo.py for anything beyond the pipeline-port work."
+    )
     _log.info("Portfolio runner starting. MODE=%s  strategies=%s  symbols=%s",
               mode.upper(), list(_STRATEGY_MAP), _ALL_SYMBOLS)
 

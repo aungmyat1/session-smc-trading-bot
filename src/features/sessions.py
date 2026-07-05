@@ -10,8 +10,29 @@ SESSION_WINDOWS = {
     "new_york": (13, 21),
 }
 
+CRYPTO_SESSION_MODEL = "crypto_24_7"
 
-def label_sessions(frame: pd.DataFrame, pair: str | None = None) -> pd.DataFrame:
+
+def crypto_session_labels(timestamp: pd.Timestamp | str) -> tuple[str, ...]:
+    """Return UTC research labels without imposing Forex market closures on crypto."""
+    ts = pd.Timestamp(timestamp)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    labels = ["24_7"]
+    if ts.dayofweek >= 5:
+        labels.append("Weekend")
+    hour = ts.hour
+    if 13 <= hour < 16:
+        labels.append("Overlap")
+    if 8 <= hour < 16:
+        labels.append("London")
+    if 13 <= hour < 21:
+        labels.append("NewYork")
+    if hour < 8 or hour >= 21:
+        labels.append("Asia")
+    return tuple(labels)
+
+
+def label_sessions(frame: pd.DataFrame, pair: str | None = None, session_model: str = "forex_24_5") -> pd.DataFrame:
     """Label each candle with the active session using UTC timestamps."""
     df = frame.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
@@ -28,10 +49,15 @@ def label_sessions(frame: pd.DataFrame, pair: str | None = None) -> pd.DataFrame
     if pair_value is None and "pair" in df.columns and not df["pair"].empty:
         pair_value = df["pair"].iloc[0]
 
+    if session_model == CRYPTO_SESSION_MODEL:
+        sessions = df["timestamp"].map(lambda ts: ",".join(crypto_session_labels(ts)))
+    else:
+        sessions = df["timestamp"].map(_label)
+
     out = pd.DataFrame({
         "timestamp": df["timestamp"],
         "pair": pair_value,
-        "session": df["timestamp"].map(_label),
+        "session": sessions,
     })
     return out.reset_index(drop=True)
 

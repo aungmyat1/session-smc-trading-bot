@@ -14,6 +14,7 @@ Supported timeframes: M1, M5, M15, H1, H4, D1
 
 import argparse
 import logging
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -164,7 +165,10 @@ def build_symbol(sym: str, tfs: list[str], start_ym: tuple | None, end_ym: tuple
         bars = pd.concat(frames, ignore_index=True).sort_values("timestamp_utc").reset_index(drop=True)
         out_path = out_dir / f"{tf}.parquet"
         table = pa.Table.from_pandas(bars, schema=OHLCV_SCHEMA, preserve_index=False)
-        pq.write_table(table, out_path, compression="snappy", row_group_size=50_000)
+        # Never leave a partially-written canonical dataset if a build is interrupted.
+        tmp_path = out_path.with_suffix(".parquet.tmp")
+        pq.write_table(table, tmp_path, compression="snappy", row_group_size=50_000)
+        os.replace(tmp_path, out_path)
         log.info("%s %s: %d bars → %s", sym, tf, len(bars), out_path)
 
 

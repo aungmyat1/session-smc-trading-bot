@@ -104,6 +104,41 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
 
 ---
 
+## System 2 — Execution Platform (Production, 2026-07-04)
+
+- [CANONICAL_EXECUTION_PIPELINE.md](systems/system2/CANONICAL_EXECUTION_PIPELINE.md) — the one canonical execution lifecycle
+- [STATUS.md](systems/system2/STATUS.md) — living status index (execution/risk + dashboard integration workstreams)
+- [ROADMAP.md](systems/system2/ROADMAP.md) — phased roadmap, platform + dashboard integration
+- [EXECUTION_PIPELINE_INVENTORY.md](systems/system2/EXECUTION_PIPELINE_INVENTORY.md) — full inventory of execution-engine implementations
+- [PIPELINE_CONSOLIDATION_PLAN.md](systems/system2/PIPELINE_CONSOLIDATION_PLAN.md) — consolidation/dedup plan for the above
+- [INFRASTRUCTURE_READINESS.md](systems/system2/INFRASTRUCTURE_READINESS.md) — VPS/systemd readiness assessment
+- [DASHBOARD_READINESS_INTERFACES.md](systems/system2/DASHBOARD_READINESS_INTERFACES.md) — backend interfaces the dashboard can consume
+- [SMC_DEMO_RUNNER_ANALYSIS.md](systemd/SMC_DEMO_RUNNER_ANALYSIS.md) — root-cause analysis of the deployed `smc-demo-runner.service`
+
+## Dashboard Integration (2026-07-04)
+
+- [DASHBOARD_STATUS.md](dashboard/DASHBOARD_STATUS.md) — assessment of the deployed dashboard backend
+- [DASHBOARD_BACKEND_MAPPING.md](dashboard/DASHBOARD_BACKEND_MAPPING.md) — per-endpoint, per-widget backend contract mapping
+- [DASHBOARD_GAP_ANALYSIS.md](dashboard/DASHBOARD_GAP_ANALYSIS.md) — gap analysis vs the Gai dashboard frontend
+- [DASHBOARD_IMPLEMENTATION_PLAN.md](dashboard/DASHBOARD_IMPLEMENTATION_PLAN.md) — phased frontend integration plan
+
+## VPS Operations (2026-07-04)
+
+- [OPERATOR_RUNBOOK.md](vps/OPERATOR_RUNBOOK.md) — daily checks, incident response, rollback, backup restore
+- [VPS_INVENTORY.md](vps/VPS_INVENTORY.md) — host/service inventory
+- [RUNNING_SERVICES.md](vps/RUNNING_SERVICES.md) — systemd unit audit
+- [PROJECT_AUDIT.md](vps/PROJECT_AUDIT.md) — project/directory audit on the VPS
+- [DISK_USAGE_REPORT.md](vps/DISK_USAGE_REPORT.md)
+- [CLEANUP_PLAN.md](vps/CLEANUP_PLAN.md)
+- [CLEANUP_REPORT.md](vps/CLEANUP_REPORT.md)
+- [LOG_RETENTION_POLICY.md](vps/LOG_RETENTION_POLICY.md)
+- [PERFORMANCE_RECOMMENDATIONS.md](vps/PERFORMANCE_RECOMMENDATIONS.md)
+- [RESOURCE_OPTIMIZATION.md](vps/RESOURCE_OPTIMIZATION.md)
+- [OPERATIONS_BASELINE.md](vps/OPERATIONS_BASELINE.md)
+- [STABILIZATION_REPORT.md](vps/STABILIZATION_REPORT.md)
+
+---
+
 ## Data & Database
 
 - [HISTORICAL_DATA_ARCHITECTURE.md](HISTORICAL_DATA_ARCHITECTURE.md)

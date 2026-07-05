@@ -15,6 +15,7 @@ DEFAULT_CONTROL_STATE = {
         "active": False,
         "reason": "",
         "scope": "block_only",
+        "source": "",
         "activated_at": "",
         "activated_by": "dashboard",
         "cleared_at": "",
@@ -126,13 +127,20 @@ def activate_emergency_stop(
     reason: str,
     activated_by: str = "dashboard",
     scope: str = "block_only",
+    source: str = "",
 ) -> dict[str, Any]:
+    """`source` identifies which control path created this stop (e.g.
+    "control_pause", "control_close_all", "strategy_toggle:<id>",
+    "emergency_stop_endpoint") so a scoped resume path (see
+    clear_emergency_stop's expected_source) can refuse to clear a stop it
+    didn't create. Empty string = unscoped/legacy caller."""
     state = load_control_state()
     state["operating_mode"] = "EMERGENCY_STOP"
     state["emergency_stop"] = {
         "active": True,
         "reason": reason,
         "scope": scope,
+        "source": source,
         "activated_at": datetime.now(timezone.utc).isoformat(),
         "activated_by": activated_by,
         "cleared_at": "",
@@ -143,19 +151,29 @@ def activate_emergency_stop(
         state,
         action="emergency_stop_activated",
         actor=activated_by,
-        detail={"reason": reason, "scope": scope},
+        detail={"reason": reason, "scope": scope, "source": source},
     )
     return save_control_state(state)
 
 
-def clear_emergency_stop(*, reason: str, cleared_by: str = "dashboard") -> dict[str, Any]:
+def clear_emergency_stop(
+    *, reason: str, cleared_by: str = "dashboard", expected_source: str | None = None
+) -> dict[str, Any]:
+    """If `expected_source` is given and an emergency stop is active whose
+    `source` doesn't match, refuse — return the state unchanged (still
+    active) rather than clearing a stop this caller didn't create. Callers
+    that must remain able to clear any active stop (e.g. the global
+    resume/clear endpoints) simply omit expected_source."""
     state = load_control_state()
     current = state.get("emergency_stop", {})
+    if expected_source is not None and current.get("active") and current.get("source", "") != expected_source:
+        return state
     state["operating_mode"] = "NORMAL"
     state["emergency_stop"] = {
         "active": False,
         "reason": current.get("reason", ""),
         "scope": current.get("scope", "block_only"),
+        "source": current.get("source", ""),
         "activated_at": current.get("activated_at", ""),
         "activated_by": current.get("activated_by", "dashboard"),
         "cleared_at": datetime.now(timezone.utc).isoformat(),

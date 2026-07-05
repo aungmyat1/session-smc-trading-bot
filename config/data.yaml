@@ -4,4 +4,24 @@ symbols:
   - EURUSD
   - GBPUSD
   - XAUUSD
+  - BTCUSDT
+  - BTCUSD
 
+assets:
+  BTCUSDT:
+    asset_class: crypto
+    session_model: crypto_24_7
+    # Placeholder until an owner-approved exchange/vendor is selected.
+    raw_source: null
+  BTCUSD:
+    asset_class: crypto
+    session_model: crypto_24_7
+    raw_source: dukascopy
+
+# Price-unit warning/filter defaults. Research trials must record overrides.
+spread_filters:
+  EURUSD: 0.0010
+  GBPUSD: 0.0012
+  XAUUSD: 0.5
+  BTCUSDT: null
+  BTCUSD: null

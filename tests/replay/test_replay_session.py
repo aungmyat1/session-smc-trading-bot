@@ -33,6 +33,28 @@ def test_same_input_produces_same_hash(sample_candles, strategy_package, tmp_pat
     assert first.deterministic_replay_hash == second.deterministic_replay_hash
 
 
+def test_strategy_package_content_is_part_of_replay_hash(sample_candles, strategy_package, tmp_path) -> None:
+    first = ReplaySession(make_config("before", tmp_path / "out", sample_candles, strategy_package)).run()
+    strategy_package.write_text('{"strategy":"changed"}\n', encoding="utf-8")
+    second = ReplaySession(make_config("after", tmp_path / "out", sample_candles, strategy_package)).run()
+    assert first.deterministic_replay_hash != second.deterministic_replay_hash
+
+
+def test_empty_replay_window_fails_with_evidence(sample_candles, strategy_package, tmp_path) -> None:
+    config = ReplayConfig(
+        run_id="empty", symbol="GBPUSD", timeframe="M1",
+        start_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        end_time=datetime(2024, 1, 1, 0, 1, tzinfo=timezone.utc),
+        data_path=sample_candles, strategy_package_path=strategy_package, output_dir=tmp_path / "out",
+    )
+    result = ReplaySession(config).run()
+    events = [json.loads(line) for line in (config.run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()]
+
+    assert result.status == "fail"
+    assert events[-1]["event_type"] == "replay_failed"
+    assert "No candles matched" in events[-1]["payload"]["error"]
+
+
 def test_replay_package_has_no_execution_or_broker_imports() -> None:
     root = Path(__file__).parents[2] / "replay"
     forbidden = ("from execution", "import execution", "from production", "import production", "metaapi", "place_order")

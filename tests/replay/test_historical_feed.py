@@ -21,3 +21,13 @@ def test_feed_returns_timestamp_order_and_queries(sample_candles) -> None:
     assert first.timestamp < second.timestamp
     assert feed.get_bar_at(datetime(2024, 1, 1, 0, 1, tzinfo=timezone.utc)) == second
     assert list(feed.stream_between(first.timestamp, second.timestamp)) == [first, second]
+
+
+def test_feed_reads_parquet_in_timestamp_order(sample_candles, tmp_path) -> None:
+    parquet_path = tmp_path / "candles.parquet"
+    pd.read_csv(sample_candles).to_parquet(parquet_path, index=False)
+
+    feed = HistoricalFeed(parquet_path)
+
+    assert [bar.timestamp for bar in feed.bars] == sorted(bar.timestamp for bar in feed.bars)
+    assert len(feed.bars) == 2

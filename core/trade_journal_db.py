@@ -210,6 +210,30 @@ class TradeJournalDB:
             ).fetchall()
         return [_row_to_dict(r) for r in rows]
 
+    def get_broker_order_ids(self) -> set[str]:
+        """All non-empty broker_order_id values ever journaled, regardless of
+        status. Used by startup recovery to tell an already-journaled broker
+        position apart from a truly orphaned one, without a row-count limit."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT broker_order_id FROM trades "
+                "WHERE broker_order_id IS NOT NULL AND broker_order_id != ''"
+            ).fetchall()
+        return {str(row[0]) for row in rows}
+
+    def get_trade_by_broker_order_id(self, broker_order_id: str) -> Optional[dict]:
+        # A blank id would match any row where broker_order_id was likewise
+        # never set, returning an arbitrary unrelated trade instead of "no
+        # match" — reject it before the query rather than let that happen.
+        if not str(broker_order_id or "").strip():
+            return None
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM trades WHERE broker_order_id = ? ORDER BY timestamp DESC LIMIT 1",
+                (broker_order_id,),
+            ).fetchone()
+        return _row_to_dict(row) if row else None
+
     def get_trades_by_symbol(self, symbol: str) -> list[dict]:
         with self._connect() as conn:
             rows = conn.execute(
@@ -274,6 +298,38 @@ class TradeJournalDB:
             "max_drawdown_r": round(self._max_drawdown(returns), 3),
             "sharpe": round(self._sharpe(returns), 3),
         }
+
+    def summary_by_strategy(self) -> list[dict]:
+        """Per-strategy breakdown of the same metrics summary() reports overall —
+        added for the dashboard's /strategies/performance endpoint."""
+        with self._connect() as conn:
+            names = [r[0] for r in conn.execute(
+                "SELECT DISTINCT strategy_name FROM trades WHERE strategy_name IS NOT NULL AND strategy_name != ''"
+            ).fetchall()]
+            results = []
+            for name in sorted(names):
+                row = conn.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status='OPEN') AS open_count,
+                        COUNT(*) FILTER (WHERE status='CLOSED') AS closed_count,
+                        COUNT(*) FILTER (WHERE status='CLOSED' AND r_multiple > 0) AS wins,
+                        COUNT(*) FILTER (WHERE status='CLOSED' AND r_multiple < 0) AS losses,
+                        AVG(CASE WHEN status='CLOSED' THEN r_multiple END) AS avg_r,
+                        SUM(CASE WHEN status='CLOSED' THEN profit_loss END) AS total_pnl
+                    FROM trades WHERE strategy_name = ?
+                """, (name,)).fetchone()
+                wins, losses = row["wins"] or 0, row["losses"] or 0
+                results.append({
+                    "strategy_name": name,
+                    "open_trades": row["open_count"] or 0,
+                    "closed_trades": row["closed_count"] or 0,
+                    "wins": wins,
+                    "losses": losses,
+                    "win_rate_pct": round(wins / (wins + losses) * 100, 1) if (wins + losses) else 0.0,
+                    "avg_r": round(row["avg_r"] or 0.0, 3),
+                    "total_pnl": round(row["total_pnl"] or 0.0, 2),
+                })
+        return results
 
     def _sum_r(self, closed: bool, side: str) -> float:
         cond = "r_multiple > 0" if side == "win" else "r_multiple < 0"

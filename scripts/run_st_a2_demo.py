@@ -1,9 +1,17 @@
 """
 Vantage demo runner for strategy adapters.
 
-Legacy entrypoint kept for backwards compatibility.
-Preferred command:
-    python3 scripts/run_portfolio.py --mode demo --strategy-package <approved-package>
+CANONICAL, DEPLOYED entrypoint (systemd: smc-demo-runner.service on the live
+VPS 1 host) — decision recorded 2026-07-04 in SYSTEM2_MASTER_PLAN.md Phase 2:
+this runner keeps the working governance/emergency-stop/startup-recovery
+wiring and is the one that will absorb `CanonicalExecutionPipeline`/
+`RiskFirewall`, not the reverse. Do not resurrect the older "legacy, prefer
+run_portfolio.py" guidance this docstring used to carry — it was backwards:
+`scripts/run_portfolio.py` has no systemd unit, no permission/emergency-stop
+check, no startup recovery call, and still records circuit-breaker outcomes
+with a hardcoded `won=True` at open time. See `scripts/run_portfolio.py`'s
+own module docstring and SYSTEM2_MASTER_PLAN.md Phase 2 before using it for
+anything beyond the pipeline-port work that decision defers to.
 
 Execution modes (TRADING_MODE env var or --mode flag):
 
@@ -35,7 +43,12 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
+# Narrower meaning than "canonical" above: this loads a strategy directly via
+# config/strategy_portfolio.yaml rather than importing a signed canonical
+# package (WS1/ADR-0002). Deployment-canonical and package-pipeline-legacy are
+# independent axes — this runner is both at once, deliberately.
 LEGACY_ENTRYPOINT = True
 
 _ROOT = Path(__file__).parent.parent
@@ -67,13 +80,25 @@ from core.trade_journal_db import TradeJournalDB
 
 _journal_db = TradeJournalDB()
 
+# ── Canonical execution pipeline (SYSTEM2_MASTER_PLAN.md Phase 2, Sprint 2.1) ─
+# Wraps the existing, already-risk-approved order placement in the canonical
+# System 2 pipeline for normalized event journaling. AllowAllRiskGate is
+# correct here, not a shortcut: CircuitBreaker/PortfolioManager/permission/
+# governance checks already ran earlier in _tick() before this point.
+from production.engine import AllowAllRiskGate, CanonicalExecutionPipeline, DemoExecutionAdapter, ExecutionIntent
+from production.engine.runtime import RuntimeContext
+from shared.serialization import append_jsonl
+
 # ── Demo execution stack ──────────────────────────────────────────────────────
 from execution.mt5_connector       import MT5Connector
 from execution.vantage_demo_executor import VantageDemoExecutor
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradeManager, TradingPermissionService
 from execution.demo_risk_manager    import (
-    calculate_lots, new_state, check_limits, record_result, reset_daily,
+    calculate_lots, new_state, check_limits, reset_daily,
 )
+from execution.close_reconciliation import process_closed_positions
+from execution.startup_recovery     import reconcile_pending_executions
+from execution.operations_recorder  import OperationsRecorder
 from execution.trade_journal        import DemoTradeJournal
 from monitoring.telegram import TelegramAlerter
 from dashboard.control_state import load_control_state, set_trading_permission
@@ -96,6 +121,8 @@ INTERVAL = 60   # seconds
 MAX_SPREAD_PIPS: dict[str, float] = {"EURUSD": 1.5, "GBPUSD": 2.0, "XAUUSD": 3.0}
 _MAX_FETCH_FAILURES = 1   # proactive ensure_connected runs first; this is last-resort
 _STATE_PATH = Path("logs") / "strategy_demo_state.json"
+_RISK_STATE_PATH = Path("logs") / "risk_state.json"
+_PORTFOLIO_STATE_PATH = Path("logs") / "portfolio_state.json"
 
 
 def _now_iso() -> str:
@@ -122,6 +149,69 @@ def _write_state(payload: dict) -> None:
         _STATE_PATH.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     except Exception as exc:
         _log.debug("State write skipped: %s", exc)
+
+
+def _load_risk_state() -> dict:
+    """Load persisted risk_state so a restart does not silently reset daily-loss/
+    consecutive-loss halts to zero (SYSTEM2_MASTER_PLAN.md restart-recovery finding)."""
+    if _RISK_STATE_PATH.exists():
+        try:
+            return json.loads(_RISK_STATE_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _log.warning("Risk state file unreadable (%s) — starting fresh.", exc)
+    return new_state()
+
+
+# Transient/dashboard keys are stripped before persisting risk_state — except
+# _last_positions, which MUST survive a restart: it is the previous-tick
+# snapshot process_closed_positions() diffs against to detect a position that
+# closed while the process was down. Dropping it silently blinds close
+# detection on the first tick after every restart (ROADMAP.md Phase 1 gap).
+_PERSISTED_TRANSIENT_KEYS = {"_last_positions"}
+
+
+def _save_risk_state(risk_state: dict) -> None:
+    try:
+        _RISK_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        persisted = {
+            k: v for k, v in risk_state.items()
+            if not k.startswith("_") or k in _PERSISTED_TRANSIENT_KEYS
+        }
+        _RISK_STATE_PATH.write_text(json.dumps(persisted, indent=2, sort_keys=True), encoding="utf-8")
+    except Exception as exc:
+        _log.debug("Risk state write skipped: %s", exc)
+
+
+def _load_portfolio_state() -> dict:
+    if _PORTFOLIO_STATE_PATH.exists():
+        try:
+            return json.loads(_PORTFOLIO_STATE_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            _log.warning("Portfolio state file unreadable (%s) — starting fresh.", exc)
+    return {}
+
+
+def _save_portfolio_state() -> None:
+    try:
+        _PORTFOLIO_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _PORTFOLIO_STATE_PATH.write_text(json.dumps(_portmgr.export_state(), indent=2, sort_keys=True), encoding="utf-8")
+    except Exception as exc:
+        _log.debug("Portfolio state write skipped: %s", exc)
+
+
+async def _process_closed_positions(
+    positions: list[dict],
+    risk_state: dict,
+    executor: VantageDemoExecutor,
+    telegram: TelegramAlerter | None,
+) -> dict:
+    """Thin wrapper binding this runner's module-level services to the shared
+    execution.close_reconciliation.process_closed_positions(), so both this
+    runner and scripts/run_portfolio.py execute identical trade-close handling
+    from one implementation (ROADMAP.md Phase 1)."""
+    return await process_closed_positions(
+        positions, risk_state, executor, telegram, _portmgr, _breaker, _journal_db,
+    )
 
 
 def _base_state(mode: str, strategy_name: str, interval: int, once: bool) -> dict:
@@ -165,6 +255,7 @@ async def _tick(
     journal:    DemoTradeJournal,
     risk_state: dict,
     telegram:   TelegramAlerter | None = None,
+    pipeline:   CanonicalExecutionPipeline | None = None,
 ) -> dict:
     """One scan cycle. Returns updated risk_state."""
     control_state = load_control_state()
@@ -222,10 +313,14 @@ async def _tick(
         except Exception:
             pass
         try:
-            state["open_positions"] = await manager.get_positions()
+            positions = await manager.get_positions()
+            state["open_positions"] = positions
+            risk_state = await _process_closed_positions(positions, risk_state, executor, telegram)
         except Exception:
             state["open_positions"] = []
         risk_state["_dashboard_state"] = state
+        _save_risk_state(risk_state)
+        _save_portfolio_state()
         _write_state(state)
         return risk_state
     if risk_state.get("_emergency_stop_handled_at"):
@@ -382,9 +477,12 @@ async def _tick(
         try:
             positions = await manager.get_positions()
             state["open_positions"] = positions
+            risk_state = await _process_closed_positions(positions, risk_state, executor, telegram)
         except Exception:
             state["open_positions"] = []
         risk_state["_dashboard_state"] = state
+        _save_risk_state(risk_state)
+        _save_portfolio_state()
         _write_state(state)
         return risk_state
 
@@ -535,17 +633,35 @@ async def _tick(
             state["last_signal"]["simulated"] = True
             continue
 
-        # Demo mode: send to broker
+        # Demo mode: send to broker — routed through the canonical execution
+        # pipeline (SYSTEM2_MASTER_PLAN.md Phase 2, Sprint 2.1) for normalized
+        # event journaling. manager.open_position() itself is unchanged: same
+        # retry/state-machine/idempotency behavior as before this pass.
         try:
-            order = await manager.open_position(
-                signal,
-                lots,
-                execution_context={
-                    "strategy_version": guard_result.decision.strategy_version,
-                    "governance": guard_result.to_dict(),
-                    "permission": permission.to_dict(),
+            if pipeline is None:
+                raise RuntimeError("canonical execution pipeline is required")
+            intent = ExecutionIntent(
+                intent_id=f"{signal.strategy_name}:{signal.symbol}:{_now_iso()}",
+                strategy_id=signal.strategy_name,
+                symbol=signal.symbol,
+                side=signal.side,
+                quantity=lots,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+                metadata={
+                    "signal": signal,
+                    "lots": lots,
+                    "execution_context": {
+                        "strategy_version": guard_result.decision.strategy_version,
+                        "governance": guard_result.to_dict(),
+                        "permission": permission.to_dict(),
+                    },
                 },
             )
+            result = await pipeline.submit(intent)
+            if result.status == "REJECTED":
+                raise RuntimeError(f"execution pipeline rejected order intent: {result.details}")
+            order = dict(result.details)
             journal.log_open(signal, order, lots, spread)
             if telegram is not None:
                 await telegram.send_trade_open(
@@ -595,10 +711,14 @@ async def _tick(
                                       position_size=lots)
 
     try:
-        state["open_positions"] = await manager.get_positions()
+        positions = await manager.get_positions()
+        state["open_positions"] = positions
+        risk_state = await _process_closed_positions(positions, risk_state, executor, telegram)
     except Exception as exc:
         state["open_positions_error"] = str(exc)
     risk_state["_dashboard_state"] = state
+    _save_risk_state(risk_state)
+    _save_portfolio_state()
     _write_state(state)
     return risk_state
 
@@ -625,12 +745,90 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
         _write_state(state)
         return
 
-    executor   = VantageDemoExecutor(connector)
-    journal    = DemoTradeJournal()
-    telegram   = TelegramAlerter()
+    executor        = VantageDemoExecutor(connector)
+    journal         = DemoTradeJournal()
+    telegram        = TelegramAlerter()
     await telegram.start()
-    manager    = TradeManager(executor, telegram=telegram, execution_store=ExecutionStateStore(_ROOT))
-    risk_state = new_state()
+    execution_store = ExecutionStateStore(_ROOT)
+    manager         = TradeManager(executor, telegram=telegram, execution_store=execution_store)
+
+    async def _execute_via_manager(intent: ExecutionIntent):
+        from production.engine import AdapterResult
+        placed_order = await manager.open_position(
+            intent.metadata["signal"], intent.metadata["lots"],
+            execution_context=intent.metadata["execution_context"],
+        )
+        return AdapterResult(status="SUBMITTED", reference=str(placed_order.get("order_id", "")), details=placed_order)
+
+    # Durable operations recording (SYSTEM2_MASTER_PLAN.md Phase 2, Sprint 2.3)
+    # — best-effort Postgres audit trail on top of the existing JSONL log;
+    # never blocks the tick loop if the DB is unavailable.
+    ops_runtime_id = str(uuid4())
+    ops_recorder = OperationsRecorder(ops_runtime_id)
+    ops_recorder.record_runtime_start(strategy=strategy_name, mode=mode)
+
+    def _event_sink(event) -> None:
+        append_jsonl(Path("logs") / "execution_pipeline_events.jsonl", event.to_dict())
+        ops_recorder.event_sink(event)
+
+    execution_pipeline = CanonicalExecutionPipeline(
+        mode="demo",
+        risk_gate=AllowAllRiskGate(),
+        adapter=DemoExecutionAdapter(_execute_via_manager),
+        event_sink=_event_sink,
+    )
+    runtime_context = RuntimeContext(
+        owner_id="run_st_a2_demo", package_path="", package_id="", package_sha256="",
+        strategy_id=strategy_name, strategy_version="1.0.0", symbols=tuple(PAIRS),
+        broker_adapter="vantage-demo", risk_enforcer="pre-approved-by-existing-tick-controls",
+    )
+    risk_state = _load_risk_state()
+    _portmgr.load_state(_load_portfolio_state())
+    _log.info(
+        "Restored risk_state (trades_today=%s halted=%s) and portfolio_state (open_symbols=%s) from disk.",
+        risk_state.get("trades_today"), risk_state.get("halted"), _portmgr.export_state().get("open_symbols"),
+    )
+
+    # ── Startup recovery (ROADMAP.md Phase 1) ──────────────────────────────
+    # Resolve any ExecutionRecord an interrupted prior run left non-terminal,
+    # and process any position that closed entirely while this process was
+    # down — both BEFORE the first tick evaluates any new signal. Never
+    # places an order: ambiguous in-flight submissions are resolved by
+    # checking broker truth, not by retrying.
+    try:
+        startup_positions = await manager.get_positions()
+    except Exception as exc:
+        _log.warning("Startup recovery: could not fetch broker positions (%s) — skipping this pass.", exc)
+        startup_positions = None
+
+    if startup_positions is not None:
+        recon_report = reconcile_pending_executions(execution_store, _journal_db, startup_positions)
+        ops_recorder.record_recovery_checkpoint(recon_report.resolved, recon_report.orphaned_positions)
+        if recon_report.resolved:
+            _log.warning(
+                "Startup recovery resolved %d incomplete execution(s): %d recovered, %d lost (not resubmitted).",
+                len(recon_report.resolved), recon_report.recovered_count, recon_report.lost_count,
+            )
+            for outcome in recon_report.resolved:
+                _log.warning("  %s -> %s: %s", outcome.execution_id, outcome.final_state, outcome.note)
+            await telegram.send_error(
+                f"Startup recovery: {recon_report.recovered_count} execution(s) recovered, "
+                f"{recon_report.lost_count} lost (signal not resubmitted) out of {len(recon_report.resolved)} incomplete."
+            )
+        if recon_report.orphaned_positions:
+            _log.warning(
+                "Startup recovery: %d broker position(s) with no execution/journal linkage — manual check required.",
+                len(recon_report.orphaned_positions),
+            )
+            await telegram.send_error(
+                f"{len(recon_report.orphaned_positions)} unlinked broker position(s) detected at startup "
+                "— manual reconciliation required."
+            )
+
+        risk_state = await _process_closed_positions(startup_positions, risk_state, executor, telegram)
+        _save_risk_state(risk_state)
+        _save_portfolio_state()
+
     state["status"] = "connected"
     state["broker_status"] = "connected"
     state["strategy_status"] = "active"
@@ -638,44 +836,53 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     state["last_decision"] = "connected"
     _write_state(state)
 
-    try:
-        while True:
-            try:
-                risk_state["_dashboard_state"] = dict(risk_state.get("_dashboard_state") or state)
-                risk_state = await _tick(
-                    mode, strategy_name, connector, executor, manager, journal, risk_state, telegram
-                )
-            except Exception as exc:
-                _log.error("Tick error: %s", exc, exc_info=True)
-                state = dict(risk_state.get("_dashboard_state") or state)
-                state["status"] = "error"
-                state["execution_status"] = "error"
-                state["last_error"] = str(exc)
-                state["last_decision"] = "tick_error"
-                _write_state(state)
-                await telegram.send_error(f"Strategy demo tick error: {exc}")
-            if once:
-                break
-            await asyncio.sleep(interval)
-    finally:
-        _log.info("Shutting down.")
-        state = dict(risk_state.get("_dashboard_state") or state)
-        state["status"] = "stopped"
-        state["broker_status"] = "disconnected"
-        state["strategy_status"] = "stopped"
-        state["execution_status"] = "stopped"
-        state["last_decision"] = "shutdown"
-        _write_state(state)
-        summary = journal.summary()
-        await telegram.send_daily_summary(
-            opened=summary["total_opened"],
-            closed=summary["total_closed"],
-            wins=summary["wins"],
-            losses=summary["losses"],
-            avg_r=summary["avg_r"],
-        )
-        await telegram.stop()
-        await connector.disconnect()
+    async def _loop(_pipeline: CanonicalExecutionPipeline) -> None:
+        nonlocal risk_state, state
+        try:
+            while True:
+                try:
+                    risk_state["_dashboard_state"] = dict(risk_state.get("_dashboard_state") or state)
+                    risk_state = await _tick(
+                        mode, strategy_name, connector, executor, manager, journal, risk_state, telegram,
+                        pipeline=_pipeline,
+                    )
+                except Exception as exc:
+                    _log.error("Tick error: %s", exc, exc_info=True)
+                    state = dict(risk_state.get("_dashboard_state") or state)
+                    state["status"] = "error"
+                    state["execution_status"] = "error"
+                    state["last_error"] = str(exc)
+                    state["last_decision"] = "tick_error"
+                    _write_state(state)
+                    await telegram.send_error(f"Strategy demo tick error: {exc}")
+                if once:
+                    break
+                await asyncio.sleep(interval)
+        finally:
+            _log.info("Shutting down.")
+            state = dict(risk_state.get("_dashboard_state") or state)
+            state["status"] = "stopped"
+            state["broker_status"] = "disconnected"
+            state["strategy_status"] = "stopped"
+            state["execution_status"] = "stopped"
+            state["last_decision"] = "shutdown"
+            _save_risk_state(risk_state)
+            _save_portfolio_state()
+            _write_state(state)
+            summary = journal.summary()
+            await telegram.send_daily_summary(
+                opened=summary["total_opened"],
+                closed=summary["total_closed"],
+                wins=summary["wins"],
+                losses=summary["losses"],
+                avg_r=summary["avg_r"],
+            )
+            await telegram.stop()
+            await connector.disconnect()
+
+    # Canonical execution pipeline owns the loop lifecycle (pipeline_started/
+    # pipeline_stopped events); _loop is unchanged behavior otherwise.
+    await execution_pipeline.run(runtime_context, _loop)
 
 
 def main() -> None:

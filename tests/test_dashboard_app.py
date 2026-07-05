@@ -666,6 +666,31 @@ def test_new_dashboard_api_endpoints_work(client):
     assert "reports" in reports.get_json()
 
 
+def test_new_dashboard_live_state_uses_real_broker_and_journal_data(client):
+    response = client.get("/api/new-dashboard/live-state?symbol=EURUSD")
+    assert response.status_code == 200
+    payload = response.get_json()
+
+    for key in [
+        "pairs", "selectedPair", "health", "analytics", "rejections", "activeTrade",
+        "history", "events", "isTradingPaused", "strategyPackages", "activeDeployments",
+        "riskControls", "brokerConnection", "systemResources", "failedOrders",
+        "retryQueue", "unavailable",
+    ]:
+        assert key in payload
+
+    assert payload["selectedPair"] == "EURUSD"
+    assert "EURUSD" in payload["pairs"]
+    eurusd = payload["pairs"]["EURUSD"]
+    assert eurusd["spread"] == 2.0
+    assert eurusd["candles"]
+    assert payload["pairs"]["GBPUSD"]["candles"] == []
+    assert payload["health"]["broker"]["status"] == "CONNECTED"
+    assert payload["health"]["redis"]["status"] == "N/A"
+    assert isinstance(payload["strategyPackages"], list) and payload["strategyPackages"]
+    assert payload["unavailable"]
+
+
 def test_svos_endpoint_exposes_stage_reports(client):
     response = client.get("/api/svos")
     payload = response.get_json()

@@ -128,3 +128,28 @@ class TestPortfolioManager:
         s = pm.stats()
         assert s["trades_today"] == 1
         assert "EURUSD" in s["open_symbols"]
+
+
+class TestStatePersistence:
+    def test_export_state_round_trips_through_load_state(self):
+        pm = PortfolioManager(_cfg())
+        pm.record_trade(_sig())
+        pm.record_close("EURUSD", pnl_pct=-0.004)
+        pm._last_reset = "2026-07-04"
+        exported = pm.export_state()
+
+        restored = PortfolioManager(_cfg())
+        restored.load_state(exported)
+
+        assert restored.export_state() == exported
+        assert restored._daily_pnl_pct == pytest.approx(-0.004)
+
+    def test_load_state_restores_open_symbols_as_a_set(self):
+        pm = PortfolioManager(_cfg())
+        pm.load_state({"open_symbols": ["EURUSD", "GBPUSD"]})
+        assert pm._open_symbols == {"EURUSD", "GBPUSD"}
+
+    def test_load_state_defaults_missing_keys(self):
+        pm = PortfolioManager(_cfg())
+        pm.load_state({})
+        assert pm.export_state() == PortfolioManager(_cfg()).export_state()

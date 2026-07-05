@@ -1,0 +1,6 @@
+{
+  "name": "Session SMC Trading Bot Dashboard",
+  "description": "Industrial-grade Smart Money Concepts (SMC) automated trading platform dashboard with live strategy pipelines, signal checklist, rejection panels, and health monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
