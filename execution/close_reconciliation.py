@@ -56,7 +56,9 @@ async def process_closed_positions(
 
     open_trades = journal_db.get_open_trades()
     try:
-        balance = (await executor.get_account_info())["balance"]
+        balance = float((await executor.get_account_info())["balance"])
+        if balance <= 0:
+            raise ValueError(f"invalid account balance for close reconciliation: {balance}")
     except Exception as exc:
         # `_last_positions` is deliberately NOT advanced here: if we can't get
         # a real balance, we can't score this close correctly, so we defer
@@ -96,10 +98,16 @@ async def process_closed_positions(
             try:
                 closing_deal = await get_closing_deal(position.get("id"))
             except Exception as exc:
-                _log.warning(
-                    "get_closing_deal failed for %s — using last-known snapshot instead: %s",
+                # A real lookup failure (network/API error) is not the same as
+                # "no closing deal exists" — falling back to the stale
+                # snapshot here would silently score this (and any later
+                # positions in `closed`) wrong, and advancing _last_positions
+                # below would make it unretryable. Defer the whole tick.
+                _log.error(
+                    "get_closing_deal failed for %s — deferring reconciliation to next tick: %s",
                     position.get("id"), exc,
                 )
+                return risk_state
 
         if closing_deal is not None and closing_deal.get("profit") is not None:
             profit = float(closing_deal["profit"])

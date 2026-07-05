@@ -189,6 +189,47 @@ async def test_missing_current_price_falls_back_to_entry_price_not_fabricated(fa
     assert fake_journal.closes[0]["close_price"] == 1.1000
 
 
+@pytest.mark.asyncio
+async def test_non_positive_balance_defers_instead_of_scoring_zero(fakes):
+    """A balance of 0 (not just a fetch exception) must not silently record
+    pnl_pct/r_multiple as zero — the close is deferred to the next tick."""
+    fake_journal, _ = fakes
+    fake_journal._open_trades = [
+        {"id": 1, "symbol": "EURUSD", "broker_order_id": "ORD-1",
+         "risk_percentage": 0.0025, "direction": "long", "entry_price": 1.1000},
+    ]
+    risk_state = new_state()
+    risk_state["_last_positions"] = [{"id": "ORD-1", "symbol": "EURUSD", "profit": -25.0}]
+
+    result = await runner._process_closed_positions([], risk_state, _FakeExecutor(balance=0.0), None)
+
+    assert fake_journal.closes == []
+    assert result["_last_positions"] == [{"id": "ORD-1", "symbol": "EURUSD", "profit": -25.0}]
+
+
+@pytest.mark.asyncio
+async def test_closing_deal_lookup_failure_defers_without_advancing_snapshot(fakes):
+    """A real lookup failure (network/API error) must defer the whole tick,
+    not silently fall back to the stale snapshot and advance past it."""
+    fake_journal, _ = fakes
+    fake_journal._open_trades = [
+        {"id": 1, "symbol": "EURUSD", "broker_order_id": "ORD-1",
+         "risk_percentage": 0.0025, "direction": "long", "entry_price": 1.1000},
+    ]
+    risk_state = new_state()
+    last_positions = [{"id": "ORD-1", "symbol": "EURUSD", "profit": -25.0, "current_price": 1.0980}]
+    risk_state["_last_positions"] = last_positions
+
+    class _FailingClosingDealExecutor(_FakeExecutor):
+        async def get_closing_deal(self, position_id):
+            raise RuntimeError("broker RPC timeout")
+
+    result = await runner._process_closed_positions([], risk_state, _FailingClosingDealExecutor(), None)
+
+    assert fake_journal.closes == []
+    assert result["_last_positions"] == last_positions
+
+
 def test_state_persistence_round_trips(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "_RISK_STATE_PATH", tmp_path / "risk_state.json")
     risk_state = new_state()

@@ -109,13 +109,14 @@ class VantageDemoExecutor:
     async def get_closing_deal(self, position_id: str) -> dict | None:
         """Return the broker's final close deal (real profit/price) for a
         position that has already disappeared from get_positions(), or None
-        if no closing deal is found. Read-only; safe regardless of DEMO_ONLY.
+        if the lookup succeeds but finds no closing deal. Read-only; safe
+        regardless of DEMO_ONLY.
+
+        A lookup FAILURE (network/API error) is not the same as "no deal" —
+        it's raised, not swallowed to None, so callers can tell the
+        difference and defer/retry rather than silently trusting stale data.
         """
-        try:
-            result = await self._rpc().get_deals_by_position(position_id)
-        except Exception as exc:
-            _log.warning("get_deals_by_position(%s) failed: %s", position_id, exc)
-            return None
+        result = await self._rpc().get_deals_by_position(position_id)
         deals = (result or {}).get("deals") or []
         closing = [d for d in deals if d.get("entryType") in ("DEAL_ENTRY_OUT", "DEAL_ENTRY_OUT_BY")]
         if not closing:
