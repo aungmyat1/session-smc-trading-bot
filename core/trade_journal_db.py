@@ -222,6 +222,11 @@ class TradeJournalDB:
         return {str(row[0]) for row in rows}
 
     def get_trade_by_broker_order_id(self, broker_order_id: str) -> Optional[dict]:
+        # A blank id would match any row where broker_order_id was likewise
+        # never set, returning an arbitrary unrelated trade instead of "no
+        # match" — reject it before the query rather than let that happen.
+        if not str(broker_order_id or "").strip():
+            return None
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT * FROM trades WHERE broker_order_id = ? ORDER BY timestamp DESC LIMIT 1",

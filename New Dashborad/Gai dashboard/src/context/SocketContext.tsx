@@ -244,14 +244,33 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const triggerKillSwitch = async () => {
+    // Must hit the real backend's emergency-stop control path
+    // (dashboard/status_server.py), not a locally-simulated route — an
+    // operator pressing this button needs trading to actually stop, not
+    // just a UI update. scope="close_positions" matches "kill switch"
+    // semantics (stop everything now), as opposed to "block_only" (stop
+    // new trades but leave existing positions open).
     try {
-      const res = await fetch("/api/live/kill-switch", {
+      const res = await fetch("/api/emergency-stop", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reason: "Operator emergency kill switch",
+          confirm_token: "CONFIRM-EMERGENCY-STOP",
+          scope: "close_positions",
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.state) setState(data.state);
+        if (data.emergency_stop && data.emergency_stop.active) {
+          // Reflect the real post-stop state from the backend rather than
+          // trusting any locally-fabricated fields.
+          await fetchStateBackup();
+        } else {
+          console.error("Kill switch request succeeded but backend did not report an active emergency stop:", data);
+        }
+      } else {
+        console.error("Emergency kill switch request failed:", res.status, await res.text());
       }
     } catch (err) {
       console.error(err);

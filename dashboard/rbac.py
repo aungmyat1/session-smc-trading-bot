@@ -61,6 +61,18 @@ def _proxy_secret() -> str:
     return os.getenv("DASHBOARD_PROXY_SECRET", "").strip()
 
 
+def _bearer_role() -> str:
+    """Fixed server-side role granted to holders of SVOS_OPERATOR_TOKEN.
+
+    Bearer tokens are a single shared operator credential, so the role they
+    grant must be assigned by the server, never taken from a caller-supplied
+    header — otherwise anyone holding the token could self-declare "admin".
+    X-SVOS-Role is honored only in proxy mode, where it's already gated by a
+    trusted-proxy secret the caller cannot forge.
+    """
+    return os.getenv("SVOS_OPERATOR_ROLE", "admin").strip() or "admin"
+
+
 def resolve_identity(request: Request) -> dict[str, str] | None:
     """Same precedence as dashboard/auth.py: trusted-proxy headers first
     (if a proxy secret is configured and matches), then a bearer token."""
@@ -84,10 +96,9 @@ def resolve_identity(request: Request) -> dict[str, str] | None:
     configured = _configured_token()
     supplied = request.headers.get("Authorization", "").strip()
     actor = request.headers.get("X-SVOS-Actor", "").strip()
-    role = request.headers.get("X-SVOS-Role", "").strip()
     expected = f"Bearer {configured}" if configured else ""
-    if configured and supplied and hmac.compare_digest(supplied, expected) and actor and role:
-        return {"actor": actor, "role": role, "auth_mode": "bearer"}
+    if configured and supplied and hmac.compare_digest(supplied, expected) and actor:
+        return {"actor": actor, "role": _bearer_role(), "auth_mode": "bearer"}
     return None
 
 
@@ -111,18 +122,38 @@ def session_payload(request: Request) -> dict[str, Any]:
     }
 
 
+def _require_authenticated_payload(request: Request) -> dict[str, Any]:
+    """Shared 401/503 gate: raise unless the caller has ANY valid operator
+    identity. Used both by require_role() (which additionally checks role)
+    and require_authenticated() (read-only endpoints — any operator identity
+    may read, regardless of role)."""
+    payload = session_payload(request)
+    if not payload["authenticated"]:
+        configured = bool(_configured_token())
+        proxy_ready = bool(_proxy_secret())
+        if not configured and not proxy_ready:
+            raise HTTPException(status_code=503, detail={"error": "Operator authentication is not configured", "code": "auth_not_configured"})
+        raise HTTPException(status_code=401, detail={"error": "Unauthorized", "code": "unauthorized"})
+    return payload
+
+
+def require_authenticated():
+    """FastAPI dependency: raises 401/503 unless the caller has ANY valid
+    operator identity — for read-only endpoints that must not be reachable
+    anonymously but aren't restricted to specific mutation roles."""
+
+    def dependency(request: Request) -> dict[str, Any]:
+        return _require_authenticated_payload(request)
+
+    return dependency
+
+
 def require_role(*allowed_roles: str):
     """FastAPI dependency: raises 401/403 unless the caller authenticates as
     one of allowed_roles. Use as: Depends(require_role("risk_operator", "admin"))."""
 
     def dependency(request: Request) -> dict[str, Any]:
-        payload = session_payload(request)
-        if not payload["authenticated"]:
-            configured = bool(_configured_token())
-            proxy_ready = bool(_proxy_secret())
-            if not configured and not proxy_ready:
-                raise HTTPException(status_code=503, detail={"error": "Operator authentication is not configured", "code": "auth_not_configured"})
-            raise HTTPException(status_code=401, detail={"error": "Unauthorized", "code": "unauthorized"})
+        payload = _require_authenticated_payload(request)
         role = str(payload["role"])
         if role not in allowed_roles:
             raise HTTPException(status_code=403, detail={"error": "Forbidden", "code": "forbidden", "required_roles": list(allowed_roles)})

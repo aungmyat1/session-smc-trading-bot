@@ -50,15 +50,24 @@ async def process_closed_positions(
     """
     previous = risk_state.get("_last_positions", [])
     closed = diff_closed_positions(previous, positions)
-    risk_state["_last_positions"] = positions
     if not closed:
+        risk_state["_last_positions"] = positions
         return risk_state
 
     open_trades = journal_db.get_open_trades()
     try:
         balance = (await executor.get_account_info())["balance"]
-    except Exception:
-        balance = 0.0
+    except Exception as exc:
+        # `_last_positions` is deliberately NOT advanced here: if we can't get
+        # a real balance, we can't score this close correctly, so we defer
+        # the whole reconciliation to the next tick rather than recording
+        # zeroed pnl_pct/r_multiple under a swallowed exception.
+        _log.error(
+            "Failed to fetch account balance while reconciling %d closed position(s) — "
+            "deferring reconciliation to next tick instead of recording zeroed P&L: %s",
+            len(closed), exc,
+        )
+        return risk_state
 
     for position in closed:
         trade = match_journal_trade(position, open_trades)
@@ -75,12 +84,35 @@ async def process_closed_positions(
                 )
             continue
 
-        profit = float(position.get("profit") or 0.0)
+        # `position` is the last-known OPEN snapshot (previous tick), not the
+        # broker's final close record — its profit/current_price can be stale
+        # unrealized figures from before the position actually hit SL/TP.
+        # Prefer the real closing deal when the executor can provide one;
+        # fall back to the previous snapshot only if it can't (e.g. fake/test
+        # executors, or the broker call fails).
+        closing_deal = None
+        get_closing_deal = getattr(executor, "get_closing_deal", None)
+        if get_closing_deal is not None:
+            try:
+                closing_deal = await get_closing_deal(position.get("id"))
+            except Exception as exc:
+                _log.warning(
+                    "get_closing_deal failed for %s — using last-known snapshot instead: %s",
+                    position.get("id"), exc,
+                )
+
+        if closing_deal is not None and closing_deal.get("profit") is not None:
+            profit = float(closing_deal["profit"])
+        else:
+            profit = float(position.get("profit") or 0.0)
         pnl_pct = (profit / balance) if balance else 0.0
         outcome = "WIN" if profit > 0 else "LOSS" if profit < 0 else "BREAKEVEN"
         risk_percentage = float(trade.get("risk_percentage") or 0.0)
         r_multiple = (pnl_pct / risk_percentage) if risk_percentage else 0.0
-        close_price = position.get("current_price")
+        if closing_deal is not None and closing_deal.get("price") is not None:
+            close_price = closing_deal["price"]
+        else:
+            close_price = position.get("current_price")
         if close_price is None:
             # No live price at close time available — fall back to the entry
             # price rather than fabricating one; this only affects the stored
@@ -115,4 +147,10 @@ async def process_closed_positions(
                 result_r=r_multiple,
                 reason="broker_position_closed",
             )
+
+    # Advance the snapshot only after every closed position above has been
+    # journaled/scored — if an exception had propagated out of the loop, the
+    # not-yet-processed closes remain visible to the next tick's diff instead
+    # of silently disappearing.
+    risk_state["_last_positions"] = positions
     return risk_state

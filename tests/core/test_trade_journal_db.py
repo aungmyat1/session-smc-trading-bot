@@ -142,6 +142,21 @@ class TestQueries:
     def test_get_trade_none_for_unknown_id(self, db):
         assert db.get_trade(99999) is None
 
+    def test_get_trade_by_broker_order_id_matches(self, db):
+        db.record_signal(_sig(), broker_order_id="ORD-1", execution_result="OPEN")
+        found = db.get_trade_by_broker_order_id("ORD-1")
+        assert found is not None
+        assert found["broker_order_id"] == "ORD-1"
+
+    def test_get_trade_by_broker_order_id_rejects_blank_before_lookup(self, db):
+        """A blank broker_order_id must never match a row that likewise never
+        had one set — that would return an arbitrary unrelated trade instead
+        of "no match"."""
+        db.record_signal(_sig(), execution_result="OPEN")  # broker_order_id defaults to ""
+        assert db.get_trade_by_broker_order_id("") is None
+        assert db.get_trade_by_broker_order_id("   ") is None
+        assert db.get_trade_by_broker_order_id(None) is None
+
 
 class TestSummary:
     def _make_closed(self, db, r: float) -> None:

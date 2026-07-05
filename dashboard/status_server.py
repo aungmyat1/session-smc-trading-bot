@@ -34,7 +34,7 @@ from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
 from dashboard.events import EventBroadcaster, EventPoller
-from dashboard.rbac import require_role
+from dashboard.rbac import require_authenticated, require_role, session_payload
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
 from approval_package.package_validator import validate_package
 from demo_runtime.demo_health_check import evaluate_demo_readiness
@@ -80,6 +80,9 @@ async def ws_events(websocket: WebSocket) -> None:
     """Single unified event stream — Trading/Strategy/Risk/Platform/System
     events, all sources, one connection. Replaces client-side polling of
     many endpoints (owner framing, 2026-07-04)."""
+    if not session_payload(websocket)["authenticated"]:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     queue = _event_broadcaster.subscribe()
     try:
@@ -1883,7 +1886,7 @@ async def api_operations_events(limit: int = 50):
 # here recomputes business logic owned elsewhere.
 
 @app.get("/overview")
-async def overview():
+async def overview(identity: dict = Depends(require_authenticated())):
     """One-shot summary combining execution + SVOS + risk + health — the
     initial-load payload a dashboard page would fetch once, then switch to
     /ws for live updates."""
@@ -1909,14 +1912,14 @@ async def overview():
 
 
 @app.get("/live/trades")
-async def live_trades():
+async def live_trades(identity: dict = Depends(require_authenticated())):
     """Alias of the Phase 5 /api/operations/trades content under the name
     this prompt asked for — same source, not a second implementation."""
     return await api_operations_trades()
 
 
 @app.get("/svos/status")
-async def svos_status():
+async def svos_status(identity: dict = Depends(require_authenticated())):
     """SVOS lifecycle/catalog status per strategy — reuses
     dashboard/strategy_service.py::list_strategies(), the same source
     dashboard/live_state_adapter.py already uses for strategyPackages."""
@@ -1937,7 +1940,7 @@ async def svos_status():
 
 
 @app.get("/strategies/performance")
-async def strategies_performance():
+async def strategies_performance(identity: dict = Depends(require_authenticated())):
     """Per-strategy trade performance — reuses TradeJournalDB, the same
     SQLite journal every other trade-history view in this dashboard reads."""
     return _envelope(
@@ -1947,7 +1950,7 @@ async def strategies_performance():
 
 
 @app.get("/system/health")
-async def system_health():
+async def system_health(identity: dict = Depends(require_authenticated())):
     """Alias of the Phase 5 /api/operations/health content under the name
     this prompt asked for."""
     return await api_operations_health()

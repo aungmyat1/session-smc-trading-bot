@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 import dashboard.control_state as control_state
@@ -18,6 +19,9 @@ def _write(path: Path, content: str) -> None:
 _OPERATOR_HEADERS = {
     "Authorization": "Bearer test-operator-token",
     "X-SVOS-Actor": "tester",
+    # X-SVOS-Role is no longer trusted for bearer auth (fixed server-side via
+    # SVOS_OPERATOR_ROLE instead, defaulting to "admin") — kept here only to
+    # confirm it has no effect.
     "X-SVOS-Role": "risk_operator",
 }
 
@@ -93,14 +97,17 @@ def test_operator_control_endpoints_require_role_and_confirm_token(tmp_path, mon
     )
     client = TestClient(status_server.app)
 
-    forbidden_role_headers = {**_OPERATOR_HEADERS, "X-SVOS-Role": "research_operator"}
+    # The granted role is fixed server-side via SVOS_OPERATOR_ROLE now, not
+    # the caller-supplied X-SVOS-Role header (see dashboard/rbac.py).
+    monkeypatch.setenv("SVOS_OPERATOR_ROLE", "research_operator")
     forbidden = client.post(
         "/api/control/pause",
         json={"confirm_token": "CONFIRM-PAUSE-TRADING"},
-        headers=forbidden_role_headers,
+        headers=_OPERATOR_HEADERS,
     )
     assert forbidden.status_code == 403
 
+    monkeypatch.setenv("SVOS_OPERATOR_ROLE", "risk_operator")
     paused = client.post(
         "/api/control/pause", json={"confirm_token": "CONFIRM-PAUSE-TRADING"}, headers=_OPERATOR_HEADERS
     )
@@ -261,6 +268,7 @@ def test_realtime_operations_layer_endpoints_return_200_with_real_sources(tmp_pa
     delegate to an existing service rather than recomputing data."""
     monkeypatch.setattr(status_server, "ROOT", tmp_path)
     monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
     _base_operations_state(tmp_path)
     fake_snapshot = {
         "portfolio": {"summary": {}, "daily_statistics": {}}, "positions": {"items": [], "count": 0},
@@ -272,23 +280,40 @@ def test_realtime_operations_layer_endpoints_return_200_with_real_sources(tmp_pa
         patch.object(status_server, "get_recent_runtimes", return_value=[]),
     ):
         client = TestClient(status_server.app)
+
+        unauthenticated = client.get("/overview")
+        assert unauthenticated.status_code == 401
+
         for path in ("/overview", "/live/trades", "/svos/status", "/strategies/performance", "/system/health"):
-            response = client.get(path)
+            response = client.get(path, headers=_OPERATOR_HEADERS)
             assert response.status_code == 200, path
 
 
 def test_websocket_ws_endpoint_delivers_published_events(tmp_path, monkeypatch):
     monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
     client = TestClient(status_server.app)
     from dashboard.events import make_system_event
 
-    with client.websocket_connect("/ws") as websocket:
+    with client.websocket_connect("/ws", headers=_OPERATOR_HEADERS) as websocket:
         status_server._event_broadcaster.publish(make_system_event("test_event", note="hello"))
         message = websocket.receive_json()
 
     assert message["event_type"] == "test_event"
     assert message["source_system"] == "system"
     assert message["payload"]["note"] == "hello"
+
+
+def test_websocket_ws_endpoint_rejects_unauthenticated_clients(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", "test-operator-token")
+    client = TestClient(status_server.app)
+
+    from starlette.websockets import WebSocketDisconnect as ClientWebSocketDisconnect
+
+    with pytest.raises(ClientWebSocketDisconnect):
+        with client.websocket_connect("/ws"):
+            pass
 
 
 def test_load_log_prefers_most_recently_written_file_not_first_existing(tmp_path, monkeypatch):

@@ -144,14 +144,23 @@ class EventPoller:
                 continue
             self._seen_execution_event_ids.add(key)
             payload = row.get("payload") or row.get("state") or {}
-            strategy_id = str(payload.get("strategy_id", "")) if isinstance(payload, dict) else ""
+            # make_*_event() takes **payload and builds BaseEvent.payload from
+            # it — passing payload=payload here would nest the whole dict one
+            # level deeper, under event.payload["payload"], instead of at the
+            # top level clients expect (e.g. event.payload["strategy_id"]).
+            event_payload = payload if isinstance(payload, dict) else {"value": payload}
+            strategy_id = str(event_payload.get("strategy_id", ""))
             event_type = row.get("event_type", "execution_event")
             if row.get("type") == "recovery_checkpoint":
-                event = make_system_event("recovery_checkpoint", session_id=self.session_id, payload=payload)
+                event = make_system_event("recovery_checkpoint", session_id=self.session_id, **event_payload)
             elif event_type in ("execution_result", "intent_received", "risk_decision"):
-                event = make_trade_event(event_type, strategy_id=strategy_id, session_id=self.session_id, payload=payload)
+                # strategy_id is passed explicitly above, so it must not also
+                # be in the spread dict (it would collide as a duplicate
+                # keyword argument if the source payload includes that key).
+                trade_payload = {k: v for k, v in event_payload.items() if k != "strategy_id"}
+                event = make_trade_event(event_type, strategy_id=strategy_id, session_id=self.session_id, **trade_payload)
             else:
-                event = make_system_event(event_type, session_id=self.session_id, payload=payload)
+                event = make_system_event(event_type, session_id=self.session_id, **event_payload)
             self.broadcaster.publish(event)
             count += 1
         if len(self._seen_execution_event_ids) > 2000:

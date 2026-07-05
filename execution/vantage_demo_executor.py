@@ -106,6 +106,23 @@ class VantageDemoExecutor:
             for p in (positions or [])
         ]
 
+    async def get_closing_deal(self, position_id: str) -> dict | None:
+        """Return the broker's final close deal (real profit/price) for a
+        position that has already disappeared from get_positions(), or None
+        if no closing deal is found. Read-only; safe regardless of DEMO_ONLY.
+        """
+        try:
+            result = await self._rpc().get_deals_by_position(position_id)
+        except Exception as exc:
+            _log.warning("get_deals_by_position(%s) failed: %s", position_id, exc)
+            return None
+        deals = (result or {}).get("deals") or []
+        closing = [d for d in deals if d.get("entryType") in ("DEAL_ENTRY_OUT", "DEAL_ENTRY_OUT_BY")]
+        if not closing:
+            return None
+        last = max(closing, key=lambda d: d.get("time") or "")
+        return {"price": last.get("price"), "profit": last.get("profit")}
+
     # ── Write operations (gated by DEMO_ONLY) ─────────────────────────────
 
     def _guard(self, action: str) -> bool:

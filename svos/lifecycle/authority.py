@@ -123,7 +123,16 @@ class LifecycleAuthority:
             TransitionBlockedError: if the transition is blocked.
         """
         with self.session_factory() as session:
-            return self._execute_transition(session, strategy, to_stage, actor, reason, evidence_ids)
+            try:
+                result = self._execute_transition(session, strategy, to_stage, actor, reason, evidence_ids)
+            except Exception:
+                session.rollback()
+                raise
+            if result.success:
+                session.commit()
+            else:
+                session.rollback()
+            return result
 
     def validate_evidence(
         self,

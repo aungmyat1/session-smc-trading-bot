@@ -73,6 +73,31 @@ def test_poller_deduplicates_operations_events(tmp_path, monkeypatch):
     assert second_pass == 0  # same row already seen, not re-published
 
 
+def test_poller_publishes_payload_fields_at_top_level_not_nested(monkeypatch):
+    """Regression test: make_trade_event(..., payload=payload) used to nest
+    the whole source payload one level deeper (event.payload["payload"]),
+    hiding fields like strategy_id from clients reading the documented
+    top-level shape."""
+    rows = [
+        {"created_at": "t1", "event_type": "intent_received", "type": "execution_event",
+         "payload": {"strategy_id": "ST-A2", "price": 1.1}},
+    ]
+    monkeypatch.setattr("execution.operations_recorder.get_recent_events", lambda limit=50: rows)
+    broadcaster = EventBroadcaster()
+    queue = broadcaster.subscribe()
+    poller = EventPoller(broadcaster)
+
+    poller._poll_operations_events()
+
+    event = queue.get_nowait()
+    # strategy_id lands in the dedicated BaseEvent.strategy_id field (and is
+    # excluded from the spread payload to avoid a duplicate-keyword clash);
+    # every other field lands at the top level of event.payload.
+    assert event.strategy_id == "ST-A2"
+    assert event.payload == {"price": 1.1}
+    assert "payload" not in event.payload
+
+
 def test_poller_reads_control_events(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "dashboard.control_state.load_control_state",
