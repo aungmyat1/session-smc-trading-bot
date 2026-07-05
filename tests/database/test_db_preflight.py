@@ -22,6 +22,7 @@ from scripts.db_preflight import (
     check_permissions,
     check_alembic,
     check_system_resources,
+    main,
     run_preflight,
     _ALL_REQUIRED_SCHEMAS,
     _SYSTEM2_OPERATIONS_TABLES,
@@ -450,20 +451,20 @@ def test_preflight_reports_ready_when_all_pass() -> None:
         assert len(result["steps"]) == 8
 
 
-def test_preflight_cli_returns_zero_on_ready() -> None:
-    """End-to-end subprocess call; use current env with mock substitutions."""
-    with (
-        patch("scripts.db_preflight.run_preflight") as mock_run,
-    ):
+def test_preflight_cli_returns_zero_on_ready(monkeypatch) -> None:
+    """CLI's --quiet/exit-code contract, with run_preflight mocked.
+
+    In-process (not subprocess): a mock only patches the object in this
+    process's memory, so a real subprocess re-importing scripts.db_preflight
+    fresh would never see it and would always exercise the real (unready,
+    no-DB) path regardless of the mock.
+    """
+    monkeypatch.setattr(sys, "argv", ["db_preflight.py", "--quiet"])
+    with patch("scripts.db_preflight.run_preflight") as mock_run:
         mock_run.return_value = {"status": "DB_READY", "error_token": None, "steps": []}
-        result = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "db_preflight.py"), "--quiet"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        assert result.returncode == 0
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+        assert exc_info.value.code == 0
 
 
 def test_preflight_cli_returns_one_on_not_ready() -> None:

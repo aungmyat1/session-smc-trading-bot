@@ -22,7 +22,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Callable
 from uuid import UUID
@@ -30,7 +29,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db.models import ArtifactBinding, StageState, StrategyEntity, StrategyVersion
+from db.models import ArtifactBinding, StageState, StrategyEntity
 from svos.lifecycle.manager import StrategyLifecycleManager, StrategyStage
 
 
@@ -202,20 +201,40 @@ class LifecycleAuthority:
         if state is None:
             raise TransitionBlockedError(f"No stage state found for: {strategy}")
 
-        # 3. Validate stage progression
+        # 3. Production Approval is blocked during platform construction. Check
+        # this before the generic stage-order validation below: manager.py's
+        # _ALLOWED graph never lists PRODUCTION_APPROVAL as a legal target for
+        # any stage (by design), so validate_transition() would otherwise
+        # reject it first with a generic "illegal transition" message instead
+        # of this specific, actionable one.
+        from_stage = state.current_stage
+        target_stage = StrategyStage(to_stage.upper())
+        if target_stage == StrategyStage.PRODUCTION_APPROVAL:
+            return TransitionResult(
+                strategy_slug=strategy,
+                from_stage=from_stage,
+                to_stage=to_stage,
+                success=False,
+                blockers=(
+                    "Production Approval transitions are blocked during platform construction. "
+                    "See CLAUDE.md §6 and the SVOS implementation plan.",
+                ),
+                new_revision=state.opt_lock,
+            )
+
+        # 4. Validate stage progression
         try:
-            self.lifecycle.validate_transition(state.current_stage, to_stage)
+            self.lifecycle.validate_transition(from_stage, to_stage)
         except Exception as exc:
             return TransitionResult(
                 strategy_slug=strategy,
-                from_stage=state.current_stage,
+                from_stage=from_stage,
                 to_stage=to_stage,
                 success=False,
                 blockers=(str(exc),),
             )
 
-        # 4. Check evidence (if required)
-        from_stage = state.current_stage
+        # 5. Check evidence (if required)
         evidence_ids = provided_evidence_ids or self.validate_evidence(
             strategy_id=entity.id,
             version_id=state.current_version_id,
@@ -223,9 +242,6 @@ class LifecycleAuthority:
         )
 
         has_evidence_requirement = from_stage.upper() not in _NO_EVIDENCE_REQUIRED
-        # PRODUCTION_APPROVAL is blocked during platform construction
-        target_stage = StrategyStage(to_stage.upper())
-        is_production_blocked = target_stage == StrategyStage.PRODUCTION_APPROVAL
         is_remediation = target_stage in {StrategyStage.REFINEMENT, StrategyStage.REVALIDATION, StrategyStage.RETIRED}
 
         blockers: list[str] = []
@@ -234,12 +250,6 @@ class LifecycleAuthority:
             blockers.append(
                 f"No qualifying evidence (trust=QUALIFYING_REAL, status=active) exists "
                 f"for stage '{from_stage}' and current version."
-            )
-
-        if is_production_blocked:
-            blockers.append(
-                "Production Approval transitions are blocked during platform construction. "
-                "See CLAUDE.md §6 and the SVOS implementation plan."
             )
 
         if not actor.strip():
@@ -271,7 +281,7 @@ class LifecycleAuthority:
             )
 
         state.current_stage = to_stage.upper()
-        state.opt_lock = state.opt_lock + 1  # type: ignore[assignment]
+        state.opt_lock = state.opt_lock + 1
         state.updated_by = actor
 
         # Flush to get the new revision

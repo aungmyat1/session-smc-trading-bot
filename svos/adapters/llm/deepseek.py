@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from svos.adapters.llm import LLMProvider, LLMRequest, LLMResponse
+from svos.adapters.llm import LLMRequest, LLMResponse
 
 _DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 _DEFAULT_MODEL = "deepseek-chat"

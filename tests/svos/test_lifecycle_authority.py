@@ -50,7 +50,11 @@ def mock_stage_state() -> MagicMock:
     state = MagicMock(spec=StageState)
     state.id = uuid4()
     state.strategy_id = uuid4()
-    state.current_stage = "AUDIT"
+    # REFINEMENT, not AUDIT: per svos/lifecycle/manager.py's _ALLOWED graph,
+    # AUDIT's only forward exit is REFINEMENT itself, and REFINEMENT is the
+    # stage whose forward exit (HISTORICAL_REPLAY) actually requires evidence
+    # (REFINEMENT's own forward transition is a remediation-exempt loopback).
+    state.current_stage = "REFINEMENT"
     state.current_version_id = uuid4()
     state.opt_lock = 5
     state.updated_by = "system"
@@ -64,10 +68,13 @@ def mock_session_factory(mock_strategy_entity, mock_strategy_version, mock_stage
     session.__enter__.return_value = session
 
     def scalar_side_effect(query):
+        # SQLAlchemy compiles the FROM clause to the schema-qualified table
+        # name (e.g. "strategy.strategy"), never the Python class name — match
+        # on that, not on "StrategyEntity"/"StageState" substrings.
         q = str(query)
-        if "StrategyEntity" in q:
+        if StrategyEntity.__table__.fullname in q:
             return mock_strategy_entity
-        if "StageState" in q:
+        if StageState.__table__.fullname in q:
             return mock_stage_state
         return None
 
@@ -157,7 +164,7 @@ def test_validate_evidence_returns_empty_when_no_bindings():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def test_transition_success(authority, mock_stage_state):
-    """A valid AUDIT -> HISTORICAL_REPLAY transition should succeed."""
+    """A valid REFINEMENT -> HISTORICAL_REPLAY transition should succeed."""
     result = authority.transition(
         strategy="TEST-STRATEGY",
         to_stage="HISTORICAL_REPLAY",
@@ -166,7 +173,7 @@ def test_transition_success(authority, mock_stage_state):
     )
     assert result.success is True
     assert result.new_revision == 6  # 5 + 1
-    assert result.from_stage == "AUDIT"
+    assert result.from_stage == "REFINEMENT"
     assert result.to_stage == "HISTORICAL_REPLAY"
 
 
@@ -218,14 +225,45 @@ def test_transition_requires_reason(authority):
     assert any("reason" in b.lower() for b in result.blockers)
 
 
-def test_transition_no_evidence_for_audit_to_replay(authority):
-    """AUDIT -> HISTORICAL_REPLAY needs qualifying evidence."""
-    authority = LifecycleAuthority(session_factory=authority.session_factory)
+def test_transition_no_evidence_for_virtual_demo_to_replay():
+    """VIRTUAL_DEMO -> HISTORICAL_REPLAY needs qualifying evidence.
+
+    VIRTUAL_DEMO is the only stage besides REFINEMENT/REVALIDATION that can
+    legally reach HISTORICAL_REPLAY (svos/lifecycle/manager.py's _ALLOWED
+    graph), and unlike those two it is not exempt from the evidence
+    requirement (_NO_EVIDENCE_REQUIRED).
+    """
+    session = MagicMock()
+    session.__enter__.return_value = session
+
+    entity = MagicMock(spec=StrategyEntity)
+    entity.id = uuid4()
+    entity.slug = "TEST-STRATEGY"
+
+    state = MagicMock(spec=StageState)
+    state.strategy_id = entity.id
+    state.current_stage = "VIRTUAL_DEMO"
+    state.current_version_id = uuid4()
+    state.opt_lock = 5
+    state.updated_by = "system"
+
+    def scalar_side_effect(query):
+        q = str(query)
+        if StrategyEntity.__table__.fullname in q:
+            return entity
+        if StageState.__table__.fullname in q:
+            return state
+        return None
+
+    session.scalar = scalar_side_effect
+    session.scalars.return_value.all.return_value = []
+
+    authority = LifecycleAuthority(session_factory=lambda: session)
     result = authority.transition(
         strategy="TEST-STRATEGY",
         to_stage="HISTORICAL_REPLAY",
         actor="test-actor",
-        reason="Passing audit review",
+        reason="Passing virtual demo review",
     )
     assert result.success is False
     assert any("evidence" in b.lower() for b in result.blockers)
@@ -249,9 +287,9 @@ def test_transition_draft_does_not_need_evidence():
 
     def scalar_side_effect(query):
         q = str(query)
-        if "StrategyEntity" in q:
+        if StrategyEntity.__table__.fullname in q:
             return entity
-        if "StageState" in q:
+        if StageState.__table__.fullname in q:
             return state
         return None
 

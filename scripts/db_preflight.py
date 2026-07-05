@@ -32,6 +32,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import create_engine, text
+
 _ROOT = Path(__file__).resolve().parent.parent
 
 # ── Required v2 schemas (legacy) ──────────────────────────────────────────────
@@ -111,13 +113,15 @@ def check_alembic() -> dict[str, Any]:
             timeout=30,
         )
         current_out = (result.stdout or "").strip()
-        # alembic current outputs something like "002abc (head)" or "002abc"
+        # alembic current outputs something like "004 (head)" or "004" — this
+        # project uses short numeric revision ids (see db/migrations/versions),
+        # not the 12-char hex hashes alembic generates by default, so any
+        # non-empty first token is a valid revision id.
         if current_out and "No current revision" not in current_out:
-            # Extract revision hash from "002abc (head)" or "002abc"
             parts = current_out.split()
             if parts:
                 candidate = parts[0].strip()
-                if candidate and len(candidate) >= 8:
+                if candidate:
                     current_revision = candidate
     except Exception as exc:
         raise PreflightError("migration_mismatch", f"Cannot check alembic current revision: {exc}")
@@ -138,7 +142,7 @@ def check_alembic() -> dict[str, Any]:
                 parts = first_line.split()
                 if parts:
                     candidate = parts[0].strip()
-                    if candidate and len(candidate) >= 8:
+                    if candidate:
                         head_revision = candidate
     except Exception as exc:
         raise PreflightError("migration_mismatch", f"Cannot check alembic head revision: {exc}")
@@ -162,7 +166,6 @@ def check_alembic() -> dict[str, Any]:
 
 def check_connectivity(database_url: str) -> dict[str, Any]:
     try:
-        from sqlalchemy import create_engine, text
         engine = create_engine(database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1 AS ok"))
@@ -178,7 +181,6 @@ def check_connectivity(database_url: str) -> dict[str, Any]:
 
 
 def check_schemas(database_url: str) -> dict[str, Any]:
-    from sqlalchemy import create_engine, text
     engine = create_engine(database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
 
     with engine.connect() as conn:
@@ -199,7 +201,6 @@ def check_schemas(database_url: str) -> dict[str, Any]:
 
 
 def check_system2_tables(database_url: str) -> dict[str, Any]:
-    from sqlalchemy import create_engine, text
     engine = create_engine(database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
 
     with engine.connect() as conn:
@@ -225,7 +226,6 @@ def check_system2_tables(database_url: str) -> dict[str, Any]:
 
 
 def check_permissions(database_url: str) -> dict[str, Any]:
-    from sqlalchemy import create_engine, text
     engine = create_engine(database_url, pool_pre_ping=True, connect_args={"connect_timeout": 5})
 
     with engine.connect() as conn:
@@ -236,16 +236,18 @@ def check_permissions(database_url: str) -> dict[str, Any]:
         # Check read permission: can query a known table
         conn.execute(text("SELECT COUNT(*) FROM operations.runtime")).fetchone()
 
-        # Check write permission: try inserting into intent table
-        # Use a transaction that will be rolled back
-        with conn.begin():
-            conn.execute(
-                text(
-                    "INSERT INTO operations.intent (payload) "
-                    "VALUES ('{\"preflight_check\": true, \"created_by\": \"db_preflight.py\"}') "
-                    "ON CONFLICT DO NOTHING"
-                )
+        # Check write permission: insert then roll back so nothing persists.
+        # conn already autobegan a transaction via the reads above, so calling
+        # conn.begin() here would conflict with it (InvalidRequestError).
+        conn.execute(
+            text(
+                "INSERT INTO operations.intent (intent_id, symbol, payload) "
+                "VALUES ('__db_preflight_check__', '__PREFLIGHT__', "
+                "'{\"preflight_check\": true, \"created_by\": \"db_preflight.py\"}') "
+                "ON CONFLICT DO NOTHING"
             )
+        )
+        conn.rollback()
 
     return {"current_user": current_user, "read_write_ok": True}
 
@@ -367,6 +369,9 @@ def run_preflight(quiet: bool = False) -> dict[str, Any]:
                 error_message = exc.message
             if not quiet:
                 print(f"[{exc.token}] {exc.message}", file=sys.stderr)
+            # Fail fast: schema/table checks against a database at the wrong
+            # migration revision would be meaningless (or misleading).
+            return {"status": status, "error_token": error_token, "error_message": error_message, "steps": steps}
 
     # Step 5: Schemas
     try:
@@ -380,6 +385,7 @@ def run_preflight(quiet: bool = False) -> dict[str, Any]:
             error_message = exc.message
         if not quiet:
             print(f"[{exc.token}] {exc.message}", file=sys.stderr)
+        return {"status": status, "error_token": error_token, "error_message": error_message, "steps": steps}
 
     # Step 6: System 2 tables
     try:
@@ -393,6 +399,7 @@ def run_preflight(quiet: bool = False) -> dict[str, Any]:
             error_message = exc.message
         if not quiet:
             print(f"[{exc.token}] {exc.message}", file=sys.stderr)
+        return {"status": status, "error_token": error_token, "error_message": error_message, "steps": steps}
 
     # Step 7: Permissions
     try:
@@ -406,6 +413,7 @@ def run_preflight(quiet: bool = False) -> dict[str, Any]:
             error_message = exc.message
         if not quiet:
             print(f"[{exc.token}] {exc.message}", file=sys.stderr)
+        return {"status": status, "error_token": error_token, "error_message": error_message, "steps": steps}
 
     # Step 8: System resources (warn only)
     resource_result = check_system_resources()
