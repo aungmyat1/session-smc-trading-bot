@@ -1978,6 +1978,14 @@ async def system_health(identity: dict = Depends(require_authenticated())):
     return await api_operations_health()
 
 
+@app.get("/system/vps-memory")
+async def system_vps_memory():
+    """Host-level RAM/swap/dev-tooling health (see scripts/ops/mem_monitor.py).
+    Read-only; reports whether the VPS is at risk of an OOM event."""
+    from scripts.ops.mem_monitor import get_memory_health
+    return get_memory_health()
+
+
 @app.get("/metrics", response_class=PlainTextResponse)
 async def metrics():
     state = _load_state()
