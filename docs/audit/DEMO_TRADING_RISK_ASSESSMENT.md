@@ -8,7 +8,7 @@ Related: docs/audit/EXECUTION_LAYER_GAP_ANALYSIS.md, docs/audit/STABILIZATION_RO
 
 # Risk Assessment — Proceeding Toward Demo Trading
 
-Scope note: this assesses readiness for **demo** trading only (the deployed runner already trades demo capital against a live broker connection today, per `docs/systems/system2/STATUS.md`). It does not touch live-trading readiness — that remains gated behind `LIVE_TRADING=false`/`DEMO_ONLY=true`, a full Production Approval package, and explicit owner authorization, none of which this pass evaluates or unlocks (CLAUDE.md §0.1).
+Scope note: this assesses readiness for **demo** trading only (the deployed runner already trades demo capital against a live broker connection today, per `docs/systems/system2/STATUS.md`). It does not touch live-trading readiness — that remains blocked until `LIVE_TRADING`/`DEMO_ONLY` are deliberately changed away from their current demo-safe values, a full Production Approval package is in place, and explicit owner authorization is obtained, none of which this pass evaluates or unlocks (CLAUDE.md §0.1).
 
 ## Already-running demo state (context, not a finding)
 

@@ -39,13 +39,13 @@ identical text, so a merge auto-resolves with zero manual work.
 `git merge-tree --write-tree --messages origin/codex/sys2-first-roadmap
 origin/codex/demo-smoke-test` (and the reverse) both exit non-zero with:
 
-```
+```text
 CONFLICT (add/add): Merge conflict in tests/production/test_system2_demo_readiness.py
 ```
 
 Conflict hunks:
 
-```
+```text
 <<<<<<< origin/codex/sys2-first-roadmap
 from production.api import ProductionReadAPI
 from shared.serialization import append_jsonl, write_json
@@ -57,7 +57,7 @@ from shared.strategy_package import build_canonical_package
 
 and, near the end of the file:
 
-```
+```text
 <<<<<<< origin/codex/sys2-first-roadmap
 def test_runtime_dashboard_status_is_read_only_and_package_scoped(tmp_path: Path) -> None:
     ... (uses ProductionReadAPI, write_json) ...

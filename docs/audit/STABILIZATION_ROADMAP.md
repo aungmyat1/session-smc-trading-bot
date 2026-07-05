@@ -12,7 +12,7 @@ Ordered by risk-reduction per unit of effort, not by document section. Nothing h
 
 ## P0 — safety-relevant, small, do first
 
-1. **Idempotency guard on live order placement** (`execution/trade_manager.py::open_position()`). Currently only crash-recovery prevents a duplicate order; nothing stops an accidental double-call during normal operation. Add a dedup check against the generated `idempotency_key` before submission, not just a random-suffixed key that's never looked up.
+1. **Idempotency guard on live order placement** (`execution/trade_manager.py::open_position()`). Currently only crash-recovery prevents a duplicate order; nothing stops an accidental double-call during normal operation. Derive a stable idempotency key from order intent (not the current per-call random-suffixed one, which can never match a prior call) and reject repeats of it before submission.
 2. **`run_portfolio.py` has no emergency-stop check.** Either wire in the same per-tick `control_state` check `run_st_a2_demo.py` has, or make the `RUN_PORTFOLIO_ALLOW_START` block a permanent architectural decision (retire the script) rather than a temporary gate — leaving it half-wired is the riskier middle state.
 3. **`develop`'s CI**: add the missing `pyyaml` install step (trivial) and resolve the `smartmoneyconcepts`/`fastapi` lock-file gaps (regenerate lock, or scope pytest paths like `main` does). Blocks reading any signal from that branch's CI and blocks re-verifying Dependabot bumps cleanly.
 4. **`/api/v1/production/health` heartbeat is never written** by the canonical runner — a monitoring consumer would see stale data as if it were current, not an honest unknown. Wire the runner to write it, or remove the endpoint until it's real.
