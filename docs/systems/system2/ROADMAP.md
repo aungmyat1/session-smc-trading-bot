@@ -3,7 +3,8 @@
 - Last updated: 2026-07-07
 - **Feature Expansion: FROZEN as of 2026-07-07** (SYS2-T014 closure) — new execution
   features, broker integrations, execution abstractions, and dashboard expansion require a
-  new, explicitly-scoped milestone decision. Bug/security/reliability fixes remain allowed.
+  new, explicitly-scoped milestone decision. Bug/security/reliability fixes (and production
+  blockers) remain allowed.
   Rationale and lift criteria: `docs/governance/releases/SYS2-T014-CLOSURE.md`.
 - Platform-level roadmap (execution engine consolidation, risk ledger, restart recovery,
   observability): `SYSTEM2_MASTER_PLAN.md` Phases 1-4 at the repo root — authoritative, status
