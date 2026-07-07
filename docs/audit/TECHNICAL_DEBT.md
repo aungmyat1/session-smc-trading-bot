@@ -171,3 +171,22 @@ These are called out here because they are structural technical debt, not missin
   incomplete.
 - **3 unconsolidated dashboard backend processes** plus 1 in-progress frontend migration
   containing a 156 MB self-duplicate.
+
+---
+
+## 10. CircleCI Pipeline has no configuration (added 2026-07-07, PR #26)
+
+Every PR's required-status-check list includes a `CircleCI Pipeline` context that fails with
+"No configuration was found in your project" — there is no `.circleci/config.yml` in this repo.
+This is a repo-wide GitHub branch-protection/integration gap, not something introduced by any
+individual PR's diff; it fails identically regardless of what the PR changes.
+
+- **Classification**: infrastructure maintenance, not a code defect.
+- **Impact**: cosmetic red X on every PR's check list; does not block merge today since it is
+  not part of the `Required CI` gate (`Required CI` — the actual required check — passes
+  independently). No functional risk.
+- **Fix options**: (a) add a minimal `.circleci/config.yml` that no-ops or mirrors the existing
+  GitHub Actions `CI` workflow, or (b) remove the CircleCI GitHub App integration/branch-protection
+  entry entirely if CircleCI isn't actually used by this project. Owner decision — not resolved
+  here.
+- **Do not block development on this** — explicitly non-blocking per the same review that found it.

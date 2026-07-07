@@ -313,6 +313,17 @@ demo validation must not be read as license to start ExecutionService
 implementation in parallel (see §7.2) — these are independent workstreams
 that happen to share a codebase.
 
+**Update 2026-07-07 (Phase 5C investigation)**: condition (1) has been
+investigated and root-caused — see
+`docs/audit/execution-record-nonterminal-investigation.md`. Root cause:
+`trade_manager.py` never advances records past `BROKER_ACKNOWLEDGED`, and
+`RECOVERY_PENDING` records only clear via a startup-only reconciliation step.
+**This is a confirmed code defect in the live production hot path
+(`trade_manager.py`), not yet fixed.** The condition is now "root cause
+known, fix not implemented" rather than "not yet root-caused" — do not read
+this as the condition being satisfied; it changes what's blocking, not
+whether something still blocks.
+
 ### 7.2 ExecutionService v1 Implementation Start
 
 | Check | Status |
