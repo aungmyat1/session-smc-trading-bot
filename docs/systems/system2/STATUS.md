@@ -216,3 +216,32 @@ consolidate, not yet done); restart recovery still has no broker reconciliation;
 strategy-loader duplication is unresolved. Risk widgets in any dashboard work must still be
 labeled "configured limits," not "live enforced state," until the durable ledger (not just the
 JSON persistence landed this milestone) is in place.
+
+## SYS2-T014 — Periodic execution-record reconciliation (2026-07-07, PR #27)
+
+**Landed:** `ExecutionRecord`s that reached `BROKER_ACKNOWLEDGED` (successful order placement) or
+`RECOVERY_PENDING` (ambiguous timeout) previously stayed stuck until the process next restarted,
+since `execution/startup_recovery.py::reconcile_pending_executions()` was only ever invoked once
+at startup (risk-register #14, root-caused via
+`docs/audit/execution-record-nonterminal-investigation.md`). The same, unmodified function now
+also runs mid-session from the tick loop (`scripts/run_st_a2_demo.py::_reconcile_periodic`),
+gated by `RECONCILE_EVERY_N_TICKS` (cadence, default 5 ticks) and `RECONCILE_MIN_PENDING_AGE_S`
+(minimum age before resolving an ambiguous record, default 60s, so it can't race an order still
+in flight at the broker). Periodic reconciliation now alerts via Telegram on
+recovered/lost outcomes, matching the startup path's existing behavior (CodeRabbit finding on
+PR #27, fixed same-day).
+
+**Scope discipline:** no changes to `execution/trade_manager.py`, `execution/execution_state.py`'s
+state machine, or any database schema — confirmed via architecture audit before merge. Full
+design/implementation/audit trail: `docs/systems/system2/SYS2-T014-DESIGN.md`.
+
+**Tests:** 4 new age-gate cases (`tests/execution/test_startup_recovery.py`), new
+`tests/scripts/test_run_st_a2_demo_periodic_reconciliation.py` (periodic-execution policy,
+duplicate-reconciliation idempotency, timeout-ambiguity preservation, startup-signature
+regression lock). CI's unit-tier command passing at the merged tip: 241/241.
+
+**Follow-ups (tracked separately, not blocking):** SYS2-T015 (add `tests/scripts/` to the CI unit
+test matrix — a pre-existing gap predating this task), SYS2-T016 (differentiate periodic-
+reconciliation errors from tick errors in logging), SYS2-T017 (document the tick-interval /
+reconciliation-cadence coupling as an operational constraint), SYS2-T018 (integration-level test
+for orphan-suppression during the age-gate window at the wiring level).
