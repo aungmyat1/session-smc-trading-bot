@@ -2,7 +2,8 @@
 
 Date: 2026-07-07
 Status: **COMPLETED — merged to `main` via PR #27** (`d140783`). See §10 for
-the implementation result and §11 for the merge/release record.
+the implementation result and §11 for the merge/release record. Formal
+closure record: [`docs/governance/releases/SYS2-T014-CLOSURE.md`](../../governance/releases/SYS2-T014-CLOSURE.md).
 Original scope: `execution/trade_manager.py` and its two confirmed failure
 paths (risk-register #14, `docs/audit/execution-record-nonterminal-investigation.md`)
 Owner: Architecture review (this document) → implemented per handoff → merged
