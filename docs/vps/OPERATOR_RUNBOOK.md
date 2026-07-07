@@ -13,14 +13,7 @@ changed by any procedure in this runbook. If a step seems to require it, stop an
 
 ## 1. Daily startup checks
 
-Run automated (recommended): `scripts/vps_health_check.sh` (add `--json` for machine-readable
-output) runs checks 1-6 below in one shot and prints a PASS/WARN/FAIL verdict per check plus an
-overall HEALTHY/DEGRADED/UNHEALTHY (exit 0/2/1 respectively). It also persists each run's restart
-counts to `logs/vps_health_state.json` so a "climbing since last run" restart count is flagged as
-WARN, not just a raw number. It does not replace this section — it wraps the exact same commands,
-so read the six manual steps below to know what it's checking and why.
-
-Manual (equivalent commands, run these first, in order, if not using the script):
+Run these first, in order, at the start of every operating day:
 
 ```bash
 # 1. Both production services active, zero restarts overnight
@@ -48,12 +41,6 @@ df -h /
 prior incident is acceptable — climbing is not), `ActiveState=active`, 0 failed units, `SELECT 1`
 returns a row, dashboard HTTP 200/307, `last_tick_at` within the last ~2 minutes, `broker_status`
 `connected`, disk under 85%.
-
-**Known DEGRADED state, not an incident**: `dashboard:health_score` currently reads ~65, below the
-85 threshold in §2, purely because `governance_allowed`/`trading_allowed` are `false` by design
-(`DEMO_ONLY=true` per this repo's `CLAUDE.md` §0.1) — the score's −20/−15 penalties for those two
-flags are expected in demo mode and are not a fault to chase. Investigate a health_score drop only
-if it is lower than this known baseline or paired with another failing check.
 
 **If anything above is wrong**, jump to the matching section below before doing anything else.
 
