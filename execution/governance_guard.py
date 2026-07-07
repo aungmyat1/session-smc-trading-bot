@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from core.strategy_registry import can_deploy_strategy, get_strategy_manifest
-from svos.governance.service import GovernanceService
-from svos.registry.service import StrategyRegistryService
+from execution.governance_snapshot_provider import GovernanceSnapshotProvider
 from shared.serialization import now_iso, stable_manifest_hash
 
 
@@ -39,21 +38,27 @@ class ExecutionGuardResult:
 
 
 class StrategyExecutionGuard:
-    """Runtime deployment gate backed by the existing SVOS registry/governance data."""
+    """Runtime deployment gate.
+
+    The ALLOW/DENY/WARN decision is driven solely by
+    ``core.strategy_registry.can_deploy_strategy`` (catalog-backed, no SVOS
+    dependency). Audit metadata is enriched, best-effort, from an optional
+    read-only ``GovernanceSnapshot`` — snapshot data never participates in
+    the deployment decision, and a missing snapshot never changes execution
+    behavior.
+    """
 
     def __init__(
         self,
         *,
         root: Path | str,
         catalog_path: Path | str | None = None,
-        registry: StrategyRegistryService | None = None,
-        governance: GovernanceService | None = None,
+        snapshot_provider: GovernanceSnapshotProvider | None = None,
         shadow_mode: str = "warn",
     ) -> None:
         self.root = Path(root)
         self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
-        self.registry = registry or StrategyRegistryService(root=self.root, catalog_path=self.catalog_path)
-        self.governance = governance or GovernanceService(root=self.root, registry=self.registry)
+        self.snapshot_provider = snapshot_provider or GovernanceSnapshotProvider(root=self.root)
         self.shadow_mode = shadow_mode.strip().lower() or "warn"
 
     def evaluate(
@@ -76,33 +81,16 @@ class StrategyExecutionGuard:
                 evidence_snapshot={},
             )
 
-        record = self.registry.ensure_strategy(strategy_name, actor=actor, reason="runtime execution guard bootstrap")
-        version = str(record.latest_version or manifest.get("version", ""))
-        version_id = str(record.current_version_id)
-        decisions = self.governance.decisions(strategy_name)
-        approvals = self.governance.approvals(strategy_name)
-        evidence = self.registry.evidence(strategy_name)
-        matched_approvals = [
-            item
-            for item in approvals
-            if str(item.get("current_version_id", "")) == version_id
-        ]
+        snapshot = self.snapshot_provider.get(strategy_name)
+        version = str((snapshot.latest_version if snapshot else None) or manifest.get("version", ""))
         evidence_snapshot = {
-            "current_stage": record.current_stage,
-            "current_version_id": version_id,
             "catalog_status": str(manifest.get("status", "")),
             "catalog_approved": bool(manifest.get("approved", False)),
             "deployment_target": str(manifest.get("deployment_target", "")),
-            "evidence_count": len(
-                [
-                    item
-                    for item in evidence
-                    if str(item.get("metadata", {}).get("current_version_id", "")) == version_id
-                ]
-            ),
-            "decision_count": len(decisions),
-            "approval_count": len(matched_approvals),
-            "latest_approval": matched_approvals[-1] if matched_approvals else {},
+            "evidence_count": snapshot.evidence_count if snapshot else 0,
+            "decision_count": snapshot.decision_count if snapshot else 0,
+            "approval_count": snapshot.approval_count if snapshot else 0,
+            "latest_approval": (snapshot.latest_approval if snapshot else None) or {},
         }
 
         permitted = can_deploy_strategy(strategy_name, target_stage=env, path=self.catalog_path)

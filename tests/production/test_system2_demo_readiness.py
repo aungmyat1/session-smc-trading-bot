@@ -35,6 +35,17 @@ def _package(tmp_path: Path) -> str:
         parameters={"symbols": ["EURUSD"], "timeframes": ["M15"]},
         risk_policy={"policy_id": "paper-only", "live_trading_enabled": False},
         evidence={"trust": "SYNTHETIC", "purpose": "system2-readiness"},
+        governance_snapshot={
+            "strategies": {
+                "SYSTEM2-FIXTURE": {
+                    "latest_version": "1.0.0",
+                    "evidence_count": 1,
+                    "decision_count": 0,
+                    "approval_count": 1,
+                    "latest_approval": None,
+                }
+            }
+        },
         approval={
             "decision": "APPROVED",
             "approved_at": "2026-01-01T00:00:00+00:00",

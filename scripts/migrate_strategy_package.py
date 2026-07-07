@@ -90,6 +90,23 @@ def migrate_legacy_package(
         },
         "migration_is_approval": False,
     }
+    # Legacy approval directories predate the SVOS governance registry, so
+    # there is no real registry/decision/approval count to carry forward.
+    # This reconstructs the required governance_snapshot.json member with
+    # explicit zero/None defaults and a source marker, rather than inventing
+    # non-existent registry history.
+    governance_snapshot = {
+        "strategies": {
+            strategy_id: {
+                "latest_version": strategy_version,
+                "evidence_count": len(evidence_files),
+                "decision_count": 0,
+                "approval_count": 1 if approval.get("decision") == "APPROVED" else 0,
+                "latest_approval": None,
+                "source": "legacy-migration-reconstructed",
+            }
+        }
+    }
     return build_canonical_package(
         output,
         strategy_id=strategy_id,
@@ -100,6 +117,7 @@ def migrate_legacy_package(
         parameters=parameters,
         risk_policy=risk_policy,
         evidence=evidence,
+        governance_snapshot=governance_snapshot,
         approval=approval,
         signing_key=canonical_signing_key,
         provenance=provenance,

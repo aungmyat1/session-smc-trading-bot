@@ -24,6 +24,17 @@ jobs:
     runs-on: ubuntu-latest
     environment: strategy-release
     steps:
+      - name: Validate release environment configuration
+        run: |
+          missing=()
+          [ -z "${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}" ] && missing+=("GCP_WORKLOAD_IDENTITY_PROVIDER")
+          [ -z "${{ vars.GCP_RELEASE_SERVICE_ACCOUNT }}" ] && missing+=("GCP_RELEASE_SERVICE_ACCOUNT")
+          [ -z "${{ vars.SVOS_KMS_KEY_VERSION }}" ] && missing+=("SVOS_KMS_KEY_VERSION")
+          [ -z "${{ vars.SVOS_GCS_BUCKET }}" ] && missing+=("SVOS_GCS_BUCKET")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required strategy-release environment variables: ${missing[*]}"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -38,12 +49,14 @@ jobs:
           service_account: ${{ vars.GCP_RELEASE_SERVICE_ACCOUNT }}
       - name: Build and verify approved package
         env:
+          STRATEGY: ${{ inputs.strategy }}
+          VERSION: ${{ inputs.version }}
           SVOS_PACKAGE_SIGNING_MODE: gcp-kms-asymmetric
           SVOS_CLOUD_ADAPTER: real
           SVOS_KMS_KEY_VERSION: ${{ vars.SVOS_KMS_KEY_VERSION }}
           SVOS_PACKAGE_TRANSPORT: gcs
           SVOS_GCS_BUCKET: ${{ vars.SVOS_GCS_BUCKET }}
-        run: python scripts/build_strategy_release.py --strategy '${{ inputs.strategy }}' --version '${{ inputs.version }}' --output dist/release
+        run: python scripts/build_strategy_release.py --strategy "$STRATEGY" --version "$VERSION" --output dist/release
       - name: Setup GitHub CLI
         uses: cli/cli-action@v3
         with:
@@ -51,9 +64,11 @@ jobs:
       - name: Publish immutable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          STRATEGY: ${{ inputs.strategy }}
+          VERSION: ${{ inputs.version }}
         run: >-
-          gh release create 'strategy/${{ inputs.strategy }}/v${{ inputs.version }}'
+          gh release create "strategy/$STRATEGY/v$VERSION"
           dist/release/*
           --generate-notes
           --target '${{ github.sha }}'
-          --title '${{ inputs.strategy }} v${{ inputs.version }}'
+          --title "$STRATEGY v$VERSION"

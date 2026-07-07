@@ -1,0 +1,16 @@
+[Unit]
+Description=Automated VPS infrastructure health check (docs/vps/OPERATOR_RUNBOOK.md #1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=aungp
+WorkingDirectory=/home/aungp/session-smc-trading-bot
+EnvironmentFile=/etc/session-smc-trading-bot/live-dashboard.env
+ExecStart=/home/aungp/session-smc-trading-bot/scripts/vps_health_check.sh
+# exit 2 = DEGRADED (warnings only, e.g. the known health_score baseline in
+# demo mode) — not a systemd-level failure. Only exit 1 (UNHEALTHY) should be.
+SuccessExitStatus=2
+StandardOutput=journal
+StandardError=journal
