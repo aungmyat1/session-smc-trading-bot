@@ -69,13 +69,38 @@ def reconcile_pending_executions(
     execution_store: ExecutionStateStore,
     journal_db: TradeJournalDB,
     open_positions: list[dict[str, Any]],
+    *,
+    min_pending_age_seconds: float = 0.0,
 ) -> ReconciliationReport:
+    """
+    `min_pending_age_seconds` (default 0 — matches the original startup-only
+    behavior exactly): skip resolving a record with no `broker_order_id` yet
+    (the ambiguous-timeout path, `RECOVERY_PENDING`) until it has sat
+    unchanged for at least this long. A periodic mid-session caller (unlike
+    the one-shot startup caller, which only ever runs after the outage
+    duration has already elapsed) could otherwise race an order that is
+    still in flight at the broker, wrongly declaring it FAILED_TERMINAL
+    moments before it actually fills. Records with a known
+    `broker_order_id` (`BROKER_ACKNOWLEDGED`) have no such race — they are
+    always resolved immediately, gate or not, per SYS2-T014's design (only
+    the *unlinked-match* branch carries the ambiguity this gate protects
+    against, so a skipped record is still read-only matched against open
+    positions to keep the orphan report accurate — it never risks a
+    duplicate order, since this module never calls place_order/open_position).
+    """
     incomplete = execution_store.recover_incomplete()
     linked_order_ids = journal_db.get_broker_order_ids()
     position_by_id = {str(p["id"]): p for p in open_positions if p.get("id")}
 
     resolved: list[ResolvedExecution] = []
+    deferred_position_ids: set[str] = set()
     for record in incomplete:
+        if not record.broker_order_id and not _past_age_gate(record, min_pending_age_seconds):
+            meta = record.state_history[0].get("metadata", {}) if record.state_history else {}
+            match = _find_unlinked_match(position_by_id, linked_order_ids, meta)
+            if match is not None:
+                deferred_position_ids.add(str(match["id"]))
+            continue
         outcome = _reconcile_one(record, execution_store, journal_db, position_by_id, linked_order_ids)
         resolved.append(outcome)
         if outcome.broker_order_id:
@@ -84,9 +109,22 @@ def reconcile_pending_executions(
     claimed_ids = {r.broker_order_id for r in resolved if r.broker_order_id}
     orphaned = [
         pos for pid, pos in position_by_id.items()
-        if pid not in linked_order_ids and pid not in claimed_ids
+        if pid not in linked_order_ids and pid not in claimed_ids and pid not in deferred_position_ids
     ]
     return ReconciliationReport(resolved=resolved, orphaned_positions=orphaned)
+
+
+def _past_age_gate(record: ExecutionRecord, min_age_seconds: float) -> bool:
+    if min_age_seconds <= 0:
+        return True
+    try:
+        updated = datetime.fromisoformat(record.updated_at)
+    except ValueError:
+        return True
+    if updated.tzinfo is None:
+        updated = updated.replace(tzinfo=timezone.utc)
+    age = (datetime.now(timezone.utc) - updated).total_seconds()
+    return age >= min_age_seconds
 
 
 def _reconcile_one(
