@@ -28,8 +28,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service
@@ -2001,14 +2000,6 @@ async def system_health(identity: dict = Depends(require_authenticated())):
     """Alias of the Phase 5 /api/operations/health content under the name
     this prompt asked for."""
     return await api_operations_health()
-
-
-@app.get("/system/vps-memory")
-async def system_vps_memory():
-    """Host-level RAM/swap/dev-tooling health (see scripts/ops/mem_monitor.py).
-    Read-only; reports whether the VPS is at risk of an OOM event."""
-    from scripts.ops.mem_monitor import get_memory_health
-    return get_memory_health()
 
 
 @app.get("/metrics", response_class=PlainTextResponse)

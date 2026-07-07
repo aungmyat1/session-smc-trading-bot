@@ -1,9 +1,7 @@
 # Runtime Resource Optimization Recommendations
 
 Date: 2026-07-04
-Status: Mostly recommendations only. **Applied 2026-07-05**: `effective_cache_size` lowered
-4GB→2GB (`ALTER SYSTEM` + `pg_reload_conf()`, no restart) — see updated finding below. All other
-items in this document remain unapplied.
+Status: Recommendations only — nothing in this document has been applied.
 Baseline: `docs/vps/OPERATIONS_BASELINE.md` (2 vCPU, 3.8 GiB RAM, 81% disk used, load avg 0.38/0.24/0.22)
 
 ---
@@ -12,7 +10,7 @@ Baseline: `docs/vps/OPERATIONS_BASELINE.md` (2 vCPU, 3.8 GiB RAM, 81% disk used,
 
 | Area | Finding | Recommendation |
 |---|---|---|
-| **PostgreSQL `effective_cache_size`** | ~~Set to **4GB**, but total host RAM is **3.8 GiB**~~ **FIXED 2026-07-05**: was 4GB against 3.8 GiB total host RAM — the query planner was tuned assuming more OS page cache than physically exists, which can produce suboptimal query plans (wrongly favoring index scans it thinks will hit cache) | ~~Lower to ~2GB~~ **Applied**: set to `2GB` via `ALTER SYSTEM SET effective_cache_size = '2GB'; SELECT pg_reload_conf();` — took effect immediately, `postgresql@16-main.service` stayed active throughout, no restart needed. |
+| **PostgreSQL `effective_cache_size`** | Set to **4GB**, but total host RAM is **3.8 GiB** — the query planner is tuned assuming more OS page cache than physically exists on this machine, which can produce suboptimal query plans (wrongly favoring index scans it thinks will hit cache) | Lower to ~2GB (roughly 50-60% of total RAM, leaving headroom for the OS, dashboard, and any future execution runner). One `ALTER SYSTEM` + reload, no restart-of-data required. |
 | **`smc-demo-runner.service` crash-loop** | 173+ restarts and climbing, one exec + one Python interpreter startup + argparse failure every 15 seconds, indefinitely | Resolve per `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md` (Replace recommendation) — this is a real, continuous, avoidable CPU/journal-write cost with zero benefit, not just a cleanliness issue. |
 | **Disk headroom** | 81% used, 7.4 GiB free, on a host with an actively-growing Postgres database, journald, and application logs | No further cleanup batch needed *immediately*, but see `docs/vps/LOG_RETENTION_POLICY.md` — without a retention cap, disk pressure returns. Treat 85% as an internal alert threshold, not 90%+. |
 

@@ -88,7 +88,7 @@ files if ever opened as a PR). Delete on `origin`.
 
 ### 6. Local git housekeeping (this checkout only — no GitHub API calls)
 
-```
+```bash
 git worktree remove /tmp/session-smc-pr7
 git branch -D pr-7
 git branch -D architecture/separate-svos-production
