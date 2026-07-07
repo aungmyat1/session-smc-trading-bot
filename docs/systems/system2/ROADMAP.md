@@ -71,6 +71,106 @@ This file also tracks the **dashboard integration workstream** roadmap. Full det
 | 15 | Analytics | Not started (frontend-side); backend data available via Phase 1 endpoint |
 | 16 | Settings | Not started — lowest priority |
 
+## Execution/SVOS Governance Decoupling (Scope 2, done 2026-07-06)
+
+Tracks the execution-hot-path decoupling from SVOS/research code, independent of the
+platform-phase and dashboard tables above.
+
+**Previous architecture:** `execution/governance_guard.py` (or its equivalent
+deployment-gate logic) had a live dependency surface reaching into `svos.*`/`research.*`
+governance/registry services on the execution hot path — the same process making
+ALLOW/DENY/WARN runtime decisions could import research-side code.
+
+**Current architecture:**
+- `execution/governance_guard.py` has zero `svos.*`/`research.*` imports (enforced by
+  `tests/execution/test_governance_guard_no_svos_import.py`, which asserts both on AST
+  imports and on raw source strings).
+- The ALLOW/DENY/WARN decision is driven exclusively by
+  `core.strategy_registry.can_deploy_strategy()` / `get_strategy_manifest()` — a
+  catalog-backed (`config/strategy_catalog.yaml`), SVOS-free module. Shadow-mode behavior
+  (`WARN_SHADOW_GOVERNANCE_INCOMPLETE`) is unchanged.
+- `execution/governance_snapshot.py` defines `GovernanceSnapshot`, a frozen, pure-data
+  audit projection (`strategy_name`, `latest_version`, `evidence_count`,
+  `decision_count`, `approval_count`, `latest_approval`). It never participates in the
+  deployment decision — deliberately excludes any status/approval/gating field that
+  could tempt a decision branch.
+- `execution/governance_snapshot_provider.py` (`GovernanceSnapshotProvider`) is the sole
+  SVOS-free reader: it loads `artifacts/svos/strategy_snapshots.json` (schema: a dict of
+  `strategy_name -> {latest_version, evidence_count, decision_count, approval_count,
+  latest_approval}`, optionally wrapped under a top-level `"strategies"` key) and returns
+  `None` on any missing/malformed data. A missing snapshot degrades gracefully to
+  zero/empty defaults in `evidence_snapshot` — it never denies or changes `allowed`.
+  Since Scope 3 (below), it can also read the same shape extracted from a verified
+  package's `governance_snapshot.json` member (preferred over the loose file when a
+  `package_path` is supplied and yields data); the loose-file-only default behavior is
+  unchanged for callers that don't pass `package_path`.
+- **Manual bridge:** `scripts/export_governance_snapshot.py` is the only place that still
+  imports `svos.governance.service.GovernanceService` /
+  `svos.registry.service.StrategyRegistryService`. It runs out-of-band (manual, no
+  event-driven writer yet) and writes the JSON artifact execution reads.
+
+**Rationale:** execution must be able to start, evaluate strategies, and run under
+`LIVE_TRADING=false`/`DEMO_ONLY=true` even if SVOS research services are unavailable,
+broken, or mid-migration — research never trades, and now execution can never
+accidentally import into research either. Audit richness (evidence/decision/approval
+counts) is preserved as best-effort metadata rather than a hard dependency.
+
+**Validated 2026-07-06:** snapshot export runs cleanly against the current
+`config/strategy_catalog.yaml` (8 strategies); `StrategyExecutionGuard.evaluate()`
+produces identical `allowed`/`reason_code`/`decision_source` with the snapshot file
+present vs. renamed-away (only `evidence_snapshot` counts change, falling back to
+zero/empty); no exceptions in either case. Full `tests/execution/` suite (124 tests)
+passes.
+
+## Approved Package Contract — governance snapshot (Scope 3, done 2026-07-06)
+
+Extends the existing `shared/strategy_package.py` `strategy-package/v2` contract (not a
+new deployment mechanism) so a built package carries its own governance snapshot instead
+of requiring a separate loose-file bridge at consumption time.
+
+- `governance_snapshot.json` is now a **required** archive member
+  (`shared.strategy_package.REQUIRED_MEMBERS`), and — since `SIGNED_MEMBERS` is derived
+  from `REQUIRED_MEMBERS` — it is automatically a signed member too, with no new signing
+  code. Its content shape matches the loose-file export:
+  `{"strategies": {strategy_name: {latest_version, evidence_count, decision_count,
+  approval_count, latest_approval}}}`.
+- `shared.strategy_package.RUNTIME_API_VERSION` bumped `system2-runtime/v1` ->
+  `system2-runtime/v2` to signal this schema change. `validate_canonical_package`'s
+  existing runtime-api-version mismatch rejection is the enforcement mechanism — no
+  second compatibility mechanism was added. `schemas/strategy-package-v2.schema.json`
+  updated to match (`runtime_api_version` const, `members.minProperties` 6 -> 7).
+- Computation is shared, not duplicated: `svos/governance/snapshot.py` provides
+  `compute_strategy_governance_snapshot()` (single strategy) and
+  `compute_all_governance_snapshots()` (all catalog strategies). Both
+  `scripts/export_governance_snapshot.py` (loose-file dev path, behavior unchanged) and
+  `svos/deployment/service.py`'s `DeploymentStatusService.build_strategy_package`
+  (packaged path) call the same helper.
+- Lifecycle: **built by SVOS** (System 1) at package-build time — `build_strategy_package`
+  is gated on `manifest.approved is True and current_stage == "PRODUCTION_APPROVAL"`, so
+  the governance data is always available when a package is legitimately built. **Consumed
+  read-only by execution** (System 2) via `GovernanceSnapshotProvider`, which now accepts
+  an optional `package_path` and prefers a packaged snapshot over the loose file when both
+  are available — the loose-file path is untouched for strategies without a built package.
+  This does not touch `execution/governance_guard.py`'s ALLOW/DENY/WARN decision logic at
+  all; a missing/malformed snapshot from either source still degrades to `None` and never
+  changes `allowed`.
+- **Compatibility:** no strategy currently holds `PRODUCTION_APPROVAL`, so no package has
+  ever been built and there is nothing to migrate. A future real approved-strategy package
+  build will simply include `governance_snapshot.json` from the start; there is no
+  v1-package upgrade path (v1 archives are rejected outright by the v2 validator's
+  `runtime_api_version` check, which is intentional — packages are immutable, evidence-backed
+  artifacts, not something patched in place).
+
+**Remaining work (Scopes 4-6, not started):**
+- Scope 4: Event-driven snapshot writer (replace the manual
+  `scripts/export_governance_snapshot.py` invocation with a triggered/scheduled writer).
+- Scope 5: CI forbidden-import rule generalizing
+  `test_governance_guard_no_svos_import.py`'s pattern beyond a single file.
+- Scope 6: Database separation between SVOS registry/governance storage and execution's
+  operational tables.
+- Package signing and deployment-pipeline redesign remain explicitly out of scope until
+  a future, separately-approved task.
+
 ## Next milestone
 
 Repoint `New Dashborad/Gai dashboard/src/context/SocketContext.tsx`'s REST-fallback fetch from
