@@ -83,5 +83,55 @@ SYS2-T014's scope and **not** implemented as part of this closure:
   elapsed operational time and monitoring, not a sprint.
 
 These remain future System 2 roadmap items, to be picked up only under a
-new, explicitly-scoped milestone (see the accompanying feature-freeze
-declaration).
+new, explicitly-scoped milestone (see the feature-freeze declaration below).
+
+---
+
+## SYS2-T015 — CI Coverage for `tests/scripts/` (COMPLETE)
+
+Implemented as part of this closure, per the follow-up task prioritization
+in the strategic report that preceded this document. One-line addition to
+`.github/workflows/ci.yml`'s `unit` tier path list. No architecture change,
+no production code change. Verified locally against CI's exact command:
+269/269 passing (241 prior + 28 from `tests/scripts/`); `tests/architecture`
+(15/15), bandit, `check_docs_drift.py`, and `validate_strategy_package.py
+--self-test` all unaffected and passing.
+
+**SYS2-T016, SYS2-T017, SYS2-T018 are explicitly NOT started** — recorded
+as future work per the prioritization report, not implemented here, per
+this closure's own operating constraints.
+
+---
+
+## System 2 Foundation Status: COMPLETE
+
+**Feature Expansion: FROZEN.**
+
+Effective this closure record, System 2 (execution platform) work is
+declared feature-frozen pending a new, explicitly-scoped milestone decision.
+
+**Allowed without a new milestone:**
+- Bug fixes
+- Security fixes
+- Production blockers
+- Reliability fixes
+
+**Not allowed without a new milestone:**
+- New execution features
+- New broker integrations
+- New execution abstractions (e.g., `ExecutionService` — remains a reviewed
+  proposal per `docs/svos/EXECUTION-SERVICE-BOUNDARY-DESIGN.md`, not
+  authorized for implementation)
+- Dashboard expansion
+
+**Rationale**: per the SYS2-T014 closure strategic report, System 2 has
+reached roughly two-thirds completion against its own Production Candidate
+Definition of Done (`SYSTEM2_MASTER_PLAN.md`), while System 1 (research/SVOS
+strategy validation) has had no commit activity in the 5 days preceding this
+closure, and the strategy currently running in demo (ST-A2) carries an
+unresolved, dated SVOS governance gap (`CLAUDE.md` §6,
+`DEFERRED_REVALIDATION`). Continuing to expand System 2 capability without
+addressing that imbalance would extend it, not close it. This freeze is a
+governance decision to protect that finding, not a statement that System 2
+is finished forever — it can be lifted under a new, explicitly-scoped
+milestone when justified by evidence.
