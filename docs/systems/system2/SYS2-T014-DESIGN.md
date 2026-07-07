@@ -1,10 +1,11 @@
 # SYS2-T014 — Architecture Design Package
 
 Date: 2026-07-07
-Status: **IMPLEMENTED** — see §10 for the implementation result.
+Status: **COMPLETED — merged to `main` via PR #27** (`d140783`). See §10 for
+the implementation result and §11 for the merge/release record.
 Original scope: `execution/trade_manager.py` and its two confirmed failure
 paths (risk-register #14, `docs/audit/execution-record-nonterminal-investigation.md`)
-Owner: Architecture review (this document) → implemented per handoff
+Owner: Architecture review (this document) → implemented per handoff → merged
 Exit criteria: state machine approved, DB impact classified, tests specified,
 rollback plan defined — all four addressed below.
 
@@ -295,12 +296,41 @@ fails to collect due to a pre-existing, unrelated `NameError` in
 `dashboard/status_server.py` — confirmed via `git diff HEAD` to already be
 on `main` before this work, not introduced by it.)
 
-**Not committed.** Implementation and tests are complete and verified in the
-working tree; per this repo's standing rule (commit only when explicitly
-asked), these changes have not been committed. `scripts/run_st_a2_demo.py`
-in particular has substantial *other*, unrelated, pre-existing uncommitted
-work already sitting in the same file (`RiskPortfolioStore`,
-`ValidationSessionManager`, migration 005/006 wiring) — committing SYS2-T014
-cleanly without sweeping that in requires either isolating hunks or the
-owner's guidance on how to sequence the two, so this is deliberately left
-for a separate, explicit commit step rather than decided unilaterally here.
+**Not committed [superseded, see §11]:** the above described the state
+before isolation/commit. §11 records what actually happened.
+
+---
+
+## 11. Merge & release record (2026-07-07)
+
+- **Isolated commit**: `scripts/run_st_a2_demo.py` had substantial unrelated
+  pre-existing uncommitted work (`RiskPortfolioStore`, `ValidationSessionManager`,
+  migration 005/006 wiring) co-resident in the same file. Isolation was
+  performed by reconstructing the file from clean `HEAD` plus exactly the
+  SYS2-T014 edits, independently re-verified byte-for-byte against a
+  from-scratch reconstruction before staging — not a whole-file commit.
+- **PR**: opened from a fresh branch (`sys2-t014-periodic-reconciliation`,
+  based on `origin/main`) rather than the long-lived working branch, to avoid
+  re-displaying already-merged history as new — [#27](https://github.com/aungmyat1/session-smc-trading-bot/pull/27).
+- **CodeRabbit finding (fixed same-day)**: periodic reconciliation logged
+  recovered/lost outcomes but didn't alert via Telegram, unlike the startup
+  path handling the identical event. Fixed to match (`b6ba38f`).
+- **CI**: all required checks passed (unit, integration, quality/architecture,
+  security, docs/package contracts, CodeRabbit). Zero unresolved review
+  threads at merge time.
+- **Merged**: squash merge, commit `d140783f51f030292cd461131ef334ce11051d0a`,
+  2026-07-07T16:20:17Z. Merge commit diff confirmed to contain exactly the
+  5 SYS2-T014 files (611 insertions, 1 deletion) — no anomaly.
+- **Post-merge verification**: `main` compiles; `tests/architecture` (15/15),
+  `check_docs_drift.py`, and CI's exact unit-tier command (241/241 at the
+  real merged tip — the `RiskPortfolioStore`/validation WIP's own test files
+  inflated an earlier working-tree-only count to 292; not part of this merge)
+  all pass.
+- **Branch `sys2-t014-periodic-reconciliation`**: not deleted post-merge
+  (no `--delete-branch` used); low-priority cleanup, not performed
+  unilaterally.
+- **Follow-up tasks** (not implemented, tracked for future work): SYS2-T015
+  (CI coverage for `tests/scripts/`), SYS2-T016 (log-message differentiation
+  for periodic-reconciliation errors), SYS2-T017 (scheduler operational
+  documentation), SYS2-T018 (integration test for orphan-suppression during
+  the age-gate window).
