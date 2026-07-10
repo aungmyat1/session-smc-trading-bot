@@ -8,12 +8,14 @@ import { SocketProvider, useSocket } from "./context/SocketContext.js";
 import { SvosResearchDashboard } from "./components/SvosResearchDashboard.js";
 import { LiveOperationsDashboard } from "./components/LiveOperationsDashboard.js";
 import { SuggestionsTab } from "./components/SuggestionsTab.js";
-import { Clock, Play, Pause, RefreshCw, Zap, BookOpen, Lightbulb } from "lucide-react";
+import { OperatorLogin } from "./components/OperatorLogin.js";
+import { ValidationDashboard } from "./components/ValidationDashboard.js";
+import { Clock, Play, Pause, RefreshCw, Zap, BookOpen, Lightbulb, ShieldCheck } from "lucide-react";
 
 const DashboardContent: React.FC = () => {
   const { state, isConnected, resumeTrading, pauseTrading } = useSocket();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [activeTab, setActiveTab] = useState<"LIVE" | "SVOS" | "SUGGESTIONS">("LIVE");
+  const [activeTab, setActiveTab] = useState<"LIVE" | "SVOS" | "SUGGESTIONS" | "VALIDATION">("LIVE");
 
   // Keep a live UTC clock ticking
   useEffect(() => {
@@ -81,6 +83,13 @@ const DashboardContent: React.FC = () => {
             >
               <Lightbulb className="w-3.5 h-3.5 fill-current" /> SUGGESTIONS
             </button>
+            <button
+              onClick={() => setActiveTab("VALIDATION")}
+              id="tab-validation"
+              className={`px-4 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === "VALIDATION" ? "bg-emerald-500 text-zinc-950 font-black shadow" : "text-zinc-400 hover:text-white"}`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 fill-current" /> VALIDATION
+            </button>
           </div>
 
           {/* Clock & Pause Controls */}
@@ -90,6 +99,8 @@ const DashboardContent: React.FC = () => {
               <Clock className="w-3.5 h-3.5 text-zinc-500" />
               <span>{currentTime.toISOString().split("T")[1].slice(0, 8)} UTC</span>
             </div>
+
+            <OperatorLogin />
 
             {/* Global Pause override */}
             {state.isTradingPaused ? (
@@ -119,8 +130,10 @@ const DashboardContent: React.FC = () => {
           <LiveOperationsDashboard />
         ) : activeTab === "SVOS" ? (
           <SvosResearchDashboard />
-        ) : (
+        ) : activeTab === "SUGGESTIONS" ? (
           <SuggestionsTab />
+        ) : (
+          <ValidationDashboard />
         )}
       </main>
 

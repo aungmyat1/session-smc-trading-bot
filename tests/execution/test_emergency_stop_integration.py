@@ -17,7 +17,17 @@ class _Connector:
 
 
 @pytest.mark.asyncio
-async def test_tick_closes_positions_once_per_emergency_activation(monkeypatch):
+async def test_tick_closes_positions_once_per_emergency_activation(monkeypatch, tmp_path):
+    # _tick() unconditionally calls _write_state()/_save_risk_state()/
+    # _save_portfolio_state() at the end — without these, this test silently
+    # overwrote the *real*, live-deployed runner's logs/strategy_demo_state.json
+    # with this test's fake {"id": "POS-1"} / emergency-stop-active data
+    # (root-caused 2026-07-06 — see docs/systems/system2/DASHBOARD_READINESS.md
+    # §14 — self-healed only because the real runner's next tick, ~60s later,
+    # overwrote it again before anyone observed the corrupted state).
+    monkeypatch.setattr(runner, "_STATE_PATH", tmp_path / "strategy_demo_state.json")
+    monkeypatch.setattr(runner, "_RISK_STATE_PATH", tmp_path / "risk_state.json")
+    monkeypatch.setattr(runner, "_PORTFOLIO_STATE_PATH", tmp_path / "portfolio_state.json")
     monkeypatch.setattr(
         runner,
         "load_control_state",

@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from db.models import ExecutionEvent, Intent, OrderRecord, RecoveryCheckpoint, RiskDecision, Runtime
-from execution.operations_recorder import OperationsRecorder
+from db.models import ExecutionEvent, Fill, Intent, OrderRecord, PositionRecord, Reconciliation, RecoveryCheckpoint, RiskDecision, Runtime
+from execution.operations_recorder import OperationsRecorder, db_health_check, record_fill, record_position, record_reconciliation
 
 
 class _FakeEvent:
@@ -93,3 +93,89 @@ def test_db_write_failure_is_swallowed_not_raised():
 def test_no_database_configured_is_a_silent_noop():
     with patch("execution.operations_recorder.SessionLocal", None):
         OperationsRecorder("rt-1").record_runtime_start()  # must not raise
+
+
+# ── db_health_check() — System 2 readiness aggregator's DB probe ─────────────
+
+def test_db_health_check_not_configured_reports_unreachable_not_skipped():
+    """No DATABASE_URL must be reported as an explicit failure, not silently
+    treated as 'not applicable' — the readiness aggregator fails closed on
+    this exact distinction (configured=False vs configured=True, unreachable)."""
+    with patch("execution.operations_recorder.SessionLocal", None):
+        result = db_health_check()
+    assert result == {"reachable": False, "configured": False, "latency_ms": None, "error": "DATABASE_URL not configured"}
+
+
+def test_db_health_check_reachable_reports_latency():
+    session = _fake_session()
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        result = db_health_check()
+    assert result["reachable"] is True
+    assert result["configured"] is True
+    assert result["error"] is None
+    assert isinstance(result["latency_ms"], float)
+    session.execute.assert_called_once()
+    session.close.assert_called_once()
+
+
+def test_db_health_check_query_failure_reports_unreachable_but_configured():
+    session = _fake_session()
+    session.execute.side_effect = RuntimeError("connection refused")
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        result = db_health_check()
+    assert result["reachable"] is False
+    assert result["configured"] is True
+    assert "connection refused" in result["error"]
+    session.close.assert_called_once()  # session is always closed, even on failure
+
+
+# ── Dormant-table writers (2026-07-06, Demo Validation Mode) ────────────────
+# operations.fill / position_record / reconciliation were defined by
+# migration 004 but had zero writers anywhere in the codebase until Demo
+# Validation Mode's ValidationLifecycleRecorder became their first caller.
+
+
+def test_record_fill_adds_one_row():
+    session = _fake_session()
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        record_fill("order-1", "FILLED", {"symbol": "EURUSD"})
+    added = session.add.call_args[0][0]
+    assert isinstance(added, Fill)
+    assert added.order_id == "order-1"
+    assert added.status == "FILLED"
+    session.commit.assert_called_once()
+
+
+def test_record_fill_db_failure_is_swallowed():
+    session = _fake_session()
+    session.commit.side_effect = RuntimeError("db down")
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        record_fill("order-1", "FILLED", {})  # must not raise
+    session.rollback.assert_called_once()
+
+
+def test_record_position_adds_one_row():
+    session = _fake_session()
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        record_position("EURUSD", "OPEN", {"lots": 0.1})
+    added = session.add.call_args[0][0]
+    assert isinstance(added, PositionRecord)
+    assert added.symbol == "EURUSD"
+    session.commit.assert_called_once()
+
+
+def test_record_reconciliation_adds_one_row():
+    session = _fake_session()
+    with patch("execution.operations_recorder.SessionLocal", return_value=session):
+        record_reconciliation("rt-1", True, {"orphans": 0})
+    added = session.add.call_args[0][0]
+    assert isinstance(added, Reconciliation)
+    assert added.consistent is True
+    session.commit.assert_called_once()
+
+
+def test_writers_are_no_ops_when_database_unconfigured():
+    with patch("execution.operations_recorder.SessionLocal", None):
+        record_fill("order-1", "FILLED", {})
+        record_position("EURUSD", "OPEN", {})
+        record_reconciliation("rt-1", True, {})  # none of these should raise

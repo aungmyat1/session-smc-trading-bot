@@ -390,3 +390,146 @@ def test_load_log_prefers_most_recently_written_file_not_first_existing(tmp_path
     result = status_server._load_log(n=5)
 
     assert result == ["CURRENT LIVE LINE"]
+
+
+# ── /ws ticket auth (2026-07-05) ───────────────────────────────────────────────
+# Browsers cannot set Authorization/X-SVOS-Actor headers on a WebSocket
+# upgrade, so /ws now accepts a short-lived ticket (minted via the
+# authenticated GET /api/ws-ticket) as a query param, alongside the
+# pre-existing header-based path (preserved, tested separately above via
+# the emergency-stop/control endpoints that share session_payload()).
+
+_WS_TOKEN = "ws-ticket-test-token"
+_WS_HEADERS = {"Authorization": f"Bearer {_WS_TOKEN}", "X-SVOS-Actor": "ws-tester"}
+
+
+def test_ws_ticket_endpoint_requires_authentication(monkeypatch):
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    client = TestClient(status_server.app)
+
+    unauthenticated = client.get("/api/ws-ticket")
+    assert unauthenticated.status_code == 401
+
+    authenticated = client.get("/api/ws-ticket", headers=_WS_HEADERS)
+    assert authenticated.status_code == 200
+    body = authenticated.json()
+    assert "ticket" in body and body["expires_in"] == 30
+
+
+def test_ws_connection_rejected_without_ticket_or_header_auth(monkeypatch):
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    client = TestClient(status_server.app)
+
+    with pytest.raises(Exception):
+        with client.websocket_connect("/ws"):
+            pass
+
+
+def test_ws_connection_accepted_with_valid_ticket_and_delivers_real_events(monkeypatch):
+    """End-to-end: mint a real ticket via the real endpoint, connect to the
+    real /ws with it, publish a real event through the real broadcaster, and
+    confirm the exact BaseEvent shape (dashboard/events.py) arrives — not a
+    fabricated {type, state} shape the frontend used to expect."""
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    from dashboard.events import make_system_event
+
+    client = TestClient(status_server.app)
+    ticket = client.get("/api/ws-ticket", headers=_WS_HEADERS).json()["ticket"]
+
+    with client.websocket_connect(f"/ws?ticket={ticket}") as ws:
+        event = make_system_event("pipeline_started", session_id="test-session", foo="bar")
+        status_server._event_broadcaster.publish(event)
+        received = ws.receive_json()
+
+    assert received["event_type"] == "pipeline_started"
+    assert received["source_system"] == "system"
+    assert received["payload"] == {"foo": "bar"}
+
+
+def test_ws_ticket_cannot_be_reused_for_a_second_connection(monkeypatch):
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    client = TestClient(status_server.app)
+    ticket = client.get("/api/ws-ticket", headers=_WS_HEADERS).json()["ticket"]
+
+    with client.websocket_connect(f"/ws?ticket={ticket}"):
+        pass  # first use succeeds and consumes the ticket
+
+    with pytest.raises(Exception):
+        with client.websocket_connect(f"/ws?ticket={ticket}"):
+            pass
+
+
+def test_ws_still_accepts_header_based_auth_as_fallback(monkeypatch):
+    """Ticket auth is additive — a caller that CAN send headers (e.g. a
+    server-to-server client, unlike a browser) must still work exactly as
+    before, unweakened."""
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    client = TestClient(status_server.app)
+
+    with client.websocket_connect("/ws", headers=_WS_HEADERS):
+        pass  # connecting at all (no exception) is the assertion
+
+
+# ── /api/system2/monitoring (2026-07-06) ──────────────────────────────────────
+
+def test_monitoring_endpoint_returns_all_expected_sections(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    client = TestClient(status_server.app)
+
+    response = client.get("/api/system2/monitoring")
+
+    assert response.status_code == 200
+    body = response.json()
+    for key in (
+        "platform_health", "broker", "runner", "database", "risk_engine",
+        "dashboard_backend", "websocket", "execution_latency", "resources",
+        "generated_at", "api_latency_ms",
+    ):
+        assert key in body, key
+    assert "cpu" in body["resources"] and "memory" in body["resources"] and "disk" in body["resources"]
+
+
+def test_monitoring_execution_latency_is_honestly_null_with_no_trades(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    client = TestClient(status_server.app)
+
+    with patch.object(status_server, "get_recent_events", return_value=[]):
+        response = client.get("/api/system2/monitoring")
+
+    assert response.json()["execution_latency"]["p50_ms"] is None
+    assert response.json()["execution_latency"]["sample_count"] == 0
+
+
+def test_monitoring_broker_latency_is_null_not_fabricated(tmp_path, monkeypatch):
+    """Shared Broker Runtime reads a state file, not a live RPC — there is no
+    real round-trip to measure, so latency_ms must be null, not a fake 0 or
+    a leftover value from the old RPC-based implementation."""
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    _base_operations_state(tmp_path)
+    client = TestClient(status_server.app)
+
+    response = client.get("/api/system2/monitoring")
+
+    assert response.json()["broker"]["latency_ms"] is None
+
+
+def test_monitoring_websocket_subscriber_count_reflects_real_connections(tmp_path, monkeypatch):
+    monkeypatch.setattr(status_server, "ROOT", tmp_path)
+    monkeypatch.setattr(control_state, "CONTROL_STATE_PATH", tmp_path / "reports" / "control_state.json")
+    monkeypatch.setenv("SVOS_OPERATOR_TOKEN", _WS_TOKEN)
+    _base_operations_state(tmp_path)
+    client = TestClient(status_server.app)
+
+    before = client.get("/api/system2/monitoring").json()["websocket"]["active_subscribers"]
+    ticket = client.get("/api/ws-ticket", headers=_WS_HEADERS).json()["ticket"]
+    with client.websocket_connect(f"/ws?ticket={ticket}"):
+        during = client.get("/api/system2/monitoring").json()["websocket"]["active_subscribers"]
+    after = client.get("/api/system2/monitoring").json()["websocket"]["active_subscribers"]
+
+    assert during == before + 1
+    assert after == before

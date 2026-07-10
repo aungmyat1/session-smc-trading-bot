@@ -66,14 +66,21 @@ Run), not integration with System 2.
 
 ## 5. WebSocket usage
 
-`SocketContext.tsx` connects same-origin (`${protocol}//${host}${path}`, alternating `/ws` and
-`/api/ws` across reconnect attempts — no configurable host/port, relies on being served from the
-same process as its API). Reconnect is a fixed 3s delay (not exponential), with an automatic
-fallback to REST polling of `GET /api/status` (returns the raw `LiveDashboardState` object, not
-wrapped) every 1.5s while disconnected. All user actions (`pauseTrading`, `forceCloseTrade`,
-`activateStrategy`, `triggerKillSwitch`, `updateRiskControls`, `reconnectBroker`, etc.) are REST
-`POST`s, not WS messages — WS is receive-only from the client's perspective. `PING`/`PONG` exists
-in the type surface but the client never actually sends `PING` (dead code path).
+**Superseded 2026-07-05 — see `docs/systems/system2/DASHBOARD_READINESS.md` §8 for the current,
+fixed behavior; this section is left as the original 2026-07-04 assessment for history.** As
+originally written, `SocketContext.tsx` connected same-origin (`${protocol}//${host}${path}`,
+alternating `/ws` and `/api/ws` across reconnect attempts — no configurable host/port, relies on
+being served from the same process as its API), polled `/api/status` (not the real
+`/api/new-dashboard/live-state`) as its REST fallback, and its `onmessage` handler expected a
+`{type: "INITIAL_STATE"|"TICK", state}` shape. None of that matched the real backend: `/api/ws`
+never existed, `/ws` required header-based auth a browser cannot send, and the real backend's
+events are `BaseEvent`-shaped with no `type`/`state` fields — so the connection could never
+actually authenticate, and even if it had, every real event would have been silently ignored. All
+three are fixed as of 2026-07-05 (ticket-based auth, single canonical `/ws` target, real event
+schema handled by refetching state). Still true, unchanged: reconnect is a fixed 3s delay (not
+exponential); all user actions are REST `POST`s, not WS messages (WS remains receive-only from the
+client's perspective); `PING`/`PONG` exists in the type surface but the client never actually
+sends `PING` (dead code path, not addressed).
 
 ## 6. API requirements (as the frontend already expects them)
 

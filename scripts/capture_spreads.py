@@ -9,10 +9,11 @@ spread understates the true cost. This logs the live spread each poll, tags it
 london / new_york / off, and reports the killzone-hour average so you can
 fill config/costs.json with numbers that mean something for your account.
 
-Reads market data only. Places NO orders. Reuses the bot's MetaApiClient.
+Reads market data only. Places NO orders. Connects via the mt5linux bridge
+(ADR-0011), same as the live demo execution path.
 
 Usage:
-    export METAAPI_TOKEN=...  METAAPI_ACCOUNT_ID=...
+    export VANTAGE_MT5_DEMO_LOGIN=... VANTAGE_MT5_DEMO_PASSWORD=... VANTAGE_MT5_DEMO_SERVER=...
     python3 scripts/capture_spreads.py --commission-pips 0.0 --interval 30
     # leave running across several London and NY sessions.
 
@@ -40,7 +41,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_ROOT / ".env")
 sys.path.insert(0, str(_ROOT))
 
-from execution.metaapi_client import MetaAPIClient          # noqa: E402
+from execution.mt5linux_connector import MT5LinuxConnector  # noqa: E402
 from monitoring.logging_utils import build_gzip_timed_rotating_handler  # noqa: E402
 from strategy.session_liquidity.session_builder import (    # noqa: E402
     classify_session as _classify_session_builder,
@@ -70,8 +71,6 @@ OUT = _ROOT / "research" / "spread_samples.csv"
 _UTC = timezone.utc
 
 # Pip size per symbol: used to recompute spread from raw bid/ask.
-# MetaApiClient.get_symbol_price() hardcodes ÷0.0001, so USDJPY's
-# spread_pips field is 100× too large — we recompute here.
 PIP_SIZE: dict[str, float] = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
@@ -82,7 +81,7 @@ PIP_SIZE: dict[str, float] = {
 CSV_HEADER = ["time_utc", "symbol", "session", "hour", "minute", "spread_pips"]
 
 
-# ── Pure functions (testable without MetaAPI) ─────────────────────────────────
+# ── Pure functions (testable without a broker connection) ─────────────────────
 
 def session_label(dt_utc: datetime) -> str:
     """
@@ -105,9 +104,8 @@ def spread_pips(bid: float, ask: float, symbol: str) -> float:
     """
     Compute spread in pips from raw bid/ask using the correct pip size.
 
-    MetaApiClient.get_symbol_price() always divides by 0.0001 (5-decimal pairs).
-    For USDJPY (2-decimal pair, pip=0.01), that gives a value 100× too large.
-    This function uses PIP_SIZE to recompute correctly.
+    USDJPY (2-decimal pair, pip=0.01) needs a different divisor than the
+    5-decimal pairs — PIP_SIZE holds the right value per symbol.
     """
     pip = PIP_SIZE.get(symbol, 0.0001)
     return round((ask - bid) / pip, 2)
@@ -178,25 +176,22 @@ def build_summary(
 
 # ── Reconnect helper ──────────────────────────────────────────────────────────
 
-async def reconnect_if_needed(client: MetaAPIClient, label: str) -> bool:
+async def reconnect_if_needed(client: MT5LinuxConnector, label: str) -> bool:
     """
     If client is not connected, attempt one reconnect.
 
     Returns True if the client is (or becomes) connected; False otherwise.
-    Does not raise. Compatible with BUG-01's _rpc() 30-second timeout.
+    Does not raise.
     """
     if client.is_connected:
         return True
     logger.warning("%s: connection lost — attempting reconnect", label)
     try:
-        ok = await client.reconnect()
-        if ok:
-            logger.info("%s: reconnected successfully", label)
-        else:
-            logger.error("%s: reconnect failed", label)
-        return ok
+        await client.reconnect()
+        logger.info("%s: reconnected successfully", label)
+        return True
     except Exception as exc:  # noqa: BLE001
-        logger.error("%s: reconnect raised %s", label, exc)
+        logger.error("%s: reconnect failed: %s", label, exc)
         return False
 
 
@@ -219,10 +214,13 @@ async def main() -> None:
     args = ap.parse_args()
     pairs: list[str] = args.pairs
 
-    token = os.getenv("METAAPI_TOKEN")
-    acct = os.getenv("METAAPI_ACCOUNT_ID")
-    if not token or not acct:
-        print("ERROR: Set METAAPI_TOKEN and METAAPI_ACCOUNT_ID before running.")
+    if not all(os.getenv(v) for v in (
+        "VANTAGE_MT5_DEMO_LOGIN", "VANTAGE_MT5_DEMO_PASSWORD", "VANTAGE_MT5_DEMO_SERVER",
+    )):
+        print(
+            "ERROR: Set VANTAGE_MT5_DEMO_LOGIN, VANTAGE_MT5_DEMO_PASSWORD, "
+            "VANTAGE_MT5_DEMO_SERVER before running."
+        )
         sys.exit(2)
 
     # ── Asyncio-compatible stop event ─────────────────────────────────────────
@@ -241,8 +239,8 @@ async def main() -> None:
             signal.signal(sig, lambda *_: stop_event.set())
 
     # ── Connection ────────────────────────────────────────────────────────────
-    client = MetaAPIClient(token, acct)
-    print("Connecting to Vantage via MetaAPI…")
+    client = MT5LinuxConnector(mode="demo")
+    print("Connecting to Vantage via mt5linux…")
     await client.connect()
     print(
         f"Connected. Sampling {pairs} every {args.interval}s. "
@@ -267,9 +265,8 @@ async def main() -> None:
 
                 for sym in pairs:
                     try:
-                        # get_symbol_price() goes through _rpc() (BUG-01: 30s timeout)
-                        px = await client.get_symbol_price(sym)
-                        sp = spread_pips(px.bid, px.ask, sym)
+                        px = await client.connection.get_symbol_price(sym)
+                        sp = spread_pips(px["bid"], px["ask"], sym)
                         row = csv_row(now, sym, sess, sp)
                         writer.writerow(row)
                         update_agg(agg, sym, sess, sp)

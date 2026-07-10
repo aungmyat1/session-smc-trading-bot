@@ -1,0 +1,72 @@
+# Demo Validation Mode — Safety Configuration
+# Phase: Production Candidate Advancement (SYSTEM2_MASTER_PLAN.md, 2026-07-06)
+# Runner: scripts/run_st_a2_demo.py --mode demo_validation
+# Behaves identically to `demo` mode for broker/risk/order-placement purposes
+# (same DEMO_ONLY/LIVE_TRADING gate in execution/vantage_demo_executor.py —
+# NOT overridden here). Adds session/lifecycle/latency/recovery
+# instrumentation on top. DO NOT use for live trading.
+
+execution:
+  mode: demo_validation          # shadow | demo | demo_validation | live (live = blocked by CLAUDE.md §0)
+  broker: vantage_mt5
+  account_type: demo
+  demo_only: true                # redundant guard — DEMO_ONLY env var must also be true
+  magic_number: 21099
+  order_comment: "demo-validation"
+
+trading:
+  allowed_pairs:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+  scan_interval_seconds: 60
+  max_spread_pips:
+    EURUSD: 1.5
+    GBPUSD: 2.0
+    XAUUSD: 3.0
+
+risk:
+  # Deliberately tighter than config/demo.yaml — a validation campaign is
+  # meant to prove the lifecycle out on a small, capped sample, not to
+  # accumulate P&L. These are NOT the production ST-A2 risk limits; they
+  # exist so a validation run cannot silently escalate exposure.
+  max_trades_per_day: 3
+  max_open_positions: 1
+  daily_loss_limit_pct: 2.0
+  weekly_loss_limit_pct: 5.0
+  monthly_loss_limit_pct: 8.0
+  max_consecutive_losses: 3
+  max_lot_size: 0.10
+
+disabled_behaviors:
+  unlimited_retries: true
+  aggressive_recovery: true
+  martingale: true
+  averaging_down: true
+  auto_live_enable: true
+
+circuit_breaker:
+  max_signals_per_hour: 4
+  consecutive_loss_cooldown_hours: 4
+
+logging:
+  trade_journal_db: data/trade_journal.db
+  shadow_journal: logs/shadow_trades.jsonl
+  demo_journal: logs/strategy_demo_trades.jsonl
+  runner_log: logs/strategy_demo.log
+
+validation:
+  # execution/validation_report.py writes here.
+  report_dir: reports/demo_validation
+  # Minimum successful demo trades before a promotion decision is even
+  # considered (see docs/operations/DEMO_VALIDATION_MODE.md's checklist) —
+  # a target, not an automatic gate; a human operator makes the call.
+  minimum_trades_for_promotion: 20
+  # Latency SLA thresholds (ms) — informational in the generated report;
+  # exceeding these does not block trading (this is an audit layer, not a
+  # safety gate — see execution/validation_recorder.py's module docstring).
+  latency_sla_ms:
+    signal_generated: 500
+    risk_evaluation: 200
+    order_submission: 3000
+  operator: unknown               # override via VALIDATION_OPERATOR env var

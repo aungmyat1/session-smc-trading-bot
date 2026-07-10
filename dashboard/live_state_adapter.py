@@ -166,7 +166,7 @@ def _build_strategy_packages() -> list[dict[str, Any]]:
             "version": entry.get("version", ""),
             "signature": "",
             "symbols": [rules["symbol"]] if rules.get("symbol") else [],
-            "broker_adapter": "vantage-metaapi",
+            "broker_adapter": "vantage-mt5linux",
             "risk_profile": risk_rules,
             "execution_rules": (rules.get("entryConditions") or []) + (rules.get("exitConditions") or []),
             "validation_score": evidence.get("validation_score", 0),

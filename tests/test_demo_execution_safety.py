@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from execution.execution_state import ExecutionStateStore
 from execution.market_data import MockMarketDataProvider
 from execution.trade_journal import DemoTradeJournal
 from execution.trade_manager import TradeManager
@@ -100,11 +101,17 @@ def test_strategy_evaluation_completes():
 
 
 @pytest.mark.asyncio
-async def test_paper_order_is_accepted():
+async def test_paper_order_is_accepted(tmp_path):
     m15, h4 = _fixture("EURUSD")
     signal = ST2Adapter().generate_signal({"symbol": "EURUSD", "m15": m15, "h4": h4})
     assert signal is not None
-    manager = TradeManager(_FakeExecutor())
+    # Explicit isolated store — TradeManager's default (ExecutionStateStore("."))
+    # resolves relative to the CWD pytest runs from (the repo root), which
+    # would otherwise write this test's simulated order into the same
+    # data/execution/ directory the live dashboard reads (root-caused
+    # 2026-07-06: 376 accumulated test-fixture records, 58 non-terminal,
+    # all SIM-prefixed — see docs/systems/system2/DASHBOARD_READINESS.md §13).
+    manager = TradeManager(_FakeExecutor(), execution_store=ExecutionStateStore(tmp_path))
     order = await manager.open_position(signal, lots=0.01)
     assert order["simulated"] is True
     assert "order accepted" == "order accepted"

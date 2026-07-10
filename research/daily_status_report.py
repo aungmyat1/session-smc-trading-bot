@@ -3,7 +3,7 @@
 RESEARCH-06 — Daily Status Report Generator.
 
 Reads from live logs and existing summaries; writes reports/daily_status.md.
-Read-only on all sources. No strategy, execution, or MetaAPI changes.
+Read-only on all sources. No strategy, execution, or broker changes.
 
 Usage:
     python3 research/daily_status_report.py
@@ -344,7 +344,7 @@ def generate_report(date_str: str) -> str:
     a(f"|---|---|")
     a(f"| Bot process (PID {proc['pid'] or 'N/A'}) | {_status_icon(process_ok)} {'RUNNING' if process_ok else 'NOT RUNNING'} |")
     a(f"| tmux session 'bot' | {_status_icon(proc['tmux_alive'])} {'alive' if proc['tmux_alive'] else 'MISSING'} |")
-    a(f"| MetaAPI connection | {'✅' if conn_status == 'CONNECTED' else '🔴'} {conn_status} |")
+    a(f"| Broker connection | {'✅' if conn_status == 'CONNECTED' else '🔴'} {conn_status} |")
     a(f"| LIVE_TRADING guard | {_status_icon(live_guard)} {'false (safe)' if live_guard else 'WARNING — NOT false'} |")
     a(f"| Memory (bot RSS) | {'✅' if proc['rss_mb'] and proc['rss_mb'] < 500 else '⚠️'} {_fmt_opt(proc['rss_mb'], ' MB')} |")
     a(f"| RAM (system) | {'✅' if ram['pct'] < 85 else '⚠️'} {ram['used_mb']} MB / {ram['total_mb']} MB ({ram['pct']}% used) |")
@@ -375,7 +375,7 @@ def generate_report(date_str: str) -> str:
     a("")
     a(f"| Event | Count |")
     a(f"|---|---|")
-    a(f"| MetaAPI connected events | {conn.get('connected_events', 0)} |")
+    a(f"| Broker connected events | {conn.get('connected_events', 0)} |")
     a(f"| RPC timeouts (BUG-01 scenario) | {conn.get('rpc_timeouts', 0)} |")
     a(f"| Disconnect events (heartbeat) | {conn.get('disconnect_events', 0)} |")
     a(f"| Successful reconnects | {conn.get('reconnect_ok', 0)} |")

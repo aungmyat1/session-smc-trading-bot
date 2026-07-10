@@ -57,10 +57,6 @@ jobs:
           SVOS_PACKAGE_TRANSPORT: gcs
           SVOS_GCS_BUCKET: ${{ vars.SVOS_GCS_BUCKET }}
         run: python scripts/build_strategy_release.py --strategy "$STRATEGY" --version "$VERSION" --output dist/release
-      - name: Setup GitHub CLI
-        uses: cli/cli-action@v3
-        with:
-          version: latest
       - name: Publish immutable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -238,7 +238,7 @@ def compute_signal_to_order_latency(events: list) -> dict:
     pairs = _extract_latency_pairs(events)
     stats = _latency_stats(pairs["sig_to_order_s"], pairs["sig_to_order_dry"])
     if stats.get("avg_ms", 0) > _LATENCY_WARN_MS:
-        stats["warning"] = f"avg > {_LATENCY_WARN_MS}ms — check MetaAPI connectivity"
+        stats["warning"] = f"avg > {_LATENCY_WARN_MS}ms — check broker connectivity"
     return stats
 
 

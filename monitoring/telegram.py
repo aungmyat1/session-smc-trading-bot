@@ -77,6 +77,20 @@ class TelegramAlerter:
         self._alert_state[key] = (now, repeat_count + 1)
         return False
 
+    @staticmethod
+    def _persist(category: str, text: str, *, sent: bool) -> None:
+        """Best-effort persistence into operations.execution_event
+        (SYSTEM2_MASTER_PLAN.md Phase 3) — lazy, defensive import so this
+        alerting module has no hard dependency on the execution package and
+        keeps working (alerts still send) even if that import ever fails.
+        Called before the actual Telegram network call, per "persist before
+        or alongside sending"; never allowed to block or fail a send."""
+        try:
+            from execution.operations_recorder import record_telegram_alert
+            record_telegram_alert(category, text, sent=sent)
+        except Exception as exc:
+            logger.debug("Telegram alert persistence skipped: %s", exc)
+
     async def _post(
         self,
         text: str,
@@ -84,12 +98,16 @@ class TelegramAlerter:
         alert_category: str | None = None,
         suppress_key: str | None = None,
     ) -> None:
+        text = _clip_text(text)
+        category = alert_category or "generic"
         if not self._token or not self._chat_id:
             logger.debug("Telegram not configured — skipping alert")
+            self._persist(category, text, sent=False)
             return
-        text = _clip_text(text)
         if alert_category and self._should_suppress(alert_category, text, parse_mode, suppress_key=suppress_key):
+            self._persist(category, text, sent=False)
             return
+        self._persist(category, text, sent=True)
         if not self._session or self._session.closed:
             await self.start()
         url = TELEGRAM_API.format(token=self._token)
@@ -321,4 +339,31 @@ class TelegramAlerter:
             parse_mode=None,
             alert_category="reconnect_failure",
             suppress_key=str(source).lower(),
+        )
+
+    async def send_validation_started(self, *, session_id: str, broker: str, account: str) -> None:
+        await self._post(
+            f"[VALIDATION STARTED] session={session_id} broker={broker} account={account}",
+            parse_mode=None,
+            alert_category="validation_started",
+            suppress_key=session_id,
+        )
+
+    async def send_validation_failure(self, *, session_id: str, stage: str, error: str) -> None:
+        await self._post(
+            f"[VALIDATION FAILURE] session={session_id} stage={stage} error={error[:500]}",
+            parse_mode=None,
+            alert_category="validation_failure",
+            suppress_key=f"{session_id}:{stage}",
+        )
+
+    async def send_validation_summary(
+        self, *, session_id: str, trade_count: int, success_rate: float | None
+    ) -> None:
+        rate_label = f"{success_rate:.2%}" if success_rate is not None else "n/a"
+        await self._post(
+            f"[VALIDATION SUMMARY] session={session_id} trades={trade_count} success_rate={rate_label}",
+            parse_mode=None,
+            alert_category="validation_summary",
+            suppress_key=session_id,
         )

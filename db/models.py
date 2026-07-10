@@ -33,7 +33,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey,
+    BigInteger, Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey,
     Integer, JSON, Numeric, String, Text, UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -982,3 +982,78 @@ class ExecutionEvent(Base):
     event_type = Column(String(80), nullable=False)
     payload    = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class RiskPortfolioState(Base):
+    """operations.risk_portfolio_state — current risk/portfolio state, upserted
+    atomically per (state_type, period_date).  Migration 005; replaces the
+    JSON-file persistence from SYSTEM2_MASTER_PLAN.md Phase 1."""
+    __tablename__  = "risk_portfolio_state"
+    __table_args__ = (
+        UniqueConstraint("state_type", "period_date",
+                         name="uq_risk_portfolio_state_type_date"),
+        {"schema": "operations"},
+    )
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    runtime_id  = Column(String(100), nullable=False)
+    state_type  = Column(String(20), nullable=False)
+    state_data  = Column(JSONB, nullable=False)
+    period_date = Column(Date, nullable=False)
+    updated_at  = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at  = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class RiskPortfolioHistory(Base):
+    """operations.risk_portfolio_history — append-only audit trail of significant
+    risk/portfolio state changes (trade_close, daily_reset, startup_restore)."""
+    __tablename__ = "risk_portfolio_history"
+    __table_args__ = {"schema": "operations"}
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    runtime_id = Column(String(100), nullable=False)
+    state_type = Column(String(20), nullable=False)
+    event      = Column(String(50), nullable=False)
+    state_data = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class ValidationSession(Base):
+    """operations.validation_session — one row per Demo Validation Mode campaign.
+
+    Distinct from operations.runtime (one row per process start): a
+    validation session must survive runner restarts, so it carries its own
+    identity/lifecycle rather than being derived from a process's runtime_id.
+    Migration 006."""
+    __tablename__  = "validation_session"
+    __table_args__ = {"schema": "operations"}
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id       = Column(String(100), nullable=False, unique=True)
+    operator         = Column(String(100), nullable=False)
+    broker           = Column(String(50), nullable=False)
+    account          = Column(String(100), nullable=False)
+    software_version = Column(String(100), nullable=False)
+    git_commit       = Column(String(64), nullable=False)
+    config_hash      = Column(String(64), nullable=False)
+    status           = Column(String(20), nullable=False)
+    started_at       = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    ended_at         = Column(DateTime(timezone=True), nullable=True)
+
+
+class ValidationLifecycleEvent(Base):
+    """operations.validation_lifecycle_event — per-trade, per-stage timing and
+    status for a Demo Validation Mode session (signal -> ... -> trade_archive).
+    Migration 006."""
+    __tablename__  = "validation_lifecycle_event"
+    __table_args__ = {"schema": "operations"}
+
+    id                    = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    validation_session_id = Column(String(100), nullable=False)
+    trade_id              = Column(String(150), nullable=False)
+    stage                 = Column(String(50), nullable=False)
+    status                = Column(String(20), nullable=False)
+    duration_ms           = Column(Float, nullable=True)
+    error                 = Column(Text, nullable=True)
+    metadata_             = Column("metadata", JSONB, nullable=False, default=dict)
+    created_at            = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

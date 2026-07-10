@@ -14,12 +14,32 @@ status_server.py (FastAPI, this file).
 Public API:
     resolve_identity(request: fastapi.Request) -> dict | None
     require_role(*allowed_roles: str) -> FastAPI dependency
+    mint_ws_ticket(identity: dict) -> str
+    validate_ws_ticket(ticket: str) -> dict | None
+
+WebSocket ticket auth (2026-07-05): browsers cannot set Authorization/
+X-SVOS-Actor headers on a WebSocket upgrade request, so the header-based
+model above is structurally unusable for a browser-initiated /ws connection.
+mint_ws_ticket()/validate_ws_ticket() add a short-lived (30s), single-use,
+HMAC-signed ticket that a caller obtains via a normal, fully-authenticated
+REST call (GET /api/ws-ticket, gated by require_authenticated() same as any
+other read endpoint) and then passes as a query parameter on the WS URL —
+the one place a browser *can* attach a credential. This does not add a new
+way to authenticate; it only carries an already-established identity onto
+one transport that can't carry headers. Header-based auth on /ws itself is
+preserved unchanged as a fallback for any non-browser caller that already
+uses it.
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import hmac
+import json
 import os
+import secrets
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,6 +50,8 @@ from fastapi import HTTPException, Request
 from dashboard.auth import _ROLE_ACTIONS, _permitted_actions
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_WS_TICKET_TTL_SECONDS = 30
+_used_ws_ticket_nonces: dict[str, float] = {}  # nonce -> expiry epoch, pruned lazily on each validation
 
 
 def _same_origin(request: Request) -> bool:
@@ -71,6 +93,63 @@ def _bearer_role() -> str:
     trusted-proxy secret the caller cannot forge.
     """
     return os.getenv("SVOS_OPERATOR_ROLE", "admin").strip() or "admin"
+
+
+def _ws_ticket_secret() -> bytes:
+    """HMAC key for WS connection tickets. Reuses whichever operator
+    credential material is already configured (bearer token, else proxy
+    secret) rather than provisioning a third secret — if neither is
+    configured, require_authenticated() already rejects everyone, so ticket
+    issuance is unreachable and never exercised against real traffic in
+    that case."""
+    material = _configured_token() or _proxy_secret() or "unconfigured-ws-ticket-secret"
+    return material.encode("utf-8")
+
+
+def _prune_used_ws_ticket_nonces() -> None:
+    now = time.time()
+    for nonce in [n for n, exp in _used_ws_ticket_nonces.items() if exp < now]:
+        del _used_ws_ticket_nonces[nonce]
+
+
+def mint_ws_ticket(identity: dict[str, str], ttl_seconds: int = _WS_TICKET_TTL_SECONDS) -> str:
+    """Mint a short-lived, single-use, signed ticket carrying an already-
+    authenticated identity onto the /ws handshake. Caller must already have
+    passed require_authenticated() — see module docstring."""
+    payload = {
+        "actor": identity["actor"],
+        "role": identity["role"],
+        "exp": int(time.time()) + max(5, ttl_seconds),
+        "nonce": secrets.token_urlsafe(16),
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    sig = hmac.new(_ws_ticket_secret(), payload_json.encode("utf-8"), hashlib.sha256).hexdigest()
+    return base64.urlsafe_b64encode(json.dumps({"p": payload_json, "s": sig}).encode("utf-8")).decode("ascii")
+
+
+def validate_ws_ticket(ticket: str) -> dict[str, str] | None:
+    """Validate signature, expiry, and single-use of a mint_ws_ticket() token.
+    Returns an identity dict shaped like resolve_identity()'s on success."""
+    try:
+        token = json.loads(base64.urlsafe_b64decode(ticket.encode("ascii")).decode("utf-8"))
+        payload_json, sig = str(token["p"]), str(token["s"])
+    except Exception:
+        return None
+    expected_sig = hmac.new(_ws_ticket_secret(), payload_json.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        return None
+    try:
+        payload = json.loads(payload_json)
+        actor, role, exp, nonce = str(payload["actor"]), str(payload["role"]), int(payload["exp"]), str(payload["nonce"])
+    except Exception:
+        return None
+    if exp < time.time():
+        return None
+    _prune_used_ws_ticket_nonces()
+    if nonce in _used_ws_ticket_nonces:
+        return None  # already used once — replay rejected
+    _used_ws_ticket_nonces[nonce] = exp
+    return {"actor": actor, "role": role, "auth_mode": "ws-ticket"}
 
 
 def resolve_identity(request: Request) -> dict[str, str] | None:

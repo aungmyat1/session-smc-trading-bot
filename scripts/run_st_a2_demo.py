@@ -99,6 +99,9 @@ from execution.demo_risk_manager    import (
 from execution.close_reconciliation import process_closed_positions
 from execution.startup_recovery     import reconcile_pending_executions
 from execution.operations_recorder  import OperationsRecorder
+from execution.risk_portfolio_store  import RiskPortfolioStore
+from execution.validation_session   import ValidationSessionManager
+from execution.validation_recorder  import ValidationLifecycleRecorder
 from execution.trade_journal        import DemoTradeJournal
 from monitoring.telegram import TelegramAlerter
 from dashboard.control_state import load_control_state, set_trading_permission
@@ -139,6 +142,17 @@ def _should_run_periodic_reconciliation(tick_count: int, every_n_ticks: int) -> 
     return every_n_ticks > 0 and tick_count % every_n_ticks == 0
 _PORTFOLIO_STATE_PATH = Path("logs") / "portfolio_state.json"
 
+# Durable Postgres-backed state (SYSTEM2_MASTER_PLAN.md Phase 2 — migration 005).
+# Instantiated once per process; runtime_id set by run() before the tick loop.
+_rps_store = RiskPortfolioStore()
+_rps_runtime_id: str = ""
+
+# Demo Validation Mode session tracker (migration 006). Module-level like
+# _rps_store above so tests/conftest.py can monkeypatch it the same way —
+# see the 2026-07-06 test-isolation incidents in
+# docs/systems/system2/DASHBOARD_READINESS.md §13-15 for why this matters.
+_validation_session_mgr = ValidationSessionManager()
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -168,10 +182,20 @@ def _write_state(payload: dict) -> None:
 
 def _load_risk_state() -> dict:
     """Load persisted risk_state so a restart does not silently reset daily-loss/
-    consecutive-loss halts to zero (SYSTEM2_MASTER_PLAN.md restart-recovery finding)."""
+    consecutive-loss halts to zero (SYSTEM2_MASTER_PLAN.md restart-recovery finding).
+
+    Priority: Postgres (durable, migration 005) → JSON file (legacy fallback) → fresh."""
+    # Try Postgres first.
+    pg_data = _rps_store.load_risk_state()
+    if pg_data is not None:
+        _log.info("Loaded risk_state from Postgres.")
+        return pg_data
+    # Fall back to JSON.
     if _RISK_STATE_PATH.exists():
         try:
-            return json.loads(_RISK_STATE_PATH.read_text(encoding="utf-8"))
+            data = json.loads(_RISK_STATE_PATH.read_text(encoding="utf-8"))
+            _log.info("Loaded risk_state from JSON file (Postgres unavailable).")
+            return data
         except Exception as exc:
             _log.warning("Risk state file unreadable (%s) — starting fresh.", exc)
     return new_state()
@@ -185,33 +209,82 @@ def _load_risk_state() -> dict:
 _PERSISTED_TRANSIENT_KEYS = {"_last_positions"}
 
 
-def _save_risk_state(risk_state: dict) -> None:
+def _save_risk_state(risk_state: dict, event: str = "tick_save") -> None:
+    persisted = {
+        k: v for k, v in risk_state.items()
+        if not k.startswith("_") or k in _PERSISTED_TRANSIENT_KEYS
+    }
+    # Durable Postgres write (best-effort — never blocks the tick loop).
+    _rps_store.save_risk_state(persisted, _rps_runtime_id, event=event)
+    # JSON file write (legacy fallback, retained for dashboard backward compat).
     try:
         _RISK_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        persisted = {
-            k: v for k, v in risk_state.items()
-            if not k.startswith("_") or k in _PERSISTED_TRANSIENT_KEYS
-        }
         _RISK_STATE_PATH.write_text(json.dumps(persisted, indent=2, sort_keys=True), encoding="utf-8")
     except Exception as exc:
-        _log.debug("Risk state write skipped: %s", exc)
+        _log.debug("Risk state JSON write skipped: %s", exc)
 
 
 def _load_portfolio_state() -> dict:
+    """Load persisted portfolio state.
+
+    Priority: Postgres (durable, migration 005) → JSON file (legacy fallback) → empty."""
+    pg_data = _rps_store.load_portfolio_state()
+    if pg_data is not None:
+        _log.info("Loaded portfolio_state from Postgres.")
+        return pg_data
     if _PORTFOLIO_STATE_PATH.exists():
         try:
-            return json.loads(_PORTFOLIO_STATE_PATH.read_text(encoding="utf-8"))
+            data = json.loads(_PORTFOLIO_STATE_PATH.read_text(encoding="utf-8"))
+            _log.info("Loaded portfolio_state from JSON file (Postgres unavailable).")
+            return data
         except Exception as exc:
             _log.warning("Portfolio state file unreadable (%s) — starting fresh.", exc)
     return {}
 
 
-def _save_portfolio_state() -> None:
+_peak_equity: float = 0.0  # session-local high-water mark for the drawdown figure below;
+                           # resets on process restart (not itself persisted/loaded) — a
+                           # known, deliberate limitation, not an oversight (see
+                           # docs/systems/system2/DASHBOARD_READINESS.md §14).
+
+
+def _save_portfolio_state(event: str = "tick_save", account: dict | None = None) -> None:
+    """Persists the risk/portfolio ledger. `account`, when provided by the
+    caller (the normal tick path always does), enriches the record with the
+    real balance/equity/margin/exposure/drawdown snapshot the durable ledger
+    (SYSTEM2_MASTER_PLAN.md production-hardening pass, item 4) asks for —
+    additive only, so JSON-file consumers relying on the pre-existing keys
+    (daily_pnl_pct, open_symbols, ...) are unaffected."""
+    global _peak_equity
+    state_data = _portmgr.export_state()
+    if account:
+        equity = account.get("equity")
+        if isinstance(equity, (int, float)):
+            _peak_equity = max(_peak_equity, equity)
+        drawdown_pct = (
+            round((_peak_equity - equity) / _peak_equity * 100, 4)
+            if isinstance(equity, (int, float)) and _peak_equity > 0
+            else None
+        )
+        state_data = {
+            **state_data,
+            "balance": account.get("balance"),
+            "equity": equity,
+            "margin": account.get("margin"),
+            "free_margin": account.get("free_margin"),
+            "exposure_symbols": state_data.get("open_symbols", []),
+            "peak_equity_session": _peak_equity or None,
+            "drawdown_pct": drawdown_pct,
+            "snapshot_at": _now_iso(),
+        }
+    # Durable Postgres write (best-effort).
+    _rps_store.save_portfolio_state(state_data, _rps_runtime_id, event=event)
+    # JSON file write (legacy fallback).
     try:
         _PORTFOLIO_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _PORTFOLIO_STATE_PATH.write_text(json.dumps(_portmgr.export_state(), indent=2, sort_keys=True), encoding="utf-8")
+        _PORTFOLIO_STATE_PATH.write_text(json.dumps(state_data, indent=2, sort_keys=True), encoding="utf-8")
     except Exception as exc:
-        _log.debug("Portfolio state write skipped: %s", exc)
+        _log.debug("Portfolio state JSON write skipped: %s", exc)
 
 
 async def _process_closed_positions(
@@ -271,8 +344,13 @@ async def _tick(
     risk_state: dict,
     telegram:   TelegramAlerter | None = None,
     pipeline:   CanonicalExecutionPipeline | None = None,
+    validation_recorder: ValidationLifecycleRecorder | None = None,
 ) -> dict:
     """One scan cycle. Returns updated risk_state."""
+    # Track the most significant event this tick for the Postgres history audit
+    # trail. Priority: trade_close > daily_reset > halt_engaged > tick_save.
+    _tick_save_event = "tick_save"
+    trades_before = risk_state.get("trades_today", 0)
     control_state = load_control_state()
     emergency_state = control_state.get("emergency_stop", {})
     execution_store = ExecutionStateStore(_ROOT)
@@ -348,6 +426,7 @@ async def _tick(
         risk_state = reset_daily(risk_state)
         _log.info("Daily risk state reset.")
         state["daily_reset_at"] = _now_iso()
+        _tick_save_event = "daily_reset"
 
     # Portfolio-level loss guard
     if _portmgr.any_loss_limit_hit():
@@ -731,9 +810,26 @@ async def _tick(
         risk_state = await _process_closed_positions(positions, risk_state, executor, telegram)
     except Exception as exc:
         state["open_positions_error"] = str(exc)
+
+    # Detect trade closes: trades_today incremented means a position closed.
+    if risk_state.get("trades_today", 0) > trades_before:
+        _tick_save_event = "trade_close"
+        if validation_recorder is not None:
+            # process_closed_positions() (execution/close_reconciliation.py) is
+            # shared with scripts/run_portfolio.py and deliberately not
+            # modified to expose a per-position close id here — this records
+            # the close event at tick granularity, which is honest given what
+            # this call site actually observes (a trades_today delta), not a
+            # per-position start-to-close latency claim.
+            validation_recorder.record_stage(
+                trade_id=f"tick-{_now_iso()}", stage="position_close", status="closed",
+            )
+    elif risk_state.get("halted") and _tick_save_event == "tick_save":
+        _tick_save_event = "halt_engaged"
+
     risk_state["_dashboard_state"] = state
-    _save_risk_state(risk_state)
-    _save_portfolio_state()
+    _save_risk_state(risk_state, event=_tick_save_event)
+    _save_portfolio_state(event=_tick_save_event, account=state.get("account"))
     _write_state(state)
     return risk_state
 
@@ -782,9 +878,35 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     ops_recorder = OperationsRecorder(ops_runtime_id)
     ops_recorder.record_runtime_start(strategy=strategy_name, mode=mode)
 
+    # Wire durable risk/portfolio state store (migration 005) — share the
+    # runtime_id so history rows are attributable to this process lifecycle.
+    global _rps_runtime_id
+    _rps_runtime_id = ops_runtime_id
+
+    # Demo Validation Mode (SYSTEM2_MASTER_PLAN.md — Production Candidate
+    # Advancement, 2026-07-06): purely additive instrumentation layered on
+    # top of the existing "demo" pipeline/broker path (CanonicalExecutionPipeline
+    # itself still runs mode="demo" below — its own ExecutionMode enum has no
+    # "demo_validation" value and is intentionally left untouched). Session +
+    # recorder are local to this run() call, not module globals, so tests
+    # that never pass mode="demo_validation" never touch them.
+    validation_recorder: ValidationLifecycleRecorder | None = None
+    validation_session_id: str | None = None
+    if mode == "demo_validation":
+        validation_session_id = _validation_session_mgr.start(
+            operator=os.environ.get("VALIDATION_OPERATOR", "unknown"),
+            broker="vantage-mt5-demo",
+            account=os.environ.get("VANTAGE_DEMO_METAAPI_ID", "unknown"),
+            config_path=_ROOT / "config" / "demo_validation.yaml",
+        )
+        validation_recorder = ValidationLifecycleRecorder(validation_session_id)
+        _log.info("Demo Validation Mode session started: %s", validation_session_id)
+
     def _event_sink(event) -> None:
         append_jsonl(Path("logs") / "execution_pipeline_events.jsonl", event.to_dict())
         ops_recorder.event_sink(event)
+        if validation_recorder is not None:
+            validation_recorder.from_pipeline_event(event)
 
     execution_pipeline = CanonicalExecutionPipeline(
         mode="demo",
@@ -819,6 +941,18 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     if startup_positions is not None:
         recon_report = reconcile_pending_executions(execution_store, _journal_db, startup_positions)
         ops_recorder.record_recovery_checkpoint(recon_report.resolved, recon_report.orphaned_positions)
+        if validation_recorder is not None:
+            validation_recorder.record_stage(
+                trade_id=f"startup-{ops_runtime_id}",
+                stage="recovery",
+                status="resolved" if not recon_report.orphaned_positions else "orphans_detected",
+                metadata={
+                    "resolved_count": len(recon_report.resolved),
+                    "recovered_count": recon_report.recovered_count,
+                    "lost_count": recon_report.lost_count,
+                    "orphaned_positions": len(recon_report.orphaned_positions),
+                },
+            )
         if recon_report.resolved:
             _log.warning(
                 "Startup recovery resolved %d incomplete execution(s): %d recovered, %d lost (not resubmitted).",
@@ -894,6 +1028,7 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
                     risk_state = await _tick(
                         mode, strategy_name, connector, executor, manager, journal, risk_state, telegram,
                         pipeline=_pipeline,
+                        validation_recorder=validation_recorder,
                     )
                     tick_count += 1
                     if _should_run_periodic_reconciliation(tick_count, RECONCILE_EVERY_N_TICKS):
@@ -931,6 +1066,8 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
             )
             await telegram.stop()
             await connector.disconnect()
+            if validation_session_id is not None:
+                _validation_session_mgr.end(validation_session_id, status="completed")
 
     # Canonical execution pipeline owns the loop lifecycle (pipeline_started/
     # pipeline_stopped events); _loop is unchanged behavior otherwise.
@@ -943,9 +1080,13 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Vantage demo runner")
     parser.add_argument(
-        "--mode", choices=["shadow", "demo", "live"],
+        "--mode", choices=["shadow", "demo", "demo_validation", "live"],
         default=env_mode,
-        help="shadow=no orders, demo=Vantage demo orders, live=BLOCKED",
+        help=(
+            "shadow=no orders, demo=Vantage demo orders, "
+            "demo_validation=Vantage demo orders + session/lifecycle/latency "
+            "instrumentation for Production Candidate validation, live=BLOCKED"
+        ),
     )
     parser.add_argument(
         "--strategy",

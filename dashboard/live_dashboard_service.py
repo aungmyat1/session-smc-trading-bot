@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import json
 import os
-import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,12 +36,19 @@ DEFAULT_TIMEFRAME = "M15"
 DEFAULT_CANDLE_COUNT = 120
 BROKER_TIMEOUT_S = 45
 RPC_TIMEOUT_S = 20
-SNAPSHOT_TIMEOUT_S = max(1.0, float(os.getenv("DASHBOARD_BROKER_SNAPSHOT_TIMEOUT_S", "8")))
-CLEANUP_TIMEOUT_S = max(0.5, float(os.getenv("DASHBOARD_BROKER_CLEANUP_TIMEOUT_S", "2")))
 
-_broker_cache_lock = threading.Lock()
-_last_good_broker_snapshot: dict[str, Any] | None = None
-_broker_refresh: dict[str, Any] | None = None
+# Shared Broker Runtime (2026-07-06, SYSTEM2_MASTER_PLAN.md Phase 1): the account/
+# position/market-watch/chart snapshot below is read from the files the deployed
+# runner (scripts/run_st_a2_demo.py) already writes every tick — it is the sole
+# broker-connection owner for this data. This module no longer opens a second
+# broker session to read the same information a second time. Manual write
+# actions (close_position/modify_position/cancel_order, further below) are a
+# separate concern — they still use their own connection, since routing a live
+# order mutation through the runner's process would need a command/IPC channel
+# to it, a materially bigger change than "read its already-published state."
+RUNNER_STATE_PATH = ROOT / "logs" / "strategy_demo_state.json"
+RUNNER_CANDLES_DIR = ROOT / "logs" / "candles"
+_RUNNER_STATE_STALE_S = 180  # matches dashboard/status_server.py's existing heartbeat threshold
 
 try:
     import yaml
@@ -263,181 +268,137 @@ def _empty_broker_snapshot(chart_symbol: str, timeframe: str, status: str, detai
     }
 
 
-def _degraded_broker_snapshot(fallback: dict[str, Any], detail: str) -> dict[str, Any]:
-    global _last_good_broker_snapshot
-    with _broker_cache_lock:
-        cached = copy.deepcopy(_last_good_broker_snapshot)
-    if cached is None:
-        return fallback
-    cached.update(
-        {
-            "available": False,
-            "status": "DEGRADED",
-            "detail": f"{detail[:180]}; showing last successful snapshot",
-            "stale": True,
-            "heartbeat": {"connected": False, "latency_ms": -1, "last_heartbeat": ""},
-        }
-    )
-    return cached
-
-
-async def _fetch_broker_snapshot_async(symbols: list[str], chart_symbol: str, timeframe: str, candle_count: int) -> dict[str, Any]:
-    token = os.getenv("METAAPI_TOKEN", "").strip()
-    account_id = os.getenv("VANTAGE_DEMO_METAAPI_ID", "").strip()
-    if not token or not account_id:
-        return _empty_broker_snapshot(
-            chart_symbol,
-            timeframe,
-            "UNCONFIGURED",
-            "METAAPI_TOKEN or VANTAGE_DEMO_METAAPI_ID missing",
-        )
-
-    connector = MT5Connector(mode="demo")
+def _load_runner_candles(symbol: str, count: int) -> list[dict[str, Any]]:
+    """Reads the same M15 candle file the runner's own dashboard rendering
+    (dashboard/status_server.py::_load_candles) already reads — the runner
+    writes these every tick from its one broker connection; this avoids a
+    second connection making the same market-data call a second time."""
+    path = RUNNER_CANDLES_DIR / f"{symbol.upper()}_M15.json"
     try:
-        await asyncio.wait_for(connector.connect(), timeout=BROKER_TIMEOUT_S)
-        executor = VantageDemoExecutor(connector)
-        heartbeat = await asyncio.wait_for(connector.heartbeat(), timeout=RPC_TIMEOUT_S)
-        account = await asyncio.wait_for(executor.get_account_info(), timeout=RPC_TIMEOUT_S)
-        rpc = connector.connection
-        raw_positions = await asyncio.wait_for(rpc.get_positions(), timeout=RPC_TIMEOUT_S)
-        positions = []
-        for item in raw_positions or []:
-            position = {
-                "id": item.get("id"),
-                "symbol": item.get("symbol"),
-                "direction": str(item.get("type", "")).replace("POSITION_TYPE_", "").lower(),
-                "volume": _safe_float(item.get("volume")),
-                "entry_price": _safe_float(item.get("openPrice")),
-                "current_price": _safe_float(item.get("currentPrice")),
-                "stop_loss": _safe_float(item.get("stopLoss")),
-                "take_profit": _safe_float(item.get("takeProfit")),
-                "unrealized_pnl": _safe_float(item.get("profit")),
-                "strategy_name": item.get("comment") or item.get("clientId") or "strategy-demo",
-                "status": "OPEN",
-                "open_time": item.get("time"),
-                "holding_time": _hold_time_label(item.get("time")),
-                "magic": item.get("magic"),
-            }
-            positions.append(position)
+        candles = json.loads(path.read_text(encoding="utf-8"))
+        return candles[-count:] if isinstance(candles, list) else []
+    except Exception:
+        return []
 
-        raw_orders = []
-        if hasattr(rpc, "get_orders"):
-            raw_orders = await asyncio.wait_for(rpc.get_orders(), timeout=RPC_TIMEOUT_S)
-        orders = []
-        for item in raw_orders or []:
-            state = str(item.get("state") or item.get("status") or "PENDING")
-            orders.append(
-                {
-                    "id": item.get("id") or item.get("clientId") or item.get("orderId"),
-                    "symbol": item.get("symbol"),
-                    "direction": str(item.get("type", "")).replace("ORDER_TYPE_", "").lower(),
-                    "volume": _safe_float(item.get("volume")),
-                    "entry_price": _safe_float(item.get("openPrice") or item.get("priceOpen") or item.get("price")),
-                    "stop_loss": _safe_float(item.get("stopLoss")),
-                    "take_profit": _safe_float(item.get("takeProfit")),
-                    "status": state.upper(),
-                    "created_at": item.get("time") or item.get("doneTime") or "",
-                    "comment": item.get("comment") or "",
-                }
-            )
 
-        market_watch = []
-        for symbol in symbols:
-            price = await asyncio.wait_for(executor.get_price(symbol), timeout=RPC_TIMEOUT_S)
-            bid = _safe_float(price.get("bid"))
-            ask = _safe_float(price.get("ask"))
-            market_watch.append(
-                {
-                    "symbol": symbol,
-                    "bid": bid,
-                    "ask": ask,
-                    "spread_pips": _safe_float(price.get("spread_pips")),
-                    "time": price.get("time", ""),
-                }
-            )
-
-        candles = await asyncio.wait_for(
-            executor.get_candles(chart_symbol, timeframe, candle_count),
-            timeout=RPC_TIMEOUT_S,
-        )
-        return {
-            "available": True,
-            "status": "CONNECTED" if heartbeat.get("connected") else "DEGRADED",
-            "detail": "Vantage demo account connected",
-            "account": {
-                **account,
-                "account_type": "demo",
-                "server": os.getenv("VANTAGE_MT5_DEMO_SERVER", "").strip(),
-                "account_id_masked": f"...{account_id[-6:]}" if account_id else "",
-            },
-            "positions": positions,
-            "orders": orders,
-            "market_watch": market_watch,
-            "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": candles},
-            "heartbeat": heartbeat,
-        }
-    except Exception as exc:
-        return _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", str(exc))
-    finally:
-        try:
-            await asyncio.wait_for(connector.disconnect(), timeout=CLEANUP_TIMEOUT_S)
-        except Exception:
-            pass
+def _map_runner_position(item: dict[str, Any], strategy_name: str) -> dict[str, Any]:
+    """Maps the runner's position shape (execution/vantage_demo_executor.py
+    ::get_positions(), as written into logs/strategy_demo_state.json) onto
+    this module's existing position contract. open_time/holding_time are not
+    carried through the runner's own mapping (it drops the broker's raw
+    `time` field) — reported honestly empty rather than fabricated; fixing
+    that would mean editing the live trading executor for a cosmetic field,
+    judged not worth the deployment risk of touching/restarting it here."""
+    return {
+        "id": item.get("id"),
+        "symbol": item.get("symbol"),
+        "direction": str(item.get("direction", "")).lower(),
+        "volume": _safe_float(item.get("lots")),
+        "entry_price": _safe_float(item.get("entry")),
+        "current_price": _safe_float(item.get("current_price")),
+        "stop_loss": _safe_float(item.get("sl")),
+        "take_profit": _safe_float(item.get("tp")),
+        "unrealized_pnl": _safe_float(item.get("profit")),
+        "strategy_name": strategy_name or "strategy-demo",
+        "status": "OPEN",
+        "open_time": "",
+        "holding_time": "",
+        "magic": item.get("magic"),
+    }
 
 
 def _fetch_broker_snapshot(symbols: list[str], chart_symbol: str, timeframe: str, candle_count: int) -> dict[str, Any]:
-    global _broker_refresh, _last_good_broker_snapshot
+    """Shared Broker Runtime (SYSTEM2_MASTER_PLAN.md Phase 1, 2026-07-06):
+    reads account/positions/market-watch/chart data from the files the
+    deployed runner already writes every tick, instead of opening a second
+    broker session for the same information.
 
-    def refresh_worker(refresh: dict[str, Any]) -> None:
-        global _last_good_broker_snapshot
-        try:
-            snapshot = asyncio.run(_fetch_broker_snapshot_async(symbols, chart_symbol, timeframe, candle_count))
-        except BaseException as exc:  # keep a failed background refresh from escaping the worker
-            snapshot = _empty_broker_snapshot(
-                chart_symbol,
-                timeframe,
-                "DISCONNECTED",
-                f"broker snapshot failed: {exc}",
-            )
-        if snapshot.get("available"):
-            snapshot["cached_at"] = _now_iso()
-            snapshot["stale"] = False
-            with _broker_cache_lock:
-                _last_good_broker_snapshot = copy.deepcopy(snapshot)
-        refresh["result"] = snapshot
-        refresh["event"].set()
+    State ownership: scripts/run_st_a2_demo.py is the sole broker-connection
+    owner and sole writer of RUNNER_STATE_PATH/RUNNER_CANDLES_DIR.
+    Synchronization: filesystem — no IPC, no polling of the broker itself.
+    Refresh strategy: read fresh from disk on every call (no caching layer;
+    a local file read is already fast — the threaded/cached RPC apparatus
+    this replaced existed to hide broker RPC latency, which no longer
+    applies here).
+    Failure behavior: missing/unreadable state file, or a stale
+    last_tick_at (> _RUNNER_STATE_STALE_S, matching status_server.py's
+    existing heartbeat threshold), reports DISCONNECTED/STALE honestly via
+    _empty_broker_snapshot rather than fabricating data or silently serving
+    old values.
+    """
+    if not RUNNER_STATE_PATH.exists():
+        return _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", "runner state file not found — is the runner deployed/running?")
+    try:
+        state = json.loads(RUNNER_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", f"runner state file unreadable: {exc}")
 
-    with _broker_cache_lock:
-        refresh = _broker_refresh
-        if refresh is None or refresh["event"].is_set():
-            refresh = {"event": threading.Event(), "result": None}
-            _broker_refresh = refresh
-            threading.Thread(
-                target=refresh_worker,
-                args=(refresh,),
-                name="dashboard-broker-refresh",
-                daemon=True,
-            ).start()
-            wait_for_refresh = True
-        else:
-            wait_for_refresh = False
+    last_tick_at = _parse_ts(state.get("last_tick_at"))
+    age_s = (datetime.now(timezone.utc) - last_tick_at).total_seconds() if last_tick_at else None
+    stale = age_s is None or age_s > _RUNNER_STATE_STALE_S
+    broker_status = str(state.get("broker_status", "unknown"))
+    connected = broker_status == "connected" and not stale
 
-    if wait_for_refresh:
-        refresh["event"].wait(timeout=SNAPSHOT_TIMEOUT_S)
-    if refresh["event"].is_set():
-        snapshot = refresh.get("result")
-        if isinstance(snapshot, dict):
-            if snapshot.get("available"):
-                return copy.deepcopy(snapshot)
-            return _degraded_broker_snapshot(snapshot, str(snapshot.get("detail") or "broker unavailable"))
+    if not connected:
+        detail = "runner heartbeat is stale" if stale else f"runner reports broker_status={broker_status!r}"
+        snapshot = _empty_broker_snapshot(chart_symbol, timeframe, "STALE" if stale else "DEGRADED", detail)
+        snapshot["stale"] = stale
+        return snapshot
 
-    detail = (
-        f"broker snapshot exceeded {SNAPSHOT_TIMEOUT_S:g}s deadline"
-        if wait_for_refresh
-        else "broker snapshot refresh still in progress"
+    account_raw = state.get("account") or {}
+    account_id = (
+        os.getenv("VANTAGE_DEMO_METAAPI_ID", "").strip()
+        or os.getenv("VANTAGE_MT5_DEMO_LOGIN", "").strip()
     )
-    fallback = _empty_broker_snapshot(chart_symbol, timeframe, "DISCONNECTED", detail)
-    return _degraded_broker_snapshot(fallback, detail)
+    account = {
+        **account_raw,
+        "account_type": "demo",
+        "server": os.getenv("VANTAGE_MT5_DEMO_SERVER", "").strip(),
+        "account_id_masked": f"...{account_id[-6:]}" if account_id else "",
+    }
+
+    strategy_name = str(state.get("strategy", "")) or "strategy-demo"
+    positions = [_map_runner_position(p, strategy_name) for p in (state.get("open_positions") or [])]
+
+    # This strategy trades market orders only (no pending-order concept) —
+    # the runner's state has nothing to report here, which is the same
+    # empty result a live broker RPC would return for this strategy type.
+    orders: list[dict[str, Any]] = []
+
+    market_watch = []
+    for entry in state.get("pair_results") or []:
+        symbol = str(entry.get("symbol", ""))
+        if not symbol:
+            continue
+        price = _safe_float(entry.get("price"))
+        spread_pips = _safe_float(entry.get("spread_pips"))
+        # The runner records one last-traded price per tick, not independent
+        # bid/ask ticks — bid is derived from price/spread as an approximation,
+        # documented here rather than presented as an independently-observed tick.
+        pip = 0.01 if symbol == "XAUUSD" else (0.01 if symbol.endswith("JPY") else 0.0001)
+        market_watch.append(
+            {
+                "symbol": symbol,
+                "bid": round(price - spread_pips * pip, 5),
+                "ask": price,
+                "spread_pips": spread_pips,
+                "time": state.get("last_tick_at", ""),
+            }
+        )
+
+    candles = _load_runner_candles(chart_symbol, candle_count)
+    return {
+        "available": True,
+        "status": "CONNECTED",
+        "detail": "Reading shared runtime state from the deployed runner (Shared Broker Runtime)",
+        "account": account,
+        "positions": positions,
+        "orders": orders,
+        "market_watch": market_watch,
+        "chart": {"symbol": chart_symbol, "timeframe": timeframe, "candles": candles},
+        "heartbeat": {"connected": True, "latency_ms": -1, "last_heartbeat": state.get("last_tick_at", "")},
+        "source": "runner_shared_state",
+    }
 
 
 def _portfolio_payload(account: dict[str, Any], closed_records: list[dict[str, Any]], positions: list[dict[str, Any]]) -> dict[str, Any]:
@@ -646,7 +607,7 @@ def _broker_payload(
     return {
         "broker_connection": broker.get("status", "UNKNOWN"),
         "mt5_status": "CONNECTED" if heartbeat.get("connected") else "DISCONNECTED",
-        "metaapi_status": broker.get("status", "UNKNOWN"),
+        "broker_bridge_status": broker.get("status", "UNKNOWN"),
         "ping_ms": heartbeat.get("latency_ms", -1),
         "server_time": market_watch[0].get("time", "") if market_watch else "",
         "account_type": account.get("account_type", "demo"),
@@ -731,8 +692,14 @@ def load_snapshot(*, chart_symbol: str | None = None, timeframe: str = DEFAULT_T
             "trading_mode": "demo",
             "demo_only": _env_bool("DEMO_ONLY", True),
             "live_trading_enabled": _env_bool("LIVE_TRADING", False),
-            "vantage_demo_configured": bool(os.getenv("VANTAGE_DEMO_METAAPI_ID", "").strip()),
-            "metaapi_configured": bool(os.getenv("METAAPI_TOKEN", "").strip()),
+            "vantage_demo_configured": bool(
+                os.getenv("VANTAGE_DEMO_METAAPI_ID", "").strip()
+                or os.getenv("VANTAGE_MT5_DEMO_LOGIN", "").strip()
+            ),
+            "broker_bridge_configured": bool(
+                os.getenv("METAAPI_TOKEN", "").strip()
+                or os.getenv("VANTAGE_MT5_DEMO_LOGIN", "").strip()
+            ),
             "emergency_stop": control.get("emergency_stop", {}),
         },
         "fetched_at": _now_iso(),

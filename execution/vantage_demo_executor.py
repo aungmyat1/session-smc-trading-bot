@@ -21,8 +21,13 @@ import logging
 import os
 import uuid
 
-from execution.market_data import MarketDataProvider, MetaApiMarketDataProvider
+from execution.market_data import (
+    MarketDataProvider,
+    MetaApiMarketDataProvider,
+    MT5LinuxMarketDataProvider,
+)
 from execution.mt5_connector import MT5Connector
+from execution.mt5linux_connector import MT5LinuxConnector
 
 _log = logging.getLogger("strategy_demo.vantage_executor")
 
@@ -44,16 +49,23 @@ _TF_MAP = {
 class VantageDemoExecutor:
     def __init__(
         self,
-        connector: MT5Connector,
+        connector: MT5Connector | MT5LinuxConnector,
         market_data_provider: MarketDataProvider | None = None,
     ) -> None:
         self._conn = connector
         self.demo_only = _DEMO_ONLY
-        self._market_data = market_data_provider or MetaApiMarketDataProvider(
-            account_getter=lambda: self._conn._account,
-            connection_getter=lambda: self._conn.connection,
-            reconnect_callback=self._conn.reconnect,
-        )
+        if market_data_provider is not None:
+            self._market_data = market_data_provider
+        elif isinstance(connector, MT5LinuxConnector):
+            self._market_data = MT5LinuxMarketDataProvider(
+                mt5_getter=lambda: self._conn._mt5,
+            )
+        else:
+            self._market_data = MetaApiMarketDataProvider(
+                account_getter=lambda: self._conn._account,
+                connection_getter=lambda: self._conn.connection,
+                reconnect_callback=self._conn.reconnect,
+            )
 
     def _rpc(self):
         return self._conn.connection

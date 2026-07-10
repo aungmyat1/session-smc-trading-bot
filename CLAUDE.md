@@ -207,15 +207,22 @@ exact-match CONFIRM token. Agent must never self-execute. Always propose, wait f
 ## §5 — BROKER / AUTH
 
 - Broker: **Vantage** (MT5, standard account)
-- Connection: **MetaAPI Cloud SDK** (`metaapi-cloud-sdk>=29`)
-- Demo: `VANTAGE_DEMO_METAAPI_ID` (from `.env`)
-- Live: `VANTAGE-LIVE-METAAPI-ID` (from `.env`)
+- Connection: **mt5linux bridge** (`execution/mt5linux_connector.py`, ADR-0011) — a Linux
+  client talking via RPyC to a real MT5 terminal running under Wine on the VPS. This is
+  replacing the MetaAPI Cloud SDK path; see `docs/svos/ADR-0011-MT5LINUX-BROKER-BRIDGE.md`
+  for the migration status, shadow-verification gate, and rollback plan. `execution/mt5_connector.py`
+  / `execution/metaapi_client.py` (MetaAPI) remain in place as the rollback path until
+  cutover is verified — do not delete them early.
+- Demo credentials: `VANTAGE_MT5_DEMO_LOGIN` / `VANTAGE_MT5_DEMO_PASSWORD` / `VANTAGE_MT5_DEMO_SERVER` (from `.env`)
+- Live credentials: `VANTAGE-LIVE` / `VANTAGE-LIVE-PASSWORD` / `VANTAGE-SERVER` (from `.env`)
+- RPyC server address: `MT5LINUX_HOST` / `MT5LINUX_PORT` (from `.env`)
+- Legacy MetaAPI vars (still present for rollback): `METAAPI_TOKEN`, `VANTAGE_DEMO_METAAPI_ID`, `VANTAGE-LIVE-METAAPI-ID`
 - Historical data: Dukascopy public feed via `scripts/fetch_data.py`
 - Telegram alerts: `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (from `.env`)
 - Magic number: flat `21099` for the demo execution path (`config/demo.yaml`, `execution/trade_manager.py`)
 - Live-traded pairs: EURUSD, GBPUSD, XAUUSD (`scripts/run_st_a2_demo.py`)
 - Config ceiling: `config/demo.yaml` also lists USDJPY as an allowed pair, but it is not currently traded by the deployed ST-A2 demo runner.
-- Never use raw REST for signed endpoints — always use the SDK.
+- Never hand-roll signed/raw requests to either backend — always go through the connector abstraction (`MT5Connector` or `MT5LinuxConnector`).
 
 ---
 

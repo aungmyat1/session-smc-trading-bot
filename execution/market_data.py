@@ -142,6 +142,54 @@ class MetaApiMarketDataProvider(MarketDataProvider):
         }
 
 
+_MT5_TIMEFRAME_ATTR = {
+    "1m": "TIMEFRAME_M1",
+    "5m": "TIMEFRAME_M5",
+    "15m": "TIMEFRAME_M15",
+    "1h": "TIMEFRAME_H1",
+    "4h": "TIMEFRAME_H4",
+    "1d": "TIMEFRAME_D1",
+}
+
+
+class MT5LinuxMarketDataProvider(MarketDataProvider):
+    """Candle source backed by the mt5linux bridge (ADR-0011)."""
+
+    def __init__(self, *, mt5_getter: Callable[[], Any]) -> None:
+        self._mt5_getter = mt5_getter
+
+    async def get_candles(self, symbol: str, timeframe: str, limit: int) -> list[dict[str, Any]]:
+        import asyncio
+
+        normalized_tf = _TF_MAP.get(timeframe, timeframe)
+        mt5 = self._mt5_getter()
+        if mt5 is None:
+            raise RuntimeError("mt5linux market data unavailable: not connected")
+        tf_attr = _MT5_TIMEFRAME_ATTR.get(normalized_tf)
+        if tf_attr is None:
+            raise ValueError(f"Unsupported timeframe for mt5linux: {timeframe}")
+        tf_const = getattr(mt5, tf_attr)
+
+        def _fetch() -> list[dict[str, Any]] | None:
+            rates = mt5.copy_rates_from_pos(symbol, tf_const, 0, limit)
+            return rates
+
+        rates = await asyncio.to_thread(_fetch)
+        if rates is None:
+            raise RuntimeError(f"copy_rates_from_pos({symbol}) returned None: {mt5.last_error()}")
+        return [
+            {
+                "time": datetime.fromtimestamp(r["time"], tz=timezone.utc).isoformat(),
+                "open": r["open"],
+                "high": r["high"],
+                "low": r["low"],
+                "close": r["close"],
+                "volume": r["tick_volume"],
+            }
+            for r in rates
+        ]
+
+
 class MockMarketDataProvider(MarketDataProvider):
     def __init__(self, candles_by_key: dict[tuple[str, str], list[dict[str, Any]]]) -> None:
         self._candles_by_key = {

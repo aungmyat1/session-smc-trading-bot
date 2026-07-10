@@ -1,0 +1,74 @@
+# Storage governance policy — auto-trade-vps (System 2 / Production Execution host)
+# Consumed by scripts/disk_report.py and scripts/cleanup_report.py.
+# This file defines THRESHOLDS AND RULES ONLY. Neither script performs any
+# deletion or mutation — see docs/operations/storage-governance.md.
+
+thresholds:
+  disk:
+    warning_pct: 80   # matches docs/vps/RESOURCE_OPTIMIZATION.md's existing 85%-internal-alert guidance,
+                       # lowered to 80 given the disk sat at 86-88% during ADR-0011 Phase 4 planning
+    critical_pct: 90
+  memory:
+    warning_pct: 80
+    critical_pct: 92   # this host has 4G swap; treat swap pressure as the earlier signal (see swap.warning_used_pct)
+  swap:
+    warning_used_pct: 40   # swap already runs ~28% used at baseline (1.1G/4G) under normal IDE+trading load
+
+retention:
+  archives:
+    # ~/archives — checksummed backup tarballs (see docs/operations/backup-retention.md)
+    default_days: 90
+    never_delete_without_owner_approval: true
+  logs:
+    hot_days: 30      # uncompressed, in place
+    warm_days: 90      # compressed, in place
+    cold_action: delete   # only past warm_days, EXCLUDING the audit denylist below
+    audit_denylist:
+      # never subject to age-based deletion regardless of policy — see
+      # docs/vps/LOG_RETENTION_POLICY.md §3 for the authoritative list this mirrors
+      - "fail2ban.log*"
+      - "auth.log*"
+      - "*_audit.jsonl"
+      - "docs/VERDICT_LOG.md"
+      - "data/trade_journal.db"
+  journald:
+    max_use_mb: 500
+    max_retention_days: 90
+    applied: false   # proposal only per docs/vps/LOG_RETENTION_POLICY.md — not yet applied to journald.conf
+
+cache_cleanup:
+  # Directories treated as fully regenerable — safe to clear without approval,
+  # reported by disk_report.py, only actually removed by an explicit,
+  # separately-run cleanup action (never by disk_report.py itself).
+  safe_paths:
+    - "~/.cache/pip-tools"
+    - "~/.cache/ms-playwright-go"
+    - "~/.cache/cloud-code"
+    - "~/.cache/node-gyp"
+    - "~/.cache/pip-audit"
+    - "~/.cache/pip"
+    - "~/.npm/_cacache"
+  requires_confirmation_paths:
+    # Regenerable in principle, but tied to active tool state or unverified
+    # dependency — report only, never auto-clean.
+    - "~/.codex"
+    - "~/.gemini"
+    - "~/.continue"
+    - "~/.claude"
+    - "~/.antigravity-ide-server"
+    - "~/.local"
+  never_clean_paths:
+    # Trading data, broker/MT5 runtime state, databases, backups, the repo itself.
+    - "~/session-smc-trading-bot"
+    - "~/session-smc-trading-bot/data"
+    - "~/session-smc-trading-bot/logs"
+    - "~/.wine"
+    - "~/.mt5"
+    - "~/archives"
+    - "~/db_backups"
+    - "/var/lib/postgresql"
+
+reporting:
+  largest_dirs_count: 15
+  largest_files_count: 10
+  du_max_depth: 2

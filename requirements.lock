@@ -886,6 +886,10 @@ metaapi-cloud-sdk==29.1.1 \
     --hash=sha256:9b728d5c1f0fd402ad58e346938149ac84114390a0424a747c585d1b5177d818 \
     --hash=sha256:a2b16ab0277614aff8be2c6d02704cb3b4dd75fa946ed64f1445f8d775cf57f0
     # via -r requirements.in
+mt5linux==0.2.4 \
+    --hash=sha256:5ffeea9fd1f6198f09c3eb1b492068aa9363e1338d17bab87cdf2a790f00332b \
+    --hash=sha256:e60b1064ded1d1ae4f6451253c4739be129a497a158927c5e435bc76d31ba3d9
+    # via -r requirements.in
 multidict==6.7.1 \
     --hash=sha256:026d264228bcd637d4e060844e39cdc60f86c479e463d49075dedc21b18fbbe0 \
     --hash=sha256:03ede2a6ffbe8ef936b92cb4529f27f42be7f56afcdab5ab739cd5f27fb1cbf9 \
@@ -1081,7 +1085,9 @@ numpy==2.5.0 \
     --hash=sha256:edadfbd4794b1086c0d822f81863e8a68fc129d132fd0bb9e31e955d7fbbbdb7 \
     --hash=sha256:f27582c55ba4c750b7c58c8faf021d2cd9324a662b466229db8a417b41368af9 \
     --hash=sha256:f7e5fa4382967ae6548bd2f174219afb908e294b0d5f625af01166edd5f7d9aa
-    # via pandas
+    # via
+    #   mt5linux
+    #   pandas
 pandas==2.3.3 \
     --hash=sha256:0242fe9a49aa8b4d78a4fa03acb397a58833ef6199e9aa40a95f027bb3a1b6e7 \
     --hash=sha256:1611aedd912e1ff81ff41c745822980c49ce4a7907537be8692c8dbc31924593 \
@@ -1139,6 +1145,12 @@ pandas==2.3.3 \
     --hash=sha256:f086f6fe114e19d92014a1966f43a3e62285109afe874f067f5abbdcbb10e59c \
     --hash=sha256:f8bfc0e12dc78f777f323f55c58649591b2cd0c43534e8355c51d3fede5f4dee
     # via -r requirements.in
+plumbum==1.7.0 \
+    --hash=sha256:139bbe08ee065b522a8a07d4f7e9f8eddffd78cc218b65b11cca2b33683e6b57 \
+    --hash=sha256:317744342c755319907c773cc87c3a30adaa3a41b0d34c0ce02d9d1904922dce
+    # via
+    #   mt5linux
+    #   rpyc
 polars==1.42.0 \
     --hash=sha256:283ddc923e47857924fbef36580d2e98d984a47c962bae4cbce9c0ebcc98989c \
     --hash=sha256:ab10cac3f2d28a6e22e22bcac69c0e51fb33cd25aee1f45105782d4fe55a3e6a
@@ -1564,6 +1576,10 @@ pydantic-core==2.46.4 \
     --hash=sha256:fc3e9034a63de20e15e8ade85358bc6efc614008cab72898b4b4952bea0509ff \
     --hash=sha256:fd8b3d9fd264be37976686c7f65cd52a83f5e84f4bfd2adf9c1d469676bbb6ae
     # via pydantic
+pyparsing==3.3.2 \
+    --hash=sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d \
+    --hash=sha256:c777f4d763f140633dcb6d8a3eda953bf7a214dc4eff598413c070bcdc117cbc
+    # via mt5linux
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
@@ -1898,6 +1914,10 @@ rpds-py==2026.5.1 \
     # via
     #   jsonschema
     #   referencing
+rpyc==5.2.3 \
+    --hash=sha256:220199bde0841374009b2693d8b9c7aa8bd170840813a22c594d30848ccbb27e \
+    --hash=sha256:361383f14ce730716d761e17c8054994a99e66ec872a2b4337f0cb877028dbd2
+    # via mt5linux
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81

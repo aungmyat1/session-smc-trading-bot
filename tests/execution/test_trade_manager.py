@@ -2,10 +2,11 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from execution.execution_state import ExecutionStateStore
 from execution.trade_manager import TradeManager, _MAGIC
 
 
-def _make_manager(simulated=True):
+def _make_manager(store_root, simulated=True):
     executor = MagicMock()
     executor.place_order   = AsyncMock(return_value={"order_id": "SIM-001", "simulated": simulated})
     executor.close_position = AsyncMock(return_value=True)
@@ -18,7 +19,13 @@ def _make_manager(simulated=True):
          "lots": 0.01, "entry": 1.2700, "sl": 1.2750, "tp": 1.2600,
          "profit": -5.0, "magic": 99999},   # different magic — should be filtered
     ])
-    return TradeManager(executor), executor
+    # Explicit isolated store — TradeManager's default (ExecutionStateStore("."))
+    # resolves relative to the CWD pytest runs from (the repo root), which
+    # would otherwise write this test's simulated orders into the same
+    # data/execution/ directory the live dashboard reads (root-caused
+    # 2026-07-06: 376 accumulated test-fixture records, 58 non-terminal,
+    # all SIM-prefixed — see docs/systems/system2/DASHBOARD_READINESS.md §13).
+    return TradeManager(executor, execution_store=ExecutionStateStore(store_root)), executor
 
 
 def _signal_ns(side="long"):
@@ -31,8 +38,8 @@ def _signal_ns(side="long"):
 
 class TestTradeManager:
     @pytest.mark.asyncio
-    async def test_open_position_calls_executor(self):
-        mgr, ex = _make_manager()
+    async def test_open_position_calls_executor(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         result = await mgr.open_position(_signal_ns("long"), 0.02)
         ex.place_order.assert_called_once()
         call_kwargs = ex.place_order.call_args.kwargs
@@ -40,47 +47,47 @@ class TestTradeManager:
         assert call_kwargs["lots"] == 0.02
 
     @pytest.mark.asyncio
-    async def test_open_short_maps_to_sell(self):
-        mgr, ex = _make_manager()
+    async def test_open_short_maps_to_sell(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         await mgr.open_position(_signal_ns("short"), 0.01)
         assert ex.place_order.call_args.kwargs["direction"] == "sell"
 
     @pytest.mark.asyncio
-    async def test_open_position_has_opened_at(self):
-        mgr, _ = _make_manager()
+    async def test_open_position_has_opened_at(self, tmp_path):
+        mgr, _ = _make_manager(tmp_path)
         result = await mgr.open_position(_signal_ns(), 0.02)
         assert "opened_at" in result
 
     @pytest.mark.asyncio
-    async def test_close_position_calls_executor(self):
-        mgr, ex = _make_manager()
+    async def test_close_position_calls_executor(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         ok = await mgr.close_position("POS-1")
         ex.close_position.assert_called_once_with("POS-1")
         assert ok is True
 
     @pytest.mark.asyncio
-    async def test_modify_sl_tp_calls_executor(self):
-        mgr, ex = _make_manager()
+    async def test_modify_sl_tp_calls_executor(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         await mgr.modify_sl_tp("POS-1", 1.0940, 1.1200)
         ex.modify_position.assert_called_once_with("POS-1", 1.0940, 1.1200)
 
     @pytest.mark.asyncio
-    async def test_get_positions_filters_by_magic(self):
-        mgr, _ = _make_manager()
+    async def test_get_positions_filters_by_magic(self, tmp_path):
+        mgr, _ = _make_manager(tmp_path)
         positions = await mgr.get_positions()
         assert len(positions) == 1
         assert positions[0]["id"] == "POS-1"
 
     @pytest.mark.asyncio
-    async def test_emergency_close_all_closes_managed_positions(self):
-        mgr, ex = _make_manager()
+    async def test_emergency_close_all_closes_managed_positions(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         count = await mgr.emergency_close_all()
         assert count == 1  # only POS-1 has correct magic
         ex.close_position.assert_called_once_with("POS-1")
 
     @pytest.mark.asyncio
-    async def test_open_position_retries_and_succeeds(self):
-        mgr, ex = _make_manager()
+    async def test_open_position_retries_and_succeeds(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         ex.place_order = AsyncMock(
             side_effect=[
                 RuntimeError("connection reset"),
@@ -93,18 +100,18 @@ class TestTradeManager:
         assert ex.place_order.await_count == 3
 
     @pytest.mark.asyncio
-    async def test_open_position_timeout_enters_recovery_pending(self):
-        mgr, ex = _make_manager()
+    async def test_open_position_timeout_enters_recovery_pending(self, tmp_path):
+        mgr, ex = _make_manager(tmp_path)
         ex.place_order = AsyncMock(side_effect=RuntimeError("timeout"))
         with pytest.raises(RuntimeError):
             await mgr.open_position(_signal_ns("long"), 0.02)
 
     @pytest.mark.asyncio
-    async def test_open_position_exhaustion_alerts_once(self):
+    async def test_open_position_exhaustion_alerts_once(self, tmp_path):
         telegram = MagicMock()
         telegram.send_error = AsyncMock(return_value=None)
-        mgr, ex = _make_manager()
-        mgr = TradeManager(ex, telegram=telegram)
+        mgr, ex = _make_manager(tmp_path)
+        mgr = TradeManager(ex, telegram=telegram, execution_store=ExecutionStateStore(tmp_path))
         ex.place_order = AsyncMock(side_effect=RuntimeError("timeout"))
         with pytest.raises(RuntimeError):
             await mgr.open_position(_signal_ns("long"), 0.02)

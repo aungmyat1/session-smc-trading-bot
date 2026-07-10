@@ -142,6 +142,7 @@ PR/branch audit trail and the 2026-07-05 repository stabilization pass:
 - [DASHBOARD_BACKEND_MAPPING.md](dashboard/DASHBOARD_BACKEND_MAPPING.md) — per-endpoint, per-widget backend contract mapping
 - [DASHBOARD_GAP_ANALYSIS.md](dashboard/DASHBOARD_GAP_ANALYSIS.md) — gap analysis vs the Gai dashboard frontend
 - [DASHBOARD_IMPLEMENTATION_PLAN.md](dashboard/DASHBOARD_IMPLEMENTATION_PLAN.md) — phased frontend integration plan
+- [DASHBOARD_READINESS.md](systems/system2/DASHBOARD_READINESS.md) — fail-closed readiness aggregator (2026-07-05): `/api/system2/readiness`, `/system2/readiness`
 
 ## VPS Operations (2026-07-04)
 
@@ -205,6 +206,7 @@ Individual strategy specs (detail files — flow, parameters, rules — are co-l
 - [EXECUTION_SPEC.md](EXECUTION_SPEC.md)
 - [REPORT_SYSTEM.md](REPORT_SYSTEM.md)
 - [VERDICT_LOG.md](VERDICT_LOG.md) — immutable trial results; never re-run a trial ID
+- [SYS1-T015_INITIAL_ASSESSMENT.md](experiments/SYS1-T015_INITIAL_ASSESSMENT.md) — ST-A2 SVOS revalidation: repository/governance review, registry-authority ambiguity, stale gate config findings
 - [BACKTEST_COST_REVALIDATION_REPORT.md](BACKTEST_COST_REVALIDATION_REPORT.md) — E6 cost revalidation
 - [BACKTEST_FAILURE_ANALYSIS.md](BACKTEST_FAILURE_ANALYSIS.md)
 - [BACKTEST_RESULTS.md](BACKTEST_RESULTS.md)

@@ -220,11 +220,11 @@ should be retired) · **Duplicate** (two+ implementations of the same concern co
 | Dashboard Backend | **Duplicate** | 3 backend processes with overlapping routes (`/api/live-dashboard/*` duplicated verbatim in `app.py` and `live_app.py`; `/api/status` and `/api/emergency-stop*` duplicated in `app.py` and `status_server.py`) |
 | Dashboard Frontend | **Partial** | New Dashboard SPA is genuinely wired to real data via `app.py`, but `app.py` is not confirmed deployed — frontend is unreachable on the live host today |
 | APIs | **Duplicate** | Route duplication across the 3 backends; inconsistent auth — only emergency-stop routes enforce a CONFIRM token, other real mutations (activate, position close/protect/cancel, promote/demote) rely on role auth alone |
-| WebSocket | **Implemented** (2026-07-04) | Real-Time Operations Layer: `dashboard/status_server.py`'s `/ws` endpoint, in-process `EventBroadcaster`/`EventPoller` (`dashboard/events.py`) — no Redis, no new services. Server-side collection is poll-based against durable stores (`operations.*`, `control_state.json`, runner state file) every 2s since the runner and dashboard are separate OS processes; the browser connection itself is genuine push. Load-tested: 0 events lost across 25 concurrent subscribers × 2000 events |
+| WebSocket | **Implemented, browser-usable (2026-07-05)** | Real-Time Operations Layer: `dashboard/status_server.py`'s `/ws` endpoint, in-process `EventBroadcaster`/`EventPoller` (`dashboard/events.py`) — no Redis, no new services. Server-side collection is poll-based against durable stores (`operations.*`, `control_state.json`, runner state file) every 2s since the runner and dashboard are separate OS processes; the browser connection itself is genuine push. Load-tested (2026-07-04): 0 events lost across 25 concurrent subscribers × 2000 events. **Corrected 2026-07-05**: that load test used header-based auth — a real browser cannot set `Authorization`/`X-SVOS-Actor` headers on a WebSocket upgrade, so `/ws` was actually unreachable from the deployed Gai dashboard frontend despite both sides having real code for it (verified live: unauthenticated connection got HTTP 403). Fixed with a short-lived (30s), single-use, HMAC-signed connection ticket (`dashboard/rbac.py::mint_ws_ticket`/`validate_ws_ticket`, issued via authenticated `GET /api/ws-ticket`, presented as `/ws?ticket=...`) — header auth is preserved unchanged as a fallback, so no existing caller is weakened. Also fixed: the frontend alternated reconnects between `/ws` and a nonexistent `/api/ws` (verified live 404 before the fix); and the frontend's `onmessage` handler expected a `{type: "INITIAL_STATE"\|"TICK", state}` shape that the real backend never sent (only the original mock `server.ts` did) — it now treats any real `BaseEvent`-shaped message as a signal to refetch `/api/new-dashboard/live-state`, and fetches that same endpoint on `onopen` since the server sends no bootstrap snapshot. Full detail: `docs/systems/system2/DASHBOARD_READINESS.md` §8. |
 | Persistence | **Partial** | Order state (`ExecutionStateStore`) and process lifecycle (`RuntimeAuthority`) are durable; risk/portfolio accounting is in-memory only; `TradeManager`'s default store-root path diverges from the root the dashboard reads |
 | Restart Recovery | **Implemented** (legacy/deployed, 2026-07-04) / **Broken** (canonical) | `execution/startup_recovery.py` performs real broker-truth reconciliation before the deployed runner's tick loop starts, never resubmitting; `recover_incomplete()` is still never called by the undeployed canonical `run_portfolio.py` |
-| Operator Controls | **Partial** | Emergency-stop, pause/resume, close-all, and toggle-strategy (`/api/control/*`, 2026-07-04) are fully wired end-to-end for the legacy runner and now RBAC + CONFIRM-token gated (see Authentication row); manual position close/modify/cancel work via a separate, functioning broker connection regardless of which runner is active; activation/position mutations elsewhere still lack a CONFIRM token |
-| Authentication | **Partial** | Real HMAC/CSRF/role-based auth on dashboard mutation routes; `dashboard/rbac.py` (2026-07-04) brings the same role model to the FastAPI backend (`status_server.py`) — `/api/emergency-stop[/clear]` and all new `/api/control/*` routes now require `Depends(require_role(...))` in addition to their CONFIRM token. Still missing: a frontend login/session UI, and the CONFIRM-token layer on several other real mutations (activation, position close/protect/cancel) that this repo's own CLAUDE.md §4 implies should have one |
+| Operator Controls | **Frontend-integrated, 2026-07-05** | Emergency-stop, pause/resume, close-all, and toggle-strategy (`/api/control/*`, 2026-07-04) are RBAC + CONFIRM-token gated server-side; the Gai dashboard frontend now actually calls pause/resume/toggle-strategy(pause)/emergency-stop/emergency-stop-clear through an authenticated operator session (previously it called nonexistent mock-server routes with no auth headers at all). Close-all and a real single-position-close are still not exposed via any UI button (the latter has no safe backend equivalent — see `docs/systems/system2/DASHBOARD_READINESS.md` §9.2); manual position close/modify/cancel work via a separate, functioning broker connection regardless of which runner is active; activation/position mutations elsewhere still lack a CONFIRM token |
+| Authentication | **Frontend session integrated, 2026-07-05** | Real HMAC/CSRF/role-based auth on dashboard mutation routes; `dashboard/rbac.py` (2026-07-04) brings the same role model to the FastAPI backend (`status_server.py`) — `/api/emergency-stop[/clear]` and all `/api/control/*` routes require `Depends(require_role(...))` plus their CONFIRM token. **Landed 2026-07-05**: a minimal operator login (`OperatorLogin.tsx`) validates a token/actor pair against the existing backend, stores it in `sessionStorage`, and every mutation call now sends real `Authorization`/`X-SVOS-Actor` headers — previously the frontend sent none at all, so every "working" mutation endpoint was actually unreachable from a real browser regardless of whether its route existed. 401 triggers automatic logout (this backend is stateless, so that's the closest analog to session expiry). One divergence found, not fixed (no live exposure — lives in the undeployed Flask `app.py`/`live_app.py`): `dashboard/auth.py::_resolve_identity` still lets a bearer caller self-declare `X-SVOS-Role`, the exact vulnerability `dashboard/rbac.py` already closed. Still missing: a UI button for close-all/emergency-clear (backend + frontend plumbing both ready, just unwired to a component); the CONFIRM-token layer on several other real mutations (activation, position close/protect/cancel) that this repo's own CLAUDE.md §4 implies should have one |
 | Secrets | **Implemented** | `.env` gitignored and CI-enforced; no tracked secrets; GCP Secret Manager adapter exists (used by SVOS deployment/signing, not confirmed wired to broker credential loading) |
 | Cloud Deployment | **Broken** (for the canonical architecture) / **Partial** (overall) | The canonical runner has no systemd unit anywhere — the architecture this plan should be built around is not deployed; only the legacy runner + `status_server.py` dashboard are live on VPS 1 |
 
@@ -244,9 +244,14 @@ components are:
    (`execution/startup_recovery.py`) — resolves each ambiguous `ExecutionRecord` against actual
    broker positions before the tick loop starts, never resubmits. **Still missing for
    `run_portfolio.py`**, which never calls `recover_incomplete()` at all.
-3. **~~Real-time push (WebSocket/SSE).~~ Implemented 2026-07-04** as the Real-Time Operations
-   Layer — see WebSocket row above. Remaining gap: no frontend widget subscribes to `/ws` yet
-   (backend/transport only; frontend integration is separate, unscoped work).
+3. **~~Real-time push (WebSocket/SSE).~~ Implemented 2026-07-04, made browser-usable 2026-07-05**
+   as the Real-Time Operations Layer — see WebSocket row above. The Gai dashboard's
+   `SocketContext.tsx` now mints a ticket and subscribes on load; REST polling remains as an
+   automatic fallback whenever a ticket can't be obtained. Remaining gap: the browser itself has
+   no way to obtain an operator credential yet (no login screen) — `/api/ws-ticket` reads an
+   optional credential from `localStorage` that nothing currently sets, so today's real-world
+   behavior is "poll" until that's built (tracked as part of Priority 1 / operator-control
+   integration, not attempted here).
 4. **A single systemd unit for the canonical execution architecture.** `run_portfolio.py` has
    zero deployment footprint — this is a deployment gap, not a code gap.
 
@@ -733,14 +738,26 @@ Updated in place as items land; do not fork a second copy of this checklist else
   and per-widget.
 - [ ] Health dashboard operational — `state.health`/`/api/operations/health` are real but no LIVE
   tab widget renders the health grid yet (Backend Ready, not connected).
+- [x] **Shared Broker Runtime landed, 2026-07-06** — `dashboard/live_dashboard_service.py` no
+  longer opens its own MetaAPI session for account/positions/market-watch/chart data; it reads
+  the files the deployed runner already writes every tick. Fixes a real, previously-documented
+  defect: `brokerConnection.status` was `DEGRADED` in production before this change (decoupled
+  connection, no shared state) and is now honestly `CONNECTED`, verified live. Manual
+  close/modify/cancel position actions remain on their own separate connection — routing those
+  through the runner would need a command/IPC channel to it, out of this sprint's scope.
 
 **Security**
-- [~] Authentication implemented — `dashboard/rbac.py` (2026-07-04) brings `dashboard/auth.py`'s
-  bearer-token/trusted-proxy identity model to the FastAPI backend; `status_server.py`'s
-  emergency-stop and all `/api/control/*` mutation routes now enforce it (`Depends(require_role
-  (...))`, verified live: unauthenticated POST returns 401). Still missing: a frontend
-  session/login UI, and other Flask-side mutations (position close/protect/cancel, activation)
-  are not yet ported to the same FastAPI dependency.
+- [x] Authentication implemented and frontend-integrated — `dashboard/rbac.py` (2026-07-04) brings
+  `dashboard/auth.py`'s bearer-token/trusted-proxy identity model to the FastAPI backend;
+  `status_server.py`'s emergency-stop and all `/api/control/*` mutation routes enforce it
+  (`Depends(require_role(...))`, verified live: unauthenticated POST returns 401). **2026-07-05**:
+  `OperatorLogin.tsx` provides the frontend session/login UI this checklist previously marked
+  missing — validates a token/actor pair against the real backend, stores it for the browser
+  session, and sends real `Authorization`/`X-SVOS-Actor` headers on every mutation call (verified
+  live and via full local success-path testing of pause/resume/toggle-strategy/emergency-stop/
+  clear). Still missing: other Flask-side mutations (position close/protect/cancel, activation)
+  are not yet ported to the same FastAPI dependency (out of System 2 dashboard scope, tracked
+  separately).
 - [~] RBAC implemented — same role model (`research_operator`/`incident_operator`/
   `risk_operator`/`admin`) now enforced on both backends; `strategy:toggle`/`trading:pause`/
   `trading:resume` added to `_ROLE_ACTIONS` (`dashboard/auth.py`) for the new controls. Not yet
@@ -755,12 +772,42 @@ Updated in place as items land; do not fork a second copy of this checklist else
 
 **Observability**
 - [x] Monitoring available — `/api/operations/*` (Phase 5), `/metrics` (Prometheus format).
-- [x] Alerts operational — Telegram, real, wired into the live runner.
+  **Extended 2026-07-06**: `GET /api/system2/monitoring` consolidates platform health, broker,
+  runner uptime, database reachability, risk engine, dashboard backend, WebSocket subscriber
+  count, and host resources (CPU load average, memory via `scripts/ops/mem_monitor.py`, disk) in
+  one place. Execution latency is honestly `null` (no trades have executed yet to measure from) —
+  not fabricated.
+- [~] Alerts operational — Telegram, real, wired into the live runner. **2026-07-06**: persistence
+  into `operations.execution_event` implemented and unit-tested (`monitoring/telegram.py::_post`
+  now calls `execution.operations_recorder.record_telegram_alert` before every send, including
+  suppressed/unconfigured cases, tagged `sent: true/false`) — but **not yet active on the deployed
+  runner**, because activating it requires restarting `smc-demo-runner.service`, which currently
+  has ~77 lines of a separate session's uncommitted, unreviewed `RiskPortfolioStore` integration
+  already loaded. Restarting would deploy that unrelated, unverified change alongside this one —
+  deliberately not done. See `docs/systems/system2/DASHBOARD_READINESS.md` §11.
 - [~] Event history accessible — real and durable via Postgres (`/api/operations/events`,
-  Phase 5), but not yet surfaced in the dashboard UI (Phase 6 coverage matrix).
+  Phase 5), but not yet surfaced in the dashboard UI (Phase 6 coverage matrix). Telegram alerts
+  will appear here automatically once persistence goes live (same table, no new query needed) —
+  not yet, per the item above.
 - [ ] Health endpoints complete — `/api/v1/production/health` still reads a heartbeat file the
   canonical runner never writes to; `/api/operations/health` is real but runner-adjacent, not the
   same endpoint referenced elsewhere in this document's own acceptance criteria (§ above, item 6).
+
+**Configuration**
+- [x] Placeholder/secret review completed, 2026-07-06 — `SVOS_OPERATOR_TOKEN` confirmed a
+  10-character, non-random placeholder value (shape-checked only, never printed); all other
+  reviewed credentials (`METAAPI_TOKEN`, `VANTAGE_DEMO_METAAPI_ID`, `TELEGRAM_BOT_TOKEN`,
+  `DATABASE_URL`, `ADMIN_API_KEY`, Bybit/Gemini/DeepSeek/OpenRouter/Databento keys) have real,
+  generated-looking shapes, not placeholder patterns. `DASHBOARD_PROXY_SECRET`/`SVOS_OPERATOR_ROLE`
+  confirmed unset (proxy auth mode unused; bearer role defaults to `admin`).
+- [x] Rotation/rollback/verification procedure documented for `SVOS_OPERATOR_TOKEN` —
+  `docs/systems/system2/DASHBOARD_READINESS.md` §9.3 (unchanged this pass; not re-executed).
+- [ ] Rotation not executed — requires explicit owner approval per this repo's secrets boundary;
+  out of scope to perform unilaterally.
+- Minor, non-blocking: 5 keys present in `.env.example` are absent from the real `.env`
+  (`DASHBOARD_PUBLIC_HOST`, `DASHBOARD_SUBPROCESS_TIMEOUT`, `GOOGLE_CLOUD_LOCATION`,
+  `GOOGLE_CLOUD_PROJECT`, `GOOGLE_GENAI_USE_VERTEXAI`) — none are System-2-critical (Vertex AI vars
+  belong to an SVOS research feature; the others have code-level defaults).
 
 **Operations**
 - [x] Deployment documented — `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md`,
@@ -774,9 +821,23 @@ Updated in place as items land; do not fork a second copy of this checklist else
 - [ ] Disaster recovery documented — backup/restore exists (`docs/database_authority_stabilization.md`
   §8 rollback plan for the DB authority model specifically, and `docs/vps/OPERATOR_RUNBOOK.md`'s
   restore-from-backup procedure) but no full-platform DR *rehearsal evidence* exists yet.
+- [ ] **Extended demo validation — genuinely not yet performed.** The deployed runner has been up
+  continuously since 2026-07-04 23:43 UTC (~2 days as of this review, 0 restarts) — real but short
+  of a multi-day validation window. Findings from this window, honestly reported (see
+  `docs/systems/system2/DASHBOARD_READINESS.md` §12 for full detail): 119 distinct MetaAPI
+  subscription-timeout `[ERROR]` events and 21 reconnects over ~2 days (handled gracefully — 0
+  process restarts, 0 trades lost), and 58 non-terminal `ExecutionRecord`s accumulated with zero
+  completed trades, which has **not been root-caused in this pass** and is flagged for
+  investigation, not fixed (touching `execution/execution_state.py`'s state machine was judged
+  out of scope for this hardening sprint). Zero real trades have occurred (spread filter has
+  rejected every signal so far), so execution-path stability under actual order flow remains
+  unvalidated.
 
 **Status: not yet a Production Candidate.** Roughly two-thirds of the Execution Platform and
-Dashboard sections are done; Security is now partially closed (Real-Time Operations Layer,
-2026-07-04 — RBAC + CONFIRM tokens on the emergency-stop/control family, WebSocket event
-streaming) but a frontend login UI and the remaining unauthenticated Flask mutation routes are
-still open, alongside most of Operations.
+Dashboard sections are done; Security is closed for the FastAPI backend (frontend login,
+WebSocket ticket auth, RBAC, CONFIRM tokens, audit logging all landed 2026-07-04/05); Observability
+gained a consolidated monitoring endpoint and tested-but-not-yet-live alert persistence
+(2026-07-06); Configuration has been reviewed with no new placeholders found beyond the
+already-known operator token. Still open: durable risk ledger, `run_portfolio.py` disposition,
+disaster-recovery rehearsal, and — the largest remaining gate — genuine multi-day extended demo
+validation under real order flow, which has not happened yet.

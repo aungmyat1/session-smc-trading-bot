@@ -107,7 +107,7 @@ class TradingPermissionService:
             allow = False
             reasons.append(f"maintenance:{str(maintenance_state.get('reason', 'scheduled')).strip() or 'scheduled'}")
 
-        if self.environment in {"demo", "live"} and state.get("health", {}).get("critical_unknown", False):
+        if self.environment in {"demo", "demo_validation", "live"} and state.get("health", {}).get("critical_unknown", False):
             mode = "BLOCK_NEW"
             allow = False
             reasons.append("health:critical_unknown")

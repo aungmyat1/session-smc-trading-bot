@@ -27,5 +27,11 @@ uvicorn>=0.30,<1
 # Gemini AI — current unified SDK for Developer API and Vertex AI
 google-genai>=2.10,<3
 
-# Future isolated Vantage/MetaAPI execution adapter
+# Legacy Vantage/MetaAPI execution adapter — retained until ADR-0011 mt5linux
+# cutover completes shadow verification (see execution/metaapi_client.py)
 metaapi-cloud-sdk>=29,<30
+
+# Vantage execution adapter bridge (ADR-0011) — client side only; requires a
+# Wine-hosted MT5 terminal + `python -m mt5linux <wine-python.exe>` RPyC server
+# running on the VPS (see docs/svos/ADR-0011-MT5LINUX-BROKER-BRIDGE.md)
+mt5linux>=0.1.9,<1
