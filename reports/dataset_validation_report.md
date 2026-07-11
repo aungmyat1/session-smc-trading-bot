@@ -1,7 +1,9 @@
 # Dataset Validation Report
-Generated: 2026-06-27T11:00:45Z
+Generated: 2026-07-11T11:40:09Z
 
-**ERRORS: 0 | WARNINGS: 48 | PASSED: 222**
+**Dataset Status: PASS_WITH_WARNINGS**
+
+**ERRORS: 0 | WARNINGS: 36 | PASSED: 183**
 
 ---
 
@@ -44,59 +46,42 @@ Generated: 2026-06-27T11:00:45Z
 🟢 [PASS] EURUSD: raw ticks 2026-05 — 1,472,510 rows OK
 🟢 [PASS] EURUSD: raw ticks 2026-06 — 1,302,075 rows OK
 🟢 [PASS] EURUSD: coverage 36/36 months (100.0%)
-🟢 [PASS] EURUSD M1: loaded 372,414 bars
-🟢 [PASS] EURUSD M1: schema complete
-🟢 [PASS] EURUSD M1: no duplicate timestamps
-🟡 [WARN] EURUSD M1: 8057 weekend bars found (first: 2024-01-07 22:04:00+00:00)
-🟢 [PASS] EURUSD M1: OHLC high integrity OK
-🟢 [PASS] EURUSD M1: OHLC low integrity OK
-🟡 [WARN] EURUSD M1: 67 bars with spread > 10.0 pips
-🟡 [WARN] EURUSD M1: 279 non-weekend gaps > 2× bar size
-🟢 [PASS] EURUSD M1: date range 2024-01-01 → 2024-12-31
-🟢 [PASS] EURUSD M5: loaded 74,900 bars
+🟢 [PASS] EURUSD M5: loaded 223,033 bars
 🟢 [PASS] EURUSD M5: schema complete
 🟢 [PASS] EURUSD M5: no duplicate timestamps
-🟡 [WARN] EURUSD M5: 1654 weekend bars found (first: 2024-01-07 22:00:00+00:00)
+🟡 [WARN] EURUSD M5: 4922 weekend bars found (first: 2023-07-02 21:00:00+00:00)
 🟢 [PASS] EURUSD M5: OHLC high integrity OK
 🟢 [PASS] EURUSD M5: OHLC low integrity OK
-🟡 [WARN] EURUSD M5: 21 bars with spread > 10.0 pips
-🟡 [WARN] EURUSD M5: 8 non-weekend gaps > 2× bar size
-🟢 [PASS] EURUSD M5: date range 2024-01-01 → 2024-12-31
-🟢 [PASS] EURUSD M15: loaded 24,974 bars
+🟡 [WARN] EURUSD M5: 113 bars with spread > 10.0 pips
+🟡 [WARN] EURUSD M5: 26 non-weekend gaps > 2× bar size
+🟢 [PASS] EURUSD M5: date range 2023-07-02 → 2026-06-26
+🟢 [PASS] EURUSD M15: loaded 74,365 bars
 🟢 [PASS] EURUSD M15: schema complete
 🟢 [PASS] EURUSD M15: no duplicate timestamps
-🟡 [WARN] EURUSD M15: 552 weekend bars found (first: 2024-01-07 22:00:00+00:00)
+🟡 [WARN] EURUSD M15: 1643 weekend bars found (first: 2023-07-02 21:00:00+00:00)
 🟢 [PASS] EURUSD M15: OHLC high integrity OK
 🟢 [PASS] EURUSD M15: OHLC low integrity OK
-🟡 [WARN] EURUSD M15: 8 bars with spread > 10.0 pips
-🟡 [WARN] EURUSD M15: 3 non-weekend gaps > 2× bar size
-🟢 [PASS] EURUSD M15: date range 2024-01-01 → 2024-12-31
-🟢 [PASS] EURUSD H1: loaded 6,244 bars
+🟡 [WARN] EURUSD M15: 36 bars with spread > 10.0 pips
+🟡 [WARN] EURUSD M15: 11 non-weekend gaps > 2× bar size
+🟢 [PASS] EURUSD M15: date range 2023-07-02 → 2026-06-26
+🟢 [PASS] EURUSD H1: loaded 18,594 bars
 🟢 [PASS] EURUSD H1: schema complete
 🟢 [PASS] EURUSD H1: no duplicate timestamps
-🟡 [WARN] EURUSD H1: 138 weekend bars found (first: 2024-01-07 22:00:00+00:00)
+🟡 [WARN] EURUSD H1: 411 weekend bars found (first: 2023-07-02 21:00:00+00:00)
 🟢 [PASS] EURUSD H1: OHLC high integrity OK
 🟢 [PASS] EURUSD H1: OHLC low integrity OK
-🟡 [WARN] EURUSD H1: 2 bars with spread > 10.0 pips
-🟡 [WARN] EURUSD H1: 3 non-weekend gaps > 2× bar size
-🟢 [PASS] EURUSD H1: date range 2024-01-01 → 2024-12-31
-🟢 [PASS] EURUSD H4: loaded 1,615 bars
+🟡 [WARN] EURUSD H1: 8 bars with spread > 10.0 pips
+🟡 [WARN] EURUSD H1: 9 non-weekend gaps > 2× bar size
+🟢 [PASS] EURUSD H1: date range 2023-07-02 → 2026-06-26
+🟢 [PASS] EURUSD H4: loaded 4,810 bars
 🟢 [PASS] EURUSD H4: schema complete
 🟢 [PASS] EURUSD H4: no duplicate timestamps
-🟡 [WARN] EURUSD H4: 52 weekend bars found (first: 2024-01-07 20:00:00+00:00)
+🟡 [WARN] EURUSD H4: 155 weekend bars found (first: 2023-07-02 20:00:00+00:00)
 🟢 [PASS] EURUSD H4: OHLC high integrity OK
 🟢 [PASS] EURUSD H4: OHLC low integrity OK
-🟢 [PASS] EURUSD H4: spread within normal bounds
-🟡 [WARN] EURUSD H4: 1 non-weekend gaps > 2× bar size
-🟢 [PASS] EURUSD H4: date range 2024-01-01 → 2024-12-31
-🟢 [PASS] EURUSD D1: loaded 314 bars
-🟢 [PASS] EURUSD D1: schema complete
-🟢 [PASS] EURUSD D1: no duplicate timestamps
-🟡 [WARN] EURUSD D1: 52 weekend bars found (first: 2024-01-07 00:00:00+00:00)
-🟢 [PASS] EURUSD D1: OHLC high integrity OK
-🟢 [PASS] EURUSD D1: OHLC low integrity OK
-🟢 [PASS] EURUSD D1: spread within normal bounds
-🟢 [PASS] EURUSD D1: date range 2024-01-01 → 2024-12-31
+🟡 [WARN] EURUSD H4: 1 bars with spread > 10.0 pips
+🟡 [WARN] EURUSD H4: 5 non-weekend gaps > 2× bar size
+🟢 [PASS] EURUSD H4: date range 2023-07-02 → 2026-06-26
 🟢 [PASS] GBPUSD: raw ticks 2023-07 — 2,098,204 rows OK
 🟢 [PASS] GBPUSD: raw ticks 2023-08 — 2,401,456 rows OK
 🟢 [PASS] GBPUSD: raw ticks 2023-09 — 1,955,212 rows OK
@@ -134,15 +119,6 @@ Generated: 2026-06-27T11:00:45Z
 🟢 [PASS] GBPUSD: raw ticks 2026-05 — 1,947,021 rows OK
 🟢 [PASS] GBPUSD: raw ticks 2026-06 — 1,819,450 rows OK
 🟢 [PASS] GBPUSD: coverage 36/36 months (100.0%)
-🟢 [PASS] GBPUSD M1: loaded 1,109,311 bars
-🟢 [PASS] GBPUSD M1: schema complete
-🟢 [PASS] GBPUSD M1: no duplicate timestamps
-🟡 [WARN] GBPUSD M1: 23597 weekend bars found (first: 2023-07-02 21:04:00+00:00)
-🟢 [PASS] GBPUSD M1: OHLC high integrity OK
-🟢 [PASS] GBPUSD M1: OHLC low integrity OK
-🟡 [WARN] GBPUSD M1: 3187 bars with spread > 12.0 pips
-🟡 [WARN] GBPUSD M1: 875 non-weekend gaps > 2× bar size
-🟢 [PASS] GBPUSD M1: date range 2023-07-02 → 2026-06-26
 🟢 [PASS] GBPUSD M5: loaded 223,097 bars
 🟢 [PASS] GBPUSD M5: schema complete
 🟢 [PASS] GBPUSD M5: no duplicate timestamps
@@ -179,14 +155,6 @@ Generated: 2026-06-27T11:00:45Z
 🟡 [WARN] GBPUSD H4: 4 bars with spread > 12.0 pips
 🟡 [WARN] GBPUSD H4: 5 non-weekend gaps > 2× bar size
 🟢 [PASS] GBPUSD H4: date range 2023-07-02 → 2026-06-26
-🟢 [PASS] GBPUSD D1: loaded 934 bars
-🟢 [PASS] GBPUSD D1: schema complete
-🟢 [PASS] GBPUSD D1: no duplicate timestamps
-🟡 [WARN] GBPUSD D1: 154 weekend bars found (first: 2023-07-02 00:00:00+00:00)
-🟢 [PASS] GBPUSD D1: OHLC high integrity OK
-🟢 [PASS] GBPUSD D1: OHLC low integrity OK
-🟢 [PASS] GBPUSD D1: spread within normal bounds
-🟢 [PASS] GBPUSD D1: date range 2023-07-02 → 2026-06-26
 🟢 [PASS] XAUUSD: raw ticks 2023-07 — 2,760,284 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-08 — 2,373,606 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-09 — 1,892,643 rows OK
@@ -224,15 +192,6 @@ Generated: 2026-06-27T11:00:45Z
 🟢 [PASS] XAUUSD: raw ticks 2026-05 — 8,330,808 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2026-06 — 7,486,508 rows OK
 🟢 [PASS] XAUUSD: coverage 36/36 months (100.0%)
-🟢 [PASS] XAUUSD M1: loaded 1,058,960 bars
-🟢 [PASS] XAUUSD M1: schema complete
-🟢 [PASS] XAUUSD M1: no duplicate timestamps
-🟡 [WARN] XAUUSD M1: 15287 weekend bars found (first: 2023-07-02 22:00:00+00:00)
-🟢 [PASS] XAUUSD M1: OHLC high integrity OK
-🟢 [PASS] XAUUSD M1: OHLC low integrity OK
-🟡 [WARN] XAUUSD M1: 484902 bars with spread > 5.0 pips
-🟡 [WARN] XAUUSD M1: 660 non-weekend gaps > 2× bar size
-🟢 [PASS] XAUUSD M1: date range 2023-07-02 → 2026-06-26
 🟢 [PASS] XAUUSD M5: loaded 211,873 bars
 🟢 [PASS] XAUUSD M5: schema complete
 🟢 [PASS] XAUUSD M5: no duplicate timestamps
@@ -269,14 +228,6 @@ Generated: 2026-06-27T11:00:45Z
 🟡 [WARN] XAUUSD H4: 2291 bars with spread > 5.0 pips
 🟡 [WARN] XAUUSD H4: 7 non-weekend gaps > 2× bar size
 🟢 [PASS] XAUUSD H4: date range 2023-07-02 → 2026-06-26
-🟢 [PASS] XAUUSD D1: loaded 931 bars
-🟢 [PASS] XAUUSD D1: schema complete
-🟢 [PASS] XAUUSD D1: no duplicate timestamps
-🟡 [WARN] XAUUSD D1: 154 weekend bars found (first: 2023-07-02 00:00:00+00:00)
-🟢 [PASS] XAUUSD D1: OHLC high integrity OK
-🟢 [PASS] XAUUSD D1: OHLC low integrity OK
-🟡 [WARN] XAUUSD D1: 476 bars with spread > 5.0 pips
-🟢 [PASS] XAUUSD D1: date range 2023-07-02 → 2026-06-26
 
 ---
 
@@ -296,24 +247,18 @@ Expected raw coverage window: 2023-07 → 2026-06
 
 | Symbol | TF | Rows | Schema | Sorted | Duplicates | Date range |
 |---|---|---:|---|---|---:|---|
-| EURUSD | M1 | 372,414 | PASS | PASS | 0 | 2024-01-01T22:00:00+00:00 → 2024-12-31T21:59:00+00:00 |
-| EURUSD | M5 | 74,900 | PASS | PASS | 0 | 2024-01-01T22:00:00+00:00 → 2024-12-31T21:55:00+00:00 |
-| EURUSD | M15 | 24,974 | PASS | PASS | 0 | 2024-01-01T22:00:00+00:00 → 2024-12-31T21:45:00+00:00 |
-| EURUSD | H1 | 6,244 | PASS | PASS | 0 | 2024-01-01T22:00:00+00:00 → 2024-12-31T21:00:00+00:00 |
-| EURUSD | H4 | 1,615 | PASS | PASS | 0 | 2024-01-01T20:00:00+00:00 → 2024-12-31T20:00:00+00:00 |
-| EURUSD | D1 | 314 | PASS | PASS | 0 | 2024-01-01T00:00:00+00:00 → 2024-12-31T00:00:00+00:00 |
-| GBPUSD | M1 | 1,109,311 | PASS | PASS | 0 | 2023-07-02T21:04:00+00:00 → 2026-06-26T20:59:00+00:00 |
+| EURUSD | M5 | 223,033 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:55:00+00:00 |
+| EURUSD | M15 | 74,365 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
+| EURUSD | H1 | 18,594 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
+| EURUSD | H4 | 4,810 | PASS | PASS | 0 | 2023-07-02T20:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
 | GBPUSD | M5 | 223,097 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:55:00+00:00 |
 | GBPUSD | M15 | 74,395 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | GBPUSD | H1 | 18,602 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
 | GBPUSD | H4 | 4,810 | PASS | PASS | 0 | 2023-07-02T20:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
-| GBPUSD | D1 | 934 | PASS | PASS | 0 | 2023-07-02T00:00:00+00:00 → 2026-06-26T00:00:00+00:00 |
-| XAUUSD | M1 | 1,058,960 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:59:00+00:00 |
 | XAUUSD | M5 | 211,873 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:55:00+00:00 |
 | XAUUSD | M15 | 70,631 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | XAUUSD | H1 | 17,670 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
 | XAUUSD | H4 | 4,779 | PASS | PASS | 0 | 2023-07-02T20:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
-| XAUUSD | D1 | 931 | PASS | PASS | 0 | 2023-07-02T00:00:00+00:00 → 2026-06-26T00:00:00+00:00 |
 
 ### Acquisition Telemetry
 
@@ -327,4 +272,4 @@ Expected raw coverage window: 2023-07 → 2026-06
 
 ## Summary
 
-⚠️ 48 warning(s). No blocking errors.
+⚠️ 36 warning(s). No blocking errors.

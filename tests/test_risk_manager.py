@@ -154,6 +154,47 @@ class TestCircuitBreakers:
         assert not rm.state.halted
         assert rm.state.daily_loss_r == 0.0
 
+    def test_monthly_loss_disabled_by_default(self):
+        """No max_monthly_loss_r in config → monthly gate never trips (backward compat)."""
+        rm = make_rm()
+        for _ in range(50):
+            rm._state.halted = False
+            rm._state.halt_reason = ""
+            rm.record_trade_result(-0.01)
+        assert rm.state.halt_reason != "MAX_MONTHLY_LOSS"
+
+    def test_monthly_loss_triggers_halt_when_configured(self):
+        config = json.loads(json.dumps(BASE_CONFIG))
+        config["risk"]["max_daily_loss_r"] = 100.0
+        config["risk"]["max_weekly_loss_r"] = 100.0
+        config["risk"]["max_monthly_loss_r"] = 2.0
+        rm = RiskManager(config)
+        rm.record_trade_result(-1.0)
+        rm.record_trade_result(-1.0)
+        cb = rm.check_circuit_breakers()
+        assert cb.halted
+        assert cb.reason == "MAX_MONTHLY_LOSS"
+
+    def test_monthly_reset_clears_counter_but_not_halt(self):
+        """Mirrors existing MAX_WEEKLY_LOSS semantics (see
+        tests/test_order_manager.py::TestCircuitBreakerRejection): the running
+        counter resets on the new period, but the halt itself requires manual
+        intervention to clear — it is not auto-cleared like MAX_DAILY_LOSS."""
+        config = json.loads(json.dumps(BASE_CONFIG))
+        config["risk"]["max_daily_loss_r"] = 100.0
+        config["risk"]["max_weekly_loss_r"] = 100.0
+        config["risk"]["max_monthly_loss_r"] = 1.0
+        rm = RiskManager(config)
+        rm.record_trade_result(-1.5)
+        assert rm.state.halted
+        assert rm.state.halt_reason == "MAX_MONTHLY_LOSS"
+
+        next_month = datetime(2030, 2, 1, tzinfo=timezone.utc)
+        rm._maybe_reset(next_month)
+        assert rm.state.monthly_loss_r == 0.0
+        assert rm.state.halted
+        assert rm.state.halt_reason == "MAX_MONTHLY_LOSS"
+
     def test_state_persists_across_instances(self, tmp_path, monkeypatch):
         fake = tmp_path / "bot_state.json"
         monkeypatch.setattr("execution.risk_manager.STATE_FILE", fake)

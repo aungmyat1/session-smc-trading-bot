@@ -194,6 +194,10 @@ async def run_bot(
 
     last_session: "str | None" = None
     last_heartbeat: datetime = datetime.now(timezone.utc)
+    # SAFETY-01: last-known-open broker positions, keyed by position_id.
+    # Diffed each loop tick to detect closes and feed real trade results into
+    # RiskManager.record_trade_result() — see _process_closed_positions().
+    last_positions: dict[str, object] = {}
 
     watchdog_task = asyncio.create_task(_run_watchdog(telegram))
 
@@ -241,6 +245,13 @@ async def run_bot(
                 if session:
                     await telegram.send_session_open(session)
                 last_session = session
+
+            # ── Closed-position reconciliation (SAFETY-01) ────────────────────
+            # Runs every tick, independent of halt/session state, so real
+            # trade outcomes always reach the risk engine's loss counters.
+            last_positions = await _process_closed_positions(
+                execution_client, risk, trade_logger, telegram, CONFIG, last_positions,
+            )
 
             # ── Circuit breaker check ─────────────────────────────────────────
             cb = risk.check_circuit_breakers(now)
@@ -420,6 +431,83 @@ def _load_seen_signals(trade_logger: TradeLogger, pairs: list[str]) -> dict[str,
         if symbol in seen and signal_ts:
             seen[symbol].add(str(signal_ts))
     return seen
+
+
+# ── Closed-position reconciliation (SAFETY-01) ─────────────────────────────────
+
+# Pip size per symbol, needed to convert a raw price distance (open_price -
+# sl) into pips for R-multiple math. Mirrors the same _PIP convention already
+# duplicated across strategies/adapters/*.py and session_smc/*.py — not
+# consolidated here to stay within this task's file-count scope.
+_PIP_SIZE: dict[str, float] = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "USDJPY": 0.01, "XAUUSD": 0.1}
+
+
+async def _process_closed_positions(
+    execution_client: "BrokerInterface | MetaAPIClient",
+    risk: RiskManager,
+    trade_logger: TradeLogger,
+    telegram: TelegramAlerter,
+    config: dict,
+    last_positions: dict[str, object],
+) -> dict[str, object]:
+    """Detect broker positions that closed since the previous poll and feed
+    their realized R-multiple into RiskManager.record_trade_result().
+
+    Without this, daily/weekly/monthly loss and consecutive-loss circuit
+    breakers never update from real closes (record_trade_result had zero
+    live call sites — see docs/VERDICT_LOG.md SAFETY-01).
+
+    Diff-based on position_id, mirroring execution/close_reconciliation.py's
+    approach for the demo-runner path. Known limitation: MetaAPIClient has no
+    get_closing_deal()-equivalent lookup, so the profit/close price used here
+    is the last-known open snapshot before the position disappeared, not a
+    guaranteed final broker deal record. R-multiple is derived from the
+    position's own open_price/sl/volume (risk_amount = |open-sl| pips ×
+    pip_value × lots), so it does not depend on any separate journal store.
+    """
+    try:
+        current = await execution_client.get_open_positions()
+    except Exception as e:
+        logger.warning("Could not fetch positions for close reconciliation: %s", e)
+        return last_positions
+
+    current_by_id = {p.position_id: p for p in current if getattr(p, "position_id", "")}
+    closed_ids = [pid for pid in last_positions if pid not in current_by_id]
+
+    pip_value_per_lot: dict = config.get("pip_value_per_lot", {})
+    was_halted = risk.state.halted
+
+    for pid in closed_ids:
+        pos = last_positions[pid]
+        pip_size = _PIP_SIZE.get(pos.symbol, 0.0001)
+        risk_pips = abs(pos.open_price - pos.sl) / pip_size if pos.sl else 0.0
+        pv = pip_value_per_lot.get(pos.symbol, 10.0)
+        risk_amount = risk_pips * pv * pos.volume
+        result_r = (pos.profit / risk_amount) if risk_amount > 0 else 0.0
+
+        risk.record_trade_result(result_r)
+        trade_logger.position_closed(pos.symbol, pid, result_r, "broker_position_closed")
+        logger.info(
+            "Position closed: %s %s profit=%.2f result_r=%.3fR halted=%s",
+            pos.symbol, pid, pos.profit, result_r, risk.state.halted,
+        )
+        await telegram.send_trade_close(
+            symbol=pos.symbol,
+            direction=pos.direction,
+            result_r=result_r,
+            reason="broker_position_closed",
+        )
+
+    # Fail-safe: alert the moment a circuit breaker actually trips (not just
+    # on the next pre-trade check), so a halt is never silent.
+    if risk.state.halted and not was_halted:
+        logger.critical(
+            "CIRCUIT BREAKER TRIPPED: %s — new entries halted. %s",
+            risk.state.halt_reason, risk.summary(),
+        )
+        await telegram.send_circuit_breaker(risk.state.halt_reason, risk.summary())
+
+    return current_by_id
 
 
 # ── Session-end position close ────────────────────────────────────────────────

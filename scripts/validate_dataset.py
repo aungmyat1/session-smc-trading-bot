@@ -182,9 +182,18 @@ class ValidationReport:
         self.details.append(markdown)
 
     def summary(self) -> str:
+        if self.errors:
+            dataset_status = "BLOCKED"
+        elif self.warnings:
+            dataset_status = "PASS_WITH_WARNINGS"
+        else:
+            dataset_status = "PASS"
+
         lines = [
             "# Dataset Validation Report",
             f"Generated: {datetime.now(tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+            "",
+            f"**Dataset Status: {dataset_status}**",
             "",
             f"**ERRORS: {len(self.errors)} | WARNINGS: {len(self.warnings)} | PASSED: {len(self.passed)}**",
             "",
@@ -333,7 +342,13 @@ def summarize_acquisition(sym: str) -> dict | None:
     }
 
 
-def validate_processed(sym: str, tf: str, report: ValidationReport):
+def validate_processed(
+    sym: str,
+    tf: str,
+    report: ValidationReport,
+    expected_start: tuple[int, int] | None = None,
+    expected_end: tuple[int, int] | None = None,
+):
     legacy_path = DATA_PROC / sym / f"{tf}.parquet"
     partition_root = DATA_MARKET / tf.lower() / sym
     partition_paths = sorted(partition_root.glob("year=*/month=*/part-*.parquet")) if partition_root.exists() else []
@@ -456,6 +471,11 @@ def validate_processed(sym: str, tf: str, report: ValidationReport):
     stats["end"] = t1.isoformat()
     report.add("PASS", f"{sym} {tf}: date range {t0.date()} → {t1.date()}")
 
+    if expected_start and (t0.year, t0.month) > expected_start:
+        report.add("WARN", f"{sym} {tf}: processed data starts after expected window {month_label(expected_start)}")
+    if expected_end and (t1.year, t1.month) < expected_end:
+        report.add("WARN", f"{sym} {tf}: processed data ends before expected window {month_label(expected_end)}")
+
     return stats
 
 
@@ -477,7 +497,13 @@ def main():
         raw_stats[sym] = validate_raw_ticks(sym, report, expected_start=expected_start, expected_end=expected_end)
         processed_stats[sym] = {}
         for tf in args.timeframes:
-            processed_stats[sym][tf] = validate_processed(sym, tf, report)
+            processed_stats[sym][tf] = validate_processed(
+                sym,
+                tf,
+                report,
+                expected_start=expected_start,
+                expected_end=expected_end,
+            )
 
     if expected_start and expected_end:
         report.add_detail(

@@ -133,6 +133,34 @@ strategies:
       backtest: pending
       walk_forward: pending
     current: false
+  DayTradingManeuvers:
+    status: draft
+    svos_stage: INTAKE
+    approved: false
+    execution_allowed: false
+    current: false
+    version: '0.1'
+    owner: quant
+    description: Day Trading Maneuvers multi-timeframe SMC adapter — runtime import
+      stub exists in scripts/run_portfolio.py (DayTradingManeuversAdapter,
+      _NEEDS_DTM_DATA) but the adapter module itself does not exist yet (import
+      is guarded by try/except ImportError) and the strategy is not present in
+      _STRATEGY_MAP, so no live signal path currently executes for it. Registered
+      here to close the TASK-1-DAYTRADING-GOV governance gap (untracked runtime
+      wiring with zero catalog record).
+    symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+    timeframes:
+    - D1
+    - H1
+    - M5
+    deployment_target: research
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
   D2E3:
     status: research
     approved: false

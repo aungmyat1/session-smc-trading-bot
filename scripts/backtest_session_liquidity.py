@@ -26,7 +26,9 @@ Measures only. No broker execution. No live trading.
 import argparse
 import csv
 import json
+import math
 import re
+import statistics
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -60,6 +62,19 @@ CSV_FILES = {
 
 PHASE0_MIN_TRADES = 100
 PHASE0_MIN_PF     = 1.0
+
+# ── STA2-20260711-STAT-VALIDATION-V2 gate (tightened, effective 2026-07-01) ───
+# n > 200 AND net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15% — at BOTH standard
+# AND 2x spread stress, combined EURUSD+GBPUSD. See docs/VERDICT_LOG.md.
+STAT_GATE_MIN_TRADES = 200
+STAT_GATE_MIN_PF     = 1.25
+STAT_GATE_MIN_SHARPE = 1.2
+STAT_GATE_MAX_DD_PCT = 15.0
+
+# risk_percent used for R -> %-of-equity drawdown conversion. Sourced from
+# strategies/adapters/st_a2_runtime.py:71 (fixed-fractional risk per trade for
+# the live/demo runtime). Expressed as percent-of-equity risked per 1R.
+RISK_PERCENT_DEFAULT = 0.25
 
 
 # ── Pure simulation functions (importable for tests) ──────────────────────────
@@ -117,18 +132,33 @@ def spread_cost_r(spread_pips_rt, sl_pips):
     return spread_pips_rt / sl_pips
 
 
-def compute_metrics(net_rs):
+def compute_metrics(net_rs, risk_percent=None, trades_per_year=None):
     """
     Compute backtest statistics from a list of net-R trade outcomes.
 
-    Returns a dict with: trade_count, win_count, loss_count,
-    win_rate, avg_r, net_pf, total_net_r, max_dd.
+    Returns a dict with the original schema: trade_count, win_count,
+    loss_count, win_rate, avg_r, net_pf, total_net_r, max_dd — unchanged for
+    backward compatibility with existing callers/consumers.
+
+    Additive fields (STA2-20260711-STAT-VALIDATION-V2):
+        sharpe          — annualized Sharpe from per-trade net-R outcomes
+                           (see compute_sharpe()). None unless the caller
+                           supplies trades_per_year.
+        max_dd_pct       — max_dd expressed as %-of-equity, via a fixed-
+                           fractional, non-compounding approximation:
+                           max_dd_pct = max_dd_R * risk_percent
+                           (risk_percent = %-of-equity risked per 1R, see
+                           RISK_PERCENT_DEFAULT). None unless the caller
+                           supplies risk_percent.
+        recovery_factor — total_net_r / max_dd (inf if total_net_r > 0 and
+                           max_dd == 0; 0.0 if total_net_r <= 0 and max_dd == 0).
     """
     if not net_rs:
         return {
             "trade_count": 0, "win_count": 0, "loss_count": 0,
             "win_rate": 0.0, "avg_r": 0.0, "net_pf": 0.0,
             "total_net_r": 0.0, "max_dd": 0.0,
+            "sharpe": None, "max_dd_pct": None, "recovery_factor": 0.0,
         }
 
     wins   = [r for r in net_rs if r > 0]
@@ -144,6 +174,16 @@ def compute_metrics(net_rs):
     else:
         net_pf = gross_wins / gross_losses
 
+    max_dd      = max_drawdown(net_rs)
+    total_net_r = sum(net_rs)
+    sharpe      = compute_sharpe(net_rs, trades_per_year)
+    max_dd_pct  = (max_dd * risk_percent) if risk_percent is not None else None
+
+    if max_dd > 0:
+        recovery_factor = total_net_r / max_dd
+    else:
+        recovery_factor = float("inf") if total_net_r > 0 else 0.0
+
     return {
         "trade_count": len(net_rs),
         "win_count":   len(wins),
@@ -151,8 +191,11 @@ def compute_metrics(net_rs):
         "win_rate":    len(wins) / len(net_rs),
         "avg_r":       sum(net_rs) / len(net_rs),
         "net_pf":      net_pf,
-        "total_net_r": sum(net_rs),
-        "max_dd":      max_drawdown(net_rs),
+        "total_net_r": total_net_r,
+        "max_dd":      max_dd,
+        "sharpe":          sharpe,
+        "max_dd_pct":      max_dd_pct,
+        "recovery_factor": recovery_factor,
     }
 
 
@@ -167,6 +210,96 @@ def max_drawdown(net_rs):
         if dd > max_dd:
             max_dd = dd
     return max_dd
+
+
+def compute_sharpe(net_rs, trades_per_year=None):
+    """
+    Annualized Sharpe ratio from per-trade net-R outcomes.
+
+    Formula: mean(R) / population_stdev(R) * sqrt(trades_per_year)
+
+    R-based (not equity-based) because trades in this runner are not
+    timestamped into a compounding equity curve. trades_per_year must be
+    supplied by the caller (trade_count / years_covered_by_the_dataset) to
+    produce a genuinely annualized figure — without it, this returns None
+    rather than silently computing a misleading un-annualized ratio.
+    """
+    if trades_per_year is None or len(net_rs) < 2:
+        return None
+    sd = statistics.pstdev(net_rs)
+    if sd == 0:
+        return 0.0
+    return (statistics.mean(net_rs) / sd) * math.sqrt(trades_per_year)
+
+
+def periodic_drawdown(trades, rs_key="std_net_r", period="daily"):
+    """
+    Peak-to-trough drawdown (in R) computed on net-R aggregated into calendar
+    periods (daily/weekly/monthly), ordered chronologically by signal
+    timestamp. Complements max_drawdown() (raw trade-sequence order) by
+    showing whether within-period clustering vs across-period smoothing
+    changes the drawdown picture. Reuses max_drawdown() on the period series.
+
+    trades: list of trade dicts as produced by _run_rr() (each has "sig"
+            with a .timestamp and the rs_key net-R field).
+    period: "daily" | "weekly" | "monthly"
+    """
+    if period not in ("daily", "weekly", "monthly"):
+        raise ValueError(f"unknown period: {period}")
+    if not trades:
+        return 0.0
+
+    buckets = {}
+    for t in trades:
+        ts = t["sig"].timestamp
+        if period == "daily":
+            key = ts.date().isoformat()
+        elif period == "weekly":
+            iso = ts.isocalendar()
+            key = f"{iso[0]}-W{iso[1]:02d}"
+        else:  # monthly
+            key = f"{ts.year}-{ts.month:02d}"
+        buckets[key] = buckets.get(key, 0.0) + t[rs_key]
+
+    period_rs = [buckets[k] for k in sorted(buckets)]
+    return max_drawdown(period_rs)
+
+
+def sub_period_stability(trades, rs_key="std_net_r", n_buckets=4):
+    """
+    Pragmatic regime-consistency check (not a formal stability test): split
+    chronologically-ordered trades into n_buckets equal-size buckets and
+    compute Net PF per bucket via compute_metrics(). Returns bucket detail
+    plus the population stdev of the finite (non-inf) PF values.
+    """
+    if not trades:
+        return {"buckets": [], "pf_stdev": 0.0}
+
+    ordered = sorted(trades, key=lambda t: t["sig"].timestamp)
+    n = len(ordered)
+    bucket_size = max(1, n // n_buckets)
+
+    bucket_info = []
+    pf_values = []
+    for i in range(n_buckets):
+        start = i * bucket_size
+        end = n if i == n_buckets - 1 else (i + 1) * bucket_size
+        chunk = ordered[start:end]
+        if not chunk:
+            continue
+        m = compute_metrics([t[rs_key] for t in chunk])
+        pf_display = "inf" if m["net_pf"] == float("inf") else round(m["net_pf"], 4)
+        bucket_info.append({
+            "start":       chunk[0]["sig"].timestamp.strftime("%Y-%m-%d"),
+            "end":         chunk[-1]["sig"].timestamp.strftime("%Y-%m-%d"),
+            "trade_count": m["trade_count"],
+            "net_pf":      pf_display,
+        })
+        if m["net_pf"] != float("inf"):
+            pf_values.append(m["net_pf"])
+
+    pf_stdev = statistics.pstdev(pf_values) if len(pf_values) >= 2 else 0.0
+    return {"buckets": bucket_info, "pf_stdev": round(pf_stdev, 4)}
 
 
 # ── Data helpers ──────────────────────────────────────────────────────────────
@@ -530,6 +663,79 @@ def write_failure_analysis(run_id, all_rr_data, today_utc):
     print(f"[+] Written: {out.relative_to(_ROOT)}")
 
 
+def write_validation_markdown(path, ev, today_utc):
+    """Write a human-readable markdown summary for a --json-out extended_validation block."""
+    sm, stm, gm = ev["std_metrics"], ev["stress_metrics"], ev["gross_metrics"]
+    g = ev["gate"]
+
+    def _f(v, fmt="{:.3f}"):
+        if v is None:
+            return "n/a"
+        if v == float("inf"):
+            return "inf"
+        return fmt.format(v)
+
+    lines = [
+        f"# {ev['trial_id'] or 'STA2 Statistical Validation'}",
+        f"Date: {today_utc}  |  Canonical RR: {ev['canonical_rr']:.0f}",
+        "",
+        f"Dataset window: {ev['dataset']['combined_start']} → {ev['dataset']['combined_end']} "
+        f"(~{ev['dataset']['years_span']} yr)",
+        "",
+        "## Gate (n>200, net PF>1.25, Sharpe>1.2, MaxDD%<15, standard AND 2x stress)",
+        "",
+        "| Check | Value | Pass |",
+        "|---|---|---|",
+        f"| Trades (n) | {sm['trade_count']} | {'YES' if g['n_gt_200'] else 'NO'} |",
+        f"| Net PF (std) | {_f(sm['net_pf'])} | {'YES' if g['std_pf_gt_1.25'] else 'NO'} |",
+        f"| Net PF (2x) | {_f(stm['net_pf'])} | {'YES' if g['stress_pf_gt_1.25'] else 'NO'} |",
+        f"| Sharpe (std, annualized) | {_f(sm['sharpe'])} | {'YES' if g['sharpe_gt_1.2'] else 'NO'} |",
+        f"| MaxDD % (std) | {_f(sm['max_dd_pct'], '{:.2f}%')} | {'YES' if g['max_dd_pct_lt_15'] else 'NO'} |",
+        f"| **ALL GATES** | | **{'PASS' if g['all_pass'] else 'FAIL'}** |",
+        "",
+        "## Gross vs Net (standard spread)",
+        "",
+        "| | Gross | Net (std) | Net (2x) |",
+        "|---|---|---|---|",
+        f"| Net PF | {_f(gm['net_pf'])} | {_f(sm['net_pf'])} | {_f(stm['net_pf'])} |",
+        f"| Win Rate | {gm['win_rate']*100:.1f}% | {sm['win_rate']*100:.1f}% | {stm['win_rate']*100:.1f}% |",
+        f"| Avg R | {_f(gm['avg_r'])} | {_f(sm['avg_r'])} | {_f(stm['avg_r'])} |",
+        f"| Total R | {_f(gm['total_net_r'])} | {_f(sm['total_net_r'])} | {_f(stm['total_net_r'])} |",
+        f"| MaxDD (R) | {_f(gm['max_dd'])} | {_f(sm['max_dd'])} | {_f(stm['max_dd'])} |",
+        f"| MaxDD (%) | n/a | {_f(sm['max_dd_pct'], '{:.2f}%')} | {_f(stm['max_dd_pct'], '{:.2f}%')} |",
+        f"| Recovery Factor | {_f(gm['recovery_factor'])} | {_f(sm['recovery_factor'])} | {_f(stm['recovery_factor'])} |",
+        "",
+        "## Periodic Drawdown (R, standard spread)",
+        "",
+        "| Period | Std | 2x Stress |",
+        "|---|---|---|",
+        f"| Daily | {ev['periodic_dd']['std']['daily']:.3f} | {ev['periodic_dd']['stress']['daily']:.3f} |",
+        f"| Weekly | {ev['periodic_dd']['std']['weekly']:.3f} | {ev['periodic_dd']['stress']['weekly']:.3f} |",
+        f"| Monthly | {ev['periodic_dd']['std']['monthly']:.3f} | {ev['periodic_dd']['stress']['monthly']:.3f} |",
+        "",
+        f"## Sub-Period Stability (Net PF, std spread; PF stdev={ev['stability']['pf_stdev']})",
+        "",
+        "| Start | End | Trades | Net PF |",
+        "|---|---|---|---|",
+    ]
+    for b in ev["stability"]["buckets"]:
+        lines.append(f"| {b['start']} | {b['end']} | {b['trade_count']} | {b['net_pf']} |")
+
+    lines += ["", "## Per-Symbol (standard spread)", "", "| Symbol | Trades | Net PF | Sharpe | MaxDD% |", "|---|---|---|---|---|"]
+    for sym, syms in ev["per_symbol"].items():
+        s = syms["std"]
+        lines.append(f"| {sym} | {s['trade_count']} | {_f(s['net_pf'])} | {_f(s['sharpe'])} | n/a |")
+
+    lines += [
+        "",
+        f"*Cost model: {ev['cost_model']['note']} — {ev['cost_model']['spread_pips']}*",
+        f"*MaxDD% formula: max_dd_R × risk_percent ({ev['risk_percent_used_for_max_dd_pct']}), "
+        "fixed-fractional non-compounding approximation.*",
+        f"*Sharpe formula: mean(R) / pstdev(R) × sqrt(trades_per_year), R-based (not equity-curve).*",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 # ── Research CSV logging ──────────────────────────────────────────────────────
 
 def _log_trades(run_id, rr, trades, contexts_by_sym):
@@ -667,6 +873,21 @@ def main():
         metavar="FILE",
         help="Optional JSON summary output path",
     )
+    parser.add_argument(
+        "--trial-id",
+        metavar="ID",
+        default=None,
+        help="Pre-registered docs/VERDICT_LOG.md trial ID (e.g. "
+             "STA2-20260711-STAT-VALIDATION-V2). Recorded in --json-out only; "
+             "does not change any simulation behavior.",
+    )
+    parser.add_argument(
+        "--risk-percent",
+        type=float,
+        default=RISK_PERCENT_DEFAULT,
+        help=f"%%-of-equity risked per 1R, for max_dd_pct conversion "
+             f"(default {RISK_PERCENT_DEFAULT}, from strategies/adapters/st_a2_runtime.py:71)",
+    )
     args = parser.parse_args()
 
     if args.costs_json:
@@ -758,6 +979,7 @@ def main():
             "trades":         trades,
             "std_metrics":    std_m,
             "stress_metrics": stress_m,
+            "gross_metrics":  gross_m,
             "gross_pf":       gross_m["net_pf"],
             "gate":           gate,
         }
@@ -813,6 +1035,90 @@ def main():
     print(f"\nResults: docs/BACKTEST_RESULTS.md")
     print(f"Run ID:  {run_id}\n")
 
+    # ── Extended statistical-validation metrics (STA2-20260711-STAT-VALIDATION-V2) ──
+    # Sharpe, MaxDD%, periodic DD, recovery factor, sub-period stability.
+    # Computed for reporting only — does not alter simulation, signals, or the
+    # existing Phase-0 gate logic above.
+    combined_start = min(data_start.values()) if data_start else ""
+    combined_end   = max(data_end.values())   if data_end   else ""
+    years_span = None
+    if combined_start and combined_end:
+        d0 = datetime.strptime(combined_start, "%Y-%m-%d")
+        d1 = datetime.strptime(combined_end, "%Y-%m-%d")
+        years_span = max((d1 - d0).days / 365.25, 1e-9)
+
+    for rr, d in all_rr_data.items():
+        n_trades = d["std_metrics"]["trade_count"]
+        tpy = (n_trades / years_span) if years_span else None
+        std_rs    = [t["std_net_r"]    for t in d["trades"]]
+        stress_rs = [t["stress_net_r"] for t in d["trades"]]
+        d["std_metrics"]    = compute_metrics(std_rs,    risk_percent=args.risk_percent, trades_per_year=tpy)
+        d["stress_metrics"] = compute_metrics(stress_rs, risk_percent=args.risk_percent, trades_per_year=tpy)
+        d["periodic_dd"] = {
+            "std": {
+                "daily":   round(periodic_drawdown(d["trades"], "std_net_r", "daily"), 4),
+                "weekly":  round(periodic_drawdown(d["trades"], "std_net_r", "weekly"), 4),
+                "monthly": round(periodic_drawdown(d["trades"], "std_net_r", "monthly"), 4),
+            },
+            "stress": {
+                "daily":   round(periodic_drawdown(d["trades"], "stress_net_r", "daily"), 4),
+                "weekly":  round(periodic_drawdown(d["trades"], "stress_net_r", "weekly"), 4),
+                "monthly": round(periodic_drawdown(d["trades"], "stress_net_r", "monthly"), 4),
+            },
+        }
+        d["stability"] = sub_period_stability(d["trades"], "std_net_r")
+
+    def _gate_eval(std_m, stress_m):
+        n_ok      = std_m["trade_count"] > STAT_GATE_MIN_TRADES
+        pf_std_ok = std_m["net_pf"] != float("inf") and std_m["net_pf"] > STAT_GATE_MIN_PF
+        pf_2x_ok  = stress_m["net_pf"] != float("inf") and stress_m["net_pf"] > STAT_GATE_MIN_PF
+        sharpe_ok = std_m["sharpe"] is not None and std_m["sharpe"] > STAT_GATE_MIN_SHARPE
+        dd_ok     = std_m["max_dd_pct"] is not None and std_m["max_dd_pct"] < STAT_GATE_MAX_DD_PCT
+        return {
+            "n_gt_200":            n_ok,
+            "std_pf_gt_1.25":      pf_std_ok,
+            "stress_pf_gt_1.25":   pf_2x_ok,
+            "sharpe_gt_1.2":       sharpe_ok,
+            "max_dd_pct_lt_15":    dd_ok,
+            "all_pass":            n_ok and pf_std_ok and pf_2x_ok and sharpe_ok and dd_ok,
+        }
+
+    # Canonical ST-A2 spec variant (rr=4.0, DEFAULT_CONFIG min_sl_pips=5.0) is
+    # the variant this trial restarts — see docs/VERDICT_LOG.md.
+    canonical_rr = 4.0
+    extended_validation = None
+    if canonical_rr in all_rr_data:
+        cd = all_rr_data[canonical_rr]
+        extended_validation = {
+            "trial_id": args.trial_id,
+            "canonical_rr": canonical_rr,
+            "dataset": {
+                "combined_start": combined_start,
+                "combined_end": combined_end,
+                "years_span": round(years_span, 3) if years_span else None,
+                "per_symbol_start": data_start,
+                "per_symbol_end": data_end,
+            },
+            "risk_percent_used_for_max_dd_pct": args.risk_percent,
+            "cost_model": {
+                "note": "Vantage Standard, unchanged from ST-A2 baseline (RT spread, pips)",
+                "spread_pips": SPREAD_PIPS,
+            },
+            "gross_metrics": cd["gross_metrics"],
+            "std_metrics": cd["std_metrics"],
+            "stress_metrics": cd["stress_metrics"],
+            "periodic_dd": cd["periodic_dd"],
+            "stability": cd["stability"],
+            "per_symbol": {
+                sym: {
+                    "std":    _sym_metrics(cd["trades"], sym, "std_net_r"),
+                    "stress": _sym_metrics(cd["trades"], sym, "stress_net_r"),
+                }
+                for sym in SYMBOLS
+            },
+            "gate": _gate_eval(cd["std_metrics"], cd["stress_metrics"]),
+        }
+
     if args.json_out:
         out_path = Path(args.json_out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -835,15 +1141,26 @@ def main():
                     "win_rate": d["std_metrics"]["win_rate"],
                     "expectancy": d["std_metrics"]["avg_r"],
                     "max_drawdown": d["std_metrics"]["max_dd"],
+                    "max_drawdown_pct": d["std_metrics"]["max_dd_pct"],
+                    "sharpe": d["std_metrics"]["sharpe"],
+                    "recovery_factor": d["std_metrics"]["recovery_factor"],
                     "net_return": d["std_metrics"]["total_net_r"],
                     "stress_profit_factor": d["stress_metrics"]["net_pf"],
+                    "stress_sharpe": d["stress_metrics"]["sharpe"],
+                    "stress_max_drawdown_pct": d["stress_metrics"]["max_dd_pct"],
                     "gate": d["gate"],
                 }
                 for rr, d in all_rr_data.items()
             },
+            "extended_validation": extended_validation,
         }
         out_path.write_text(json.dumps(summary, indent=2, sort_keys=True, default=str), encoding="utf-8")
         print(f"JSON summary → {out_path}")
+
+        if extended_validation:
+            md_path = out_path.with_suffix(".md")
+            write_validation_markdown(md_path, extended_validation, today_utc)
+            print(f"Markdown summary → {md_path}")
 
 
 if __name__ == "__main__":

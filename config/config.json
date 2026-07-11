@@ -14,6 +14,7 @@
     "max_pair_exposure": 1,
     "max_daily_loss_r": 3.0,
     "max_weekly_loss_r": 8.0,
+    "max_monthly_loss_r": 16.0,
     "max_consecutive_losses": 5,
     "min_lot": 0.01,
     "max_lot": 10.0

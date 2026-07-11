@@ -2,35 +2,49 @@
 SMC feature extraction — sweeps, sessions, CHoCH, BOS, FVG.
 
 Reads processed OHLCV Parquet (M15 + H4), runs ST-A2 signal chain in debug mode,
-extracts SMC events, writes feature Parquet to data/features/{type}/{SYMBOL}.parquet.
+extracts SMC events, writes feature Parquet to data/features/{type}/{SYMBOL}.parquet
+and a VPS-friendly consolidated artifact at features/{SYMBOL}/smc_events.parquet.
 
 Usage:
     python scripts/extract_features.py --symbols EURUSD GBPUSD
+    python scripts/extract_features.py --symbol EURUSD --years 3
     python scripts/extract_features.py --symbols EURUSD --start 2021-01 --end 2022-12
 
 Outputs:
     data/features/sweeps/{sym}.parquet
     data/features/sessions/{sym}.parquet
     data/features/fvg/{sym}.parquet
+    features/{sym}/smc_events.parquet
 """
 
 import argparse
 import logging
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 DATA_PROC = ROOT / "data" / "processed"
 DATA_FEAT = ROOT / "data" / "features"
+VPS_FEAT = ROOT / "features"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("extract")
+
+
+def _field(record, *names, default=None):
+    for name in names:
+        if isinstance(record, dict):
+            value = record.get(name)
+        else:
+            value = getattr(record, name, None)
+        if value is not None:
+            return value
+    return default
 
 
 def _load_parquet_as_bars(sym: str, tf: str) -> list[dict]:
@@ -120,14 +134,14 @@ def extract_sessions_and_sweeps(sym: str, start_dt=None, end_dt=None) -> tuple[l
 
     for sig in signals:
         sweep_events.append({
-            "timestamp_utc": getattr(sig, "entry_time", None) or getattr(sig, "time", None),
-            "session": getattr(sig, "session", ""),
-            "direction": getattr(sig, "direction", ""),
-            "sweep_level": getattr(sig, "sweep_level", float("nan")),
-            "sweep_close": getattr(sig, "entry", float("nan")),
+            "timestamp_utc": _field(sig, "entry_time", "timestamp", "time"),
+            "session": _field(sig, "session", default=""),
+            "direction": _field(sig, "direction", "side", default=""),
+            "sweep_level": _field(sig, "sweep_level", default=float("nan")),
+            "sweep_close": _field(sig, "entry", default=float("nan")),
             "session_high": float("nan"),
             "session_low": float("nan"),
-            "htf_bias": getattr(sig, "htf_bias", ""),
+            "htf_bias": _field(sig, "htf_bias", default=""),
         })
 
     return session_events, sweep_events
@@ -164,6 +178,68 @@ def _write_feature(events: list, schema_cols: list, out_path: Path):
     log.info("Wrote %d events → %s", len(df), out_path)
 
 
+def _event_time(event: dict, fallback_keys: list[str]) -> object:
+    for key in fallback_keys:
+        value = event.get(key)
+        if value:
+            return value
+    return None
+
+
+def _consolidate_events(sym: str, session_events: list, sweep_events: list, fvg_events: list) -> list[dict]:
+    rows = []
+
+    for event in session_events:
+        rows.append({
+            "symbol": sym,
+            "event_type": "session",
+            "timestamp_utc": _event_time(event, ["session_open", "session_close"]),
+            **event,
+        })
+
+    for event in sweep_events:
+        rows.append({
+            "symbol": sym,
+            "event_type": "liquidity_sweep",
+            "timestamp_utc": _event_time(event, ["timestamp_utc"]),
+            **event,
+        })
+
+    for event in fvg_events:
+        rows.append({
+            "symbol": sym,
+            "event_type": "fvg",
+            "timestamp_utc": _event_time(event, ["timestamp_utc"]),
+            **event,
+        })
+
+    return rows
+
+
+def _write_consolidated_feature(sym: str, session_events: list, sweep_events: list, fvg_events: list):
+    events = _consolidate_events(sym, session_events, sweep_events, fvg_events)
+    if not events:
+        log.warning("%s: no consolidated SMC events to write", sym)
+        return
+
+    df = pd.DataFrame(events)
+    if "timestamp_utc" in df.columns:
+        df["timestamp_utc"] = pd.to_datetime(df["timestamp_utc"], utc=True, errors="coerce")
+        df = df.sort_values(["timestamp_utc", "event_type"], na_position="last").reset_index(drop=True)
+
+    out_path = VPS_FEAT / sym / "smc_events.parquet"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(out_path, index=False, compression="snappy")
+    log.info("Wrote %d consolidated SMC events → %s", len(df), out_path)
+
+
+def _start_for_years(years: int) -> str:
+    if years <= 0:
+        raise ValueError("--years must be greater than zero")
+    start = datetime.now(timezone.utc) - timedelta(days=365 * years)
+    return start.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 SWEEP_COLS   = ["timestamp_utc", "session", "direction", "sweep_level", "sweep_close",
                 "session_high", "session_low", "htf_bias"]
 SESSION_COLS = ["session_open", "session_close", "session", "session_high", "session_low",
@@ -173,21 +249,27 @@ FVG_COLS     = ["timestamp_utc", "direction", "fvg_high", "fvg_low", "fvg_mid", 
 
 def main():
     parser = argparse.ArgumentParser(description="Extract SMC features from processed OHLCV")
+    parser.add_argument("--symbol", help="Single symbol alias for VPS runbooks, e.g. EURUSD")
     parser.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPUSD"])
+    parser.add_argument("--years", type=int, help="Lookback window ending now; sets --start when --start is omitted")
     parser.add_argument("--start", help="Start datetime prefix e.g. 2021-01-01T00:00:00Z")
     parser.add_argument("--end",   help="End datetime prefix e.g. 2022-12-31T23:59:59Z")
     args = parser.parse_args()
 
-    for sym in args.symbols:
+    symbols = [args.symbol] if args.symbol else args.symbols
+    start = args.start or (_start_for_years(args.years) if args.years else None)
+
+    for sym in symbols:
         log.info("=== Extracting features for %s ===", sym)
 
-        session_events, sweep_events = extract_sessions_and_sweeps(sym, args.start, args.end)
+        session_events, sweep_events = extract_sessions_and_sweeps(sym, start, args.end)
         _write_feature(session_events, SESSION_COLS, DATA_FEAT / "sessions" / f"{sym}.parquet")
         _write_feature(sweep_events,   SWEEP_COLS,   DATA_FEAT / "sweeps"   / f"{sym}.parquet")
 
-        fvg_events = extract_fvg(sym, args.start, args.end)
+        fvg_events = extract_fvg(sym, start, args.end)
         if fvg_events:
             _write_feature(fvg_events, FVG_COLS, DATA_FEAT / "fvg" / f"{sym}.parquet")
+        _write_consolidated_feature(sym, session_events, sweep_events, fvg_events)
 
     log.info("Feature extraction complete.")
 
