@@ -1,0 +1,11 @@
+{
+  "asian_profile": 8.533125219400972e-05,
+  "london_profile": 7.320932490983978e-05,
+  "newyork_profile": 7.417205779347569e-05,
+  "rows": 223097,
+  "source": "processed_m5_spread_avg",
+  "spread_p50": 7.938714406918734e-05,
+  "spread_p90": 0.000109009028528817,
+  "spread_p99": 0.0008044513780623684,
+  "symbol": "GBPUSD"
+}

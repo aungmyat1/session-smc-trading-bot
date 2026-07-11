@@ -28,6 +28,7 @@ import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_RAW  = ROOT / "data" / "raw" / "dukascopy"
+DATA_RAW_BITGET = ROOT / "data" / "raw" / "bitget"
 DATA_PROC = ROOT / "data" / "processed"
 DATA_MARKET = ROOT / "data" / "market"
 REPORTS   = ROOT / "reports"
@@ -231,6 +232,10 @@ def validate_raw_ticks(
     expected_start: tuple[int, int] | None = None,
     expected_end: tuple[int, int] | None = None,
 ):
+    bitget_raw = DATA_RAW_BITGET / sym / "M5"
+    if bitget_raw.exists():
+        return validate_raw_bitget(sym, report, expected_start=expected_start, expected_end=expected_end)
+
     sym_dir = DATA_RAW / sym
     stats = {
         "symbol": sym,
@@ -305,6 +310,60 @@ def validate_raw_ticks(
     else:
         report.add("WARN", f"{sym}: no non-empty raw months found")
 
+    return stats
+
+
+def validate_raw_bitget(
+    sym: str,
+    report: ValidationReport,
+    expected_start: tuple[int, int] | None = None,
+    expected_end: tuple[int, int] | None = None,
+):
+    raw_dir = DATA_RAW_BITGET / sym / "M5"
+    stats = {
+        "symbol": sym,
+        "raw_files": 0,
+        "nonempty_months": [],
+        "total_rows": 0,
+        "coverage": 0.0,
+        "missing_months": [],
+    }
+    files = sorted(raw_dir.glob("*.parquet"))
+    if not files:
+        report.add("WARN", f"{sym}: no Bitget raw candle files found")
+        return stats
+
+    frames = []
+    for path in files:
+        stats["raw_files"] += 1
+        try:
+            df = pd.read_parquet(path, columns=["timestamp_utc"])
+        except Exception as exc:
+            report.add("ERROR", f"{sym}: corrupted Bitget Parquet {path.name}: {exc}")
+            continue
+        if df.empty:
+            report.add("WARN", f"{sym}: zero Bitget candles in {path.name}")
+            continue
+        stats["total_rows"] += len(df)
+        frames.append(df)
+        report.add("PASS", f"{sym}: Bitget raw candles {path.name} — {len(df):,} rows OK")
+
+    if frames:
+        all_ts = pd.concat(frames, ignore_index=True)
+        all_ts["timestamp_utc"] = pd.to_datetime(all_ts["timestamp_utc"], utc=True)
+        months = sorted({(ts.year, ts.month) for ts in all_ts["timestamp_utc"]})
+        stats["nonempty_months"] = months
+        coverage = compute_month_coverage(months, expected_start, expected_end)
+        stats["coverage"] = coverage["coverage"]
+        stats["missing_months"] = coverage["missing_months"]
+        if stats["missing_months"]:
+            preview = ", ".join(month_label(month) for month in stats["missing_months"][:6])
+            if len(stats["missing_months"]) > 6:
+                preview += ", ..."
+            report.add("WARN", f"{sym}: Bitget coverage {stats['coverage']:.1%} — missing {preview}")
+        else:
+            report.add("PASS", f"{sym}: Bitget coverage {len(months)}/{len(coverage['expected_months'])} months ({stats['coverage']:.1%})")
+        report.add("WARN", f"{sym}: Bitget OHLCV candles do not include bid/ask spread; apply crypto cost model in backtests")
     return stats
 
 
@@ -419,7 +478,9 @@ def validate_processed(
 
     # Weekend bars (Saturday=5, Sunday=6)
     weekend_timestamps = [timestamp for timestamp in df[ts_col] if timestamp.dayofweek >= 5]
-    if weekend_timestamps:
+    if weekend_timestamps and sym in {"BTCUSD", "BTCUSDT"}:
+        report.add("PASS", f"{sym} {tf}: weekend bars present as expected for 24/7 crypto market")
+    elif weekend_timestamps:
         report.add("WARN", f"{sym} {tf}: {len(weekend_timestamps)} weekend bars found (first: {weekend_timestamps[0]})")
     else:
         report.add("PASS", f"{sym} {tf}: no weekend bars")
@@ -440,13 +501,16 @@ def validate_processed(
     # Spread anomalies
     spread_col = "spread_avg" if "spread_avg" in df.columns else "spread_mean" if "spread_mean" in df.columns else None
     if spread_col and sym in PIP_SIZE:
-        spread_pips = df[spread_col] / PIP_SIZE[sym]
-        threshold   = SPREAD_WARN_PIPS.get(sym, 10.0)
-        anomalies   = (spread_pips > threshold).sum()
-        if anomalies:
-            report.add("WARN", f"{sym} {tf}: {anomalies} bars with spread > {threshold} pips")
+        if df[spread_col].isna().all():
+            report.add("WARN", f"{sym} {tf}: spread unavailable in source candles")
         else:
-            report.add("PASS", f"{sym} {tf}: spread within normal bounds")
+            spread_pips = df[spread_col] / PIP_SIZE[sym]
+            threshold   = SPREAD_WARN_PIPS.get(sym, 10.0)
+            anomalies   = (spread_pips > threshold).sum()
+            if anomalies:
+                report.add("WARN", f"{sym} {tf}: {anomalies} bars with spread > {threshold} pips")
+            else:
+                report.add("PASS", f"{sym} {tf}: spread within normal bounds")
 
     # Gap analysis (skip D1 — many gaps by design on weekends)
     if tf != "D1" and tf in EXPECTED_TF_GAPS:

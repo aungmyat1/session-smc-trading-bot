@@ -1,0 +1,4 @@
+slippage_p50: 0.0
+slippage_p90: 0.0
+slippage_p99: 0.0
+source: placeholder_until_trade_intensity_loaded

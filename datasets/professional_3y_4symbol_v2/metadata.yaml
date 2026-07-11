@@ -1,0 +1,6 @@
+dataset_id: professional_3y_4symbol_v2
+immutable: true
+supersedes: professional_3y_4symbol_v1
+window:
+  end: 2026-06
+  start: 2023-07

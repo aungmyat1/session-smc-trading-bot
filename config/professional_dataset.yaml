@@ -13,7 +13,18 @@ timeframes:
   - M15
   - H1
   - H4
-raw_source: dukascopy
+raw_sources:
+  EURUSD:
+    provider: dukascopy
+  GBPUSD:
+    provider: dukascopy
+  BTCUSD:
+    provider: bitget_spot
+    source_symbol: BTCUSDT
+    raw_timeframe: M5
+    spread_available: false
+  XAUUSD:
+    provider: dukascopy
 stage1_vps:
   purpose: "first-pass research backtest on frozen Parquet candles"
   backtests:

@@ -1,0 +1,616 @@
+{
+  "build_time": "2026-07-11T15:16:43.123699+00:00",
+  "dataset_id": "professional_3y_4symbol_v2",
+  "feature_counts": {
+    "research/market_regimes": 324607,
+    "research/smc_events": 159405
+  },
+  "git_commit": "38c76354ff5c5ae5e435bc2ff7aebef38d165eb9",
+  "quality_metrics": {
+    "files": [
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [
+          "spread_avg",
+          "spread_max"
+        ],
+        "optional_missing_pct": 100.0,
+        "path": "data/processed/BTCUSD/H1.parquet",
+        "rows": 26304,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [
+          "spread_avg",
+          "spread_max"
+        ],
+        "optional_missing_pct": 100.0,
+        "path": "data/processed/BTCUSD/H4.parquet",
+        "rows": 6576,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [
+          "spread_avg",
+          "spread_max"
+        ],
+        "optional_missing_pct": 100.0,
+        "path": "data/processed/BTCUSD/M15.parquet",
+        "rows": 105216,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [
+          "spread_avg",
+          "spread_max"
+        ],
+        "optional_missing_pct": 100.0,
+        "path": "data/processed/BTCUSD/M5.parquet",
+        "rows": 315648,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/D1.parquet",
+        "rows": 314,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/H1.parquet",
+        "rows": 18594,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/H4.parquet",
+        "rows": 4810,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/M1.parquet",
+        "rows": 1110154,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/M15.parquet",
+        "rows": 74365,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/EURUSD/M5.parquet",
+        "rows": 223033,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/D1.parquet",
+        "rows": 934,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/H1.parquet",
+        "rows": 18602,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/H4.parquet",
+        "rows": 4810,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/M1.parquet",
+        "rows": 1109311,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/M15.parquet",
+        "rows": 74395,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/GBPUSD/M5.parquet",
+        "rows": 223097,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/D1.parquet",
+        "rows": 931,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/H1.parquet",
+        "rows": 17670,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/H4.parquet",
+        "rows": 4779,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/M1.parquet",
+        "rows": 1058960,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/M15.parquet",
+        "rows": 70631,
+        "status": "PASS",
+        "timestamp_errors": 0
+      },
+      {
+        "columns": [
+          "timestamp_utc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "ask_open",
+          "bid_open",
+          "spread_avg",
+          "spread_max",
+          "tick_count"
+        ],
+        "duplicate_pct": 0.0,
+        "missing_pct": 0.0,
+        "ohlc_consistency": 0,
+        "optional_missing_columns": [],
+        "optional_missing_pct": 0.0,
+        "path": "data/processed/XAUUSD/M5.parquet",
+        "rows": 211873,
+        "status": "PASS",
+        "timestamp_errors": 0
+      }
+    ],
+    "status": "PASS",
+    "thresholds": {
+      "duplicate_pct": 0.01,
+      "missing_pct": 0.1,
+      "timestamp_errors": 0
+    }
+  },
+  "record_counts": {
+    "BTCUSD": {
+      "H1": 26304,
+      "H4": 6576,
+      "M15": 105216,
+      "M5": 315648
+    },
+    "EURUSD": {
+      "H1": 18594,
+      "H4": 4810,
+      "M15": 74365,
+      "M5": 223033
+    },
+    "GBPUSD": {
+      "H1": 18602,
+      "H4": 4810,
+      "M15": 74395,
+      "M5": 223097
+    },
+    "XAUUSD": {
+      "H1": 17670,
+      "H4": 4779,
+      "M15": 70631,
+      "M5": 211873
+    }
+  },
+  "sources": {
+    "BTCUSD": {
+      "asset_class": "crypto",
+      "provider": "bitget_spot",
+      "secondary_provider": "binance_aggregate_trades"
+    },
+    "EURUSD": {
+      "asset_class": "forex",
+      "provider": "dukascopy"
+    },
+    "GBPUSD": {
+      "asset_class": "forex",
+      "provider": "dukascopy"
+    },
+    "XAUUSD": {
+      "asset_class": "forex",
+      "provider": "dukascopy"
+    }
+  },
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "XAUUSD",
+    "BTCUSD"
+  ],
+  "timeframes": [
+    "M5",
+    "M15",
+    "H1",
+    "H4"
+  ]
+}

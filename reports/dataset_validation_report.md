@@ -1,9 +1,9 @@
 # Dataset Validation Report
-Generated: 2026-07-11T11:52:50Z
+Generated: 2026-07-11T14:20:30Z
 
 **Dataset Status: PASS_WITH_WARNINGS**
 
-**ERRORS: 0 | WARNINGS: 41 | PASSED: 183**
+**ERRORS: 0 | WARNINGS: 41 | PASSED: 217**
 
 ---
 
@@ -155,11 +155,45 @@ Generated: 2026-07-11T11:52:50Z
 🟡 [WARN] GBPUSD H4: 4 bars with spread > 12.0 pips
 🟡 [WARN] GBPUSD H4: 5 non-weekend gaps > 2× bar size
 🟢 [PASS] GBPUSD H4: date range 2023-07-02 → 2026-06-26
-🟡 [WARN] USDJPY: no raw tick directory — download_dukascopy.py not yet run
-🟡 [WARN] USDJPY M5: market dataset missing — run build_timeframes.py or research pipeline
-🟡 [WARN] USDJPY M15: market dataset missing — run build_timeframes.py or research pipeline
-🟡 [WARN] USDJPY H1: market dataset missing — run build_timeframes.py or research pipeline
-🟡 [WARN] USDJPY H4: market dataset missing — run build_timeframes.py or research pipeline
+🟢 [PASS] BTCUSD: Bitget raw candles 2023-07_2026-06.parquet — 315,648 rows OK
+🟢 [PASS] BTCUSD: Bitget coverage 36/36 months (100.0%)
+🟡 [WARN] BTCUSD: Bitget OHLCV candles do not include bid/ask spread; apply crypto cost model in backtests
+🟢 [PASS] BTCUSD M5: loaded 315,648 bars
+🟢 [PASS] BTCUSD M5: schema complete
+🟢 [PASS] BTCUSD M5: no duplicate timestamps
+🟢 [PASS] BTCUSD M5: weekend bars present as expected for 24/7 crypto market
+🟢 [PASS] BTCUSD M5: OHLC high integrity OK
+🟢 [PASS] BTCUSD M5: OHLC low integrity OK
+🟡 [WARN] BTCUSD M5: spread unavailable in source candles
+🟢 [PASS] BTCUSD M5: no significant gaps
+🟢 [PASS] BTCUSD M5: date range 2023-07-01 → 2026-06-30
+🟢 [PASS] BTCUSD M15: loaded 105,216 bars
+🟢 [PASS] BTCUSD M15: schema complete
+🟢 [PASS] BTCUSD M15: no duplicate timestamps
+🟢 [PASS] BTCUSD M15: weekend bars present as expected for 24/7 crypto market
+🟢 [PASS] BTCUSD M15: OHLC high integrity OK
+🟢 [PASS] BTCUSD M15: OHLC low integrity OK
+🟡 [WARN] BTCUSD M15: spread unavailable in source candles
+🟢 [PASS] BTCUSD M15: no significant gaps
+🟢 [PASS] BTCUSD M15: date range 2023-07-01 → 2026-06-30
+🟢 [PASS] BTCUSD H1: loaded 26,304 bars
+🟢 [PASS] BTCUSD H1: schema complete
+🟢 [PASS] BTCUSD H1: no duplicate timestamps
+🟢 [PASS] BTCUSD H1: weekend bars present as expected for 24/7 crypto market
+🟢 [PASS] BTCUSD H1: OHLC high integrity OK
+🟢 [PASS] BTCUSD H1: OHLC low integrity OK
+🟡 [WARN] BTCUSD H1: spread unavailable in source candles
+🟢 [PASS] BTCUSD H1: no significant gaps
+🟢 [PASS] BTCUSD H1: date range 2023-07-01 → 2026-06-30
+🟢 [PASS] BTCUSD H4: loaded 6,576 bars
+🟢 [PASS] BTCUSD H4: schema complete
+🟢 [PASS] BTCUSD H4: no duplicate timestamps
+🟢 [PASS] BTCUSD H4: weekend bars present as expected for 24/7 crypto market
+🟢 [PASS] BTCUSD H4: OHLC high integrity OK
+🟢 [PASS] BTCUSD H4: OHLC low integrity OK
+🟡 [WARN] BTCUSD H4: spread unavailable in source candles
+🟢 [PASS] BTCUSD H4: no significant gaps
+🟢 [PASS] BTCUSD H4: date range 2023-07-01 → 2026-06-30
 🟢 [PASS] XAUUSD: raw ticks 2023-07 — 2,760,284 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-08 — 2,373,606 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-09 — 1,892,643 rows OK
@@ -246,7 +280,7 @@ Expected raw coverage window: 2023-07 → 2026-06
 |---|---:|---:|---:|---:|---|
 | EURUSD | 36 | 36 | 100.0% | 66,591,852 | None |
 | GBPUSD | 36 | 36 | 100.0% | 71,727,315 | None |
-| USDJPY | 0 | 0 | 0.0% | 0 | None |
+| BTCUSD | 1 | 36 | 100.0% | 315,648 | None |
 | XAUUSD | 36 | 36 | 100.0% | 192,128,174 | None |
 
 ### Processed Coverage
@@ -261,10 +295,10 @@ Expected raw coverage window: 2023-07 → 2026-06
 | GBPUSD | M15 | 74,395 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | GBPUSD | H1 | 18,602 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
 | GBPUSD | H4 | 4,810 | PASS | PASS | 0 | 2023-07-02T20:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
-| USDJPY | M5 | 0 | FAIL | FAIL | 0 | n/a → n/a |
-| USDJPY | M15 | 0 | FAIL | FAIL | 0 | n/a → n/a |
-| USDJPY | H1 | 0 | FAIL | FAIL | 0 | n/a → n/a |
-| USDJPY | H4 | 0 | FAIL | FAIL | 0 | n/a → n/a |
+| BTCUSD | M5 | 315,648 | PASS | PASS | 0 | 2023-07-01T00:00:00+00:00 → 2026-06-30T23:55:00+00:00 |
+| BTCUSD | M15 | 105,216 | PASS | PASS | 0 | 2023-07-01T00:00:00+00:00 → 2026-06-30T23:45:00+00:00 |
+| BTCUSD | H1 | 26,304 | PASS | PASS | 0 | 2023-07-01T00:00:00+00:00 → 2026-06-30T23:00:00+00:00 |
+| BTCUSD | H4 | 6,576 | PASS | PASS | 0 | 2023-07-01T00:00:00+00:00 → 2026-06-30T20:00:00+00:00 |
 | XAUUSD | M5 | 211,873 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:55:00+00:00 |
 | XAUUSD | M15 | 70,631 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | XAUUSD | H1 | 17,670 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:00:00+00:00 |

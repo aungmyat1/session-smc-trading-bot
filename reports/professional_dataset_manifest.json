@@ -1,7 +1,7 @@
 {
   "config_path": "config/professional_dataset.yaml",
   "dataset": "professional_3y_4symbol_v1",
-  "file_count": 124,
+  "file_count": 125,
   "files": [
     {
       "bytes": 22690464,
@@ -652,40 +652,14 @@
       "symbol": "GBPUSD"
     },
     {
-      "bytes": 26766932,
+      "bytes": 22138464,
       "layer": "raw",
-      "month": "2023-07",
-      "path": "data/raw/dukascopy/BTCUSD/2023/07/ticks.parquet",
-      "rows": 2640862,
-      "sha256": "e6d1dd8db77605c6a2ac3b6f222be1fc7f1bea26e82e1ee1f9a26db5ea617c11",
-      "symbol": "BTCUSD"
-    },
-    {
-      "bytes": 21093144,
-      "layer": "raw",
-      "month": "2023-08",
-      "path": "data/raw/dukascopy/BTCUSD/2023/08/ticks.parquet",
-      "rows": 2086741,
-      "sha256": "fd2e0d1a0201c96f97542c52ef7900885ef2bed047628e59c69bee9361540d6f",
-      "symbol": "BTCUSD"
-    },
-    {
-      "bytes": 30707156,
-      "layer": "raw",
-      "month": "2023-09",
-      "path": "data/raw/dukascopy/BTCUSD/2023/09/ticks.parquet",
-      "rows": 3115127,
-      "sha256": "0bf57968a611eb9efab481c4fb00111fa301dd24ffc6ed9bcbbb355d3ec5671e",
-      "symbol": "BTCUSD"
-    },
-    {
-      "bytes": 37748555,
-      "layer": "raw",
-      "month": "2023-10",
-      "path": "data/raw/dukascopy/BTCUSD/2023/10/ticks.parquet",
-      "rows": 3644091,
-      "sha256": "74472f4539fbeaa3e1b3bbc9233ece496622c7a9fad7e7a3c71aea817e2bbb79",
-      "symbol": "BTCUSD"
+      "path": "data/raw/bitget/BTCUSD/M5/2023-07_2026-06.parquet",
+      "rows": 315648,
+      "sha256": "ec6d85fef147a6d03b5e4176f9063b9cc60c913b9dea8d22973b5d3d9cc6d6f1",
+      "source": "bitget_spot",
+      "symbol": "BTCUSD",
+      "timeframe": "M5"
     },
     {
       "bytes": 28256165,
@@ -1084,6 +1058,42 @@
       "timeframe": "H4"
     },
     {
+      "bytes": 17740312,
+      "layer": "processed",
+      "path": "data/processed/BTCUSD/M5.parquet",
+      "rows": 315648,
+      "sha256": "e4b54057f72e23de5bf78cf6dbddebf49617df2ecb294a5cadc900d02d07f409",
+      "symbol": "BTCUSD",
+      "timeframe": "M5"
+    },
+    {
+      "bytes": 6077021,
+      "layer": "processed",
+      "path": "data/processed/BTCUSD/M15.parquet",
+      "rows": 105216,
+      "sha256": "947ebc03ce2f5a257d2b934cfb885a587eee1b14e627d2a02f8ae97099d3051e",
+      "symbol": "BTCUSD",
+      "timeframe": "M15"
+    },
+    {
+      "bytes": 1530455,
+      "layer": "processed",
+      "path": "data/processed/BTCUSD/H1.parquet",
+      "rows": 26304,
+      "sha256": "5356bfffb151e33bfd35050301d6825b1bd3355b93b88d8ce882fe54c3a45c79",
+      "symbol": "BTCUSD",
+      "timeframe": "H1"
+    },
+    {
+      "bytes": 381297,
+      "layer": "processed",
+      "path": "data/processed/BTCUSD/H4.parquet",
+      "rows": 6576,
+      "sha256": "df7553e3a3279f45587d0214a15ce60e16d9fda1d1ba833c05457123f4a92291",
+      "symbol": "BTCUSD",
+      "timeframe": "H4"
+    },
+    {
       "bytes": 12533588,
       "layer": "processed",
       "path": "data/processed/XAUUSD/M5.parquet",
@@ -1120,9 +1130,25 @@
       "timeframe": "H4"
     }
   ],
-  "generated_at": "2026-07-11T12:57:44.673749+00:00",
+  "generated_at": "2026-07-11T14:53:57.062481+00:00",
   "schema_version": 1,
-  "source": "dukascopy",
+  "sources": {
+    "BTCUSD": {
+      "provider": "bitget_spot",
+      "raw_timeframe": "M5",
+      "source_symbol": "BTCUSDT",
+      "spread_available": false
+    },
+    "EURUSD": {
+      "provider": "dukascopy"
+    },
+    "GBPUSD": {
+      "provider": "dukascopy"
+    },
+    "XAUUSD": {
+      "provider": "dukascopy"
+    }
+  },
   "symbols": [
     "EURUSD",
     "GBPUSD",

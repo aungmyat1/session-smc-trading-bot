@@ -1,0 +1,11 @@
+{
+  "asian_profile": 2.993521047756076e-05,
+  "london_profile": 2.6725701900431886e-05,
+  "newyork_profile": 2.631113602546975e-05,
+  "rows": 223033,
+  "source": "processed_m5_spread_avg",
+  "spread_p50": 2.8689702958217822e-05,
+  "spread_p90": 5.595340408035555e-05,
+  "spread_p99": 0.000355546326609327,
+  "symbol": "EURUSD"
+}

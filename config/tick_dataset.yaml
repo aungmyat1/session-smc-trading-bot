@@ -1,0 +1,37 @@
+version: 2
+dataset_id: professional_3y_4symbol_v2
+supersedes: professional_3y_4symbol_v1
+window:
+  start: "2023-07"
+  end: "2026-06"
+symbols:
+  - EURUSD
+  - GBPUSD
+  - XAUUSD
+  - BTCUSD
+timeframes:
+  - M5
+  - M15
+  - H1
+  - H4
+processed_root: data/processed
+tick_root: data/tick
+sources:
+  EURUSD:
+    provider: dukascopy
+    asset_class: forex
+  GBPUSD:
+    provider: dukascopy
+    asset_class: forex
+  XAUUSD:
+    provider: dukascopy
+    asset_class: forex
+  BTCUSD:
+    provider: bitget_spot
+    secondary_provider: binance_aggregate_trades
+    asset_class: crypto
+quality_thresholds:
+  missing_pct: 0.1
+  duplicate_pct: 0.01
+  timestamp_errors: 0
+

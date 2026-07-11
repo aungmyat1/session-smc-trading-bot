@@ -1,0 +1,82 @@
+{
+  "artifact_hash": "d35caaaf0094061f232025b744e257a24d24a49afe31b2c4fa1309b7819342af",
+  "dataset_hash": "d35caaaf0094061f232025b744e257a24d24a49afe31b2c4fa1309b7819342af",
+  "generated_at": "2026-07-11T15:16:53.400066+00:00",
+  "sha256": [
+    {
+      "bytes": 14407,
+      "path": "datasets/professional_3y_4symbol_v2/manifest.json",
+      "sha256": "e750106c05113d92e477ac3698c7230a174a00485ebb265988ef3c51cd4c65d7"
+    },
+    {
+      "bytes": 134,
+      "path": "datasets/professional_3y_4symbol_v2/metadata.yaml",
+      "sha256": "635b5bc5e23288727003d684bdfba21fb5f7f837694be9565411f3cffe8bd9ff"
+    },
+    {
+      "bytes": 328,
+      "path": "research/cost_models/EURUSD.json",
+      "sha256": "8e43d6fe1ec139aeb8d9d2c9a7187f36d3602bbfa2310df3ca69f42ecfc17ade"
+    },
+    {
+      "bytes": 326,
+      "path": "research/cost_models/GBPUSD.json",
+      "sha256": "7339d7d7e128964249105fd3f560b405a3bd5e66a9072f107e49e29633d90d55"
+    },
+    {
+      "bytes": 309,
+      "path": "research/cost_models/XAUUSD.json",
+      "sha256": "a275dd78f92fbe82e5ce6850aeefae85fb9a5604fb47a175ae05ee7033cdf16f"
+    },
+    {
+      "bytes": 79,
+      "path": "research/cost_models/commission_model.yaml",
+      "sha256": "a460496147049e4c03a5f8ef51fffbcaea2a427b22b0184e691b27afb4020ded"
+    },
+    {
+      "bytes": 103,
+      "path": "research/cost_models/slippage_model.yaml",
+      "sha256": "cea3b4a3d39f7852d84c3fcd69f599168ddc0249f3c129131364665323b2f4a0"
+    },
+    {
+      "bytes": 3117342,
+      "path": "research/market_regimes/BTCUSD.parquet",
+      "sha256": "2f1279078881f288a5e3b6d26f2d71e449c191ab1cdcfb7707c97c3e09bb70ad"
+    },
+    {
+      "bytes": 2192390,
+      "path": "research/market_regimes/EURUSD.parquet",
+      "sha256": "781cc5bf2fb1d37a92bc68dd67511575bdd8de6d2ed0f7d795dc15798ebdf9d5"
+    },
+    {
+      "bytes": 2201511,
+      "path": "research/market_regimes/GBPUSD.parquet",
+      "sha256": "fcb6bc7f3ec4fc053a5c0da62d3b6440984a09b5eb217f562617c6f038bbc7c9"
+    },
+    {
+      "bytes": 2113000,
+      "path": "research/market_regimes/XAUUSD.parquet",
+      "sha256": "9faa434835d76e99c2ab12fa71363a3ca5640c3dec34d887e5f5b14f40b4f681"
+    },
+    {
+      "bytes": 1036671,
+      "path": "research/smc_events/BTCUSD.parquet",
+      "sha256": "ac31f24c8b01104f7bcd4e0d8ac4c447ef7806b66030a534621297f678bf3712"
+    },
+    {
+      "bytes": 606159,
+      "path": "research/smc_events/EURUSD.parquet",
+      "sha256": "0851577d2115c244e765bdb029c5c24e96a5043d93cb8194502e78c50edc8657"
+    },
+    {
+      "bytes": 608251,
+      "path": "research/smc_events/GBPUSD.parquet",
+      "sha256": "bda253795849753c7c7de8f6f5369d57fba76a08134eaee4f47a384e9cbe895c"
+    },
+    {
+      "bytes": 648688,
+      "path": "research/smc_events/XAUUSD.parquet",
+      "sha256": "51bb58ca7f8e41ae4635192affb4d636979bf3c22dd69ec0f4c23439621713ac"
+    }
+  ]
+}

@@ -32,16 +32,20 @@ Run the full VPS dataset pipeline:
 python3 scripts/run_professional_dataset_pipeline.py --all --workers 4
 ```
 
-BTCUSD is heavier than FX/XAUUSD on Dukascopy and should be acquired with a
-slower, resume-safe command:
+BTCUSD is acquired from Bitget spot candles because Dukascopy BTC ticks are too
+slow and flaky for this VPS. The canonical symbol remains `BTCUSD`; source
+metadata records the venue pair as `BTCUSDT`. Bitget candles do not include
+bid/ask spread, so BTC backtests must apply a separate crypto fee/slippage model.
+
+Acquire BTC directly:
 
 ```bash
-nohup python3 scripts/run_professional_dataset_pipeline.py \
-  --download-missing \
-  --workers 1 \
-  --timeout-seconds 120 \
-  --max-retries 10 \
-  > logs/professional_dataset_download.log 2>&1 &
+python3 scripts/download_bitget_candles.py \
+  --symbol BTCUSD \
+  --source-symbol BTCUSDT \
+  --start 2023-07 \
+  --end 2026-06 \
+  --timeframes M5 M15 H1 H4
 ```
 
 Progress can be checked with:
@@ -67,16 +71,18 @@ features/{SYMBOL}/smc_events.parquet
 ```
 
 The manifest records file paths, sizes, row counts, and SHA256 hashes for raw
-monthly tick files and processed timeframe Parquet files.
+Dukascopy monthly tick files, Bitget BTC raw candle files, and processed
+timeframe Parquet files.
 
-## Current Gap
+## Current State
 
-As of this runbook, EURUSD, GBPUSD, and XAUUSD raw/processed coverage exists for
-2023-07 through 2026-06. BTCUSD is the missing fourth symbol and must be fetched
-before the four-symbol dataset can be frozen.
+As of 2026-07-11, EURUSD, GBPUSD, BTCUSD, and XAUUSD have raw and processed
+coverage for 2023-07 through 2026-06. BTCUSD is sourced from Bitget spot
+`BTCUSDT` candles and stored under the canonical research symbol `BTCUSD`.
 
-The pipeline reports missing raw months before download. This is expected until
-BTCUSD acquisition completes.
+The latest validation status is `PASS_WITH_WARNINGS`: no blocking errors, full
+coverage, and explicit warnings for unavailable BTC spread data plus FX/XAU
+spread/gap observations.
 
 ## Stage 1 Backtest Scope
 

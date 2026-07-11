@@ -1,0 +1,11 @@
+{
+  "asian_profile": 0.48452967405319214,
+  "london_profile": 0.4474664628505707,
+  "newyork_profile": 0.4581378698348999,
+  "rows": 211873,
+  "source": "processed_m5_spread_avg",
+  "spread_p50": 0.46625614166259766,
+  "spread_p90": 0.7508322954177856,
+  "spread_p99": 1.25890872478485,
+  "symbol": "XAUUSD"
+}

@@ -2,7 +2,7 @@
 """Build, validate, and package the 3-year professional dataset workflow.
 
 Stage 1 runs on this VPS:
-  - verify/download raw Dukascopy months
+  - verify/download raw data
   - build processed Parquet timeframes
   - validate dataset quality
   - extract SMC features
@@ -63,6 +63,10 @@ def _raw_path(symbol: str, year: int, month: int) -> Path:
     return ROOT / "data" / "raw" / "dukascopy" / symbol / str(year) / f"{month:02d}" / "ticks.parquet"
 
 
+def _bitget_raw_path(symbol: str, start: str, end: str) -> Path:
+    return ROOT / "data" / "raw" / "bitget" / symbol / "M5" / f"{start}_{end}.parquet"
+
+
 def _processed_path(symbol: str, timeframe: str) -> Path:
     return ROOT / "data" / "processed" / symbol / f"{timeframe}.parquet"
 
@@ -84,9 +88,24 @@ def _parquet_rows(path: Path) -> int | None:
         return None
 
 
-def _missing_raw(symbols: list[str], months: list[tuple[int, int]]) -> dict[str, list[str]]:
+def _provider_for(config: dict[str, Any], symbol: str) -> dict[str, Any]:
+    raw_sources = config.get("raw_sources") or {}
+    source_config = raw_sources.get(symbol)
+    if source_config:
+        return source_config
+    return {"provider": config.get("raw_source", "dukascopy")}
+
+
+def _missing_raw(config: dict[str, Any], symbols: list[str], months: list[tuple[int, int]]) -> dict[str, list[str]]:
     missing: dict[str, list[str]] = {}
+    start = config["window"]["start"]
+    end = config["window"]["end"]
     for symbol in symbols:
+        provider = _provider_for(config, symbol).get("provider", "dukascopy")
+        if provider == "bitget_spot":
+            if not _bitget_raw_path(symbol, start, end).exists():
+                missing[symbol] = [f"{start}..{end}"]
+            continue
         for year, month in months:
             path = _raw_path(symbol, year, month)
             if not path.exists():
@@ -101,6 +120,23 @@ def _write_manifest(config: dict[str, Any], config_path: Path) -> Path:
     files: list[dict[str, Any]] = []
 
     for symbol in symbols:
+        provider = _provider_for(config, symbol).get("provider", "dukascopy")
+        if provider == "bitget_spot":
+            path = _bitget_raw_path(symbol, config["window"]["start"], config["window"]["end"])
+            if path.exists():
+                files.append(
+                    {
+                        "layer": "raw",
+                        "source": "bitget_spot",
+                        "symbol": symbol,
+                        "timeframe": "M5",
+                        "path": str(path.relative_to(ROOT)),
+                        "bytes": path.stat().st_size,
+                        "rows": _parquet_rows(path),
+                        "sha256": _sha256(path),
+                    }
+                )
+            continue
         for year, month in months:
             path = _raw_path(symbol, year, month)
             if path.exists():
@@ -137,7 +173,7 @@ def _write_manifest(config: dict[str, Any], config_path: Path) -> Path:
         "dataset": config.get("name", "professional_dataset"),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "config_path": str(config_path.relative_to(ROOT)),
-        "source": config.get("raw_source"),
+        "sources": config.get("raw_sources") or config.get("raw_source"),
         "window": config.get("window"),
         "symbols": symbols,
         "timeframes": timeframes,
@@ -244,51 +280,96 @@ def main() -> int:
     do_features = args.features or args.all
     do_export = args.export_mt5 or args.all
 
-    missing = _missing_raw(symbols, months)
+    missing = _missing_raw(config, symbols, months)
     if missing:
         print("Missing raw months:")
         print(json.dumps(missing, indent=2, sort_keys=True))
         if do_download:
             for symbol, month_labels in missing.items():
-                print(f"Downloading {symbol}: {len(month_labels)} missing month(s)")
-                _run(
-                    [
-                        sys.executable,
-                        "scripts/download_dukascopy.py",
-                        "--symbols",
-                        symbol,
-                        "--start",
-                        min(month_labels),
-                        "--end",
-                        max(month_labels),
-                        "--workers",
-                        str(args.workers),
-                        "--timeout-seconds",
-                        str(args.timeout_seconds),
-                        "--max-retries",
-                        str(args.max_retries),
-                    ]
-                )
+                provider_config = _provider_for(config, symbol)
+                provider = provider_config.get("provider", "dukascopy")
+                print(f"Downloading {symbol}: {len(month_labels)} missing raw item(s) from {provider}")
+                if provider == "bitget_spot":
+                    _run(
+                        [
+                            sys.executable,
+                            "scripts/download_bitget_candles.py",
+                            "--symbol",
+                            symbol,
+                            "--source-symbol",
+                            provider_config.get("source_symbol", "BTCUSDT"),
+                            "--start",
+                            start,
+                            "--end",
+                            end,
+                            "--timeframes",
+                            *timeframes,
+                        ]
+                    )
+                else:
+                    _run(
+                        [
+                            sys.executable,
+                            "scripts/download_dukascopy.py",
+                            "--symbols",
+                            symbol,
+                            "--start",
+                            min(month_labels),
+                            "--end",
+                            max(month_labels),
+                            "--workers",
+                            str(args.workers),
+                            "--timeout-seconds",
+                            str(args.timeout_seconds),
+                            "--max-retries",
+                            str(args.max_retries),
+                        ]
+                    )
         else:
             print("Use --download-missing or --all to fetch missing raw months.")
     else:
         print("Raw coverage present for all configured symbols/months.")
 
     if do_build:
-        _run(
-            [
-                sys.executable,
-                "scripts/build_timeframes.py",
-                "--symbols",
-                *symbols,
-                "--timeframes",
-                *timeframes,
-                "--start",
-                start,
-                "--end",
-                end,
-            ]
-        )
+        dukascopy_symbols = [
+            symbol for symbol in symbols if _provider_for(config, symbol).get("provider", "dukascopy") == "dukascopy"
+        ]
+        bitget_symbols = [
+            symbol for symbol in symbols if _provider_for(config, symbol).get("provider") == "bitget_spot"
+        ]
+        for symbol in bitget_symbols:
+            provider_config = _provider_for(config, symbol)
+            _run(
+                [
+                    sys.executable,
+                    "scripts/download_bitget_candles.py",
+                    "--symbol",
+                    symbol,
+                    "--source-symbol",
+                    provider_config.get("source_symbol", "BTCUSDT"),
+                    "--start",
+                    start,
+                    "--end",
+                    end,
+                    "--timeframes",
+                    *timeframes,
+                ]
+            )
+        if dukascopy_symbols:
+            _run(
+                [
+                    sys.executable,
+                    "scripts/build_timeframes.py",
+                    "--symbols",
+                    *dukascopy_symbols,
+                    "--timeframes",
+                    *timeframes,
+                    "--start",
+                    start,
+                    "--end",
+                    end,
+                ]
+            )
 
     if do_validate:
         _run(
