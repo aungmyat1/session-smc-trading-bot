@@ -292,8 +292,48 @@ def _max_drawdown_pct(values: list[float], initial_equity: float = 100.0) -> flo
     return worst
 
 
+def _max_drawdown(values: list[float]) -> float:
+    running = peak = worst = 0.0
+    for value in values:
+        running += value
+        peak = max(peak, running)
+        worst = max(worst, peak - running)
+    return worst
+
+
+def _sortino(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    downside = [value for value in values if value < 0]
+    if not downside:
+        return 0.0
+    downside_dev = pstdev(downside) if len(downside) > 1 else abs(downside[0])
+    return mean(values) / downside_dev * math.sqrt(len(values)) if downside_dev else 0.0
+
+
+def _breakdown(trades: list[dict[str, Any]], key: str) -> dict[str, Any]:
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    for trade in trades:
+        buckets.setdefault(str(trade.get(key) or "UNKNOWN"), []).append(trade)
+    return {name: _basic_metrics(rows) for name, rows in sorted(buckets.items())}
+
+
+def _basic_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
+    pnl = [float(t.get("net_pnl", t.get("net_r", t.get("std_net_r", 0.0))) or 0.0) for t in trades]
+    wins = [value for value in pnl if value > 0]
+    return {
+        "trades": len(pnl),
+        "win_rate": len(wins) / len(pnl) if pnl else 0.0,
+        "profit_factor": _profit_factor(pnl),
+        "expectancy": mean(pnl) if pnl else 0.0,
+        "net_profit": sum(pnl),
+        "maximum_drawdown": _max_drawdown(pnl),
+    }
+
+
 def trade_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     pnl = [float(t.get("net_pnl", t.get("net_r", t.get("std_net_r", 0.0))) or 0.0) for t in trades]
+    gross = [float(t.get("gross_pnl", 0.0) or 0.0) for t in trades]
     wins = [value for value in pnl if value > 0]
     monthly: dict[str, float] = {}
     for trade, value in zip(trades, pnl):
@@ -304,21 +344,45 @@ def trade_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     sharpe = (mean(pnl) / std * math.sqrt(len(pnl))) if std else 0.0
     total = sum(pnl)
     largest_month_share = max((abs(v) for v in monthly.values()), default=0.0) / abs(total) if total else 0.0
+    spread_cost = sum(float(t.get("spread_cost", 0.0) or 0.0) for t in trades)
+    commission_cost = sum(float(t.get("commission_cost", t.get("commission", 0.0)) or 0.0) for t in trades)
+    slippage_cost = sum(float(t.get("slippage_cost", t.get("slippage", 0.0)) or 0.0) for t in trades)
     return {
         "trades": len(pnl),
+        "trade_count": len(pnl),
         "win_rate": len(wins) / len(pnl) if pnl else 0.0,
+        "profit_factor_gross": _profit_factor(gross),
         "profit_factor": _profit_factor(pnl),
         "profit_factor_after_cost": _profit_factor(pnl),
         "sharpe": sharpe,
+        "sharpe_ratio": sharpe,
+        "sortino_ratio": _sortino(pnl),
         "max_drawdown": _max_drawdown_pct(pnl),
+        "maximum_drawdown": _max_drawdown_pct(pnl),
+        "max_drawdown_r": _max_drawdown(pnl),
         "average_R": mean(pnl) if pnl else 0.0,
         "expectancy": mean(pnl) if pnl else 0.0,
         "monthly_returns": monthly,
+        "symbol_breakdown": _breakdown(trades, "symbol"),
+        "session_breakdown": _breakdown(trades, "session"),
+        "regime_breakdown": _breakdown(trades, "market_regime"),
+        "gross_profit": sum(gross),
+        "spread_cost": spread_cost,
+        "commission_cost": commission_cost,
+        "slippage_cost": slippage_cost,
+        "net_profit": total,
         "largest_month_dependency": largest_month_share,
     }
 
 
 def load_trade_ledger(path: Path) -> list[dict[str, Any]]:
+    if path.is_dir():
+        rows: list[dict[str, Any]] = []
+        for ledger_path in sorted(path.glob("*.parquet")):
+            rows.extend(pd.read_parquet(ledger_path).to_dict("records"))
+        return sorted(rows, key=lambda row: (str(row.get("entry_time", "")), str(row.get("symbol", "")), str(row.get("trade_id", ""))))
+    if path.suffix.lower() == ".parquet":
+        return pd.read_parquet(path).to_dict("records")
     if path.suffix.lower() == ".json":
         payload = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(payload, dict):
@@ -340,14 +404,12 @@ def st_a2_validation_report(trades_path: Path | None, config_path: Path | str = 
             "required_trade_fields": ["entry_price", "exit_price", "spread_cost", "commission", "slippage", "gross_pnl", "net_pnl"],
         }
     trades = load_trade_ledger(trades_path)
-    missing = sorted(
-        {
-            field
-            for trade in trades
-            for field in ["entry_price", "exit_price", "spread_cost", "commission", "slippage", "gross_pnl", "net_pnl"]
-            if field not in trade
-        }
-    )
+    required = ["entry_price", "exit_price", "spread_cost", "gross_pnl", "net_pnl"]
+    missing = sorted({field for trade in trades for field in required if field not in trade})
+    if any("commission_cost" not in trade and "commission" not in trade for trade in trades):
+        missing.append("commission_cost")
+    if any("slippage_cost" not in trade and "slippage" not in trade for trade in trades):
+        missing.append("slippage_cost")
     metrics = trade_metrics(trades)
     gates = config["acceptance_gates"]
     passed = (
@@ -359,10 +421,13 @@ def st_a2_validation_report(trades_path: Path | None, config_path: Path | str = 
         and metrics["expectancy"] > float(gates["expectancy_min"])
         and metrics["largest_month_dependency"] <= 0.5
     )
+    status = "PASS" if passed else "FAIL"
+    if not trades:
+        status = "INSUFFICIENT_DATA"
     return {
         **base,
         "strategy": "ST-A2",
-        "status": "PASS" if passed else "FAIL",
+        "status": status,
         "trade_ledger": str(trades_path),
         "missing_required_trade_fields": missing,
         "metrics": metrics,

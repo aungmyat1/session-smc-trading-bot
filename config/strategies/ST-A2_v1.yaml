@@ -1,0 +1,93 @@
+strategy_id: ST-A2
+version: "1.0"
+
+status:
+  frozen: true
+  lifecycle_state: BASELINE_FREEZE
+  approval: research_only
+
+dataset:
+  version: professional_3y_4symbol_v2
+  benchmark_config: config/research_benchmark.yaml
+
+market:
+  symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+  sessions:
+    london:
+      timezone: America/New_York
+      hours: [2, 3, 4]
+    new_york:
+      timezone: America/New_York
+      hours: [7, 8, 9]
+
+timeframes:
+  bias:
+    - H4
+    - H1
+  confirmation:
+    - M15
+    - M5
+  execution: M15
+
+parameters:
+  rr: 3.0
+  sl_buffer_pips: 2.0
+  displacement_mult: 1.2
+  atr_period: 14
+  sweep_timeout_bars: 4
+  min_sl_pips: 5.0
+  session_mode: legacy
+  min_range_pips:
+    EURUSD: 15.0
+    GBPUSD: 20.0
+    XAUUSD: 30.0
+
+market_context:
+  htf_bias: H4 swing structure via strict swing highs/lows, no future bars.
+  session_filter: London and New York kill zones only.
+  volatility_filter: Asian range minimum by symbol plus ATR-based displacement.
+
+poi_detection:
+  order_block: Not used in ST-A2 v1 baseline.
+  fair_value_gap: Not used in ST-A2 v1 baseline.
+  liquidity_zone: Asian session high and low.
+
+entry_confirmation:
+  liquidity_sweep: Wick breach of Asian range with close back inside.
+  choch: Not used in ST-A2 v1 baseline.
+  displacement: M15 candle body greater than 1.2 x ATR(14), close in directional quartile.
+  ltf_confirmation: M15 displacement close; M5 recorded as available dataset context only.
+  entry_timing: Market entry at displacement candle close.
+
+risk_model:
+  risk_per_trade: 0.25% fixed-fractional reference for drawdown conversion.
+  maximum_daily_loss: Research ledger only; no live/daily halt mutation in this phase.
+  position_sizing_method: Unit position size for R-multiple research ledger.
+  one_position_per_symbol: true
+
+exit_model:
+  stop_loss_logic: Sweep wick plus 2 pip buffer.
+  take_profit_logic: Fixed RR target from entry/stop distance.
+  rr_target: 3.0
+  trailing_rules: none
+  partial_exits: none
+  timeout: 96 M15 bars after entry, close at last bar close.
+
+cost_model:
+  spread_source: processed M15 spread_avg at entry timestamp, fallback to symbol cost model median.
+  commission_pips_round_trip:
+    EURUSD: 0.6
+    GBPUSD: 0.6
+    XAUUSD: 0.0
+  slippage_pips_round_trip:
+    EURUSD: 0.0
+    GBPUSD: 0.0
+    XAUUSD: 0.0
+
+safety:
+  live_trading_modified: false
+  broker_configuration_modified: false
+  strategy_logic_optimized: false

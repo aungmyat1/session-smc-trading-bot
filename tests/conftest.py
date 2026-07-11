@@ -90,3 +90,61 @@ def _isolate_run_st_a2_demo_globals(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "_validation_session_mgr", validation_stub)
 
     yield stub
+
+
+@pytest.fixture
+def sample_decomposition_rows() -> list[dict]:
+    return [
+        {
+            "trade_id": "t1",
+            "symbol": "GBPUSD",
+            "entry_time": "2025-01-01T08:00:00Z",
+            "exit_time": "2025-01-01T12:00:00Z",
+            "gross_pnl": 2.0,
+            "spread_cost": 0.1,
+            "commission_cost": 0.05,
+            "slippage_cost": 0.0,
+            "net_pnl": 1.85,
+            "market_regime": "TREND_HIGH_VOL",
+            "session": "new_york",
+        },
+        {
+            "trade_id": "t2",
+            "symbol": "GBPUSD",
+            "entry_time": "2025-01-02T08:00:00Z",
+            "exit_time": "2025-01-02T10:00:00Z",
+            "gross_pnl": 1.0,
+            "spread_cost": 0.1,
+            "commission_cost": 0.05,
+            "slippage_cost": 0.0,
+            "net_pnl": 0.85,
+            "market_regime": "RANGE_HIGH_VOL",
+            "session": "london",
+        },
+        {
+            "trade_id": "t3",
+            "symbol": "XAUUSD",
+            "entry_time": "2025-02-01T08:00:00Z",
+            "exit_time": "2025-02-01T09:00:00Z",
+            "gross_pnl": -1.0,
+            "spread_cost": 0.2,
+            "commission_cost": 0.0,
+            "slippage_cost": 0.0,
+            "net_pnl": -1.2,
+            "market_regime": "RANGE_LOW_VOL",
+            "session": "london",
+        },
+        {
+            "trade_id": "t4",
+            "symbol": "XAUUSD",
+            "entry_time": "2025-02-02T08:00:00Z",
+            "exit_time": "2025-02-02T09:00:00Z",
+            "gross_pnl": -1.0,
+            "spread_cost": 0.2,
+            "commission_cost": 0.0,
+            "slippage_cost": 0.0,
+            "net_pnl": -1.2,
+            "market_regime": "RANGE_LOW_VOL",
+            "session": "london",
+        },
+    ]
