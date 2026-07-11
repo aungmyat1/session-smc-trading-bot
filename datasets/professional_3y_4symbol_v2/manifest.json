@@ -1,11 +1,14 @@
 {
   "build_time": "2026-07-11T15:16:43.123699+00:00",
+  "completion_pct": 100.0,
   "dataset_id": "professional_3y_4symbol_v2",
+  "export_hash": "080154df4720857cb10ddb291d6e9aaee5b10dd696450d95dc8d5811a544d2e4",
   "feature_counts": {
     "research/market_regimes": 324607,
     "research/smc_events": 159405
   },
   "git_commit": "38c76354ff5c5ae5e435bc2ff7aebef38d165eb9",
+  "quality_hash": "cfc7dae45ee9a96a9ffc47988e6c0f39e56510199c2725bb568eff3da81cec10",
   "quality_metrics": {
     "files": [
       {
@@ -582,6 +585,7 @@
       "M5": 211873
     }
   },
+  "release_status": "PASS",
   "sources": {
     "BTCUSD": {
       "asset_class": "crypto",
@@ -612,5 +616,6 @@
     "M15",
     "H1",
     "H4"
-  ]
+  ],
+  "validation_status": "PASS"
 }

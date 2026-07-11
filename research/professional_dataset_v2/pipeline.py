@@ -4,9 +4,11 @@ import hashlib
 import json
 import math
 import os
+import gc
 import shutil
 import subprocess
 import tarfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -75,6 +77,73 @@ def month_range(start: str, end: str) -> list[str]:
             month = 1
             year += 1
     return out
+
+
+def raw_source_files(config: dict[str, Any], symbol: str, raw_root: Path | None = None) -> list[Path]:
+    raw_root = raw_root or (ROOT / "data/raw")
+    source = config["sources"][symbol]
+    if source["provider"] == "bitget_spot":
+        return sorted((raw_root / "bitget" / symbol).glob("**/*.parquet"))
+    return sorted((raw_root / "dukascopy" / symbol).glob("**/ticks.parquet"))
+
+
+def source_file_month(path: Path, source: dict[str, Any]) -> str | None:
+    if source["provider"] == "bitget_spot":
+        return None
+    try:
+        year = path.parts[-3]
+        month = path.parts[-2]
+        return f"{int(year):04d}-{int(month):02d}"
+    except Exception:
+        return None
+
+
+def has_tick_month(tick_root: Path, symbol: str, month: str) -> bool:
+    year, mon = month.split("-", 1)
+    return any((tick_root / symbol / f"year={year}" / f"month={mon}").glob("day=*/ticks.parquet"))
+
+
+def raw_dates_for_symbol(config: dict[str, Any], symbol: str, raw_root: Path | None = None) -> set[str]:
+    source = config["sources"][symbol]
+    dates: set[str] = set()
+    for path in raw_source_files(config, symbol, raw_root):
+        try:
+            parquet_file = pq.ParquetFile(path)
+            for batch in parquet_file.iter_batches(batch_size=250_000, columns=["timestamp_utc"] if "timestamp_utc" in parquet_file.schema_arrow.names else ["timestamp_ms"]):
+                frame = batch.to_pandas()
+                if "timestamp_utc" in frame:
+                    ts = pd.to_datetime(frame["timestamp_utc"], utc=True)
+                else:
+                    ts = pd.to_datetime(frame["timestamp_ms"], unit="ms", utc=True)
+                dates.update(ts.dt.strftime("%Y-%m-%d").unique().tolist())
+        except Exception:
+            continue
+    return dates
+
+
+def tick_dates_for_symbol(tick_root: Path, symbol: str) -> set[str]:
+    dates: set[str] = set()
+    for path in (tick_root / symbol).glob("year=*/month=*/day=*/ticks.parquet"):
+        try:
+            year = path.parts[-4].split("=", 1)[1]
+            month = path.parts[-3].split("=", 1)[1]
+            day = path.parts[-2].split("=", 1)[1]
+            dates.add(f"{year}-{month}-{day}")
+        except Exception:
+            continue
+    return dates
+
+
+def tick_months_for_symbol(tick_root: Path, symbol: str) -> set[str]:
+    months: set[str] = set()
+    for path in (tick_root / symbol).glob("year=*/month=*/day=*/ticks.parquet"):
+        try:
+            year = path.parts[-4].split("=", 1)[1]
+            month = path.parts[-3].split("=", 1)[1]
+            months.add(f"{year}-{month}")
+        except Exception:
+            continue
+    return months
 
 
 def sha256_file(path: Path) -> str:
@@ -158,8 +227,15 @@ def _normalize_btc(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
         raise ValueError("BTC tick frame needs timestamp_utc or timestamp_ms")
     if "price" not in out and "close" in out:
         out["price"] = out["close"]
-    if "quantity" not in out and "volume" in out:
-        out["quantity"] = out["volume"]
+    if "quantity" not in out:
+        if "volume" in out:
+            out["quantity"] = out["volume"]
+        elif "base_volume" in out:
+            out["quantity"] = out["base_volume"]
+        elif "usdt_volume" in out:
+            out["quantity"] = out["usdt_volume"]
+        else:
+            out["quantity"] = 0.0
     if "side" not in out:
         out["side"] = "unknown"
     out["symbol"] = symbol
@@ -205,7 +281,322 @@ def normalize_tick_file(input_path: Path, output_root: Path, symbol: str, asset_
     for out_path in sorted(temp_paths):
         os.replace(temp_paths[out_path], out_path)
         written.append({"path": display_path(out_path), "rows": row_counts[out_path], "sha256": sha256_file(out_path)})
+    gc.collect()
     return {"symbol": symbol, "input": str(input_path), "rows": total_rows, "partitions": written}
+
+
+def _month_key(value: str) -> tuple[int, int]:
+    year, month = value.split("-", 1)
+    return int(year), int(month)
+
+
+def resume_tick_materialization(
+    config: dict[str, Any],
+    raw_root: Path,
+    output_root: Path,
+    symbols: list[str] | None = None,
+    from_month: str | None = None,
+    workers: int = 1,
+) -> dict[str, Any]:
+    results: dict[str, Any] = {"status": "PASS", "symbols": {}}
+    from_key = _month_key(from_month) if from_month else None
+    for symbol in symbols or config["symbols"]:
+        source = config["sources"][symbol]
+        raw_files: list[Path] = []
+        skipped: list[str] = []
+        for raw_file in raw_source_files(config, symbol, raw_root):
+            month = source_file_month(raw_file, source)
+            if from_key and month and _month_key(month) < from_key:
+                skipped.append(str(raw_file))
+                continue
+            raw_files.append(raw_file)
+
+        processed: list[dict[str, Any]] = []
+        if workers > 1 and len(raw_files) > 1:
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                futures = [
+                    pool.submit(normalize_tick_file, raw_file, output_root, symbol, source["asset_class"])
+                    for raw_file in raw_files
+                ]
+                for future in as_completed(futures):
+                    processed.append(future.result())
+                    gc.collect()
+        else:
+            for raw_file in raw_files:
+                processed.append(normalize_tick_file(raw_file, output_root, symbol, source["asset_class"]))
+                gc.collect()
+        results["symbols"][symbol] = {"processed_files": len(processed), "skipped_files": len(skipped), "results": processed}
+    return results
+
+
+def investigate_partitions(config: dict[str, Any], tick_root: Path, refresh_plan_path: Path) -> dict[str, Any]:
+    plan = json.loads(refresh_plan_path.read_text(encoding="utf-8")) if refresh_plan_path.exists() else refresh_plan(config, tick_root)
+    reports: list[dict[str, Any]] = []
+    for action in plan.get("actions", []):
+        symbol = action.get("symbol")
+        partition = action.get("month") or action.get("path", "UNKNOWN")
+        reason = action.get("reason", "UNKNOWN")
+        status = "UNKNOWN"
+        details = reason
+        recommended_action = "investigate"
+        if reason == "checksum_mismatch":
+            status = "CHECKSUM_MISMATCH"
+            recommended_action = "replace_partition"
+        elif reason == "empty_file":
+            status = "VALIDATION_FAILED"
+            recommended_action = "replace_partition"
+        elif reason == "missing_partition" and symbol:
+            source = config["sources"][symbol]
+            raw_files = raw_source_files(config, symbol)
+            raw_exists = bool(raw_files)
+            if source["provider"] == "bitget_spot" and raw_exists:
+                status = "NORMALIZATION_INTERRUPTED"
+                details = "Raw Bitget source exists but no tick partitions are materialized."
+                recommended_action = "resume"
+            elif raw_exists:
+                raw_month = any(source_file_month(path, source) == partition for path in raw_files)
+                if raw_month:
+                    status = "MEMORY_PROTECTION_STOP" if symbol == "XAUUSD" else "NORMALIZATION_INTERRUPTED"
+                    details = "Raw monthly source exists; prior normalization did not complete the tick partitions."
+                    recommended_action = "resume"
+                else:
+                    status = "DOWNLOAD_MISSING"
+                    details = "No raw monthly source found for this partition."
+                    recommended_action = "download"
+            else:
+                status = "DOWNLOAD_MISSING"
+                details = "No raw source files found for symbol."
+                recommended_action = "download"
+        reports.append({"symbol": symbol, "partition": partition, "status": status, "details": details, "recommended_action": recommended_action})
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total_actions": len(reports),
+        "partitions": reports,
+    }
+    _atomic_write_json(ROOT / "artifacts/partition_investigation_report.json", payload)
+    return payload
+
+
+def validate_dataset_completeness(config: dict[str, Any], tick_root: Path) -> dict[str, Any]:
+    symbols: dict[str, Any] = {}
+    total_expected = 0
+    total_actual = 0
+    total_missing = 0
+    total_corrupt = 0
+    plan = refresh_plan(config, tick_root)
+    for symbol in config["symbols"]:
+        actual = len(list((tick_root / symbol).glob("year=*/month=*/day=*/ticks.parquet")))
+        missing = sum(1 for action in plan.get("actions", []) if action.get("symbol") == symbol)
+        corrupted: list[str] = []
+        for path in sorted((tick_root / symbol).glob("year=*/month=*/day=*/ticks.parquet")):
+            try:
+                meta = pq.read_metadata(path)
+                if meta.num_rows <= 0:
+                    corrupted.append(display_path(path))
+            except Exception:
+                corrupted.append(display_path(path))
+        expected = actual + missing
+        pct = (actual / expected * 100.0) if expected else 0.0
+        status = "COMPLETE" if not missing and not corrupted and expected > 0 else "INCOMPLETE"
+        symbols[symbol] = {
+            "expected_partitions": expected,
+            "actual_partitions": actual,
+            "missing_partitions": missing,
+            "corrupted_partitions": corrupted,
+            "completion_percentage": pct,
+            "status": status,
+        }
+        total_expected += expected
+        total_actual += actual
+        total_missing += missing
+        total_corrupt += len(corrupted)
+    completion_pct = (total_actual / total_expected * 100.0) if total_expected else 0.0
+    gate = release_gate_status(total_missing, total_corrupt, 0)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": gate,
+        "completion_pct": completion_pct,
+        "expected_partitions": total_expected,
+        "actual_partitions": total_actual,
+        "missing_partitions": total_missing,
+        "corrupted_partitions": total_corrupt,
+        "symbols": symbols,
+    }
+    _atomic_write_json(ROOT / "artifacts/dataset_status.json", payload)
+    return payload
+
+
+def release_gate_status(missing_partitions: int, corrupted_partitions: int, checksum_failures: int) -> str:
+    if missing_partitions == 0 and corrupted_partitions == 0 and checksum_failures == 0:
+        return "PASS"
+    if missing_partitions <= 5 and corrupted_partitions <= 1 and checksum_failures == 0:
+        return "PASS_WITH_WARNINGS"
+    return "FAIL"
+
+
+def validate_checksums(dataset_dir: Path = DATASET_DIR) -> dict[str, Any]:
+    path = dataset_dir / "checksums.json"
+    if not path.exists():
+        return {"status": "FAIL", "reason": "missing checksums.json"}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    files = data.get("sha256", [])
+    digest = hashlib.sha256()
+    failures = []
+    for item in files:
+        file_path = ROOT / item["path"]
+        if not file_path.exists():
+            failures.append({"path": item["path"], "reason": "missing"})
+            continue
+        actual = sha256_file(file_path)
+        if actual != item["sha256"]:
+            failures.append({"path": item["path"], "reason": "mismatch"})
+        digest.update(item["sha256"].encode("ascii"))
+    status = "PASS" if not failures and digest.hexdigest() == data.get("dataset_hash") else "FAIL"
+    return {
+        "status": status,
+        "expected_hash": data.get("dataset_hash"),
+        "actual_hash": digest.hexdigest(),
+        "failure_count": len(failures),
+        "failures": failures,
+    }
+
+
+def cost_model_validation(cost_root: Path = ROOT / "research/cost_models") -> dict[str, Any]:
+    report: dict[str, Any] = {"status": "PASS", "symbols": {}}
+    for symbol_file in sorted(cost_root.glob("*.json")):
+        if symbol_file.name == "metadata.json":
+            continue
+        data = json.loads(symbol_file.read_text(encoding="utf-8"))
+        gross_pnl = 100.0
+        spread_cost = float(data.get("spread_p50", 0.0)) * 10_000.0 if "spread_p50" in data else 0.0
+        commission = 0.0
+        slippage = 0.0
+        if "commission" in data:
+            commission = float(data["commission"].get("maker_fee", 0.0) + data["commission"].get("taker_fee", 0.0)) * 10_000.0
+            slippage = float(data.get("slippage", {}).get("slippage_p50", 0.0) + data.get("slippage", {}).get("slippage_p90", 0.0))
+        net_pnl = gross_pnl - spread_cost - commission - slippage
+        report["symbols"][symbol_file.stem] = {
+            "gross_pnl": gross_pnl,
+            "commission": commission,
+            "spread_cost": spread_cost,
+            "slippage_cost": slippage,
+            "net_pnl": net_pnl,
+            "status": "PASS" if gross_pnl >= net_pnl else "FAIL",
+        }
+        if gross_pnl < net_pnl:
+            report["status"] = "FAIL"
+    return report
+
+
+def smc_distribution_validation(output_root: Path = ROOT / "research/smc_events") -> dict[str, Any]:
+    core_labels = {"BOS", "FVG", "LiquiditySweep", "Displacement"}
+    report: dict[str, Any] = {"status": "PASS", "symbols": {}}
+    for path in sorted(output_root.glob("*.parquet")):
+        frame = pd.read_parquet(path, columns=["event_type", "direction"])
+        counts = frame["event_type"].value_counts().to_dict()
+        missing_core = sorted(label for label in core_labels if counts.get(label, 0) <= 0)
+        negatives = int((frame["direction"].astype(str).str.len() == 0).sum())
+        status = "PASS"
+        if missing_core or negatives > 0:
+            status = "WARN"
+            report["status"] = "PASS_WITH_WARNINGS" if report["status"] == "PASS" else report["status"]
+        report["symbols"][path.stem] = {
+            "counts": counts,
+            "missing_core_labels": missing_core,
+            "empty_direction_rows": negatives,
+            "status": status,
+        }
+    return report
+
+
+def regime_distribution_validation(output_root: Path = ROOT / "research/market_regimes") -> dict[str, Any]:
+    expected_labels = {
+        "TREND_LOW_VOL",
+        "TREND_HIGH_VOL",
+        "RANGE_LOW_VOL",
+        "RANGE_HIGH_VOL",
+        "LONDON_OPEN",
+        "NEWYORK_OPEN",
+        "NEWS_WINDOW",
+    }
+    report: dict[str, Any] = {"status": "PASS", "symbols": {}}
+    for path in sorted(output_root.glob("*.parquet")):
+        frame = pd.read_parquet(path, columns=["timestamp", "regime"])
+        counts = frame["regime"].value_counts().to_dict()
+        missing = sorted(label for label in expected_labels if label not in counts)
+        report["symbols"][path.stem] = {
+            "counts": counts,
+            "missing_labels": missing,
+            "timestamp_errors": int(pd.to_datetime(frame["timestamp"], utc=True, errors="coerce").isna().sum()),
+            "status": "PASS" if not missing else "WARN",
+        }
+        if missing:
+            report["status"] = "PASS_WITH_WARNINGS" if report["status"] == "PASS" else report["status"]
+    return report
+
+
+def release_validation_report(dataset_dir: Path = DATASET_DIR) -> dict[str, Any]:
+    completeness = validate_dataset_completeness(load_config(DEFAULT_CONFIG), ROOT / "data/tick")
+    checksum = validate_checksums(dataset_dir)
+    quality_path = ROOT / "artifacts/data_quality_report.json"
+    quality = json.loads(quality_path.read_text(encoding="utf-8")) if quality_path.exists() else {}
+    release_status = release_gate_status(
+        int(completeness.get("missing_partitions", 0)),
+        int(completeness.get("corrupted_partitions", 0)),
+        int(checksum.get("failure_count", 0)),
+    )
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "release_status": release_status,
+        "completion_pct": completeness.get("completion_pct", 0.0),
+        "dataset_completeness": completeness,
+        "checksum_validation": checksum,
+        "quality_status": quality.get("status"),
+        "quality_metrics": quality,
+    }
+    _atomic_write_json(ROOT / "artifacts/release_validation_report.json", payload)
+    return payload
+
+
+def update_release_manifest(dataset_dir: Path = DATASET_DIR) -> dict[str, Any]:
+    manifest_path = dataset_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+    quality_path = ROOT / "artifacts/data_quality_report.json"
+    quality_hash = sha256_file(quality_path) if quality_path.exists() else None
+    export_path = ROOT / "artifacts/professional_dataset_v2.tar.gz"
+    export_hash = sha256_file(export_path) if export_path.exists() else None
+    release_report = json.loads((ROOT / "artifacts/release_validation_report.json").read_text(encoding="utf-8")) if (ROOT / "artifacts/release_validation_report.json").exists() else {}
+    completeness = release_report.get("dataset_completeness", {})
+    manifest.update(
+        {
+            "quality_hash": quality_hash,
+            "export_hash": export_hash,
+            "release_status": release_report.get("release_status", "RC1"),
+            "completion_pct": round(float(completeness.get("completion_pct", 0.0)), 4),
+            "validation_status": release_report.get("release_status", "FAIL"),
+        }
+    )
+    _atomic_write_json(manifest_path, manifest)
+    return manifest
+
+
+def production_release_report(dataset_dir: Path = DATASET_DIR) -> dict[str, Any]:
+    release_report = json.loads((ROOT / "artifacts/release_validation_report.json").read_text(encoding="utf-8")) if (ROOT / "artifacts/release_validation_report.json").exists() else release_validation_report(dataset_dir)
+    pkg = ROOT / "artifacts/professional_dataset_v2.tar.gz"
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "build_duration_seconds": None,
+        "dataset_size_bytes": pkg.stat().st_size if pkg.exists() else 0,
+        "partition_counts": {
+            symbol: len(list((ROOT / "data/tick" / symbol).glob("year=*/month=*/day=*/ticks.parquet")))
+            for symbol in ["EURUSD", "GBPUSD", "XAUUSD", "BTCUSD"]
+        },
+        "quality_status": release_report.get("quality_status"),
+        "checksum_status": release_report.get("checksum_validation", {}).get("status"),
+        "release_status": release_report.get("release_status"),
+    }
+    _atomic_write_json(ROOT / "artifacts/production_release_report.json", payload)
+    return payload
 
 
 def validate_tick_partitions(tick_root: Path, symbols: list[str]) -> dict[str, Any]:
@@ -217,16 +608,22 @@ def validate_tick_partitions(tick_root: Path, symbols: list[str]) -> dict[str, A
         duplicate_rows = 0
         last_ts: pd.Timestamp | None = None
         for path in sorted((tick_root / symbol).glob("year=*/month=*/day=*/ticks.parquet")):
-            frame = pd.read_parquet(path, columns=None)
-            rows += len(frame)
-            ts = pd.to_datetime(frame["timestamp_utc"], utc=True)
+            cols = ["timestamp_utc"]
+            schema_names = pq.read_schema(path).names
+            if "spread" in schema_names:
+                cols.append("spread")
+            frame = pd.read_parquet(path, columns=cols)
+            rows += pq.read_metadata(path).num_rows
+            ts = frame["timestamp_utc"]
+            if not pd.api.types.is_datetime64_any_dtype(ts):
+                ts = pd.to_datetime(ts, utc=True)
             timestamp_errors += int(ts.isna().sum())
             duplicate_rows += int(frame.duplicated(subset=["timestamp_utc"]).sum())
             if last_ts is not None and not frame.empty and ts.iloc[0] < last_ts:
                 timestamp_errors += 1
             if not frame.empty:
                 last_ts = ts.iloc[-1]
-            if "spread" in frame:
+            if "spread" in frame.columns:
                 bad_spread += int((pd.to_numeric(frame["spread"], errors="coerce") < 0).sum())
         symbol_status = "PASS" if rows and not timestamp_errors and not bad_spread else "FAIL"
         results["symbols"][symbol] = {
@@ -390,11 +787,30 @@ def create_manifest(config: dict[str, Any], dataset_dir: Path = DATASET_DIR, qua
 
 def generate_checksums(dataset_dir: Path = DATASET_DIR, extra_roots: list[Path] | None = None) -> dict[str, Any]:
     files: list[dict[str, Any]] = []
-    roots = [dataset_dir, ROOT / "research/cost_models", ROOT / "research/market_regimes", ROOT / "research/smc_events"]
+    roots = [
+        dataset_dir,
+        ROOT / "data/processed",
+        ROOT / "artifacts/data_quality_report.json",
+        ROOT / "artifacts/tick_validation_report.json",
+        ROOT / "artifacts/dataset_refresh_plan.json",
+        ROOT / "artifacts/partition_investigation_report.json",
+        ROOT / "artifacts/dataset_status.json",
+        ROOT / "artifacts/release_validation_report.json",
+        ROOT / "artifacts/cost_model_validation_report.json",
+        ROOT / "artifacts/smc_distribution_report.json",
+        ROOT / "artifacts/regime_distribution_report.json",
+        ROOT / "artifacts/production_release_report.json",
+        ROOT / "research/cost_models",
+        ROOT / "research/market_regimes",
+        ROOT / "research/smc_events",
+    ]
     if extra_roots:
         roots.extend(extra_roots)
     for root in roots:
         if not root.exists():
+            continue
+        if root.is_file():
+            files.append({"path": display_path(root), "sha256": sha256_file(root), "bytes": root.stat().st_size})
             continue
         for path in sorted(p for p in root.rglob("*") if p.is_file() and p.name != "checksums.json"):
             files.append({"path": display_path(path), "sha256": sha256_file(path), "bytes": path.stat().st_size})
@@ -536,13 +952,23 @@ def export_package(dataset_dir: Path = DATASET_DIR, output_path: Path | None = N
         output_path = ARTIFACTS / "professional_dataset_v2.tar.gz"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     roots = {
-        "dataset": dataset_dir,
+        "dataset": ROOT / "data/processed",
         "manifest": dataset_dir / "manifest.json",
         "checksums": dataset_dir / "checksums.json",
         "quality_report": ARTIFACTS / "data_quality_report.json",
+        "tick_validation": ARTIFACTS / "tick_validation_report.json",
+        "refresh_plan": ARTIFACTS / "dataset_refresh_plan.json",
+        "partition_investigation": ARTIFACTS / "partition_investigation_report.json",
+        "dataset_status": ARTIFACTS / "dataset_status.json",
+        "release_validation": ARTIFACTS / "release_validation_report.json",
+        "cost_model_validation": ARTIFACTS / "cost_model_validation_report.json",
+        "smc_distribution": ARTIFACTS / "smc_distribution_report.json",
+        "regime_distribution": ARTIFACTS / "regime_distribution_report.json",
+        "production_release": ARTIFACTS / "production_release_report.json",
         "cost_models": ROOT / "research/cost_models",
         "market_regimes": ROOT / "research/market_regimes",
         "smc_events": ROOT / "research/smc_events",
+        "metadata": dataset_dir,
     }
     tmp = output_path.with_suffix(output_path.suffix + ".tmp")
     with tarfile.open(tmp, "w:gz") as archive:

@@ -1,17 +1,182 @@
 {
-  "artifact_hash": "d35caaaf0094061f232025b744e257a24d24a49afe31b2c4fa1309b7819342af",
-  "dataset_hash": "d35caaaf0094061f232025b744e257a24d24a49afe31b2c4fa1309b7819342af",
-  "generated_at": "2026-07-11T15:16:53.400066+00:00",
+  "artifact_hash": "4e074431b3cd118dd375f9093e15d5b1a341510c911f21e1f4ada32c7ee779ae",
+  "dataset_hash": "4e074431b3cd118dd375f9093e15d5b1a341510c911f21e1f4ada32c7ee779ae",
+  "generated_at": "2026-07-11T17:51:38.792304+00:00",
   "sha256": [
     {
-      "bytes": 14407,
+      "bytes": 14664,
       "path": "datasets/professional_3y_4symbol_v2/manifest.json",
-      "sha256": "e750106c05113d92e477ac3698c7230a174a00485ebb265988ef3c51cd4c65d7"
+      "sha256": "c04ebc48ca23c067621875c8012692aba2d30d816632abd1a211b1aef730684c"
     },
     {
       "bytes": 134,
       "path": "datasets/professional_3y_4symbol_v2/metadata.yaml",
       "sha256": "635b5bc5e23288727003d684bdfba21fb5f7f837694be9565411f3cffe8bd9ff"
+    },
+    {
+      "bytes": 1530455,
+      "path": "data/processed/BTCUSD/H1.parquet",
+      "sha256": "5356bfffb151e33bfd35050301d6825b1bd3355b93b88d8ce882fe54c3a45c79"
+    },
+    {
+      "bytes": 381297,
+      "path": "data/processed/BTCUSD/H4.parquet",
+      "sha256": "df7553e3a3279f45587d0214a15ce60e16d9fda1d1ba833c05457123f4a92291"
+    },
+    {
+      "bytes": 6077021,
+      "path": "data/processed/BTCUSD/M15.parquet",
+      "sha256": "947ebc03ce2f5a257d2b934cfb885a587eee1b14e627d2a02f8ae97099d3051e"
+    },
+    {
+      "bytes": 17740312,
+      "path": "data/processed/BTCUSD/M5.parquet",
+      "sha256": "e4b54057f72e23de5bf78cf6dbddebf49617df2ecb294a5cadc900d02d07f409"
+    },
+    {
+      "bytes": 606,
+      "path": "data/processed/BTCUSD/source_metadata.json",
+      "sha256": "39b03930fca6075cfdfcef76d4bae61a87b04aed6ba6c8bc8d98dd79609e4133"
+    },
+    {
+      "bytes": 27294,
+      "path": "data/processed/EURUSD/D1.parquet",
+      "sha256": "bd3061529936b5b6a57919dc55136eb057e15deeb97c711f98aa69e7afe3616e"
+    },
+    {
+      "bytes": 1052223,
+      "path": "data/processed/EURUSD/H1.parquet",
+      "sha256": "40e6d8a6d8e1ae743fcd5fc71f84589f7a83ed1beea4c7eac91ccbb9422de564"
+    },
+    {
+      "bytes": 312590,
+      "path": "data/processed/EURUSD/H4.parquet",
+      "sha256": "895228f6a50b115239c60cedb7683a995c93dbb7eed735033fc34a48d8ee1f08"
+    },
+    {
+      "bytes": 38038010,
+      "path": "data/processed/EURUSD/M1.parquet",
+      "sha256": "e49b7daab37522639ecbd092ca03d250a63f65819a790042aaff91a0764de33d"
+    },
+    {
+      "bytes": 3422295,
+      "path": "data/processed/EURUSD/M15.parquet",
+      "sha256": "46f94f7e967f3352f305c576abca6eb2b42191881ad04b89011b2e734f7398b7"
+    },
+    {
+      "bytes": 9287228,
+      "path": "data/processed/EURUSD/M5.parquet",
+      "sha256": "edecffdb46960eb6e190cd9ccb57941d905c98566df7735f6c782d2d2b92c226"
+    },
+    {
+      "bytes": 67955,
+      "path": "data/processed/GBPUSD/D1.parquet",
+      "sha256": "835372c3d56af540d9765e5ea9202dd3b16c22a3d7208382add39fe0f0742b9e"
+    },
+    {
+      "bytes": 1064194,
+      "path": "data/processed/GBPUSD/H1.parquet",
+      "sha256": "2d991a8e90d2faa0a90521c254c20bed5e4dadcc60fca6ce62e45e70406202f3"
+    },
+    {
+      "bytes": 314524,
+      "path": "data/processed/GBPUSD/H4.parquet",
+      "sha256": "36b58032babeebc0d023066b1bc55fc8cb393d010f1238a7eb07d92782142ad8"
+    },
+    {
+      "bytes": 38623612,
+      "path": "data/processed/GBPUSD/M1.parquet",
+      "sha256": "b371c00e00249eb098df2f63470fc9b6656986101df043525e1f6c57e0baabd5"
+    },
+    {
+      "bytes": 3547166,
+      "path": "data/processed/GBPUSD/M15.parquet",
+      "sha256": "023b9944cc87df9ac5eba8356cec2ed4b371eafb7a3e4977f2d6a1dbce3f0277"
+    },
+    {
+      "bytes": 9637032,
+      "path": "data/processed/GBPUSD/M5.parquet",
+      "sha256": "45a980214dd716ab37c16e76307ec3ea4ba220e6b85ba1765965409894dd8ede"
+    },
+    {
+      "bytes": 71490,
+      "path": "data/processed/XAUUSD/D1.parquet",
+      "sha256": "00a441c2d4bb8e2e6408209e8069b03cf3876ae312a5b1ed424ddb2df02c1006"
+    },
+    {
+      "bytes": 1233738,
+      "path": "data/processed/XAUUSD/H1.parquet",
+      "sha256": "002f253163d24e298d1bc3284c4325c5836adff6b9627d1bd8476d3d822b66ea"
+    },
+    {
+      "bytes": 343102,
+      "path": "data/processed/XAUUSD/H4.parquet",
+      "sha256": "c31948bafedc921b69ef1a8d1b45dfcc404a305b565f1e2366089f439e148151"
+    },
+    {
+      "bytes": 53456068,
+      "path": "data/processed/XAUUSD/M1.parquet",
+      "sha256": "975b42cdd61dd82323819579d7b34315dc040099254c87569e84ceb0592a94c0"
+    },
+    {
+      "bytes": 4597476,
+      "path": "data/processed/XAUUSD/M15.parquet",
+      "sha256": "4ace9ed25a9aa60d31791aa522b56b21c5cbe95a3c6aa847ee95b236df0d5645"
+    },
+    {
+      "bytes": 12533588,
+      "path": "data/processed/XAUUSD/M5.parquet",
+      "sha256": "ca5fd0a792e5950fe1d580a2aa903fb0b768c89e278ed18d73e39237a02fe5c9"
+    },
+    {
+      "bytes": 12056,
+      "path": "artifacts/data_quality_report.json",
+      "sha256": "cfc7dae45ee9a96a9ffc47988e6c0f39e56510199c2725bb568eff3da81cec10"
+    },
+    {
+      "bytes": 656,
+      "path": "artifacts/tick_validation_report.json",
+      "sha256": "27d4d1c816353119f53af1eb3b0df0a1867738b9cd17ef8e5bb83e8e1ea16f8a"
+    },
+    {
+      "bytes": 7885,
+      "path": "artifacts/dataset_refresh_plan.json",
+      "sha256": "83369bfbdd8d793f9848d156c45b0f341f3edd407d6bc269939adb95fb12f861"
+    },
+    {
+      "bytes": 14199,
+      "path": "artifacts/partition_investigation_report.json",
+      "sha256": "da04c948e15d516e18f7b95c2fd414057ffb7a3c31623122d379cf09e14daf4f"
+    },
+    {
+      "bytes": 1116,
+      "path": "artifacts/dataset_status.json",
+      "sha256": "5fe3454be28d4bd9fc29750270913d02f8792993dc8161251e8a5b4a90ed901f"
+    },
+    {
+      "bytes": 14817,
+      "path": "artifacts/release_validation_report.json",
+      "sha256": "3b38f5e57c1430b4bcd994da6ad037668815ff94455b62d17de8f20f2cc40e89"
+    },
+    {
+      "bytes": 647,
+      "path": "artifacts/cost_model_validation_report.json",
+      "sha256": "66e0d1d99a43aa344b20412ec3503e596123aec9ac041b24ba70244215a24acd"
+    },
+    {
+      "bytes": 1015,
+      "path": "artifacts/smc_distribution_report.json",
+      "sha256": "fc2a068c4b0d888a42c9a401a54dcfbb2d6aaefb5a355c6c43533ad37078a1b2"
+    },
+    {
+      "bytes": 1436,
+      "path": "artifacts/regime_distribution_report.json",
+      "sha256": "51b167d6cad3b8f71b78881dbaf48f76762a755ea7ed6ae3a2f036135c87298d"
+    },
+    {
+      "bytes": 315,
+      "path": "artifacts/production_release_report.json",
+      "sha256": "e012bf198e41e4a985d07b4478826b8ce2d58337a60dde384d0f2793598ff0c2"
     },
     {
       "bytes": 328,
