@@ -1,0 +1,19 @@
+diagnostics:
+  - failure: Low win rate, but high RR
+    meaning: Entries may be too early or too late.
+    fix_direction: Improve confirmation.
+  - failure: High win rate, negative profit
+    meaning: RR too small, or fees and slippage are too high.
+    fix_direction: Improve exit or risk.
+  - failure: Good gross result, bad net result
+    meaning: Cost problem.
+    fix_direction: Reduce trades or move to a higher timeframe.
+  - failure: Few trades
+    meaning: Strategy is over-filtered.
+    fix_direction: Relax rules.
+  - failure: Many trades, big drawdown
+    meaning: Weak filters.
+    fix_direction: Add session, trend, or regime filter.
+  - failure: Works only in one month
+    meaning: Overfitted or regime-dependent.
+    fix_direction: Walk-forward testing.

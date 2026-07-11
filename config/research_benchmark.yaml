@@ -1,0 +1,48 @@
+dataset:
+  version: professional_3y_4symbol_v2
+  immutable: true
+  manifest_path: datasets/professional_3y_4symbol_v2/manifest.json
+  checksums_path: datasets/professional_3y_4symbol_v2/checksums.json
+  processed_root: data/processed
+
+symbols:
+  - EURUSD
+  - GBPUSD
+  - XAUUSD
+  - BTCUSD
+
+timeframes:
+  - M5
+  - M15
+  - H1
+  - H4
+
+periods:
+  train:
+    start: 2023-07-01
+    end: 2025-06-30
+  validation:
+    start: 2025-07-01
+    end: 2025-12-31
+  test:
+    start: 2026-01-01
+    end: 2026-06-30
+
+acceptance_gates:
+  trades_min: 200
+  profit_factor_min: 1.25
+  sharpe_min: 1.2
+  max_drawdown_pct_max: 15.0
+  expectancy_min: 0.0
+  require_no_single_month_dependency: true
+
+cost_model:
+  forex_symbols:
+    - EURUSD
+    - GBPUSD
+    - XAUUSD
+  crypto_symbols:
+    - BTCUSD
+  spread_source: processed_spread_avg
+  commission_model: research/cost_models/commission_model.yaml
+  slippage_model: research/cost_models/slippage_model.yaml
