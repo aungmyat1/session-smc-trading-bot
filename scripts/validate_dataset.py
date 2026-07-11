@@ -40,12 +40,14 @@ SPREAD_WARN_PIPS = {
     "GBPUSD": 12.0,
     "USDJPY": 10.0,
     "XAUUSD": 5.0,
+    "BTCUSD": 500.0,
 }
 PIP_SIZE = {
     "EURUSD": 0.0001,
     "GBPUSD": 0.0001,
     "USDJPY": 0.01,
     "XAUUSD": 0.1,
+    "BTCUSD": 0.1,
 }
 
 EXPECTED_TF_GAPS = {

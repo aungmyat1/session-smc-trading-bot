@@ -105,7 +105,8 @@ def _decode_bi5(data: bytes, hour_epoch_ms: int, price_div: float) -> list:
 async def _fetch_hour(session: aiohttp.ClientSession, sem: asyncio.Semaphore,
                       sym: str, year: int, month: int, day: int, hour: int,
                       price_div: float, request_delay: float = 0.05,
-                      max_retries: int = 5) -> tuple[list, dict]:
+                      max_retries: int = 5,
+                      timeout_seconds: float = 30.0) -> tuple[list, dict]:
     url = _URL.format(sym=DUKA_SYM[sym], year=year, month0=month - 1, day=day, hour=hour)
     hour_ms = _hour_epoch_ms(year, month, day, hour)
     stats = {
@@ -123,7 +124,7 @@ async def _fetch_hour(session: aiohttp.ClientSession, sem: asyncio.Semaphore,
             try:
                 if request_delay > 0:
                     await asyncio.sleep(request_delay)
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout_seconds)) as resp:
                     if resp.status == 404:
                         stats["status"] = "missing"
                         return [], stats  # no data for this hour (weekend, holiday, etc.)
@@ -155,7 +156,7 @@ async def _fetch_hour(session: aiohttp.ClientSession, sem: asyncio.Semaphore,
 
 
 async def _download_month(sym: str, year: int, month: int, force: bool,
-                           workers: int) -> int:
+                           workers: int, timeout_seconds: float, max_retries: int) -> int:
     """Download all hours for one month, write Parquet. Returns tick count."""
     out_path = DATA_RAW / sym / str(year) / f"{month:02d}" / "ticks.parquet"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -192,7 +193,18 @@ async def _download_month(sym: str, year: int, month: int, force: bool,
             # when represented as Python tuples, while a day remains comfortably bounded.
             for day in range(1, days_in_month + 1):
                 results = await asyncio.gather(*[
-                    _fetch_hour(http, sem, sym, year, month, day, hour, price_div)
+                    _fetch_hour(
+                        http,
+                        sem,
+                        sym,
+                        year,
+                        month,
+                        day,
+                        hour,
+                        price_div,
+                        max_retries=max_retries,
+                        timeout_seconds=timeout_seconds,
+                    )
                     for hour in range(24)
                 ])
                 day_failures = sum(1 for _ticks, stats in results if stats["status"] == "failed")
@@ -290,7 +302,7 @@ def _month_range(start: str, end: str):
     return months
 
 
-async def _main_async(symbols, months, force, workers, dry_run):
+async def _main_async(symbols, months, force, workers, dry_run, timeout_seconds, max_retries):
     total = 0
     for sym in symbols:
         if sym not in PRICE_DIV:
@@ -303,7 +315,7 @@ async def _main_async(symbols, months, force, workers, dry_run):
                 log.info("DRY-RUN %s %d-%02d → %s", sym, year, month,
                          "EXISTS" if exists else "WOULD DOWNLOAD")
                 continue
-            count = await _download_month(sym, year, month, force, workers)
+            count = await _download_month(sym, year, month, force, workers, timeout_seconds, max_retries)
             total += count
     if not dry_run:
         log.info("Done. Total ticks downloaded this run: %d", total)
@@ -316,6 +328,8 @@ def main():
     parser.add_argument("--start", required=True, help="Start year-month e.g. 2021-01")
     parser.add_argument("--end", required=True, help="End year-month e.g. 2026-06")
     parser.add_argument("--workers", type=int, default=8, help="Concurrent HTTP workers")
+    parser.add_argument("--timeout-seconds", type=float, default=30.0, help="Per-hour HTTP timeout")
+    parser.add_argument("--max-retries", type=int, default=5, help="Retries per hour before failing the month")
     parser.add_argument("--force", action="store_true", help="Re-download even if cached")
     parser.add_argument("--dry-run", action="store_true", help="List months only, no download")
     args = parser.parse_args()
@@ -324,7 +338,17 @@ def main():
     log.info("Pipeline: %d symbol(s) × %d months = %d month-downloads",
              len(args.symbols), len(months), len(args.symbols) * len(months))
 
-    asyncio.run(_main_async(args.symbols, months, args.force, args.workers, args.dry_run))
+    asyncio.run(
+        _main_async(
+            args.symbols,
+            months,
+            args.force,
+            args.workers,
+            args.dry_run,
+            args.timeout_seconds,
+            args.max_retries,
+        )
+    )
 
 
 if __name__ == "__main__":

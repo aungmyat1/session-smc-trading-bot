@@ -1,0 +1,40 @@
+version: 1
+name: professional_3y_4symbol_v1
+window:
+  start: "2023-07"
+  end: "2026-06"
+symbols:
+  - EURUSD
+  - GBPUSD
+  - BTCUSD
+  - XAUUSD
+timeframes:
+  - M5
+  - M15
+  - H1
+  - H4
+raw_source: dukascopy
+stage1_vps:
+  purpose: "first-pass research backtest on frozen Parquet candles"
+  backtests:
+    - id: st_a2_session_liquidity
+      script: scripts/backtest_session_liquidity.py
+      supported_symbols:
+        - EURUSD
+        - GBPUSD
+      notes: "ST-A2 runner is pair-specific today; do not force it onto BTCUSD/XAUUSD."
+    - id: vwap_mean_reversion
+      script: scripts/backtest_vwap_mean_reversion.py
+      supported_symbols:
+        - EURUSD
+        - GBPUSD
+        - XAUUSD
+      notes: "This runner currently uses legacy M15 CSV input; use only as exploratory until migrated to the professional Parquet dataset."
+stage2_mt5:
+  purpose: "broker-terminal verification on MT5 server after VPS dataset freeze"
+  export_dir: artifacts/mt5_dataset_exports
+  package_contents:
+    - data/processed
+    - reports/dataset_validation_report.md
+    - reports/professional_dataset_manifest.json
+    - config/professional_dataset.yaml

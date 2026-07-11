@@ -1,0 +1,1142 @@
+{
+  "config_path": "config/professional_dataset.yaml",
+  "dataset": "professional_3y_4symbol_v1",
+  "file_count": 124,
+  "files": [
+    {
+      "bytes": 22690464,
+      "layer": "raw",
+      "month": "2023-07",
+      "path": "data/raw/dukascopy/EURUSD/2023/07/ticks.parquet",
+      "rows": 2114339,
+      "sha256": "3f40f69d9cf5b7dd64fdcf07bb238111fc3b376232f65af0a5f7b983a22bc09d",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 24299964,
+      "layer": "raw",
+      "month": "2023-08",
+      "path": "data/raw/dukascopy/EURUSD/2023/08/ticks.parquet",
+      "rows": 2238800,
+      "sha256": "805a728712485b575e9f39ef8ecbe9756de1e6ef7e92acc577ad4f12dec9c144",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 18806449,
+      "layer": "raw",
+      "month": "2023-09",
+      "path": "data/raw/dukascopy/EURUSD/2023/09/ticks.parquet",
+      "rows": 1730224,
+      "sha256": "10235626896f0e80181701cfe691cdd2b208ea12ccf49547d05c02c9c17f82e2",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 23871049,
+      "layer": "raw",
+      "month": "2023-10",
+      "path": "data/raw/dukascopy/EURUSD/2023/10/ticks.parquet",
+      "rows": 2199266,
+      "sha256": "ce3bbb28270a5b71dc10134ec97e598609753fed11529e06958055c906326bc2",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 21232748,
+      "layer": "raw",
+      "month": "2023-11",
+      "path": "data/raw/dukascopy/EURUSD/2023/11/ticks.parquet",
+      "rows": 1940625,
+      "sha256": "3967a51603dab6e7912c559b23415ce123cf06d3aaee27cb010d5a44b9f5e89a",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 23004859,
+      "layer": "raw",
+      "month": "2023-12",
+      "path": "data/raw/dukascopy/EURUSD/2023/12/ticks.parquet",
+      "rows": 2113673,
+      "sha256": "a53368b931320203cf20b8be3da5bd95fe9155a124a0b241c3f43111457f2f04",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 23175319,
+      "layer": "raw",
+      "month": "2024-01",
+      "path": "data/raw/dukascopy/EURUSD/2024/01/ticks.parquet",
+      "rows": 2138065,
+      "sha256": "1419b03615112c33af9bb713f61f4b2ad00cdf85d425a2e1d70e27d0531d964b",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 18277954,
+      "layer": "raw",
+      "month": "2024-02",
+      "path": "data/raw/dukascopy/EURUSD/2024/02/ticks.parquet",
+      "rows": 1709485,
+      "sha256": "569a7506a08dd5a345923bf3522a82e05d4863498d219030d98f329dabb7a105",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 15794329,
+      "layer": "raw",
+      "month": "2024-03",
+      "path": "data/raw/dukascopy/EURUSD/2024/03/ticks.parquet",
+      "rows": 1477402,
+      "sha256": "8a974d25a76c04d6000234f0be2c823a15ec8249134158ede41600f323aa904f",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 17154905,
+      "layer": "raw",
+      "month": "2024-04",
+      "path": "data/raw/dukascopy/EURUSD/2024/04/ticks.parquet",
+      "rows": 1563493,
+      "sha256": "b7ed8d4667b6e6bcf2afc39035a24e3ae2836fb4d694f7c657ce54e79cccfdeb",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 13646345,
+      "layer": "raw",
+      "month": "2024-05",
+      "path": "data/raw/dukascopy/EURUSD/2024/05/ticks.parquet",
+      "rows": 1244928,
+      "sha256": "0df4e5600363fbcdd926d52d80f0d88bfd0a0c0c4b638ef3af5f8862e0ac63aa",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 14447235,
+      "layer": "raw",
+      "month": "2024-06",
+      "path": "data/raw/dukascopy/EURUSD/2024/06/ticks.parquet",
+      "rows": 1334494,
+      "sha256": "711975c5fcfe6537cbbc4682495e0967579fe14c4507bb463fa5b9783e8ef063",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 15723208,
+      "layer": "raw",
+      "month": "2024-07",
+      "path": "data/raw/dukascopy/EURUSD/2024/07/ticks.parquet",
+      "rows": 1463333,
+      "sha256": "d4ff28efdeac6bcb3d3a26bf2f60d091503f8a9a2a687a156f2374e4e1610dbb",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 19799788,
+      "layer": "raw",
+      "month": "2024-08",
+      "path": "data/raw/dukascopy/EURUSD/2024/08/ticks.parquet",
+      "rows": 1850658,
+      "sha256": "11a721d51169600453345496eb1a26f2bf8779514e4c122fd55d8d16714c4a85",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 19229895,
+      "layer": "raw",
+      "month": "2024-09",
+      "path": "data/raw/dukascopy/EURUSD/2024/09/ticks.parquet",
+      "rows": 1797377,
+      "sha256": "dab2c1d4a6f94659b5526cf18cdf5a0ee0d951ead0b73701603369c345ce8a02",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 18880410,
+      "layer": "raw",
+      "month": "2024-10",
+      "path": "data/raw/dukascopy/EURUSD/2024/10/ticks.parquet",
+      "rows": 1769081,
+      "sha256": "cf56ae4bcd48b8fd66a4a688e5169ceba421545492eeb4dbee2206db01240fae",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 25352143,
+      "layer": "raw",
+      "month": "2024-11",
+      "path": "data/raw/dukascopy/EURUSD/2024/11/ticks.parquet",
+      "rows": 2323977,
+      "sha256": "f1f0f7d2168f96d5974aa6ebe9d123f1ab7f130412ffb68b313a2c60fc743185",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 21382019,
+      "layer": "raw",
+      "month": "2024-12",
+      "path": "data/raw/dukascopy/EURUSD/2024/12/ticks.parquet",
+      "rows": 1979900,
+      "sha256": "6f57411261032ef923ed98557daadee33f7513cadd55f9db9d8cd6834e1c405c",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 24710924,
+      "layer": "raw",
+      "month": "2025-01",
+      "path": "data/raw/dukascopy/EURUSD/2025/01/ticks.parquet",
+      "rows": 2283239,
+      "sha256": "0528e4701ef8c58a9bb8f600ff2d2e1b9a4a12fa866f6f8a2ff3c9a56275c99e",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 21686086,
+      "layer": "raw",
+      "month": "2025-02",
+      "path": "data/raw/dukascopy/EURUSD/2025/02/ticks.parquet",
+      "rows": 2053257,
+      "sha256": "3f3cad2102c51176eae0e6fbba7ae4caea0ebb9d582a8b221134a224786159ce",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 25146505,
+      "layer": "raw",
+      "month": "2025-03",
+      "path": "data/raw/dukascopy/EURUSD/2025/03/ticks.parquet",
+      "rows": 2347029,
+      "sha256": "c83beaaf04f3277f52be924c8a9981ce221946f31a4ecbb9d5a6fc0c1df5be5d",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 41516675,
+      "layer": "raw",
+      "month": "2025-04",
+      "path": "data/raw/dukascopy/EURUSD/2025/04/ticks.parquet",
+      "rows": 3915597,
+      "sha256": "c4c9529786dfbfdd1b3136891857e186943451a3fa5f10dfd116bf23298f7c1e",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 26050913,
+      "layer": "raw",
+      "month": "2025-05",
+      "path": "data/raw/dukascopy/EURUSD/2025/05/ticks.parquet",
+      "rows": 2423219,
+      "sha256": "0745d4a075ef0cf57d7d3bce1328ebdd654495dac862b339f04087f9d7e44853",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 21630374,
+      "layer": "raw",
+      "month": "2025-06",
+      "path": "data/raw/dukascopy/EURUSD/2025/06/ticks.parquet",
+      "rows": 2033530,
+      "sha256": "e32bc2fe428b5414f5b216a4fd56e547d6e6f8825b0d8f9127f0f19e7162f00f",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 16686616,
+      "layer": "raw",
+      "month": "2025-07",
+      "path": "data/raw/dukascopy/EURUSD/2025/07/ticks.parquet",
+      "rows": 1558153,
+      "sha256": "c34391620f11cb7a821029750f1a3ffd09bc6df44c51aadedb362f2441733eda",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 14252924,
+      "layer": "raw",
+      "month": "2025-08",
+      "path": "data/raw/dukascopy/EURUSD/2025/08/ticks.parquet",
+      "rows": 1341789,
+      "sha256": "47e055786951aa19e2bc2f169f619e8e0afa98e5ef081517a4b09831e7c79fd7",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 16064517,
+      "layer": "raw",
+      "month": "2025-09",
+      "path": "data/raw/dukascopy/EURUSD/2025/09/ticks.parquet",
+      "rows": 1493853,
+      "sha256": "b7865930046c0870eec7a34967bb8e62621ceaca60f0ae59a653f4f91beebb9f",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 16181238,
+      "layer": "raw",
+      "month": "2025-10",
+      "path": "data/raw/dukascopy/EURUSD/2025/10/ticks.parquet",
+      "rows": 1486567,
+      "sha256": "6dcf9067fe33029139d824a8b89845d3e33cedc89647c9b30ac5d6e2ba3149ec",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 13144613,
+      "layer": "raw",
+      "month": "2025-11",
+      "path": "data/raw/dukascopy/EURUSD/2025/11/ticks.parquet",
+      "rows": 1231344,
+      "sha256": "78281bfabff70a2a7f0d1f793fcdae715e880115af86efbafb80985af2363b57",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 13791345,
+      "layer": "raw",
+      "month": "2025-12",
+      "path": "data/raw/dukascopy/EURUSD/2025/12/ticks.parquet",
+      "rows": 1293972,
+      "sha256": "f840c1abf0ec8341bfdf49a3125c03edae2eb60e6d7007817c4ba8e3098b46e8",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 15953173,
+      "layer": "raw",
+      "month": "2026-01",
+      "path": "data/raw/dukascopy/EURUSD/2026/01/ticks.parquet",
+      "rows": 1496694,
+      "sha256": "2c58827f0a1f6a751001adf8449ae655e70fa2a2ac9a39f3f698b074c9c8de19",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 13813244,
+      "layer": "raw",
+      "month": "2026-02",
+      "path": "data/raw/dukascopy/EURUSD/2026/02/ticks.parquet",
+      "rows": 1330124,
+      "sha256": "fcd4d3418826efe3a24ad98e5813259a8c45efafb855371a7f858eb8d184a56e",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 27191949,
+      "layer": "raw",
+      "month": "2026-03",
+      "path": "data/raw/dukascopy/EURUSD/2026/03/ticks.parquet",
+      "rows": 2621710,
+      "sha256": "ddb5a7643453fc281c126f73698a25cd6d380c3b37e5f68e20f267e0b36e2ce6",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 19641415,
+      "layer": "raw",
+      "month": "2026-04",
+      "path": "data/raw/dukascopy/EURUSD/2026/04/ticks.parquet",
+      "rows": 1918070,
+      "sha256": "b980b09f60ad9d8e8e48b6ff91d7b654f589553f6efcbdb0b165cfc38d140d43",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 15168574,
+      "layer": "raw",
+      "month": "2026-05",
+      "path": "data/raw/dukascopy/EURUSD/2026/05/ticks.parquet",
+      "rows": 1472510,
+      "sha256": "deca6ed90416b03634a2476fcf78b45ee5804b417e4d169c2a483fad1e7e4309",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 13556982,
+      "layer": "raw",
+      "month": "2026-06",
+      "path": "data/raw/dukascopy/EURUSD/2026/06/ticks.parquet",
+      "rows": 1302075,
+      "sha256": "4ed93e5561022fa91d9e4bbdee20b9dabad01c4ac1758229f1da57a73ff7dbca",
+      "symbol": "EURUSD"
+    },
+    {
+      "bytes": 21600422,
+      "layer": "raw",
+      "month": "2023-07",
+      "path": "data/raw/dukascopy/GBPUSD/2023/07/ticks.parquet",
+      "rows": 2098204,
+      "sha256": "9b05cbac36df64858e88dd80fa9743b1b2224d917b754abc5f04c9770d757aaa",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 24492534,
+      "layer": "raw",
+      "month": "2023-08",
+      "path": "data/raw/dukascopy/GBPUSD/2023/08/ticks.parquet",
+      "rows": 2401456,
+      "sha256": "ad224cde718c568e233f67f1d4593667f2c1e2534ce4578f5075529dad06ae80",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 19770309,
+      "layer": "raw",
+      "month": "2023-09",
+      "path": "data/raw/dukascopy/GBPUSD/2023/09/ticks.parquet",
+      "rows": 1955212,
+      "sha256": "1f826a2d5481b78c80581fd1644eb8ea487e5e231deed4f8f352c4b1587e6137",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 21505353,
+      "layer": "raw",
+      "month": "2023-10",
+      "path": "data/raw/dukascopy/GBPUSD/2023/10/ticks.parquet",
+      "rows": 2090022,
+      "sha256": "242386990789b07305ad58ffac8260513655dad55b8ee7e97db861aff8e8aaea",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 19954257,
+      "layer": "raw",
+      "month": "2023-11",
+      "path": "data/raw/dukascopy/GBPUSD/2023/11/ticks.parquet",
+      "rows": 1948100,
+      "sha256": "427771e0ffdb144888d6e09231bb9e92dced42c1240b57ab401cafac6fa813f6",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 21169389,
+      "layer": "raw",
+      "month": "2023-12",
+      "path": "data/raw/dukascopy/GBPUSD/2023/12/ticks.parquet",
+      "rows": 2065121,
+      "sha256": "761c92dbedcb40556d80b00bbc14c9d191e1d20defe401061f266e635f7e94eb",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 21782308,
+      "layer": "raw",
+      "month": "2024-01",
+      "path": "data/raw/dukascopy/GBPUSD/2024/01/ticks.parquet",
+      "rows": 2133972,
+      "sha256": "cd86d42fd64f56b6ce92ca5c3ca362250306f9c51b03b357603ce2e955bb9b33",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 16219628,
+      "layer": "raw",
+      "month": "2024-02",
+      "path": "data/raw/dukascopy/GBPUSD/2024/02/ticks.parquet",
+      "rows": 1583921,
+      "sha256": "68a1c66f83c4f7100dd364d59f674d029e1354fc42b77767566b5fb385bb5055",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 14749076,
+      "layer": "raw",
+      "month": "2024-03",
+      "path": "data/raw/dukascopy/GBPUSD/2024/03/ticks.parquet",
+      "rows": 1443480,
+      "sha256": "a7af95f7df0272d59ca86821c2b1606260044bd1e10cba11e00aa75dda9d385c",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 16959561,
+      "layer": "raw",
+      "month": "2024-04",
+      "path": "data/raw/dukascopy/GBPUSD/2024/04/ticks.parquet",
+      "rows": 1644818,
+      "sha256": "941e63916a362fde4a89e9b91ace3a49c4392fa2f5daf08e7f78719d9c1908ce",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 14770189,
+      "layer": "raw",
+      "month": "2024-05",
+      "path": "data/raw/dukascopy/GBPUSD/2024/05/ticks.parquet",
+      "rows": 1444112,
+      "sha256": "11febd228b3d797f090cf4731854b1793e79fb844fd54f6a5d8144b00b415412",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 12713023,
+      "layer": "raw",
+      "month": "2024-06",
+      "path": "data/raw/dukascopy/GBPUSD/2024/06/ticks.parquet",
+      "rows": 1238385,
+      "sha256": "45b145fe767f5fbe84f9141c2d037a9ca0322f7c7218e8d4eb68c3841dd8b4d1",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 16831002,
+      "layer": "raw",
+      "month": "2024-07",
+      "path": "data/raw/dukascopy/GBPUSD/2024/07/ticks.parquet",
+      "rows": 1666154,
+      "sha256": "8f4dc0b51d543b0405f1f2e79c1bb7c83527835631192301ac6c22e29204519c",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 17974786,
+      "layer": "raw",
+      "month": "2024-08",
+      "path": "data/raw/dukascopy/GBPUSD/2024/08/ticks.parquet",
+      "rows": 1751440,
+      "sha256": "79b66fc79e34924662f60ed4f63faab6da0fb99ae269a2ed850f67dc3875e38e",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 19708813,
+      "layer": "raw",
+      "month": "2024-09",
+      "path": "data/raw/dukascopy/GBPUSD/2024/09/ticks.parquet",
+      "rows": 1922847,
+      "sha256": "9bb109dd8f1c66c1340f7707c0be3aa843997004a0cb6fa009b1843ee01a6a45",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 22442927,
+      "layer": "raw",
+      "month": "2024-10",
+      "path": "data/raw/dukascopy/GBPUSD/2024/10/ticks.parquet",
+      "rows": 2208306,
+      "sha256": "2423c32ceb186eee97db537faf62fe2abee4add6be34c55b265c1c5086ddf3ce",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 28523908,
+      "layer": "raw",
+      "month": "2024-11",
+      "path": "data/raw/dukascopy/GBPUSD/2024/11/ticks.parquet",
+      "rows": 2792844,
+      "sha256": "74a871aba8456ff3eb9cfab275bbe3a75059c2bd28d1c8aade75ec211a59bf03",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 22184066,
+      "layer": "raw",
+      "month": "2024-12",
+      "path": "data/raw/dukascopy/GBPUSD/2024/12/ticks.parquet",
+      "rows": 2152123,
+      "sha256": "b21b3f29afb20302a741ffd73f4ed64bccc765f418b16c7396a004c020094f68",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 27730552,
+      "layer": "raw",
+      "month": "2025-01",
+      "path": "data/raw/dukascopy/GBPUSD/2025/01/ticks.parquet",
+      "rows": 2660109,
+      "sha256": "105989d81b7ddd12b228c38646d2faa1edcd24d0f8e79b3d5929c981acd30837",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 22383908,
+      "layer": "raw",
+      "month": "2025-02",
+      "path": "data/raw/dukascopy/GBPUSD/2025/02/ticks.parquet",
+      "rows": 2193261,
+      "sha256": "1e64136fa2907e80692632eae8f523ae2c7e040583a2b931ed4d9c7894299769",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 20934191,
+      "layer": "raw",
+      "month": "2025-03",
+      "path": "data/raw/dukascopy/GBPUSD/2025/03/ticks.parquet",
+      "rows": 2069048,
+      "sha256": "47480874058052ad36faf69588aa357942d358b9ebbf3e429a9cb83be9dce875",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 36244520,
+      "layer": "raw",
+      "month": "2025-04",
+      "path": "data/raw/dukascopy/GBPUSD/2025/04/ticks.parquet",
+      "rows": 3630261,
+      "sha256": "fcc4a852f727d1cd300d59d886dd957063dfe6ed68ff418de9ad37d44d151309",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 20508396,
+      "layer": "raw",
+      "month": "2025-05",
+      "path": "data/raw/dukascopy/GBPUSD/2025/05/ticks.parquet",
+      "rows": 1971609,
+      "sha256": "14c126e36bc248f48be3f694c91b3325f7fba3b7c3dad14a55d731cfebdb75e7",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 18901679,
+      "layer": "raw",
+      "month": "2025-06",
+      "path": "data/raw/dukascopy/GBPUSD/2025/06/ticks.parquet",
+      "rows": 1819090,
+      "sha256": "1d7c9f5223d47eab2d3323ccf9b3e08671e607e0f9fa7fd8137c5a8824135731",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 18854256,
+      "layer": "raw",
+      "month": "2025-07",
+      "path": "data/raw/dukascopy/GBPUSD/2025/07/ticks.parquet",
+      "rows": 1819185,
+      "sha256": "68cf606315b763349e3978ad8458de83497250aa1b3f1883a0b420c07e39d09b",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 15016559,
+      "layer": "raw",
+      "month": "2025-08",
+      "path": "data/raw/dukascopy/GBPUSD/2025/08/ticks.parquet",
+      "rows": 1456792,
+      "sha256": "a6b7454bcae6fd8b05f0be233f6fc136e6060f3f5f0172d2d07487bd3cee6ac9",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 17609329,
+      "layer": "raw",
+      "month": "2025-09",
+      "path": "data/raw/dukascopy/GBPUSD/2025/09/ticks.parquet",
+      "rows": 1690390,
+      "sha256": "694db4bbf94979fd180b6c12a18987c1dfc2a61ae3ce3f4b99d6d49e65a22ac7",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 18774320,
+      "layer": "raw",
+      "month": "2025-10",
+      "path": "data/raw/dukascopy/GBPUSD/2025/10/ticks.parquet",
+      "rows": 1796012,
+      "sha256": "f162c1d613a92581222ad64658e2aa181438f08e5d055fc4cbee80b2f09e1657",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 17112392,
+      "layer": "raw",
+      "month": "2025-11",
+      "path": "data/raw/dukascopy/GBPUSD/2025/11/ticks.parquet",
+      "rows": 1654459,
+      "sha256": "3fe1e616760788e5a65b8d8db0dc003f30c221a892865970147b3945ae8ad6b7",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 16962682,
+      "layer": "raw",
+      "month": "2025-12",
+      "path": "data/raw/dukascopy/GBPUSD/2025/12/ticks.parquet",
+      "rows": 1644002,
+      "sha256": "8c4b86a0f10e29d0aa32a5e31f41f0adb5574bac4ec81a0f76d644272a8f393e",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 18737246,
+      "layer": "raw",
+      "month": "2026-01",
+      "path": "data/raw/dukascopy/GBPUSD/2026/01/ticks.parquet",
+      "rows": 1806767,
+      "sha256": "69ce7775a752d236b04a908dee9c8850312b1d0f517f11b1ecdf499c80f72e91",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 16832481,
+      "layer": "raw",
+      "month": "2026-02",
+      "path": "data/raw/dukascopy/GBPUSD/2026/02/ticks.parquet",
+      "rows": 1631274,
+      "sha256": "20074b85518adfb46a901d97e80bb5c34452a805dc001af503954acd8c0612b7",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 32971003,
+      "layer": "raw",
+      "month": "2026-03",
+      "path": "data/raw/dukascopy/GBPUSD/2026/03/ticks.parquet",
+      "rows": 3194965,
+      "sha256": "e2bf1b32c5214bdffd73b6367eabd66dc18545258a59bb39456be10fe606e8f2",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 24345662,
+      "layer": "raw",
+      "month": "2026-04",
+      "path": "data/raw/dukascopy/GBPUSD/2026/04/ticks.parquet",
+      "rows": 2383103,
+      "sha256": "7b84cfc37bad20bcec8190e03e569ae44e763fe5d036a3425f17d4c542a4099e",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 19794409,
+      "layer": "raw",
+      "month": "2026-05",
+      "path": "data/raw/dukascopy/GBPUSD/2026/05/ticks.parquet",
+      "rows": 1947021,
+      "sha256": "61164239f04848cb8888f671cfe7e8a9bdec7a26b10d33ab45d4033bce7c69b3",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 18629224,
+      "layer": "raw",
+      "month": "2026-06",
+      "path": "data/raw/dukascopy/GBPUSD/2026/06/ticks.parquet",
+      "rows": 1819450,
+      "sha256": "18a3a31be9a1014004eda42fc2967b4cd9ffef88aca56639f0dd94258551b24f",
+      "symbol": "GBPUSD"
+    },
+    {
+      "bytes": 26766932,
+      "layer": "raw",
+      "month": "2023-07",
+      "path": "data/raw/dukascopy/BTCUSD/2023/07/ticks.parquet",
+      "rows": 2640862,
+      "sha256": "e6d1dd8db77605c6a2ac3b6f222be1fc7f1bea26e82e1ee1f9a26db5ea617c11",
+      "symbol": "BTCUSD"
+    },
+    {
+      "bytes": 21093144,
+      "layer": "raw",
+      "month": "2023-08",
+      "path": "data/raw/dukascopy/BTCUSD/2023/08/ticks.parquet",
+      "rows": 2086741,
+      "sha256": "fd2e0d1a0201c96f97542c52ef7900885ef2bed047628e59c69bee9361540d6f",
+      "symbol": "BTCUSD"
+    },
+    {
+      "bytes": 30707156,
+      "layer": "raw",
+      "month": "2023-09",
+      "path": "data/raw/dukascopy/BTCUSD/2023/09/ticks.parquet",
+      "rows": 3115127,
+      "sha256": "0bf57968a611eb9efab481c4fb00111fa301dd24ffc6ed9bcbbb355d3ec5671e",
+      "symbol": "BTCUSD"
+    },
+    {
+      "bytes": 37748555,
+      "layer": "raw",
+      "month": "2023-10",
+      "path": "data/raw/dukascopy/BTCUSD/2023/10/ticks.parquet",
+      "rows": 3644091,
+      "sha256": "74472f4539fbeaa3e1b3bbc9233ece496622c7a9fad7e7a3c71aea817e2bbb79",
+      "symbol": "BTCUSD"
+    },
+    {
+      "bytes": 28256165,
+      "layer": "raw",
+      "month": "2023-07",
+      "path": "data/raw/dukascopy/XAUUSD/2023/07/ticks.parquet",
+      "rows": 2760284,
+      "sha256": "b87930a7d354a0ae00506390c1254c809758d725bb56c052a959b705b8866518",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 24248614,
+      "layer": "raw",
+      "month": "2023-08",
+      "path": "data/raw/dukascopy/XAUUSD/2023/08/ticks.parquet",
+      "rows": 2373606,
+      "sha256": "67a7c4a8b635f0aa2d767f64768bb9d9380342bd8e796bddf5a46e8b50185d98",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 19370808,
+      "layer": "raw",
+      "month": "2023-09",
+      "path": "data/raw/dukascopy/XAUUSD/2023/09/ticks.parquet",
+      "rows": 1892643,
+      "sha256": "590d62edf9a422080c79b088f80d2326138131629d6da0e17ea1e6c7651f43f2",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 29625896,
+      "layer": "raw",
+      "month": "2023-10",
+      "path": "data/raw/dukascopy/XAUUSD/2023/10/ticks.parquet",
+      "rows": 2841307,
+      "sha256": "8b066e5c026a9ddb64e1681cb1c045b4f370d2a89871770b8780717077d2b5ae",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 25975306,
+      "layer": "raw",
+      "month": "2023-11",
+      "path": "data/raw/dukascopy/XAUUSD/2023/11/ticks.parquet",
+      "rows": 2491773,
+      "sha256": "f7f09ecff7c12cba38fdcd2bf606510848a2c62bbe7ae050d6fd3e819bcc710c",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 29346838,
+      "layer": "raw",
+      "month": "2023-12",
+      "path": "data/raw/dukascopy/XAUUSD/2023/12/ticks.parquet",
+      "rows": 2765712,
+      "sha256": "9afc8bfb3f74d5cdc0ab96a65338c82ee0fc9dd0acb36c31677dba1174366db4",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 32222109,
+      "layer": "raw",
+      "month": "2024-01",
+      "path": "data/raw/dukascopy/XAUUSD/2024/01/ticks.parquet",
+      "rows": 3059497,
+      "sha256": "a1dc2891d92295028837ea36d4d1d1c45d782eb753b6ef5951f834680cdc231c",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 22344391,
+      "layer": "raw",
+      "month": "2024-02",
+      "path": "data/raw/dukascopy/XAUUSD/2024/02/ticks.parquet",
+      "rows": 2126396,
+      "sha256": "6ab1653721f540a8cd2f1cb9332074887f2514950733233d5392ebd1cdfecfc4",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 29130531,
+      "layer": "raw",
+      "month": "2024-03",
+      "path": "data/raw/dukascopy/XAUUSD/2024/03/ticks.parquet",
+      "rows": 2733576,
+      "sha256": "d7d8d59ef715833654a6811e1e3da16e048919ff3b37a47a743fbd57706a75cd",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 57287768,
+      "layer": "raw",
+      "month": "2024-04",
+      "path": "data/raw/dukascopy/XAUUSD/2024/04/ticks.parquet",
+      "rows": 5252627,
+      "sha256": "8d86872817f39e1d87ef8963d458b3da5edcf260005c52a73f52d0d3e9f4ac4f",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 54279287,
+      "layer": "raw",
+      "month": "2024-05",
+      "path": "data/raw/dukascopy/XAUUSD/2024/05/ticks.parquet",
+      "rows": 5054706,
+      "sha256": "cf44e3a364428f4c394d1eb8b7b9f1688910cf94149b2aa268d2221e11c619ac",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 49666094,
+      "layer": "raw",
+      "month": "2024-06",
+      "path": "data/raw/dukascopy/XAUUSD/2024/06/ticks.parquet",
+      "rows": 4639089,
+      "sha256": "641a5035535ca95c31c18347a3805d78b6a70ef6de9282781bfa5f0e0512e01e",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 59776806,
+      "layer": "raw",
+      "month": "2024-07",
+      "path": "data/raw/dukascopy/XAUUSD/2024/07/ticks.parquet",
+      "rows": 5628843,
+      "sha256": "e3ce1d3ca4e2e9b53b35612771b7f31cd24e1dda7aedc4588ea105756ae9da36",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 64028957,
+      "layer": "raw",
+      "month": "2024-08",
+      "path": "data/raw/dukascopy/XAUUSD/2024/08/ticks.parquet",
+      "rows": 5987622,
+      "sha256": "fe3eae88b044605155d51f1d2acd3b275c07f7d598b434dfed3edaaa5d3e79f3",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 55099557,
+      "layer": "raw",
+      "month": "2024-09",
+      "path": "data/raw/dukascopy/XAUUSD/2024/09/ticks.parquet",
+      "rows": 5121630,
+      "sha256": "9b3163056203dea250b826ebb25e5991df9dcb83f60534ba6df959f34cf92510",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 59388823,
+      "layer": "raw",
+      "month": "2024-10",
+      "path": "data/raw/dukascopy/XAUUSD/2024/10/ticks.parquet",
+      "rows": 5562067,
+      "sha256": "0a8a3562270b990383ab95f08448a562fbab2b9bced6cac5d7aae9541d7f9680",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 63757423,
+      "layer": "raw",
+      "month": "2024-11",
+      "path": "data/raw/dukascopy/XAUUSD/2024/11/ticks.parquet",
+      "rows": 5938280,
+      "sha256": "7538d2be0cf6523ad8e1438ea7a9c53506e288fa419d41e8abb0e246e0a2386a",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 53431409,
+      "layer": "raw",
+      "month": "2024-12",
+      "path": "data/raw/dukascopy/XAUUSD/2024/12/ticks.parquet",
+      "rows": 5090073,
+      "sha256": "425215c95fd5483656cc3ebe872941821e8c700cfd92a2e76fe696f8b3e6597b",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 59698473,
+      "layer": "raw",
+      "month": "2025-01",
+      "path": "data/raw/dukascopy/XAUUSD/2025/01/ticks.parquet",
+      "rows": 5798226,
+      "sha256": "b54bbefcf889b739652729d4bc1f9cb8a6118432f6af675fb32036bd016cd61d",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 59666768,
+      "layer": "raw",
+      "month": "2025-02",
+      "path": "data/raw/dukascopy/XAUUSD/2025/02/ticks.parquet",
+      "rows": 5815784,
+      "sha256": "da69124b6fa618717896fe87f21310d59889504bd06c125703b977f1fc353d7c",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 56065033,
+      "layer": "raw",
+      "month": "2025-03",
+      "path": "data/raw/dukascopy/XAUUSD/2025/03/ticks.parquet",
+      "rows": 5396499,
+      "sha256": "4b317db82e52cb79447eb4f6fac1e577d00bcf306e16d4afc54885e7c8b2ad1d",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 66418299,
+      "layer": "raw",
+      "month": "2025-04",
+      "path": "data/raw/dukascopy/XAUUSD/2025/04/ticks.parquet",
+      "rows": 6160835,
+      "sha256": "88290f4d0f76892f0fcbbbe2bd91ea0e1700a52c09f6937a6e0d0b30b891c1d1",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 57319016,
+      "layer": "raw",
+      "month": "2025-05",
+      "path": "data/raw/dukascopy/XAUUSD/2025/05/ticks.parquet",
+      "rows": 5325473,
+      "sha256": "f117671a251c417773059daed32ae0ec7f3669f2351bee2adeb0f2177d004088",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 50959297,
+      "layer": "raw",
+      "month": "2025-06",
+      "path": "data/raw/dukascopy/XAUUSD/2025/06/ticks.parquet",
+      "rows": 4752206,
+      "sha256": "337d00a9b25447c11033da75618b0088ad78191d5f306022589a9ba23ac878ed",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 44713374,
+      "layer": "raw",
+      "month": "2025-07",
+      "path": "data/raw/dukascopy/XAUUSD/2025/07/ticks.parquet",
+      "rows": 4192283,
+      "sha256": "503678881252741b657454201a4bb54be32e870600d4a67b6fb819be74d5d2bd",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 45287560,
+      "layer": "raw",
+      "month": "2025-08",
+      "path": "data/raw/dukascopy/XAUUSD/2025/08/ticks.parquet",
+      "rows": 4332294,
+      "sha256": "64ff08e8eee30e94d775dcc7a78667a7c8847f67fab9c90c639a208d4495e366",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 60743294,
+      "layer": "raw",
+      "month": "2025-09",
+      "path": "data/raw/dukascopy/XAUUSD/2025/09/ticks.parquet",
+      "rows": 5823801,
+      "sha256": "e15137f7c2a1f58d5c97739969893ca75976c5a0ca4d0afacf34b1534f58df9b",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 100539867,
+      "layer": "raw",
+      "month": "2025-10",
+      "path": "data/raw/dukascopy/XAUUSD/2025/10/ticks.parquet",
+      "rows": 9296228,
+      "sha256": "e28769f4d9652c8c683b7da05a761adc73bfd49fba45dd31160d28a31a82beaa",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 69125364,
+      "layer": "raw",
+      "month": "2025-11",
+      "path": "data/raw/dukascopy/XAUUSD/2025/11/ticks.parquet",
+      "rows": 6537897,
+      "sha256": "fb4e131908d06971b3375062e74e7ab76836c9c209e151b6874032097fdd1cf8",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 83535307,
+      "layer": "raw",
+      "month": "2025-12",
+      "path": "data/raw/dukascopy/XAUUSD/2025/12/ticks.parquet",
+      "rows": 7982451,
+      "sha256": "43bea1060608829725ceff870fb58bf63fb0d8bbc0645599161edbf21179eaa8",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 99352860,
+      "layer": "raw",
+      "month": "2026-01",
+      "path": "data/raw/dukascopy/XAUUSD/2026/01/ticks.parquet",
+      "rows": 9135062,
+      "sha256": "08a24bdcd855d93f82326f8230cbb49981349efca53ab21abc3d933346b3fec8",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 85916993,
+      "layer": "raw",
+      "month": "2026-02",
+      "path": "data/raw/dukascopy/XAUUSD/2026/02/ticks.parquet",
+      "rows": 7538339,
+      "sha256": "419eed3ffb4683a68644c4dd0bc808fed1774413a5337a11514391f5e84816c8",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 105703582,
+      "layer": "raw",
+      "month": "2026-03",
+      "path": "data/raw/dukascopy/XAUUSD/2026/03/ticks.parquet",
+      "rows": 9433179,
+      "sha256": "c4e788ba66f6536ce3a58c5736b5bcfa84787fd957d45de64a5d0247423b4b71",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 79332731,
+      "layer": "raw",
+      "month": "2026-04",
+      "path": "data/raw/dukascopy/XAUUSD/2026/04/ticks.parquet",
+      "rows": 7470570,
+      "sha256": "531515a9b4aaf95c3609ff4ae07d9fed0b22281af44e729946bc334f935c52be",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 86149131,
+      "layer": "raw",
+      "month": "2026-05",
+      "path": "data/raw/dukascopy/XAUUSD/2026/05/ticks.parquet",
+      "rows": 8330808,
+      "sha256": "bd208a37b1f2810fa6d74883ba90f2700312b5ff701f29c68be0a5a1de283c27",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 79032524,
+      "layer": "raw",
+      "month": "2026-06",
+      "path": "data/raw/dukascopy/XAUUSD/2026/06/ticks.parquet",
+      "rows": 7486508,
+      "sha256": "fb7167cca7088acd1a6c5b75f751bac3d7728fe30def34406e643a8bf15f70b5",
+      "symbol": "XAUUSD"
+    },
+    {
+      "bytes": 9287228,
+      "layer": "processed",
+      "path": "data/processed/EURUSD/M5.parquet",
+      "rows": 223033,
+      "sha256": "edecffdb46960eb6e190cd9ccb57941d905c98566df7735f6c782d2d2b92c226",
+      "symbol": "EURUSD",
+      "timeframe": "M5"
+    },
+    {
+      "bytes": 3422295,
+      "layer": "processed",
+      "path": "data/processed/EURUSD/M15.parquet",
+      "rows": 74365,
+      "sha256": "46f94f7e967f3352f305c576abca6eb2b42191881ad04b89011b2e734f7398b7",
+      "symbol": "EURUSD",
+      "timeframe": "M15"
+    },
+    {
+      "bytes": 1052223,
+      "layer": "processed",
+      "path": "data/processed/EURUSD/H1.parquet",
+      "rows": 18594,
+      "sha256": "40e6d8a6d8e1ae743fcd5fc71f84589f7a83ed1beea4c7eac91ccbb9422de564",
+      "symbol": "EURUSD",
+      "timeframe": "H1"
+    },
+    {
+      "bytes": 312590,
+      "layer": "processed",
+      "path": "data/processed/EURUSD/H4.parquet",
+      "rows": 4810,
+      "sha256": "895228f6a50b115239c60cedb7683a995c93dbb7eed735033fc34a48d8ee1f08",
+      "symbol": "EURUSD",
+      "timeframe": "H4"
+    },
+    {
+      "bytes": 9637032,
+      "layer": "processed",
+      "path": "data/processed/GBPUSD/M5.parquet",
+      "rows": 223097,
+      "sha256": "45a980214dd716ab37c16e76307ec3ea4ba220e6b85ba1765965409894dd8ede",
+      "symbol": "GBPUSD",
+      "timeframe": "M5"
+    },
+    {
+      "bytes": 3547166,
+      "layer": "processed",
+      "path": "data/processed/GBPUSD/M15.parquet",
+      "rows": 74395,
+      "sha256": "023b9944cc87df9ac5eba8356cec2ed4b371eafb7a3e4977f2d6a1dbce3f0277",
+      "symbol": "GBPUSD",
+      "timeframe": "M15"
+    },
+    {
+      "bytes": 1064194,
+      "layer": "processed",
+      "path": "data/processed/GBPUSD/H1.parquet",
+      "rows": 18602,
+      "sha256": "2d991a8e90d2faa0a90521c254c20bed5e4dadcc60fca6ce62e45e70406202f3",
+      "symbol": "GBPUSD",
+      "timeframe": "H1"
+    },
+    {
+      "bytes": 314524,
+      "layer": "processed",
+      "path": "data/processed/GBPUSD/H4.parquet",
+      "rows": 4810,
+      "sha256": "36b58032babeebc0d023066b1bc55fc8cb393d010f1238a7eb07d92782142ad8",
+      "symbol": "GBPUSD",
+      "timeframe": "H4"
+    },
+    {
+      "bytes": 12533588,
+      "layer": "processed",
+      "path": "data/processed/XAUUSD/M5.parquet",
+      "rows": 211873,
+      "sha256": "ca5fd0a792e5950fe1d580a2aa903fb0b768c89e278ed18d73e39237a02fe5c9",
+      "symbol": "XAUUSD",
+      "timeframe": "M5"
+    },
+    {
+      "bytes": 4597476,
+      "layer": "processed",
+      "path": "data/processed/XAUUSD/M15.parquet",
+      "rows": 70631,
+      "sha256": "4ace9ed25a9aa60d31791aa522b56b21c5cbe95a3c6aa847ee95b236df0d5645",
+      "symbol": "XAUUSD",
+      "timeframe": "M15"
+    },
+    {
+      "bytes": 1233738,
+      "layer": "processed",
+      "path": "data/processed/XAUUSD/H1.parquet",
+      "rows": 17670,
+      "sha256": "002f253163d24e298d1bc3284c4325c5836adff6b9627d1bd8476d3d822b66ea",
+      "symbol": "XAUUSD",
+      "timeframe": "H1"
+    },
+    {
+      "bytes": 343102,
+      "layer": "processed",
+      "path": "data/processed/XAUUSD/H4.parquet",
+      "rows": 4779,
+      "sha256": "c31948bafedc921b69ef1a8d1b45dfcc404a305b565f1e2366089f439e148151",
+      "symbol": "XAUUSD",
+      "timeframe": "H4"
+    }
+  ],
+  "generated_at": "2026-07-11T12:57:44.673749+00:00",
+  "schema_version": 1,
+  "source": "dukascopy",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD",
+    "BTCUSD",
+    "XAUUSD"
+  ],
+  "timeframes": [
+    "M5",
+    "M15",
+    "H1",
+    "H4"
+  ],
+  "window": {
+    "end": "2026-06",
+    "start": "2023-07"
+  }
+}

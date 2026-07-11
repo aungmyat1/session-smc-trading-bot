@@ -1,9 +1,9 @@
 # Dataset Validation Report
-Generated: 2026-07-11T11:40:09Z
+Generated: 2026-07-11T11:52:50Z
 
 **Dataset Status: PASS_WITH_WARNINGS**
 
-**ERRORS: 0 | WARNINGS: 36 | PASSED: 183**
+**ERRORS: 0 | WARNINGS: 41 | PASSED: 183**
 
 ---
 
@@ -155,6 +155,11 @@ Generated: 2026-07-11T11:40:09Z
 🟡 [WARN] GBPUSD H4: 4 bars with spread > 12.0 pips
 🟡 [WARN] GBPUSD H4: 5 non-weekend gaps > 2× bar size
 🟢 [PASS] GBPUSD H4: date range 2023-07-02 → 2026-06-26
+🟡 [WARN] USDJPY: no raw tick directory — download_dukascopy.py not yet run
+🟡 [WARN] USDJPY M5: market dataset missing — run build_timeframes.py or research pipeline
+🟡 [WARN] USDJPY M15: market dataset missing — run build_timeframes.py or research pipeline
+🟡 [WARN] USDJPY H1: market dataset missing — run build_timeframes.py or research pipeline
+🟡 [WARN] USDJPY H4: market dataset missing — run build_timeframes.py or research pipeline
 🟢 [PASS] XAUUSD: raw ticks 2023-07 — 2,760,284 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-08 — 2,373,606 rows OK
 🟢 [PASS] XAUUSD: raw ticks 2023-09 — 1,892,643 rows OK
@@ -241,6 +246,7 @@ Expected raw coverage window: 2023-07 → 2026-06
 |---|---:|---:|---:|---:|---|
 | EURUSD | 36 | 36 | 100.0% | 66,591,852 | None |
 | GBPUSD | 36 | 36 | 100.0% | 71,727,315 | None |
+| USDJPY | 0 | 0 | 0.0% | 0 | None |
 | XAUUSD | 36 | 36 | 100.0% | 192,128,174 | None |
 
 ### Processed Coverage
@@ -255,6 +261,10 @@ Expected raw coverage window: 2023-07 → 2026-06
 | GBPUSD | M15 | 74,395 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | GBPUSD | H1 | 18,602 | PASS | PASS | 0 | 2023-07-02T21:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
 | GBPUSD | H4 | 4,810 | PASS | PASS | 0 | 2023-07-02T20:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
+| USDJPY | M5 | 0 | FAIL | FAIL | 0 | n/a → n/a |
+| USDJPY | M15 | 0 | FAIL | FAIL | 0 | n/a → n/a |
+| USDJPY | H1 | 0 | FAIL | FAIL | 0 | n/a → n/a |
+| USDJPY | H4 | 0 | FAIL | FAIL | 0 | n/a → n/a |
 | XAUUSD | M5 | 211,873 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:55:00+00:00 |
 | XAUUSD | M15 | 70,631 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:45:00+00:00 |
 | XAUUSD | H1 | 17,670 | PASS | PASS | 0 | 2023-07-02T22:00:00+00:00 → 2026-06-26T20:00:00+00:00 |
@@ -272,4 +282,4 @@ Expected raw coverage window: 2023-07 → 2026-06
 
 ## Summary
 
-⚠️ 36 warning(s). No blocking errors.
+⚠️ 41 warning(s). No blocking errors.
