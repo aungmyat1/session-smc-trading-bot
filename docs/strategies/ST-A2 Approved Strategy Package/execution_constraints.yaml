@@ -1,0 +1,17 @@
+date: "2026-07-11"
+status: "Review"
+owner: "Execution"
+strategy_id: "ST-A2"
+approved_for_execution: false
+allowed_modes: []
+blocked_modes:
+  - demo
+  - demo_validation
+  - live
+startup_guard: "scripts/run_st_a2_demo.py"
+source_of_truth: "config/strategy_catalog.yaml"
+constraints:
+  live_trading_must_remain_false: true
+  broker_credentials_unchanged: true
+  systemd_services_not_started: true
+  approval_required_before_demo_orders: true

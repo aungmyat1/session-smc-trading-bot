@@ -183,6 +183,7 @@ Inventory and governance:
 
 Individual strategy specs (detail files — flow, parameters, rules — are co-located in each strategy directory):
 
+- [ST-A2 Governance Package — blocked, not approved](strategies/ST-A2 Approved Strategy Package/README.md)
 - [ST-A2 — Session Liquidity Reversal](strategy_audit/strategies/ST-A2 %28Session Liquidity Reversal%29/strategy_spec.md)
 - [London Breakout](strategy_audit/strategies/London Breakout/strategy_spec.md)
 - [NY Momentum](strategy_audit/strategies/NY Momentum/strategy_spec.md)

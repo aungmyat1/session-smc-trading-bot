@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service

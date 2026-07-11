@@ -845,6 +845,20 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     )
     _write_state(state)
 
+    startup_environment = "demo" if mode == "demo_validation" else mode
+    startup_guard = StrategyExecutionGuard(root=_ROOT, shadow_mode="block")
+    startup_result = startup_guard.evaluate(strategy_name, environment=startup_environment)
+    if not startup_result.allowed:
+        reason = f"{startup_result.reason_code}: {startup_result.decision.evidence_snapshot}"
+        _log.error("Startup governance check failed for %s/%s — %s", strategy_name, mode, reason)
+        state["status"] = "blocked"
+        state["strategy_status"] = "blocked"
+        state["execution_status"] = "blocked"
+        state["last_decision"] = f"governance_blocked:{startup_result.reason_code}"
+        state["governance"] = startup_result.to_dict()
+        _write_state(state)
+        raise PermissionError(f"strategy {strategy_name} is not approved for {startup_environment}: {reason}")
+
     connector = MT5Connector(mode="demo")
     try:
         await connector.connect()

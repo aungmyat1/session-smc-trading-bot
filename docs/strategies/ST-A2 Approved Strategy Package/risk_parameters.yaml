@@ -1,0 +1,14 @@
+date: "2026-07-11"
+status: "Review"
+owner: "Quant Research"
+strategy_id: "ST-A2"
+approved: false
+risk_enabled: false
+reason: "ST-A2 is DEFERRED_REVALIDATION and has no current approval."
+catalog_source: "config/strategy_catalog.yaml"
+legacy_reference:
+  risk_per_trade_pct: 0.30
+  symbols:
+    - EURUSD
+    - GBPUSD
+  note: "Legacy values are retained for research reference only and must not authorize broker execution."
