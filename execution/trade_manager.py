@@ -19,7 +19,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from execution.execution_state import ExecutionStateStore, RetryPolicy
+from execution.execution_state import ExecutionStateStore, RetryPolicy, build_intent_identity
 from execution.vantage_demo_executor import VantageDemoExecutor
 from monitoring.telegram import TelegramAlerter
 
@@ -70,7 +70,71 @@ class TradeManager:
         _log.info("Opening %s %s %.4f lots SL=%.5f TP=%.5f", direction, symbol, lots, sl, tp)
         strategy_name = getattr(signal, "strategy_name", "") or "strategy-demo"
         signal_ts = getattr(signal, "timestamp", None)
-        signal_id = f"{strategy_name}:{symbol}:{direction}:{getattr(signal_ts, 'isoformat', lambda: '')()}"
+        signal_ts_iso = getattr(signal_ts, "isoformat", lambda: signal_ts)()
+        trading_session = getattr(signal, "session", None) or (
+            signal.get("session", "") if hasattr(signal, "get") else ""
+        )
+        signal_id = build_intent_identity(
+            strategy_id=strategy_name,
+            symbol=symbol,
+            direction=direction,
+            signal_timestamp=signal_ts_iso,
+            trading_session=str(trading_session or ""),
+        )
+
+        # Duplicate-order gate (System2 Completion Mission Phase 2): before
+        # creating a new execution record or touching the broker at all,
+        # check for an already-active record with this exact intent
+        # identity. This is disk-backed and therefore survives a process
+        # restart — a duplicate call for a signal already SUBMISSION_PENDING,
+        # RECOVERY_PENDING, or already BROKER_ACKNOWLEDGED (or later) is
+        # suppressed here, never reaching `_place_order_with_retry`.
+        existing = self._store.find_active_by_identity(signal_id)
+        if existing is not None:
+            if existing.broker_order_id:
+                _log.warning(
+                    "Duplicate open_position() suppressed: intent %s already has broker_order_id=%s "
+                    "(execution_id=%s, state=%s). No second order placed.",
+                    signal_id, existing.broker_order_id, existing.execution_id, existing.state,
+                )
+                return {
+                    "order_id": existing.broker_order_id,
+                    "execution_id": existing.execution_id,
+                    "idempotency_key": existing.idempotency_key,
+                    "duplicate_suppressed": True,
+                    "duplicate_reason": "already_broker_acknowledged",
+                    "opened_at": existing.updated_at,
+                }
+            _log.warning(
+                "Duplicate open_position() suppressed: intent %s already SUBMISSION_PENDING/RECOVERY_PENDING "
+                "(execution_id=%s, state=%s, no broker_order_id yet — in-flight/ambiguous). "
+                "No second order placed; let recovery reconciliation resolve the original.",
+                signal_id, existing.execution_id, existing.state,
+            )
+            return {
+                "order_id": "",
+                "execution_id": existing.execution_id,
+                "idempotency_key": existing.idempotency_key,
+                "duplicate_suppressed": True,
+                "duplicate_reason": "in_flight_ambiguous",
+                "opened_at": existing.updated_at,
+            }
+
+        # Note: open-broker-position / journal drift detection is deliberately
+        # NOT duplicated here. That is already the job of
+        # execution/close_reconciliation.py and execution/position_close_detector.py
+        # (broker-truth reconciliation, run every tick — see
+        # docs/audit/SYSTEM2_CORRECTNESS_AUDIT.md), and an early attempt to
+        # add a same-symbol/direction open-position check directly in this
+        # method produced false positives against legitimate order flow
+        # (verified by running the existing test suite — reverted before
+        # being committed). The identity check above is the precise
+        # mechanism for the actual failure mode this phase targets: a
+        # duplicate call for the *same* signal, not a second, different
+        # signal for a symbol that already has an unrelated open position
+        # (that is CLAUDE.md §0.7's "one position per symbol" concern, owned
+        # by upstream risk/portfolio checks, not this method).
+
         record = self._store.create_record(
             strategy_id=strategy_name,
             strategy_version=str(execution_context.get("strategy_version", "")) if execution_context else "",
