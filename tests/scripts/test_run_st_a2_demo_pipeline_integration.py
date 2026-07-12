@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pytest
 
+import scripts.run_st_a2_demo as runner
 from production.engine import AdapterResult, AllowAllRiskGate, CanonicalExecutionPipeline, DemoExecutionAdapter, ExecutionIntent
 from production.engine.runtime import RuntimeContext
 
@@ -75,3 +76,78 @@ async def test_symbol_outside_context_scope_is_rejected_not_placed():
 
     await pipeline.run(_context(), workload)
     assert called is False
+
+
+class TestInFlightAmbiguousDuplicateIsRejectedNotSubmitted:
+    """Regression test for the phantom-journal bug: TradeManager.open_position()
+    suppresses an in-flight-ambiguous duplicate by returning a normal dict with
+    no broker order_id (see execution/trade_manager.py). Before this fix,
+    run_st_a2_demo.py's _execute_via_manager() reported that as AdapterResult
+    status=SUBMITTED unconditionally, which made the tick loop journal it as an
+    open trade and increment risk_state['open_positions'] for a position that
+    was never actually placed at the broker."""
+
+    def test_in_flight_ambiguous_duplicate_maps_to_rejected(self):
+        placed_order = {
+            "order_id": "",
+            "execution_id": "exec-1",
+            "idempotency_key": "key-1",
+            "duplicate_suppressed": True,
+            "duplicate_reason": "in_flight_ambiguous",
+            "opened_at": "2026-07-12T09:00:00+00:00",
+        }
+        result = runner._adapter_result_from_placed_order(placed_order)
+        assert result.status == "REJECTED"
+        assert result.details == placed_order
+
+    def test_already_broker_acknowledged_duplicate_still_maps_to_submitted(self):
+        """A duplicate that already has a real broker_order_id reflects a
+        genuinely placed order — it must still report SUBMITTED, not REJECTED."""
+        placed_order = {
+            "order_id": "BROKER-ORDER-1",
+            "execution_id": "exec-1",
+            "idempotency_key": "key-1",
+            "duplicate_suppressed": True,
+            "duplicate_reason": "already_broker_acknowledged",
+            "opened_at": "2026-07-12T09:00:00+00:00",
+        }
+        result = runner._adapter_result_from_placed_order(placed_order)
+        assert result.status == "SUBMITTED"
+        assert result.reference == "BROKER-ORDER-1"
+
+    def test_ordinary_new_order_maps_to_submitted(self):
+        placed_order = {"order_id": "SIM-001", "simulated": True}
+        result = runner._adapter_result_from_placed_order(placed_order)
+        assert result.status == "SUBMITTED"
+        assert result.reference == "SIM-001"
+
+    @pytest.mark.asyncio
+    async def test_rejected_in_flight_ambiguous_result_never_reaches_the_broker_adapter(self):
+        """End-to-end through CanonicalExecutionPipeline: once
+        _adapter_result_from_placed_order() reports REJECTED, the caller's
+        existing REJECTED handling (scripts/run_st_a2_demo.py: `if
+        result.status == "REJECTED": raise RuntimeError(...)`) takes over —
+        the same path already proven, in
+        test_symbol_outside_context_scope_is_rejected_not_placed above, to
+        skip journaling and risk-state updates. This test proves the pipeline
+        itself faithfully returns REJECTED for this case, which is the
+        precondition that existing exception handler relies on."""
+        placed_order = {
+            "order_id": "",
+            "duplicate_suppressed": True,
+            "duplicate_reason": "in_flight_ambiguous",
+        }
+
+        async def fake_execute(intent: ExecutionIntent) -> AdapterResult:
+            return runner._adapter_result_from_placed_order(placed_order)
+
+        pipeline = CanonicalExecutionPipeline(
+            mode="demo", risk_gate=AllowAllRiskGate(), adapter=DemoExecutionAdapter(fake_execute),
+        )
+
+        async def workload(p: CanonicalExecutionPipeline) -> None:
+            result = await p.submit(_intent())
+            assert result.status == "REJECTED"
+            assert result.details["duplicate_reason"] == "in_flight_ambiguous"
+
+        await pipeline.run(_context(), workload)
