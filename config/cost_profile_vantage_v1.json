@@ -1,0 +1,26 @@
+{
+  "_status": "NOT_CAPTURED — BLOCKED on live broker access. Every numeric field below is null. Do not use this file as active_profile in config/costs.json until it is populated by a real scripts/capture_spreads.py run against a live Vantage demo account.",
+  "_blocker": "See docs/audit/PHASE4_COST_MODEL_BLOCKER.md for the full explanation. Summary: this session has no METAAPI_TOKEN/METAAPI_ACCOUNT_ID credentials, no .env file, and scripts/capture_spreads.py requires polling live market data continuously across multiple real London/New York trading sessions (hours to days), which is not achievable from an automated sandbox session regardless of credentials.",
+  "_generator": "scripts/capture_spreads.py (existing tool, not modified by this change)",
+  "_note_on_session_taxonomy": "scripts/capture_spreads.py classifies samples as 'london' | 'new_york' | 'off' (see classify_session()), not the four-way Asian/London/NewYork/Overlap split. This file's structure matches what the existing tool actually produces rather than inventing session buckets it doesn't support.",
+  "_note_on_symbols": "scripts/capture_spreads.py's default --pairs is EURUSD GBPUSD USDJPY AUDUSD — XAUUSD is NOT in the default list and must be passed explicitly (--pairs EURUSD GBPUSD XAUUSD) when this capture is actually run, per this mission's Phase 4 symbol list.",
+  "capture_timestamp": null,
+  "commission_pips_added": null,
+  "symbols": {
+    "EURUSD": {
+      "london":   { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "new_york": { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "off":      { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 }
+    },
+    "GBPUSD": {
+      "london":   { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "new_york": { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "off":      { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 }
+    },
+    "XAUUSD": {
+      "london":   { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "new_york": { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 },
+      "off":      { "median_pips": null, "average_pips": null, "p90_pips": null, "p95_pips": null, "sample_count": 0 }
+    }
+  }
+}
