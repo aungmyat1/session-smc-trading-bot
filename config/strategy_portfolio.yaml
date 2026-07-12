@@ -1,6 +1,15 @@
 # Strategy Portfolio Configuration
 # execution_mode: demo = live demo orders | shadow = signal-only, no order
 # Risk tiers: tier1=0.30%, tier2=0.20%, tier3=0.10%
+#
+# Containment policy (2026-07-12): config/strategy_catalog.yaml is the approval
+# source of truth. Only ST-A2 has completed backtest evidence and is currently
+# deployed (smc-demo-runner.service, single-strategy runner). Every strategy
+# without completed replay+backtest evidence per strategy_catalog.yaml runs in
+# shadow (signal-only, no broker orders) until it clears validation. ST-A2
+# itself remains demo — do not disable it here; its DEFERRED_REVALIDATION
+# SVOS status is a separate, tracked governance gap (CLAUDE.md §6), not a
+# reason to stop the currently-running, currently-monitored demo instance.
 
 portfolio:
   max_trades_per_day:      4        # Target 2-3 trades/day, allow a small buffer
@@ -27,7 +36,7 @@ strategies:
 
   LondonBreakout:
     enabled:        true
-    execution_mode: demo            # tier2 — adaptive engine, demo phase
+    execution_mode: shadow          # contained 2026-07-12 — replay/backtest still pending in strategy_catalog.yaml
     risk:           0.20
     pairs:          [EURUSD, GBPUSD, XAUUSD]
     min_confidence: 0.60
@@ -35,7 +44,7 @@ strategies:
 
   NYMomentum:
     enabled:        true
-    execution_mode: demo            # tier2 — adaptive engine, demo phase
+    execution_mode: shadow          # contained 2026-07-12 — replay/backtest still pending in strategy_catalog.yaml
     risk:           0.20
     pairs:          [EURUSD, GBPUSD, XAUUSD]
     min_confidence: 0.60
