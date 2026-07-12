@@ -92,6 +92,7 @@ _journal_db = TradeJournalDB()
 # some future caller of pipeline.submit() doesn't replicate _tick()'s
 # early-return exactly.
 from production.engine import (
+    AdapterResult,
     AllowAllRiskGate,
     CanonicalExecutionPipeline,
     DemoExecutionAdapter,
@@ -756,6 +757,24 @@ async def _tick(
     return risk_state
 
 
+def _adapter_result_from_placed_order(placed_order: dict) -> AdapterResult:
+    """Translate TradeManager.open_position()'s return dict into the
+    CanonicalExecutionPipeline's AdapterResult contract.
+
+    An `in_flight_ambiguous` duplicate means no broker order was placed —
+    TradeManager suppressed it because an earlier attempt for the same
+    intent is still unresolved (SUBMISSION_PENDING/RECOVERY_PENDING).
+    Reporting SUBMITTED for that case would make the caller journal a
+    phantom trade and increment risk_state's open-position count for a
+    position that doesn't exist at the broker, so it must surface as
+    REJECTED instead — the caller's existing exception handler then skips
+    journaling/risk-counting for it, same as any other rejected intent.
+    """
+    if placed_order.get("duplicate_reason") == "in_flight_ambiguous":
+        return AdapterResult(status="REJECTED", reference="", details=placed_order)
+    return AdapterResult(status="SUBMITTED", reference=str(placed_order.get("order_id", "")), details=placed_order)
+
+
 async def run(mode: str, interval: int, strategy_name: str, once: bool = False) -> None:
     state = _base_state(mode, strategy_name, interval, once)
     _log.info(
@@ -786,12 +805,11 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     manager         = TradeManager(executor, telegram=telegram, execution_store=execution_store)
 
     async def _execute_via_manager(intent: ExecutionIntent):
-        from production.engine import AdapterResult
         placed_order = await manager.open_position(
             intent.metadata["signal"], intent.metadata["lots"],
             execution_context=intent.metadata["execution_context"],
         )
-        return AdapterResult(status="SUBMITTED", reference=str(placed_order.get("order_id", "")), details=placed_order)
+        return _adapter_result_from_placed_order(placed_order)
 
     # Durable operations recording (SYSTEM2_MASTER_PLAN.md Phase 2, Sprint 2.3)
     # — best-effort Postgres audit trail on top of the existing JSONL log;
