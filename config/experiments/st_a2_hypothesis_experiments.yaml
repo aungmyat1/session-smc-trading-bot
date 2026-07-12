@@ -1,0 +1,77 @@
+experiment_set_id: ST-A2-HYPOTHESIS-OPT-20260711
+strategy_id: ST-A2
+baseline_version: "1.0"
+baseline_config: config/strategies/ST-A2_v1.yaml
+baseline_ledger_dir: research/trade_ledgers
+baseline_manifest: artifacts/ST-A2_trade_ledger_manifest.json
+baseline_validation_report: artifacts/ST-A2_validation_report.json
+failure_decomposition:
+  breakdown: artifacts/ST-A2_failure_breakdown.json
+  hypotheses: artifacts/ST-A2_optimization_hypotheses.json
+  experiment_plan: artifacts/ST-A2_experiment_plan.json
+constraints:
+  immutable_baseline: true
+  live_trading: false
+  broker_settings_changed: false
+  dataset_regeneration: false
+  isolated_artifact_root: artifacts/experiments
+  minimum_trades_before_parameter_sweep: 500
+  recommended_trades_before_parameter_sweep: 1000
+ranking_weights:
+  pf_2x_improvement: 0.35
+  sharpe_improvement: 0.25
+  drawdown_reduction: 0.20
+  trade_count_retention: 0.10
+  robustness: 0.10
+experiments:
+  - experiment_id: E1
+    name: Spread/cost filter
+    hypothesis: Excluding trades where execution costs consume too much gross edge improves PF under 2x cost stress.
+    source_cause: COST_PROBLEM
+    change_type: filter
+    fixed_rule:
+      type: max_cost_ratio
+      max_cost_to_gross_abs: 0.15
+    validation_rule: single_fixed_threshold_from_decomposition
+  - experiment_id: E2
+    name: Symbol exclusion/confirmation strengthening
+    hypothesis: Excluding the weakest decomposed symbol or requiring stronger confirmation for that symbol improves net edge.
+    source_cause: SYMBOL_DEPENDENCY
+    change_type: filter
+    fixed_rule:
+      type: exclude_worst_symbol
+      fallback_symbol: XAUUSD
+    validation_rule: one_symbol_exclusion_from_failure_decomposition
+  - experiment_id: E3
+    name: London session filter
+    hypothesis: Removing London-session trades reduces drawdown and improves PF because London is the weakest session.
+    source_cause: SESSION_DEPENDENCY
+    change_type: filter
+    fixed_rule:
+      type: exclude_session
+      session: london
+    validation_rule: one_session_exclusion
+  - experiment_id: E4
+    name: Market regime filter
+    hypothesis: Excluding the worst destructive market regime improves robustness without changing ST-A2 entry logic.
+    source_cause: REGIME_DEPENDENCY
+    change_type: filter
+    fixed_rule:
+      type: exclude_worst_regime
+      fallback_regime: RANGE_LOW_VOL
+    validation_rule: one_regime_exclusion_from_failure_decomposition
+  - experiment_id: E5
+    name: Trade quality scoring filter
+    hypothesis: A fixed predeclared quality score can remove low-quality trades while retaining enough observations for validation.
+    source_cause: ENTRY_TIMING_PROBLEM
+    change_type: filter
+    fixed_rule:
+      type: minimum_quality_score
+      min_score: 3
+      components:
+        gbpusd: 1
+        new_york: 1
+        non_range_low_vol: 1
+        cost_ratio_lte_0_15: 1
+        smc_context_present: 1
+    validation_rule: one_fixed_score_threshold_no_weight_search

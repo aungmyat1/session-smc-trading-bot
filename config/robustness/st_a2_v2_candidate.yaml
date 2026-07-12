@@ -1,0 +1,46 @@
+candidate_id: ST-A2_v2_candidate
+source_experiment: E2
+source_experiment_results: artifacts/experiments/experiment_results.json
+strategy_id: ST-A2
+baseline_version: "1.0"
+candidate_version: "2.0-candidate"
+baseline_config: config/strategies/ST-A2_v1.yaml
+baseline_ledger_dir: research/trade_ledgers
+artifact_root: artifacts/robustness/ST-A2_v2_candidate
+selection_rule:
+  type: exclude_symbol
+  symbol: XAUUSD
+  reason: E2 hypothesis validation ranked symbol exclusion/confirmation strengthening highest.
+constraints:
+  immutable_baseline: true
+  candidate_only: true
+  live_trading: false
+  broker_settings_changed: false
+  mt5_settings_changed: false
+  dataset_regeneration: false
+  parameter_optimization: false
+evidence_targets:
+  minimum_net_trades: 500
+  recommended_net_trades: 1000
+phase3_gate:
+  min_trades: 200
+  min_pf_standard: 1.25
+  min_pf_2x: 1.25
+  min_sharpe_standard: 1.2
+  min_sharpe_2x: 1.2
+  max_drawdown_r: 15.0
+robustness:
+  seed: 21099
+  monte_carlo_iterations: 1000
+  bootstrap_iterations: 1000
+  walk_forward_windows:
+    - name: train
+      start: 2023-07-01
+      end: 2025-06-30
+    - name: validation
+      start: 2025-07-01
+      end: 2025-12-31
+    - name: test
+      start: 2026-01-01
+      end: 2026-06-30
+  cost_stress_multipliers: [1.0, 1.5, 2.0, 2.5, 3.0]
