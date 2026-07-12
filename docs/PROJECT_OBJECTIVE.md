@@ -1,3 +1,15 @@
+---
+Date: 2026-07-12
+Status: Authoritative
+Version: 1.0
+Updated: 2026-07-12
+Owner: Lead Architect
+Authority: Level 1 — Product Milestone Truth
+Supersedes: (none — first governed version; previously unheadered/Draft by
+  DOC_AUTHORITY.md's default rule)
+Related: 00_Project/DOC_AUTHORITY.md, 00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md
+---
+
 # Project Objective
 
 The current milestone is **Project Readiness v1**, an evidence-backed demo trading system. It does not authorize live trading.

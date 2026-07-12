@@ -4,11 +4,13 @@
 
 Date: 2026-06-29
 Status: Authoritative
-Version: 1.0
-Updated: 2026-06-29
+Version: 1.1
+Updated: 2026-07-12
 Owner: Platform Architecture
 Authority: Level 0 — Root
 Supersedes: (none — new document)
+Change log: v1.1 (2026-07-12) — registered docs/PROJECT_OBJECTIVE.md at Level 1;
+  it was previously unheadered/Draft by this document's own default rule.
 Related: ../index.md, ../SYSTEM_ARCHITECTURE.md, ../DEVELOPER_HANDBOOK.md
 
 ---
@@ -32,6 +34,7 @@ document must be updated or archived, not both followed.
 |---|---|---|
 | 0 | Root authority | `docs/00_Project/DOC_AUTHORITY.md` (this document) |
 | 1 | Original product architecture truth | `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` |
+| 1 | Current milestone / scope truth | `docs/PROJECT_OBJECTIVE.md` |
 | 2 | Product implementation plan | `docs/svos/STRATEGY_ENGINEERING_PLATFORM_IMPLEMENTATION_PLAN.md` |
 | 3 | Architectural authority | `docs/SYSTEM_ARCHITECTURE.md` |
 | 4 | Implementation authority | `docs/svos/CORE_ARCHITECTURE.md` |
