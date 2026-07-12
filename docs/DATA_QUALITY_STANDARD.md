@@ -9,4 +9,3 @@ Release thresholds:
 - `timestamp_errors == 0`
 
 The checker also records OHLC consistency failures. Any breached threshold returns a non-zero process exit and blocks release packaging.
-

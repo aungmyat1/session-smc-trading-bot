@@ -47,4 +47,3 @@ def test_dataset_quality_fails_duplicate_timestamps(tmp_path: Path) -> None:
     report = dataset_quality(root, tmp_path / "quality.json", QualityThresholds())
 
     assert report["status"] == "FAIL"
-

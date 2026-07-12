@@ -28,4 +28,3 @@ def test_extract_smc_events_writes_bos_and_fvg(tmp_path: Path) -> None:
 
     out = pd.read_parquet(tmp_path / "events" / "EURUSD.parquet")
     assert "BOS" in set(out["event_type"])
-

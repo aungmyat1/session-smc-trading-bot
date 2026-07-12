@@ -34,4 +34,3 @@ quality_thresholds:
   missing_pct: 0.1
   duplicate_pct: 0.01
   timestamp_errors: 0
-

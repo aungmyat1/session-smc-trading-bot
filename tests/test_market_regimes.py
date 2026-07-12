@@ -28,4 +28,3 @@ def test_generate_market_regimes_labels_session_opens(tmp_path: Path) -> None:
 
     out = pd.read_parquet(tmp_path / "regimes" / "EURUSD.parquet")
     assert "LONDON_OPEN" in set(out["regime"])
-

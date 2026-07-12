@@ -273,7 +273,7 @@ Per `CLAUDE.md` §0.3/§7 and `VERDICT_LOG.md`'s header, effective 2026-07-01:
    output (per §2.3).
 7. **Record the verdict** in `VERDICT_LOG.md` under a new `ST-A2-REVALIDATION-001`
    entry, PASS or FAIL, no pending state left open.
-8. **Update lifecycle** to `VALIDATED` (if PASS) or `REFINEMENT_REQUIRED`... 
+8. **Update lifecycle** to `VALIDATED` (if PASS) or `REFINEMENT_REQUIRED`...
    — **note**: neither of these exact strings exists in `StrategyStage`'s
    enum either (§1.2's problem recurs here). The nearest real stages are
    `STATISTICAL_VALIDATION` (passed through, not a resting state) and

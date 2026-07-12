@@ -1022,6 +1022,10 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
             )
             for outcome in report.resolved:
                 _log.warning("  %s -> %s: %s", outcome.execution_id, outcome.final_state, outcome.note)
+            await telegram.send_error(
+                f"Periodic reconciliation: {report.recovered_count} execution(s) recovered, "
+                f"{report.lost_count} lost (signal not resubmitted) out of {len(report.resolved)} incomplete."
+            )
         if report.orphaned_positions:
             _log.warning(
                 "Periodic reconciliation: %d broker position(s) with no execution/journal linkage — manual check required.",

@@ -16,4 +16,3 @@ python scripts/generate_checksums.py
 ```
 
 The manifest records dataset ID, build time, sources, symbols, timeframes, record counts, feature counts, quality metrics, and Git commit. Checksums include per-file SHA256 values plus a dataset-level hash.
-

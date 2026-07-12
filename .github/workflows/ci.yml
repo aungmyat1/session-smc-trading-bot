@@ -52,7 +52,7 @@ jobs:
         tier: [unit, integration]
         include:
           - tier: unit
-            paths: "tests/production tests/svos tests/execution --ignore=tests/svos/test_pipeline.py"
+            paths: "tests/production tests/svos tests/execution tests/scripts --ignore=tests/svos/test_pipeline.py"
           - tier: integration
             paths: "tests/database tests/integration tests/test_agtrade_cli.py tests/test_dashboard_app.py"
     steps:

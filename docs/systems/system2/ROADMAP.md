@@ -1,6 +1,11 @@
 # System 2 — Roadmap
 
-- Last updated: 2026-07-04
+- Last updated: 2026-07-07
+- **Feature Expansion: FROZEN as of 2026-07-07** (SYS2-T014 closure) — new execution
+  features, broker integrations, execution abstractions, and dashboard expansion require a
+  new, explicitly-scoped milestone decision. Bug/security/reliability fixes (and production
+  blockers) remain allowed.
+  Rationale and lift criteria: `docs/governance/releases/SYS2-T014-CLOSURE.md`.
 - Platform-level roadmap (execution engine consolidation, risk ledger, restart recovery,
   observability): `SYSTEM2_MASTER_PLAN.md` Phases 1-4 at the repo root — authoritative, status
   summarized below, not duplicated in full.
@@ -23,8 +28,9 @@
 | 9 | Monitoring & Observability | **Done, 2026-07-06** — `GET /api/system2/monitoring`: platform health, broker, runner, database, risk engine, WebSocket subscribers, CPU/memory/disk, execution latency (honestly null pending real trade data) |
 | 10 | Telegram Alert Persistence | **Implemented + tested, not deployed, 2026-07-06** — `monitoring/telegram.py` persists every alert into `operations.execution_event` before sending. Blocked from going live by another session's unreviewed WIP already loaded in `smc-demo-runner.service`'s code — restarting the runner would deploy both at once, deliberately not done |
 | 11 | Configuration Hardening | **Reviewed, 2026-07-06** — no new placeholder secrets found beyond the already-known `SVOS_OPERATOR_TOKEN`; rotation plan documented, not executed (needs owner approval) |
-| 12 | Extended Demo Validation | **Started, not complete** — ~2 days real uptime (0 restarts), but genuine multi-day validation under real order flow hasn't happened (0 trades executed yet). 119 MetaAPI subscription-timeout errors and 58 unexplained non-terminal `ExecutionRecord`s found, not yet root-caused |
+| 12 | Extended Demo Validation | **Started, not complete** — ~2 days real uptime (0 restarts), but genuine multi-day validation under real order flow hasn't happened (0 trades executed yet). 119 MetaAPI subscription-timeout errors were handled gracefully. The prior 58 non-terminal `ExecutionRecord` finding was root-caused and addressed by SYS2-T014; future demo validation still needs fresh evidence under live order flow |
 | 13 | Infrastructure Hardening & MT5 Integration Prep | **Blocked, 2026-07-07** — `ADR-0011`/`ADR-0012` (connector + hosting strategy), storage governance tooling, and supporting audits landed 2026-07-06. Provisioning attempts on `auto-trade-vps` (2026-07-06/07) found: (1) Wine is non-functional on this host, root cause not determined after a structured 10-hypothesis investigation (`docs/audit/wine-investigation-report.md`); (2) disk cannot reach the 75% capacity target via cleanup alone — ~15G is structurally protected (`docs/audit/capacity-plan.md` Phase 5B). One approved cleanup (`~/.mt5-terminal`, 900M) recovered disk from a critical 90% (hit during the failed attempt) back to 87%. `ADR-0012`'s dedicated-node recommendation now carries stronger evidence (2026-07-07 update) as the likely path past both blockers. Zero production impact across all attempts — all 6 monitored services verified active throughout |
+| SYS2-T014 | Periodic execution-record reconciliation | **Done, 2026-07-07 (PR #27)** — `ExecutionRecord`s stuck at `BROKER_ACKNOWLEDGED`/`RECOVERY_PENDING` (risk-register #14) previously only resolved at process startup; `reconcile_pending_executions()` (unmodified) now also runs mid-session on a configurable cadence with a minimum pending-age gate. No execution-state-machine, `TradeManager`, or database changes. Design record: `docs/systems/system2/SYS2-T014-DESIGN.md`. Follow-ups tracked as SYS2-T015–T018 (CI matrix coverage, logging clarity, scheduler docs, integration test), not blocking |
 
 ### Next implementation milestones (in order)
 

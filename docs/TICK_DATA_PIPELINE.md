@@ -13,4 +13,3 @@ python scripts/validate_tick_data.py
 ```
 
 The downloader is restartable because normalization overwrites only the affected daily partition after reading a raw monthly/source file.
-

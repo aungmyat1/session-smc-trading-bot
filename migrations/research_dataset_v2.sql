@@ -77,4 +77,3 @@ CREATE INDEX IF NOT EXISTS idx_research_smc_events_symbol_type_time
   ON research.smc_events (symbol, event_type, timestamp_utc);
 CREATE INDEX IF NOT EXISTS idx_research_market_regimes_symbol_regime_time
   ON research.market_regimes (symbol, regime, timestamp_utc);
-

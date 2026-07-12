@@ -7,4 +7,3 @@ Forex outputs live in `research/cost_models/<SYMBOL>.json` and include `spread_p
 BTC outputs are `commission_model.yaml` and `slippage_model.yaml`. Public candle data cannot infer true venue-specific slippage, so the generated BTC slippage file is an explicit placeholder until aggregate trades are loaded.
 
 Backtests consuming this dataset must report `gross_pnl`, `commission`, `spread_cost`, `slippage_cost`, and `net_pnl`.
-

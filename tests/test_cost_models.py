@@ -33,4 +33,3 @@ def test_build_cost_models_writes_spread_percentiles(tmp_path: Path) -> None:
     model = json.loads((tmp_path / "cost_models" / "EURUSD.json").read_text())
     assert model["spread_p50"] == 0.3
     assert (tmp_path / "cost_models" / "commission_model.yaml").exists()
-
