@@ -19,6 +19,7 @@ Public API:
     OperationsRecorder(runtime_id).record_recovery_checkpoint(resolved, orphaned)
     get_recent_events(limit=50) -> list[dict]  # read side, for the dashboard backend
     get_recent_runtimes(limit=10) -> list[dict]
+    db_health_check() -> dict
 """
 
 from __future__ import annotations
@@ -96,6 +97,18 @@ def get_recent_runtimes(limit: int = 10) -> list[dict[str, Any]]:
         ]
 
     return _read(_query, [])
+
+
+def db_health_check() -> dict[str, Any]:
+    """Best-effort operations database health for dashboard status panels."""
+    if SessionLocal is None:
+        return {"status": "unavailable", "ok": False, "reachable": False, "detail": "database session is not configured"}
+
+    def _query(session) -> dict[str, Any]:
+        session.query(Runtime).limit(1).all()
+        return {"status": "ok", "ok": True, "reachable": True, "detail": "operations database reachable"}
+
+    return _read(_query, {"status": "unavailable", "ok": False, "reachable": False, "detail": "operations database query failed"})
 
 
 class OperationsRecorder:

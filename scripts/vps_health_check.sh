@@ -19,7 +19,7 @@ STATE_FILE="$ROOT/logs/vps_health_state.json"
 DASHBOARD_URL="${DASHBOARD_URL:-http://127.0.0.1:8090}"
 DISK_WARN_PCT="${DISK_WARN_PCT:-85}"       # per docs/vps/LOG_RETENTION_POLICY.md
 HEALTH_SCORE_WARN="${HEALTH_SCORE_WARN:-85}"  # per OPERATOR_RUNBOOK §2
-STALE_TICK_S="${STALE_TICK_S:-120}"
+STALE_TICK_S="${STALE_TICK_S:-180}"
 AS_JSON=0
 [[ "${1:-}" == "--json" ]] && AS_JSON=1
 
@@ -96,23 +96,28 @@ fi
 # 5. Runner ticking (not stale), broker connected
 state_file="$ROOT/logs/strategy_demo_state.json"
 if [[ -f "$state_file" ]]; then
-  read -r last_tick broker_status strategy <<<"$(python3 -c "
-import json, datetime
-d = json.load(open('$state_file'))
-print(d.get('last_tick_at',''), d.get('broker_status',''), d.get('strategy',''))
-" 2>/dev/null)"
+  read -r last_tick broker_status strategy <<<"$(python3 - "$state_file" <<'PY'
+import json
+import sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    d = json.load(handle)
+print(d.get("last_tick_at", ""), d.get("broker_status", ""), d.get("strategy", ""))
+PY
+  )"
   if [[ -z "$last_tick" ]]; then
     add_check "runner:tick" "FAIL" "could not parse $state_file"
   else
-    age_s=$(python3 -c "
+    age_s=$(python3 - "$last_tick" <<'PY'
 import datetime
+import sys
 try:
-    t = datetime.datetime.fromisoformat('$last_tick'.replace('Z','+00:00'))
+    t = datetime.datetime.fromisoformat(sys.argv[1].replace('Z','+00:00'))
     now = datetime.datetime.now(datetime.timezone.utc)
     print(int((now - t).total_seconds()))
 except Exception:
     print(-1)
-" 2>/dev/null)
+PY
+    )
     if [[ "$age_s" -lt 0 ]]; then
       add_check "runner:tick" "FAIL" "unparseable last_tick_at=$last_tick"
     elif [[ "$age_s" -gt "$STALE_TICK_S" ]]; then
