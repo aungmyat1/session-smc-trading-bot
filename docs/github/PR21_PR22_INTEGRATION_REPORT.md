@@ -46,24 +46,13 @@ CONFLICT (add/add): Merge conflict in tests/production/test_system2_demo_readine
 Conflict hunks:
 
 ```text
-<<<<<<< origin/codex/sys2-first-roadmap
-from production.api import ProductionReadAPI
-from shared.serialization import append_jsonl, write_json
-=======
 from shared.serialization import append_jsonl
->>>>>>> origin/codex/demo-smoke-test
 from shared.strategy_package import build_canonical_package
 ```
 
 and, near the end of the file:
 
 ```text
-<<<<<<< origin/codex/sys2-first-roadmap
-def test_runtime_dashboard_status_is_read_only_and_package_scoped(tmp_path: Path) -> None:
-    ... (uses ProductionReadAPI, write_json) ...
-    assert "agtrade_broker_writes_enabled 0" in api.metrics()
-=======
->>>>>>> origin/codex/demo-smoke-test
 ```
 
 This is a genuine **add/add** conflict (both branches independently created

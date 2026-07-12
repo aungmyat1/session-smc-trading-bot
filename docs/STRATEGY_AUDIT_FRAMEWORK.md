@@ -58,9 +58,9 @@ and execution-validation primitives as upstream dependencies.
 
 Primary entrypoints:
 
-- `python3 audit_strategy.py`
-- `python3 audit_strategy.py --strategy ST-A2`
-- `python3 audit_strategy.py --payload path/to/payload.json`
+- `python3 scripts/audit_strategy.py`
+- `python3 scripts/audit_strategy.py --strategy ST-A2`
+- `python3 scripts/audit_strategy.py --payload path/to/payload.json`
 
 ## Report Outputs
 

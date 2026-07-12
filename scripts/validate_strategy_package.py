@@ -43,6 +43,7 @@ def _self_test() -> int:
             parameters={"symbols": ["EURUSD"], "period": 1},
             risk_policy={"max_risk_pct": 0.1},
             evidence={"test": "PASS"},
+            governance_snapshot={"strategies": {"SELF-TEST": {"latest_version": "1.0.0", "evidence_count": 1, "decision_count": 0, "approval_count": 1, "latest_approval": None}}},
             approval={"decision": "APPROVED", "approved_at": now.isoformat(), "expires_at": (now + timedelta(days=1)).isoformat(), "revoked": False},
             signing_key="11" * 32,
         )

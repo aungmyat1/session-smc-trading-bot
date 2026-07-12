@@ -22,6 +22,8 @@ from core.strategy_registry import (
 from shared.serialization import append_jsonl, now_iso, read_json, read_jsonl, stable_manifest_hash, write_json
 from svos.adapters.artifacts import FilesystemArtifactStore
 from infrastructure.google_cloud import GCSArtifactAdapter, KMSAsymmetricAdapter
+from svos.governance.service import GovernanceService
+from svos.governance.snapshot import compute_strategy_governance_snapshot
 from svos.registry.service import StrategyRegistryService
 from shared.strategy_package import build_canonical_package
 from shared.configuration.symbols import validate_symbol
@@ -64,6 +66,7 @@ class DeploymentStatusService:
         self.root = Path(root)
         self.catalog_path = Path(catalog_path) if catalog_path is not None else self.root / "config" / "strategy_catalog.yaml"
         self.registry = StrategyRegistryService(root=self.root, catalog_path=self.catalog_path)
+        self.governance = GovernanceService(root=self.root, registry=self.registry)
         self.deployment_root = self.root / "data" / "svos" / "deployment"
         self.package_artifacts = FilesystemArtifactStore(self.deployment_root / "artifacts")
         self.report_artifacts = FilesystemArtifactStore(self.deployment_root / "report_artifacts")
@@ -206,6 +209,11 @@ class DeploymentStatusService:
             "records": evidence_records,
             "source_manifest_hash": source_manifest_hash,
         }
+        governance_snapshot = {
+            "strategies": {
+                strategy: compute_strategy_governance_snapshot(self.registry, self.governance, strategy)
+            }
+        }
         signing_key = os.getenv("SVOS_PACKAGE_SIGNING_PRIVATE_KEY", "")
         temporary_archive = self.deployment_root / "packages" / strategy / version_label / ".canonical-package.tmp.tar.gz"
         build = build_canonical_package(
@@ -218,6 +226,7 @@ class DeploymentStatusService:
             parameters=parameters,
             risk_policy=risk_policy,
             evidence=evidence_manifest,
+            governance_snapshot=governance_snapshot,
             approval=approval,
             signing_key=signing_key,
             provenance={

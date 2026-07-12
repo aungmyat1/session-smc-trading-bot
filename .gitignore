@@ -35,6 +35,9 @@ execution_validation/reports/
 reports/current_strategy_svos/
 reports/svos/
 
+# Generated governance snapshot export (scripts/export_governance_snapshot.py output)
+artifacts/
+
 # IDE
 .vscode/
 .idea/

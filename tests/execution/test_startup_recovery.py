@@ -105,6 +105,81 @@ def test_already_journaled_broker_order_id_is_not_flagged_orphaned(tmp_path):
     assert report.orphaned_positions == []
 
 
+def _age_record(store: ExecutionStateStore, execution_id: str, seconds_ago: float) -> None:
+    """Backdate a record's `updated_at` to simulate it having sat unresolved
+    for `seconds_ago` seconds — used to exercise SYS2-T014's age gate without
+    real sleeps."""
+    from datetime import datetime, timedelta, timezone
+
+    record = store.load(execution_id)
+    record.updated_at = (datetime.now(timezone.utc) - timedelta(seconds=seconds_ago)).isoformat()
+    store._write(record)
+
+
+def test_age_gate_defers_young_ambiguous_record_and_does_not_orphan_its_position(tmp_path):
+    """SYS2-T014: a RECOVERY_PENDING-equivalent record with no broker_order_id
+    yet, younger than min_pending_age_seconds, must not be resolved this pass
+    — and its plausibly-matching broker position must not be misreported as
+    orphaned just because reconciliation ran before the record aged out."""
+    store = ExecutionStateStore(tmp_path)
+    journal = TradeJournalDB(tmp_path / "journal.db")
+    execution_id = _submission_pending(store, symbol="GBPUSD", direction="sell", lots=0.02)
+    _age_record(store, execution_id, seconds_ago=5)  # well under any real threshold
+    positions = [{"id": "ORD-9", "symbol": "GBPUSD", "direction": "sell", "lots": 0.02, "entry": 1.25}]
+
+    report = reconcile_pending_executions(store, journal, positions, min_pending_age_seconds=60)
+
+    assert report.resolved == []
+    assert report.orphaned_positions == []
+    assert store.load(execution_id).state == "SUBMISSION_PENDING"
+    assert journal.get_broker_order_ids() == set()
+
+
+def test_age_gate_resolves_record_once_old_enough(tmp_path):
+    store = ExecutionStateStore(tmp_path)
+    journal = TradeJournalDB(tmp_path / "journal.db")
+    execution_id = _submission_pending(store, symbol="GBPUSD", direction="sell", lots=0.02)
+    _age_record(store, execution_id, seconds_ago=120)
+    positions = [{"id": "ORD-9", "symbol": "GBPUSD", "direction": "sell", "lots": 0.02, "entry": 1.25}]
+
+    report = reconcile_pending_executions(store, journal, positions, min_pending_age_seconds=60)
+
+    assert report.recovered_count == 1
+    assert store.load(execution_id).state == "COMPLETED"
+
+
+def test_age_gate_never_delays_a_record_with_known_broker_order_id(tmp_path):
+    """The gate only protects the ambiguous no-broker-order-id branch — a
+    BROKER_ACKNOWLEDGED record is resolved immediately regardless of age,
+    since ensuring its journal row and advancing to COMPLETED never risks a
+    duplicate order (docs/systems/system2/SYS2-T014-DESIGN.md §3)."""
+    store = ExecutionStateStore(tmp_path)
+    journal = TradeJournalDB(tmp_path / "journal.db")
+    execution_id = _broker_acknowledged(store, "ORD-1", symbol="EURUSD", direction="buy", lots=0.01)
+    _age_record(store, execution_id, seconds_ago=0)
+    positions = [{"id": "ORD-1", "symbol": "EURUSD", "direction": "buy", "lots": 0.01, "entry": 1.1}]
+
+    report = reconcile_pending_executions(store, journal, positions, min_pending_age_seconds=3600)
+
+    assert report.recovered_count == 1
+    assert store.load(execution_id).state == "COMPLETED"
+
+
+def test_default_age_gate_is_zero_matches_pre_sys2_t014_behavior(tmp_path):
+    """Regression: callers that don't pass min_pending_age_seconds (e.g. the
+    existing startup-recovery call site) must see byte-for-byte the same
+    behavior as before this change — a record is always resolved immediately."""
+    store = ExecutionStateStore(tmp_path)
+    journal = TradeJournalDB(tmp_path / "journal.db")
+    execution_id = _submission_pending(store, symbol="GBPUSD", direction="sell", lots=0.02)
+    _age_record(store, execution_id, seconds_ago=0)
+    positions = [{"id": "ORD-9", "symbol": "GBPUSD", "direction": "sell", "lots": 0.02, "entry": 1.25}]
+
+    report = reconcile_pending_executions(store, journal, positions)  # no kwarg passed
+
+    assert report.recovered_count == 1
+
+
 def test_rerunning_recovery_is_idempotent_no_duplicate_journal_rows_or_orders(tmp_path):
     """The core safety guarantee: recovery never calls an order-placement API,
     so running it twice against the same state must be a pure no-op the

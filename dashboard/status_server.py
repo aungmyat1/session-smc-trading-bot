@@ -18,8 +18,10 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import logging
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -34,14 +36,22 @@ from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service
 from dashboard.control_state import activate_emergency_stop, clear_emergency_stop, load_control_state
 from dashboard.events import EventBroadcaster, EventPoller
-from dashboard.rbac import require_authenticated, require_role, session_payload
+from dashboard.rbac import mint_ws_ticket, require_authenticated, require_role, session_payload, validate_ws_ticket
 from production.engine import ExecutionStateStore, StrategyExecutionGuard, TradingPermissionService
 from approval_package.package_validator import validate_package
 from demo_runtime.demo_health_check import evaluate_demo_readiness
-from execution.operations_recorder import get_recent_events, get_recent_runtimes
+from execution.operations_recorder import db_health_check, get_recent_events, get_recent_runtimes
+from execution.validation_metrics import lifecycle_success_rate, stage_latency_stats
+from execution.validation_session import ValidationSessionManager
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+# Built Gai dashboard SPA (`New Dashborad/Gai dashboard/`, built via `vite build`) — distinct from
+# the older top-level `New Dashborad/dist/` that `dashboard/app.py` serves at its own
+# `/new-dashboard/` route on a separate, undeployed process. No collision: only one of these two
+# processes is ever running at a time (see SYSTEM2_MASTER_PLAN.md).
+_GAI_DASHBOARD_DIST = ROOT / "New Dashborad" / "Gai dashboard" / "dist"
 
 PAIRS = ["EURUSD", "GBPUSD", "XAUUSD"]
 _PIP  = {"EURUSD": 0.0001, "GBPUSD": 0.0001, "USDJPY": 0.01, "XAUUSD": 0.1}
@@ -79,8 +89,19 @@ async def _start_event_poll_loop() -> None:
 async def ws_events(websocket: WebSocket) -> None:
     """Single unified event stream — Trading/Strategy/Risk/Platform/System
     events, all sources, one connection. Replaces client-side polling of
-    many endpoints (owner framing, 2026-07-04)."""
-    if not session_payload(websocket)["authenticated"]:
+    many endpoints (owner framing, 2026-07-04).
+
+    Auth (2026-07-05): a `?ticket=` query param (minted via the authenticated
+    GET /api/ws-ticket) is checked first — this is the only auth path a
+    browser can use on a WebSocket upgrade, since browsers cannot set
+    Authorization/X-SVOS-Actor headers here. Header-based auth
+    (session_payload) is preserved unchanged as a fallback for any
+    non-browser caller. Neither path is weaker than before: ticket issuance
+    itself requires the same require_authenticated() gate as any other read
+    endpoint."""
+    ticket = websocket.query_params.get("ticket", "")
+    identity = validate_ws_ticket(ticket) if ticket else None
+    if identity is None and not session_payload(websocket)["authenticated"]:
         await websocket.close(code=1008)
         return
     await websocket.accept()
@@ -93,6 +114,17 @@ async def ws_events(websocket: WebSocket) -> None:
         pass
     finally:
         _event_broadcaster.unsubscribe(queue)
+
+
+@app.get("/api/ws-ticket")
+async def api_ws_ticket(identity: dict = Depends(require_authenticated())):
+    """Mint a short-lived (30s), single-use ticket for authenticating the
+    /ws handshake from a browser. Gated by the same require_authenticated()
+    dependency as every other read endpoint — this issues no new privilege,
+    it only lets an already-established identity reach a transport
+    (WebSocket) that cannot carry the header-based credential directly."""
+    ticket = mint_ws_ticket({"actor": identity["actor"], "role": identity["role"]})
+    return {"ticket": ticket, "expires_in": 30}
 
 
 @app.get("/api/project-readiness")
@@ -1511,6 +1543,24 @@ async def dashboard():
     return HTMLResponse(content=html)
 
 
+if (_GAI_DASHBOARD_DIST / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_GAI_DASHBOARD_DIST / "assets")), name="gai-dashboard-assets")
+
+
+@app.get("/new-dashboard/")
+async def new_dashboard_spa():
+    """Serves the built Gai dashboard SPA (see `_GAI_DASHBOARD_DIST` above). Its data comes
+    entirely from same-origin `/api/new-dashboard/live-state` (already implemented) and
+    `/api/emergency-stop` (already implemented) — no proxy/CORS config needed. Note: a handful of
+    operator-control actions in the UI (strategy activate/pause, risk-controls, broker reconnect)
+    call routes that don't exist on this backend yet (tracked in
+    docs/systems/system2/ROADMAP.md) and will 404 if clicked."""
+    index_path = _GAI_DASHBOARD_DIST / "index.html"
+    if not index_path.is_file():
+        return JSONResponse({"error": "Gai dashboard not built — run `npm run build` in 'New Dashborad/Gai dashboard/'"}, status_code=503)
+    return FileResponse(str(index_path))
+
+
 @app.get("/api/status")
 async def api_status():
     state = _load_state()
@@ -1802,7 +1852,7 @@ async def api_operations_account():
     snapshot = live_dashboard_service.load_snapshot()
     return _envelope(
         snapshot.get("portfolio", {}).get("summary", {}),
-        source="dashboard.live_dashboard_service.load_snapshot (live broker round-trip)",
+        source="dashboard.live_dashboard_service.load_snapshot (Shared Broker Runtime — reads the deployed runner's own state, no separate broker connection)",
     )
 
 
@@ -1899,6 +1949,465 @@ async def api_operations_events(limit: int = 50):
         source="execution.operations_recorder (Postgres operations.execution_event/recovery_checkpoint/runtime)",
         unavailable=["telegram_alert_history (monitoring/telegram.py sends alerts but persists no queryable history)"],
     )
+
+
+# ── System 2 Readiness Aggregator (fail-closed) ───────────────────────────────
+# Every check below must be *proven* true from a live read; anything missing,
+# unparseable, or unreachable is treated as failing — never defaulted to READY.
+# This is read-only: it never writes LIVE_TRADING/DEMO_ONLY or any trading
+# setting, only reports the values already in effect.
+
+_HEARTBEAT_STALE_SECONDS = 180  # matches _health_summary()'s existing threshold
+# The deployed systemd unit execs scripts/run_strategy_demo.py, a thin
+# `runpy.run_path` shim that loads run_st_a2_demo.py's code in-process — the
+# implementation file's name never appears in argv, only this shim's does
+# (verified against the live process's /proc/<pid>/cmdline).
+_RUNNER_PROCESS_PATTERN = "run_strategy_demo.py"
+
+
+def _strategy_catalog_entry(strategy_id: str) -> dict:
+    """Direct read of config/strategy_catalog.yaml's raw `approved` flag for one
+    strategy — deliberately bypasses dashboard.strategy_service's UI-stage
+    mapping so this compliance signal reflects the literal catalog value."""
+    if not strategy_id:
+        return {}
+    import yaml
+    try:
+        catalog = yaml.safe_load((ROOT / "config" / "strategy_catalog.yaml").read_text()) or {}
+        entry = (catalog.get("strategies") or {}).get(strategy_id)
+        return entry if isinstance(entry, dict) else {}
+    except Exception:
+        return {}
+
+
+def _duplicate_runtime_check(script_name: str = _RUNNER_PROCESS_PATTERN) -> dict:
+    """Ground-truth OS process count for the deployed runner — independent of
+    the Postgres operations.runtime table, which only records start events,
+    not current liveness, so it can't answer "is more than one running now".
+
+    Matched by exact argv token via /proc/*/cmdline, NOT `pgrep -f`'s
+    substring-of-whole-commandline matching — the latter produces false
+    positives against any unrelated process that merely mentions this script
+    name inside a quoted string (verified during development: a shell command
+    diagnosing this very check was itself counted as a "runner" process)."""
+    try:
+        matches = 0
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                argv = [a for a in entry.joinpath("cmdline").read_bytes().split(b"\x00") if a]
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                continue
+            if any(arg.decode(errors="ignore").endswith(script_name) for arg in argv):
+                matches += 1
+        return {"known": True, "process_count": matches, "no_duplicate": matches <= 1}
+    except Exception as exc:
+        return {"known": False, "process_count": None, "no_duplicate": False, "error": str(exc)}
+
+
+def _control_state_known() -> bool:
+    """Whether reports/control_state.json exists and parses. load_control_state()
+    silently substitutes defaults on any error — which would make an unknown
+    control-state file look identical to a known-good one for this check."""
+    from dashboard.control_state import CONTROL_STATE_PATH
+    if not CONTROL_STATE_PATH.exists():
+        return False
+    try:
+        json.loads(CONTROL_STATE_PATH.read_text(encoding="utf-8"))
+        return True
+    except Exception:
+        return False
+
+
+def _system2_readiness() -> dict:
+    """Fail-closed System 2 readiness aggregation (task: dashboard readiness
+    validation). Read-only: makes no changes to any trading/broker setting."""
+    state = _load_state()
+    control = load_control_state()
+    health = _health_summary()
+    strategy_id = str(state.get("strategy", "")).strip()
+    catalog_entry = _strategy_catalog_entry(strategy_id)
+    db = db_health_check()
+    dup = _duplicate_runtime_check()
+    risk_state = _load_risk_state_file()
+    reconciliation_status = str(control.get("reconciliation", {}).get("status", "")).strip().lower()
+    live_trading = os.environ.get("LIVE_TRADING", "false").strip().lower() == "true"
+    demo_only = os.environ.get("DEMO_ONLY", "true").strip().lower() != "false"
+    broker_status = str(state.get("broker_status", "unknown"))
+    health_block = control.get("health", {}) if isinstance(control.get("health"), dict) else {}
+    safe_mode_active = bool(health_block.get("safe_mode", {}).get("active", False))
+    critical_unknown = bool(health_block.get("critical_unknown", False))
+
+    checks = {
+        "database_reachable": {"ok": bool(db["reachable"]), "detail": db},
+        "runtime_authority_valid": {
+            "ok": bool(health["checks"]["trading_allowed"]) and health["checks"]["runner_state"] == "running",
+            "detail": {
+                "trading_allowed": health["checks"]["trading_allowed"],
+                "governance_allowed": health["checks"]["governance_allowed"],
+                "runner_state": health["checks"]["runner_state"],
+                "note": ("trading_allowed (execution.control_plane.TradingPermissionService) already "
+                         "folds in emergency-stop/safe-mode/reconciliation-block state, so an active "
+                         "emergency stop correctly fails this check too. Reflects the deployed runner's "
+                         "own governance chain, not production.engine.runtime.RuntimeAuthority — that "
+                         "lock-based authority belongs to the undeployed run_portfolio.py canonical runner."),
+            },
+        },
+        "strategy_package_approved": {
+            "ok": bool(strategy_id) and bool(catalog_entry.get("approved", False)),
+            "detail": {
+                "strategy_id": strategy_id or None,
+                "approved": bool(catalog_entry.get("approved", False)),
+                "svos_status": catalog_entry.get("status", "unknown"),
+            },
+        },
+        "risk_firewall_active": {
+            "ok": bool(risk_state),
+            "detail": {"risk_state_present": bool(risk_state), "halted": risk_state.get("halted", False)},
+        },
+        "broker_reachable_or_disabled": {
+            "ok": bool(health["checks"]["broker_connected"]) or broker_status == "disabled",
+            "detail": {"broker_status": broker_status, "broker_connected": health["checks"]["broker_connected"]},
+        },
+        "emergency_stop_known": {
+            "ok": _control_state_known(),
+            "detail": {"active": control.get("emergency_stop", {}).get("active")},
+        },
+        "no_critical_incident": {
+            "ok": not (safe_mode_active or critical_unknown),
+            "detail": {"safe_mode_active": safe_mode_active, "critical_unknown": critical_unknown},
+        },
+        "heartbeat_fresh": {
+            "ok": bool(health["checks"]["last_tick_fresh"]),
+            "detail": {"tick_age_seconds": _last_tick_age_seconds(state), "threshold_seconds": _HEARTBEAT_STALE_SECONDS},
+        },
+        "no_duplicate_runtime": {
+            "ok": bool(dup["known"]) and bool(dup.get("no_duplicate")),
+            "detail": dup,
+        },
+        "reconciliation_available": {
+            "ok": bool(reconciliation_status) and reconciliation_status != "unknown",
+            "detail": {"status": reconciliation_status or "unknown"},
+        },
+    }
+    failing = [name for name, c in checks.items() if not c["ok"]]
+    return {
+        "ready": len(failing) == 0,
+        "status": "READY" if not failing else "NOT_READY",
+        "blocking_reasons": failing,
+        "mode": {
+            "live_trading": live_trading,
+            "demo_only": demo_only,
+            "label": "LIVE" if live_trading else ("READ_ONLY" if broker_status == "disabled" else "DEMO"),
+        },
+        "checks": checks,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+
+# ── Demo Validation Mode (2026-07-06, Production Candidate Advancement) ─────
+# Read-only endpoints over execution/validation_session.py and
+# execution/validation_metrics.py — same require_authenticated() gate as
+# every other read endpoint here, no new auth, no new broker connection
+# (this dashboard process never talks to MT5 directly — see
+# dashboard/live_dashboard_service.py's module docstring).
+
+_validation_session_mgr = ValidationSessionManager()
+
+
+@app.get("/api/validation/session")
+async def api_validation_session(session_id: str | None = None, identity: dict = Depends(require_authenticated())):
+    """Active validation session, or a specific one by session_id."""
+    if session_id:
+        session = _validation_session_mgr.resume(session_id)
+    else:
+        session = _validation_session_mgr.active_session()
+    return {"session": session}
+
+
+@app.get("/api/validation/lifecycle")
+async def api_validation_lifecycle(session_id: str, identity: dict = Depends(require_authenticated())):
+    """Per-stage success rate for one validation session."""
+    return {"session_id": session_id, "lifecycle": lifecycle_success_rate(session_id)}
+
+
+@app.get("/api/validation/latency")
+async def api_validation_latency(session_id: str, stage: str | None = None, identity: dict = Depends(require_authenticated())):
+    """Per-stage latency stats (count/avg/max/p50/p95/p99 ms) for one session."""
+    return {"session_id": session_id, "latency": stage_latency_stats(session_id, stage=stage)}
+
+
+@app.get("/api/validation/recovery")
+async def api_validation_recovery(limit: int = 20, identity: dict = Depends(require_authenticated())):
+    """Recent recovery_checkpoint events — reuses the same durable event
+    store every other operational-events view here reads from."""
+    events = get_recent_events(limit=limit)
+    recovery_events = [e for e in events if e.get("type") == "recovery_checkpoint"]
+    return {"recovery_events": recovery_events}
+
+
+@app.get("/api/system2/readiness")
+async def api_system2_readiness():
+    """Fail-closed System 2 readiness report — the single source of truth for
+    the dashboard's readiness summary panel. See _system2_readiness() for the
+    10-point checklist; any unproven check fails closed to NOT_READY."""
+    return _system2_readiness()
+
+
+# ── Monitoring & Observability (2026-07-06, SYSTEM2_MASTER_PLAN.md Phase 2) ──
+# Consolidates platform/broker/runner/database/resource signals into one
+# endpoint. Every value not backed by a real read is reported as `null` with
+# an `unavailable` note — never fabricated. Reuses existing sources
+# (_health_summary, db_health_check, get_memory_health) rather than
+# recomputing them a second time.
+
+def _cpu_load() -> dict:
+    try:
+        load1, load5, load15 = os.getloadavg()
+        return {"load_1m": load1, "load_5m": load5, "load_15m": load15, "core_count": os.cpu_count()}
+    except Exception as exc:
+        return {"load_1m": None, "load_5m": None, "load_15m": None, "core_count": None, "error": str(exc)}
+
+
+def _disk_usage(path: str = "/") -> dict:
+    try:
+        st = os.statvfs(path)
+        total = st.f_blocks * st.f_frsize
+        free = st.f_bavail * st.f_frsize
+        used_pct = round((1 - free / total) * 100, 1) if total else None
+        return {"total_gb": round(total / 1e9, 1), "free_gb": round(free / 1e9, 1), "used_pct": used_pct}
+    except Exception as exc:
+        return {"total_gb": None, "free_gb": None, "used_pct": None, "error": str(exc)}
+
+
+def _memory_usage() -> dict:
+    try:
+        from scripts.ops.mem_monitor import get_memory_health
+        return get_memory_health()
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+def _execution_latency() -> dict:
+    """No trades have executed yet on this deployment (0 closed trades — see
+    TradeJournalDB summary), so there is no real intent-to-fill duration to
+    report. Rather than fabricate a number, this is explicitly null until at
+    least one real execution_result event exists to measure from."""
+    events = get_recent_events(limit=50)
+    result_events = [e for e in events if e.get("event_type") == "execution_result"]
+    if not result_events:
+        return {"p50_ms": None, "sample_count": 0, "note": "no execution_result events recorded yet"}
+    return {"p50_ms": None, "sample_count": len(result_events), "note": "event timestamps present but no paired intent->result duration computed yet"}
+
+
+def _system2_monitoring() -> dict:
+    started = time.monotonic()
+    health = _health_summary()
+    state = _load_state()
+    db = db_health_check()
+    ws_subscribers = len(getattr(_event_broadcaster, "_subscribers", []))
+    started_at = str(state.get("started_at", "")).strip()
+    uptime_s = None
+    if started_at:
+        try:
+            started_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+            uptime_s = max(0, int((datetime.now(timezone.utc) - started_dt).total_seconds()))
+        except ValueError:
+            uptime_s = None
+
+    payload = {
+        "platform_health": {"score": health["score"], "checks": health["checks"]},
+        "broker": {
+            "status": state.get("broker_status", "unknown"),
+            "heartbeat_age_seconds": _last_tick_age_seconds(state),
+            "latency_ms": None,
+            "note": "Shared Broker Runtime (2026-07-06): reads the deployed runner's own state file — "
+                    "no independent RPC round-trip, so there is no separate latency to measure here. "
+                    "heartbeat_age_seconds is the meaningful freshness signal in this architecture.",
+        },
+        "runner": {
+            "status": state.get("status", "unknown"),
+            "uptime_seconds": uptime_s,
+            "pid": state.get("pid"),
+            "strategy": state.get("strategy", ""),
+        },
+        "database": db,
+        "risk_engine": {
+            "state_present": bool(_load_risk_state_file()),
+            "halted": _load_risk_state_file().get("halted", False),
+        },
+        "dashboard_backend": {"status": "active", "host": _DEPLOYMENT_HOSTNAME, "git_sha": _GIT_SHA},
+        "websocket": {"active_subscribers": ws_subscribers},
+        "execution_latency": _execution_latency(),
+        "resources": {
+            "memory": _memory_usage(),
+            "cpu": _cpu_load(),
+            "disk": _disk_usage(),
+        },
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    payload["api_latency_ms"] = round((time.monotonic() - started) * 1000, 1)
+    return payload
+
+
+@app.get("/api/system2/monitoring")
+async def api_system2_monitoring():
+    """Consolidated operational monitoring — platform health, broker,
+    runner, database, risk engine, dashboard backend, WebSocket
+    subscribers, execution latency (honestly null if no data exists yet),
+    and host resources (CPU/memory/disk). See _system2_monitoring()."""
+    return _system2_monitoring()
+
+
+_CHECK_LABELS = {
+    "database_reachable": "Database",
+    "runtime_authority_valid": "Runtime authority",
+    "strategy_package_approved": "Strategy package",
+    "risk_firewall_active": "Risk firewall",
+    "broker_reachable_or_disabled": "Broker adapter",
+    "emergency_stop_known": "Emergency stop",
+    "no_critical_incident": "Critical incidents",
+    "heartbeat_fresh": "Heartbeat",
+    "no_duplicate_runtime": "Duplicate runtime",
+    "reconciliation_available": "Reconciliation",
+}
+
+
+def _readiness_gate_row(name: str, check: dict) -> str:
+    ok = bool(check.get("ok"))
+    icon = "✅" if ok else "❌"
+    cls = "gate-pass" if ok else "gate-warn"
+    label = _CHECK_LABELS.get(name, name)
+    detail = check.get("detail", {})
+    detail_str = html.escape(", ".join(f"{k}={v}" for k, v in detail.items() if k != "note"))
+    return (f'<div class="gate"><span class="gate-icon">{icon}</span>'
+            f'<span class="gate-label">{html.escape(label)}</span>'
+            f'<span class="gate-value {cls}">{detail_str}</span></div>')
+
+
+def _system2_readiness_html() -> str:
+    r = _system2_readiness()
+    snapshot = live_dashboard_service.load_snapshot()
+    positions = snapshot.get("positions", {}) or {}
+    orders = snapshot.get("orders", {}) or {}
+    events = get_recent_events(limit=15)
+    control = load_control_state()
+    es = control.get("emergency_stop", {})
+    risk_state = _load_risk_state_file()
+    portfolio_state = _load_portfolio_state_file()
+
+    ready = r["ready"]
+    badge_cls = "badge-demo" if ready else "badge-live"
+    mode_label = r["mode"]["label"]
+
+    gates_html = "".join(_readiness_gate_row(name, check) for name, check in r["checks"].items())
+
+    pos_rows = positions.get("items") if isinstance(positions, dict) else None
+    if not pos_rows:
+        positions_html = '<p class="muted">No open positions.</p>'
+    else:
+        positions_html = '<table class="trades-table"><tr><th>Symbol</th><th>Side</th><th>Size</th><th>P&amp;L</th></tr>' + "".join(
+            f"<tr><td>{html.escape(str(p.get('symbol','')))}</td><td>{html.escape(str(p.get('side','')))}</td>"
+            f"<td>{html.escape(str(p.get('size','')))}</td><td>{html.escape(str(p.get('pnl','')))}</td></tr>"
+            for p in pos_rows
+        ) + "</table>"
+
+    order_rows = orders.get("items") if isinstance(orders, dict) else None
+    if not order_rows:
+        orders_html = '<p class="muted">No recent orders.</p>'
+    else:
+        orders_html = '<table class="trades-table"><tr><th>Time</th><th>Symbol</th><th>State</th></tr>' + "".join(
+            f"<tr><td>{html.escape(str(o.get('created_at','')))}</td><td>{html.escape(str(o.get('symbol','')))}</td>"
+            f"<td>{html.escape(str(o.get('state','')))}</td></tr>"
+            for o in order_rows[:15]
+        ) + "</table>"
+
+    if not events:
+        events_html = '<p class="muted">No recent events.</p>'
+    else:
+        events_html = '<div class="log-box">' + "\n".join(
+            html.escape(f"[{e.get('created_at','')}] {e.get('type','')}: {e.get('event_type', e.get('state',''))}")
+            for e in events
+        ) + "</div>"
+
+    db_check = r["checks"]["database_reachable"]["detail"]
+
+    page = f"""<html><head><title>System 2 Readiness</title><style>{_CSS}</style></head><body>
+<div class="header">
+  <div class="logo">SYSTEM 2 · READINESS</div>
+  <div>
+    <span class="badge {badge_cls}">{'READY' if ready else 'NOT READY'}</span>
+    <span class="badge {'badge-demo' if mode_label != 'LIVE' else 'badge-live'}">{html.escape(mode_label)}</span>
+  </div>
+  <div class="header-right">generated {html.escape(r['generated_at'])}<br/>live_trading={r['mode']['live_trading']} demo_only={r['mode']['demo_only']}</div>
+</div>
+
+<div class="grid-2">
+  <div class="card full-width">
+    <div class="card-title">Readiness Summary — {len(r['blocking_reasons'])} blocking</div>
+    {gates_html}
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title">Broker Connection</div>
+    <div class="metric"><span class="metric-label">Status</span><span class="metric-value">{html.escape(str(r['checks']['broker_reachable_or_disabled']['detail']['broker_status']))}</span></div>
+    <div class="metric"><span class="metric-label">Connected</span><span class="metric-value">{r['checks']['broker_reachable_or_disabled']['detail']['broker_connected']}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Strategy Package</div>
+    <div class="metric"><span class="metric-label">Strategy</span><span class="metric-value">{html.escape(str(r['checks']['strategy_package_approved']['detail']['strategy_id']))}</span></div>
+    <div class="metric"><span class="metric-label">Approved</span><span class="metric-value">{r['checks']['strategy_package_approved']['detail']['approved']}</span></div>
+    <div class="metric"><span class="metric-label">SVOS status</span><span class="metric-value">{html.escape(str(r['checks']['strategy_package_approved']['detail']['svos_status']))}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Database Health</div>
+    <div class="metric"><span class="metric-label">Reachable</span><span class="metric-value">{db_check['reachable']}</span></div>
+    <div class="metric"><span class="metric-label">Latency</span><span class="metric-value">{db_check.get('latency_ms')} ms</span></div>
+  </div>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title">Risk Firewall</div>
+    <div class="metric"><span class="metric-label">Halted</span><span class="metric-value">{risk_state.get('halted', False)}</span></div>
+    <div class="metric"><span class="metric-label">Daily PnL%</span><span class="metric-value">{portfolio_state.get('daily_pnl_pct', 0.0)}</span></div>
+    <div class="metric"><span class="metric-label">Open symbols</span><span class="metric-value">{html.escape(str(portfolio_state.get('open_symbols', [])))}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Emergency Stop</div>
+    <div class="metric"><span class="metric-label">Active</span><span class="metric-value">{es.get('active', False)}</span></div>
+    <div class="metric"><span class="metric-label">Reason</span><span class="metric-value">{html.escape(str(es.get('reason','')) or '—')}</span></div>
+    <div class="metric"><span class="metric-label">Scope</span><span class="metric-value">{html.escape(str(es.get('scope','')) or '—')}</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Heartbeat</div>
+    <div class="metric"><span class="metric-label">Age (s)</span><span class="metric-value">{r['checks']['heartbeat_fresh']['detail']['tick_age_seconds']}</span></div>
+    <div class="metric"><span class="metric-label">Threshold (s)</span><span class="metric-value">{r['checks']['heartbeat_fresh']['detail']['threshold_seconds']}</span></div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card"><div class="card-title">Open Positions</div>{positions_html}</div>
+  <div class="card"><div class="card-title">Order Lifecycle Timeline</div>{orders_html}</div>
+</div>
+
+<div class="grid-2">
+  <div class="card full-width"><div class="card-title">Recent Events / Incident Log</div>{events_html}</div>
+</div>
+
+</body></html>"""
+    return page
+
+
+@app.get("/system2/readiness", response_class=HTMLResponse)
+async def system2_readiness_page():
+    """Human-readable System 2 readiness dashboard — server-rendered (same
+    pattern as /dashboard/), no frontend build/deploy required. Read-only."""
+    return HTMLResponse(content=_system2_readiness_html())
 
 
 # ── Unified dashboard API (Phase 2/3) ─────────────────────────────────────────

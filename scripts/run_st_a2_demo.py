@@ -134,6 +134,21 @@ MAX_SPREAD_PIPS: dict[str, float] = {"EURUSD": 1.5, "GBPUSD": 2.0, "XAUUSD": 3.0
 _MAX_FETCH_FAILURES = 1   # proactive ensure_connected runs first; this is last-resort
 _STATE_PATH = Path("logs") / "strategy_demo_state.json"
 _RISK_STATE_PATH = Path("logs") / "risk_state.json"
+
+# SYS2-T014: periodic execution-record reconciliation (risk-register #14) —
+# reuses execution.startup_recovery.reconcile_pending_executions(), the same
+# function the startup-only recovery pass above already calls, instead of
+# leaving BROKER_ACKNOWLEDGED/RECOVERY_PENDING records stuck until the next
+# restart. RECONCILE_EVERY_N_TICKS=0 disables periodic reconciliation
+# entirely (startup-only behavior, unchanged).
+RECONCILE_EVERY_N_TICKS = int(os.environ.get("RECONCILE_EVERY_N_TICKS", "5"))
+RECONCILE_MIN_PENDING_AGE_S = float(os.environ.get("RECONCILE_MIN_PENDING_AGE_S", "60"))
+
+
+def _should_run_periodic_reconciliation(tick_count: int, every_n_ticks: int) -> bool:
+    """Pure policy check, isolated from the tick loop so it's directly
+    testable without spinning up the full broker/runtime stack."""
+    return every_n_ticks > 0 and tick_count % every_n_ticks == 0
 _PORTFOLIO_STATE_PATH = Path("logs") / "portfolio_state.json"
 
 
@@ -854,8 +869,46 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
     state["last_decision"] = "connected"
     _write_state(state)
 
+    async def _reconcile_periodic() -> None:
+        # SYS2-T014: same reconcile_pending_executions() call as startup
+        # recovery above, just run again mid-session instead of only once.
+        # Never places/resubmits an order — read-only against broker truth
+        # plus the age gate (RECONCILE_MIN_PENDING_AGE_S) for the
+        # no-broker-order-id branch, per docs/systems/system2/SYS2-T014-DESIGN.md §3.
+        try:
+            positions = await manager.get_positions()
+        except Exception as exc:
+            _log.warning("Periodic reconciliation: could not fetch broker positions (%s) — skipping.", exc)
+            return
+        report = reconcile_pending_executions(
+            execution_store, _journal_db, positions,
+            min_pending_age_seconds=RECONCILE_MIN_PENDING_AGE_S,
+        )
+        ops_recorder.record_recovery_checkpoint(report.resolved, report.orphaned_positions)
+        if report.resolved:
+            _log.warning(
+                "Periodic reconciliation resolved %d incomplete execution(s): %d recovered, %d lost (not resubmitted).",
+                len(report.resolved), report.recovered_count, report.lost_count,
+            )
+            for outcome in report.resolved:
+                _log.warning("  %s -> %s: %s", outcome.execution_id, outcome.final_state, outcome.note)
+            await telegram.send_error(
+                f"Periodic reconciliation: {report.recovered_count} execution(s) recovered, "
+                f"{report.lost_count} lost (signal not resubmitted) out of {len(report.resolved)} incomplete."
+            )
+        if report.orphaned_positions:
+            _log.warning(
+                "Periodic reconciliation: %d broker position(s) with no execution/journal linkage — manual check required.",
+                len(report.orphaned_positions),
+            )
+            await telegram.send_error(
+                f"{len(report.orphaned_positions)} unlinked broker position(s) detected during periodic "
+                "reconciliation — manual reconciliation required."
+            )
+
     async def _loop(_pipeline: CanonicalExecutionPipeline) -> None:
         nonlocal risk_state, state
+        tick_count = 0
         try:
             while True:
                 try:
@@ -864,6 +917,9 @@ async def run(mode: str, interval: int, strategy_name: str, once: bool = False) 
                         mode, strategy_name, connector, executor, manager, journal, risk_state, telegram,
                         pipeline=_pipeline,
                     )
+                    tick_count += 1
+                    if _should_run_periodic_reconciliation(tick_count, RECONCILE_EVERY_N_TICKS):
+                        await _reconcile_periodic()
                 except Exception as exc:
                     _log.error("Tick error: %s", exc, exc_info=True)
                     state = dict(risk_state.get("_dashboard_state") or state)

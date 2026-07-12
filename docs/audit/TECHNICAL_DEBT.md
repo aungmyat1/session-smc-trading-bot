@@ -171,3 +171,44 @@ These are called out here because they are structural technical debt, not missin
   incomplete.
 - **3 unconsolidated dashboard backend processes** plus 1 in-progress frontend migration
   containing a 156 MB self-duplicate.
+
+---
+
+## 10. CircleCI Pipeline has no configuration (added 2026-07-07, PR #26)
+
+Every PR's required-status-check list includes a `CircleCI Pipeline` context that fails with
+"No configuration was found in your project" — there is no `.circleci/config.yml` in this repo.
+This is a repo-wide GitHub branch-protection/integration gap, not something introduced by any
+individual PR's diff; it fails identically regardless of what the PR changes.
+
+- **Classification**: infrastructure maintenance, not a code defect.
+- **Impact**: cosmetic red X on every PR's check list; does not block merge today since it is
+  not part of the `Required CI` gate (`Required CI` — the actual required check — passes
+  independently). No functional risk.
+- **Fix options**: (a) add a minimal `.circleci/config.yml` that no-ops or mirrors the existing
+  GitHub Actions `CI` workflow, or (b) remove the CircleCI GitHub App integration/branch-protection
+  entry entirely if CircleCI isn't actually used by this project. Owner decision — not resolved
+  here.
+- **Do not block development on this** — explicitly non-blocking per the same review that found it.
+
+---
+
+## 11. CodeRabbit findings merged unfixed on PR #26 (owner-accepted, 2026-07-07)
+
+PR #26 was merged via admin override past `main`'s required-conversation-resolution branch
+protection, with 9 open CodeRabbit threads on pre-existing code already in the branch (not on
+the PR's own 2 doc commits). The 6 Major/Critical findings are tracked in
+`docs/operations/risk-register.md` risks #15–#20 (command injection, broken subprocess env,
+exposed operator token, missing SPA fallback, broken CI action reference, staleness-threshold
+mismatch). The 3 Minor findings, tracked here only:
+
+- `scripts/ops/dev_cleanup.py`: the `SIGTERM`/`SIGKILL` loop reuses a `classify()` snapshot taken
+  before a 5s wait — a recycled PID could be signaled without re-checking it still matches the
+  orphan criteria. Fix: re-read `/proc/<pid>/cmdline` immediately before each signal.
+- `svos/governance/snapshot.py:37-38`: `registry.ensure_strategy(...)` bootstraps a version
+  record/`state.json` for a strategy with no registry history yet — a nominally read-only
+  snapshot path has a write side effect on first call. Fix: read the existing record without
+  initializing it.
+- `tmp/run_verification.py`: hardcodes `/home/aungp/session-smc-trading-bot` — non-portable to
+  any other machine/CI environment; also worth reconsidering whether a `tmp/`-named script should
+  be tracked at all.

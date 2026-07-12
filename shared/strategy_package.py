@@ -22,7 +22,13 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 PACKAGE_FORMAT = "strategy-package/v2"
-RUNTIME_API_VERSION = "system2-runtime/v1"
+# Bumped v1 -> v2 (System2 Scope 3): governance_snapshot.json became a required,
+# signed package member. The bump is the existing, correct mechanism for
+# signalling this schema change -- validate_canonical_package already rejects
+# a mismatched runtime_api_version, so no second compatibility mechanism was
+# added. Packages built under v1 (none exist -- see Scope 3 task notes) are not
+# compatible with v2 validation, and vice versa.
+RUNTIME_API_VERSION = "system2-runtime/v2"
 SIGNATURE_SCHEME = "ed25519"
 REQUIRED_MEMBERS = frozenset(
     {
@@ -31,6 +37,7 @@ REQUIRED_MEMBERS = frozenset(
         "parameters.json",
         "risk_policy.json",
         "evidence_manifest.json",
+        "governance_snapshot.json",
         "approval.json",
         "provenance.json",
         "signature.json",
@@ -108,6 +115,7 @@ def build_canonical_package(
     parameters: Mapping[str, Any],
     risk_policy: Mapping[str, Any],
     evidence: Mapping[str, Any],
+    governance_snapshot: Mapping[str, Any],
     approval: Mapping[str, Any],
     signing_key: str,
     provenance: Mapping[str, Any] | None = None,
@@ -138,6 +146,8 @@ def build_canonical_package(
         raise ValueError("risk policy is required")
     if not evidence:
         raise ValueError("evidence manifest is required")
+    if not governance_snapshot:
+        raise ValueError("governance snapshot is required")
 
     decision = str(approval.get("decision", "")).upper()
     if decision != "APPROVED":
@@ -155,6 +165,7 @@ def build_canonical_package(
         "parameters.json": _json_bytes(dict(parameters)),
         "risk_policy.json": _json_bytes(dict(risk_policy)),
         "evidence_manifest.json": _json_bytes(dict(evidence)),
+        "governance_snapshot.json": _json_bytes(dict(governance_snapshot)),
         "approval.json": _json_bytes(dict(approval)),
         "provenance.json": _json_bytes(dict(provenance or {"source_format": PACKAGE_FORMAT})),
     }
@@ -352,7 +363,7 @@ def validate_canonical_package(
     except (TypeError, ValueError):
         reasons.append("approval timestamps are missing or invalid")
 
-    for name in ("parameters.json", "risk_policy.json", "evidence_manifest.json"):
+    for name in ("parameters.json", "risk_policy.json", "evidence_manifest.json", "governance_snapshot.json"):
         payload = load_json(name)
         if not payload:
             reasons.append(f"{name} must contain a non-empty object")
