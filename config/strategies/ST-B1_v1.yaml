@@ -1,0 +1,87 @@
+# ST-B1 — Simple Trend Pullback (v1)
+#
+# Status: DRAFT / INTAKE. This is a strategy specification input, not an
+# execution authorization. ST-B1 is NOT enabled in config/strategy_portfolio.yaml
+# and NOT registered as current/approved in config/strategy_catalog.yaml — both
+# require historical validation to pass first (see docs/audit/ST_B1_VALIDATION_REPORT.md).
+# ST-A2 remains the sole live demo strategy until ST-B1 clears its gates.
+
+strategy_id: ST-B1
+version: "1"
+name: "Simple Trend Pullback"
+description: >
+  H1-trend-filtered, M15 EMA20 pullback-rejection baseline strategy. Deliberately
+  simple (single trend filter, single pullback rule, fixed 1:2 RR, no trailing
+  stop, no partial TP) to establish a clean, low-curve-fit-risk performance
+  baseline before layering advanced SMC logic on top.
+engine_module: strategies.st_b1_simple_pullback
+
+symbols:
+  required: [EURUSD, GBPUSD]
+  optional: [XAUUSD]
+
+sessions:
+  allowed: [london, new_york]
+  blocked: [asian, holiday, low_liquidity]
+
+timeframes:
+  trend: H1
+  entry: M15
+
+trend_filter:
+  indicator: EMA
+  period: 200
+  timeframe: H1
+  neutral_threshold_pips: 3.0   # abs(close - EMA200) < threshold -> neutral, no trade
+
+pullback:
+  indicator: EMA
+  period: 20
+  timeframe: M15
+  rejection_rule: >
+    Long: candle closes above the previous candle's high after tagging/rejecting EMA20.
+    Short: candle closes below the previous candle's low after tagging/rejecting EMA20.
+
+entry:
+  mode: next_candle_open
+  no_chasing: true
+  no_averaging_down: true
+  max_positions_per_symbol: 1
+
+stop_loss:
+  long: pullback_swing_low
+  short: pullback_swing_high
+  minimum_pips:
+    EURUSD: 8.0
+    GBPUSD: 10.0
+  xauusd_minimum:
+    formula: "max(ATR14 * 0.5, broker_minimum)"
+    atr_period: 14
+    atr_multiplier: 0.5
+
+take_profit:
+  model: fixed_rr
+  risk_reward: 2.0
+  trailing_stop: false
+  partial_profit: false
+
+risk:
+  risk_per_trade_pct: 0.25
+  max_risk_per_trade_pct: 0.50
+  daily_loss_limit_pct: 1.0
+  max_simultaneous_positions: 2
+
+validation_gate:
+  # Mirrors CLAUDE.md's current Phase-3 gate exactly (not a new/independent
+  # threshold) — see docs/audit/SYSTEM2_VALIDATION_GATE_REPORT.md for the
+  # broader gate-consolidation context this must not diverge from.
+  minimum_trades: 200
+  minimum_profit_factor: 1.25
+  minimum_sharpe: 1.20
+  maximum_drawdown_pct: 15.0
+  applies_at: [standard_cost, stress_2x_cost]
+
+lifecycle:
+  current_stage: DRAFT
+  target_ceiling: HISTORICAL_REPLAY   # per CLAUDE.md Phase-6 implementation ceiling; no live/demo deployment authorized by this file
+  owner: quant
