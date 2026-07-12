@@ -33,6 +33,7 @@ Reference failures from simple-smc-ag-trading-bot (do not re-run):
 | ST-B | PENDING | Trend Pullback: same chain, pullback to session midpoint + 15M BOS in trend direction | 4H+1H+15M | EUR+GBP | — | — | — | — | — | — | **PENDING — EXP05 FAIL unlocks this** |
 | ST-B1_v1 | 2026-07-12 | Simple Trend Pullback: H1 EMA200 trend filter → M15 EMA20 pullback/rejection → next candle open; fixed 1:2 RR; 0.25% risk reference; London/NY only. | H1+M15 | EUR+GBP | — | — | — | — | — | — | **BLOCKED** — no real-data validation verdict exists. Historical validation and walk-forward validation could not run because real EURUSD/GBPUSD H1+M15 data was unavailable and Dukascopy returned `403 Forbidden` from this environment. Do not treat synthetic/unit-test mechanics as PF, Sharpe, MaxDD or walk-forward evidence. See `docs/audit/ST_B1_VALIDATION_REPORT.md` and `docs/audit/ST_B1_MISSION_SUMMARY.md`. |
 | ST-C | PENDING | Range Fade: range session + rejection at session extreme + 15M rejection candle | 4H+1H+15M | EUR+GBP | — | — | — | — | — | — | **PENDING** |
+| STA2-20260711-STAT-VALIDATION-V2 | 2026-07-11 | ST-A2 canonical (unchanged): `strategy/session_liquidity/` DEFAULT_CONFIG (min_sl_pips=5.0, rr=4.0), no parameter changes — restart at STATISTICAL_VALIDATION with expanded dataset only. | 4H+M15 | EUR+GBP | PLANNED (target >200) | — | EURUSD 1.4pip / GBPUSD 1.8pip RT (std), 2.8/3.6pip (2×) | — | — | — | **SUPERSEDED 2026-07-12** by ST-A2-REVAL-20260712-P0X (owner decision — see full entry below for preserved scoping/incident detail) |
 
 ---
 
@@ -298,3 +299,228 @@ SVOS lifecycle/file-registry record remains at stage `INTAKE` and the expected e
 gates (`backtest`, `replay`, `walk_forward`) are still pending. This entry documents the
 gap only. It is not evidence that any missing gate has passed, and it does not mutate
 registry state or lifecycle status.
+
+**CORRECTION (2026-07-11):** The claim above — that `SMCOrderBlockFVGSession` was
+"currently running in live-demo shadow/dry-run form... against real market data" — was
+inaccurate even at the time it was written on 2026-07-01. Investigation
+(`docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md`, 2026-07-04) found that `smc-demo-runner.service`
+was actually crash-looping on an argparse error (`--strategy SMCOrderBlockFVGSession` is not
+a registered `ADAPTER_TYPES` choice) and exiting in under a second, before ever reaching any
+market-data fetch or broker-connection code. It was never generating live or shadow signals
+in any functional sense. The wrapper script (`deploy/gcp-vm1/run_smc_demo.sh`) has since been
+repointed to `--strategy ST-A2` (confirmed current on `main`). This correction does not
+delete or alter the original entry above — it is preserved verbatim for traceability — and
+it does not mutate registry state or lifecycle status, per the original entry's own scope
+note.
+
+---
+
+## STA2-20260711-STAT-VALIDATION-V2 — ST-A2 Statistical Validation Restart — Pre-registered (2026-07-11)
+
+**STATUS: SUPERSEDED (2026-07-12)** — owner decision: `ST-A2-REVAL-20260712-P0X`
+(per `docs/audit/STA2_REVALIDATION_READY.md`) is now the canonical revalidation trial
+ID going forward. This entry is preserved verbatim below, unedited, for evidence and
+traceability — its dataset-window analysis, Sharpe-gap analysis, and the execution
+incident it records remain valid reference material and should inform
+`ST-A2-REVAL-20260712-P0X`'s eventual dataset-scope decision, not be silently dropped.
+
+**Status:** PLANNED — NOT RUN. Scoping only per TASK-3-STA2-VALIDATION-PREP. No backtest,
+replay, or data-fetch executed under this trial ID.
+
+**Lifecycle stage:** STATISTICAL_VALIDATION (restart point — spec/audit/replay stages
+carry forward unchanged; SVOS registry stage is NOT mutated by this entry).
+
+**Strategy:** ST-A2 canonical — `strategy/session_liquidity/` DEFAULT_CONFIG
+(min_sl_pips=5.0, rr=4.0 — the RR variant that passed Phase-0 in ST-A2/2026-06-21).
+No parameter changes from the registered ST-A2 spec.
+
+**Why a new trial ID instead of reusing ST-A2:** the underlying dataset is expanding
+(new date range / bar count), which changes the evidence set even though the strategy
+logic is unchanged. CLAUDE.md §7 requires pre-registration before running; reusing
+ST-A2 would violate the append-only/no-re-run-same-ID rule once new data is involved.
+
+### Gate being targeted (current, effective 2026-07-01)
+
+n > 200 AND net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15% — at BOTH standard AND
+2× spread stress, combined EURUSD+GBPUSD.
+
+### 1. Dataset expansion plan
+
+Baseline (ST-A2, run `20260621T100458-183aaa`, RR=4): 169 trades combined —
+EURUSD 105 trades / 5.0yr (2021-06-21→2026-06-19, ~21.0 trades/yr) and
+GBPUSD 64 trades / 3.27yr (2023-03-13→2026-06-19, ~19.6 trades/yr). GBPUSD is the
+binding constraint — its `data/historical/GBP_USD_M15.csv` starts 2023-03-13 while
+EURUSD's starts 2021-06-21, a 1.73yr gap with no logical reason (both are fetched via
+the same Dukascopy pipeline, `scripts/download_dukascopy.py` / archived
+`scripts/fetch_data.py`, which defaults to 5yr but was evidently run later/partially
+for GBP).
+
+Combined historical rate ≈ 169 / (avg of the two windows, but additive since it's a
+portfolio n) ≈ 40.6 trades/yr combined at full 2-symbol coverage. To exceed n=200 with
+a safety margin (not land at 201 by chance), target a **combined ~7-year window,
+2019-06-21 → 2026-06-19, both EURUSD and GBPUSD**, matching depth on both legs (extends
+EURUSD by 2yr, GBPUSD by 3.73yr). Estimated trade count: 7yr × ~40.6/yr ≈ **~284 trades**
+(EUR ~147, GBP ~137, assuming the historical per-symbol rate holds — flagged as an
+estimate; regime-dependent, and the actual audited spec should also require this to be
+checked per-year in the report, not just totalled, in case a discontinuous regime shift
+inflates one era's frequency).
+
+Rationale for choosing 7yr over the minimum-viable extension: extending GBP alone to
+match EUR's 2021-06-21 start (+1.73yr, ~34 GBP trades) would land at ~203 — a 1.5%
+margin above the n>200 floor, too fragile to survive normal year-to-year trade-count
+variance. A 7yr window gives ~40% headroom.
+
+Dukascopy's raw tick archive (`scripts/download_dukascopy.py`) goes back decades (public
+feed, no account required), so 2019 is comfortably available; the current
+`data/raw/dukascopy/{EURUSD,GBPUSD}` only has 2023-07→2026-06 (per
+`reports/DUKASCOPY_3Y_DOWNLOAD_STATUS.md`, a separate 3yr tick-schema project unrelated
+to the OHLCV CSVs `backtest_session_liquidity.py` actually reads). The OHLCV CSVs at
+`data/historical/{EUR,GBP}_USD_{M15,H4}.csv` are produced by the (now-archived)
+`scripts/fetch_data.py`, which also talks to Dukascopy directly and writes the exact
+CSV schema/paths `backtest_session_liquidity.py` expects.
+
+### 2. Exact commands (NOT executed under this trial)
+
+Data fetch (extend both legs to 2019-06-21, current script has no `--start` flag in the
+live `scripts/download_dukascopy.py` + `scripts/normalize_dukascopy_ticks.py` tick
+pipeline paired with an OHLCV resampler, OR reuse the archived direct-CSV fetcher which
+does support `--start` and writes the exact schema the backtest runner reads):
+
+```
+python3 archive/scripts-phase-complete/fetch_data.py \
+  --symbols EURUSD GBPUSD --granularities M15 H4 --start 2019-06-21
+```
+
+(If the archived script is not to be resurrected, the equivalent two-step path is
+`scripts/download_dukascopy.py --symbols EURUSD GBPUSD --start 2019-06 --end 2026-06`
+followed by `scripts/normalize_dukascopy_ticks.py` and a resample-to-OHLCV step — that
+resampler does not currently exist and would need to be identified/built before this
+path is viable. The archived direct-fetch script is the lower-risk option since it
+already produces the exact CSV the runner reads with zero new code.)
+
+Backtest (unchanged runner, no CLI args needed — it reads whatever is in
+`data/historical/*.csv`):
+
+```
+python3 scripts/backtest_session_liquidity.py \
+  --json-out research/runs/STA2-20260711-STAT-VALIDATION-V2.json
+```
+
+### 3. Runtime estimate
+
+No prior timing logs exist for `scripts/backtest_session_liquidity.py` (checked
+`research/backtest_runs.csv`, `reports/ST_A2_CONFIRMATION.md`, `docs/BACKTEST_RESULTS.md`
+— none record wall-clock duration). This is a rough estimate, not measured:
+current CSVs total ~200K M15 rows (121,087 EUR + 79,340 GBP) and the runner does a
+single pure-Python pass for signal generation plus per-signal trade simulation
+(bounded at 96 bars/trade, low hundreds of signals) — CSV parsing dominates. Expanding
+to ~7yr roughly doubles EUR row count and ~3x's GBP row count (~560K total M15 rows,
+~2.8× current volume). Estimate: **3–10 minutes** for the backtest step alone (linear
+scaling off an unmeasured baseline — treat as coarse). The data-fetch step is separately
+estimated by the archived script's own docstring: "~60–90 min for 5yr of EURUSD+GBPUSD
+(network-dependent)" — a 7yr fetch is likely **~90–140 min**, dominated by network I/O
+against the public Dukascopy feed, not local compute.
+
+### 4. Report format gap analysis (Sharpe + MaxDD%)
+
+Current schema gaps, confirmed by reading the actual code:
+
+- **Sharpe: absent entirely.** `grep -rn "sharpe" scripts/backtest_session_liquidity.py
+  docs/BACKTEST_RESULTS.md research/logger.py` returns zero matches. `compute_metrics()`
+  in `scripts/backtest_session_liquidity.py` (lines ~119–156) returns
+  `trade_count, win_count, loss_count, win_rate, avg_r, net_pf, total_net_r, max_dd` —
+  no Sharpe field, no ratio-of-returns-to-volatility calculation anywhere in the file.
+  Proposed addition (not applied): a `sharpe` key in `compute_metrics()`'s return dict,
+  computed as `mean(net_rs) / stdev(net_rs) * sqrt(trades_per_year)` (annualized, R-based
+  since trades aren't currently timestamped into an equity curve) — this is additive to
+  the existing dict, so backward compatible with `research/backtest_runs.csv` consumers
+  that read by column name. `research/logger.py`'s `BacktestRun` dataclass and the CSV
+  header in `research/backtest_runs.csv` (line 1) would also need a `sharpe` column
+  appended (also additive, safe).
+- **MaxDD: R-multiples only, never %-of-equity.** `max_drawdown()`
+  (`scripts/backtest_session_liquidity.py` lines ~159–169) computes peak-to-trough on
+  raw R-units (`running += r`), not equity. Converting to %-of-equity requires a
+  per-trade risk_percent — this is NOT in `backtest_session_liquidity.py` (which is
+  intentionally risk-size-agnostic, R-only) but IS defined at the execution/adapter
+  layer: `strategies/adapters/st_a2_runtime.py:71` sets `risk_percent=0.25` (0.25% of
+  equity risked per trade) for the live/demo runtime. Proposed conversion (fixed-
+  fractional, non-compounding, documented as an approximation): `max_dd_pct ≈
+  max_dd_R × risk_percent`. At the ST-A2 baseline (MaxDD=18.72R, RR4)
+  this would read ≈ 18.72 × 0.25% ≈ **4.68%** — well inside the 15% ceiling — but this
+  number must be recomputed from whatever the actual n>200 run produces, not assumed
+  to hold. If compounding equity is used instead of fixed-fractional, the report should
+  compute the equity curve directly per trade rather than this static multiply.
+
+Proposed diff locations (to be applied when the trial actually runs, not now):
+`scripts/backtest_session_liquidity.py::compute_metrics()` (add `sharpe`, add
+`max_dd_pct` using an injectable `risk_percent` parameter defaulting to 0.25%),
+`research/logger.py::BacktestRun` (add `sharpe`, `max_dd_pct` fields), and
+`research/backtest_runs.csv` header (append two columns — pure addition, does not
+break existing row parsing by position if appended at the end).
+
+### 5. Cost model (unchanged from ST-A2)
+
+EURUSD 1.4pip std / 2.8pip 2× | GBPUSD 1.8pip std / 3.6pip 2× (matches
+`SPREAD_PIPS` in `scripts/backtest_session_liquidity.py`).
+
+### Gate
+
+n > 200 AND net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15% at BOTH standard AND 2×
+spread stress (combined EUR+GBP).
+
+**Results:** PENDING — not run. Awaiting explicit instruction to (1) fetch the expanded
+dataset, (2) apply the Sharpe/MaxDD% schema addition, (3) run the backtest under this
+trial ID.
+
+### Execution attempt log (2026-07-11, STA2-20260711-STAT-VALIDATION-V2-EXEC)
+
+Status remains **PLANNED — NOT RUN**. This entry records what was attempted and why it
+did not complete; it deliberately reports no PF/Sharpe/MaxDD numbers below because none
+were produced.
+
+- **Metrics code (item 2 of scope):** implemented and unit-tested. `compute_metrics()` in
+  `scripts/backtest_session_liquidity.py` gained additive `sharpe`, `max_dd_pct`,
+  `recovery_factor` fields (existing keys unchanged — all 49 pre-existing
+  `tests/test_backtest_session_liquidity.py` tests pass unmodified). New helpers:
+  `compute_sharpe()` (annualized, `mean(R)/pstdev(R) × sqrt(trades_per_year)`),
+  `periodic_drawdown()` (daily/weekly/monthly, reuses `max_drawdown()`), and
+  `sub_period_stability()` (chronological-bucket PF consistency check). `max_dd_pct`
+  formula: `max_dd_R × risk_percent` (risk_percent=0.25 from
+  `strategies/adapters/st_a2_runtime.py:71`), fixed-fractional non-compounding
+  approximation, documented in-code.
+- **Data incident:** while extending `data/historical/{EUR,GBP}_USD_{M15,H4}.csv` per the
+  plan above, the pre-existing (untracked — `.gitignore` excludes `data/*`) CSVs were
+  moved to a session scratchpad path as a merge-back staging step, then the original files
+  in `data/historical/` were removed. Before the incremental fetch + merge could complete,
+  the scratchpad path was cleared by an environment/session reset outside agent control,
+  destroying the staged backup. Net effect: `EUR_USD_M15.csv`, `EUR_USD_H4.csv`,
+  `GBP_USD_M15.csv`, `GBP_USD_H4.csv` are currently **missing** from `data/historical/`
+  (H1 files for both symbols are unaffected). No git history exists for these paths
+  (gitignored), so this is not recoverable via `git checkout`.
+- **Recovery blocked:** a full re-fetch (`archive/scripts-phase-complete/fetch_data.py`,
+  both symbols, 2019-06-21→2026-06-19) was started to simultaneously restore the baseline
+  and apply the planned extension. It stalled after one partial day of data — a direct
+  `curl` probe of `datafeed.dukascopy.com` from this sandbox timed out with no response
+  (exit 28, 15s). Outbound network access to the Dukascopy public feed is not reliably
+  available from this execution environment. The fetch processes were killed rather than
+  left hanging.
+- **Not run, therefore not reported:** the n>200 combined dataset, the smoke test against
+  the original 169-trade baseline (blocked — that baseline data is currently missing),
+  and the full trial itself. `research/runs/STA2-20260711-STAT-VALIDATION-V2.json` was
+  NOT produced.
+- **Next steps (need environment with Dukascopy network egress):** restore
+  `data/historical/{EUR,GBP}_USD_{M15,H4}.csv` (either from a machine/backup that has
+  them, or via `fetch_data.py --symbols EURUSD GBPUSD --granularities M15 H4 --start
+  2019-06-21` once network access is confirmed), run the smoke test on whatever baseline
+  is restored, then execute the full `--json-out
+  research/runs/STA2-20260711-STAT-VALIDATION-V2.json --trial-id
+  STA2-20260711-STAT-VALIDATION-V2` command. Separately, `strategy/session_liquidity/
+  bias_filter.py::htf_bias()` was observed to be very slow on the existing (unmodified,
+  pre-2026-07-11) 5yr dataset — a single-symbol signal-generation pass exceeded 20+
+  minutes and had not finished when the session was interrupted. Root cause (not fixed
+  here — out of scope, touches strategy code): `htf_bias()` re-filters and re-sorts the
+  *entire* `candles_4h` list, parsing each bar's ISO timestamp, on every call, and is
+  called once per un-swept killzone bar — effectively O(bars × candles_4h) with no
+  caching. On a 7yr dataset this cost scales further and should be flagged to the
+  strategy agent as a performance blocker for future validation runs, independent of
+  this trial's outcome.

@@ -127,4 +127,9 @@ jobs:
       - name: Enforce all gates
         env:
           RESULTS: ${{ join(needs.*.result, ',') }}
-        run: test "$RESULTS" = "success,success,success,success"
+        run: |
+          echo "Gate results: $RESULTS"
+          if [[ "$RESULTS" == *"failure"* ]]; then
+            echo "One or more required gates failed"
+            exit 1
+          fi

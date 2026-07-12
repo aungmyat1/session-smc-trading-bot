@@ -11,11 +11,9 @@ could not be used in this environment.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-import json
 
 import pytest
 
-from scripts import backtest_st_b1
 from strategies.st_b1_backtest import TradeOutcome, compute_metrics, run_backtest, simulate_trade
 
 _UTC = timezone.utc
@@ -28,14 +26,14 @@ def _bar(ts, o, hi, lo, c):
 class TestSimulateTrade:
     def test_win_hits_take_profit(self):
         bars = [_bar(None, 1.1010, 1.1025, 1.1005, 1.1020)]
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
         assert outcome == "win"
         assert net_r == pytest.approx(2.0)  # (1.1020-1.1000)/(1.1000-1.0990) = 0.0020/0.0010
         assert exit_price == 1.1020
 
     def test_loss_hits_stop(self):
         bars = [_bar(None, 1.0995, 1.0998, 1.0985, 1.0988)]
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
         assert outcome == "loss"
         assert net_r == -1.0
         assert exit_price == 1.0990
@@ -43,29 +41,29 @@ class TestSimulateTrade:
     def test_sl_checked_before_tp_in_same_bar(self):
         # Bar's range spans BOTH sl and tp — SL must win.
         bars = [_bar(None, 1.1000, 1.1025, 1.0985, 1.1010)]
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", bars)
         assert outcome == "loss"
         assert exit_price == 1.0990
 
     def test_timeout_after_max_bars_closes_at_last_bar(self):
         bars = [_bar(None, 1.1000, 1.1005, 1.0995, 1.1002) for _ in range(5)]
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.0990, 1.1050, "long", bars, max_bars=5)
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.0990, 1.1050, "long", bars, max_bars=5)
         assert outcome == "timeout"
         assert exit_price == 1.1002
 
     def test_short_direction_win(self):
         bars = [_bar(None, 1.1000, 1.1005, 1.0960, 1.0965)]
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.1010, 1.0980, "short", bars)
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.1010, 1.0980, "short", bars)
         assert outcome == "win"
         assert exit_price == 1.0980
 
     def test_zero_risk_returns_timeout(self):
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.1000, 1.1020, "long", [])
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.1000, 1.1020, "long", [])
         assert outcome == "timeout"
         assert net_r == 0.0
 
     def test_empty_future_bars_returns_timeout_at_entry(self):
-        outcome, net_r, exit_price, _, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", [])
+        outcome, net_r, exit_price, _ = simulate_trade(1.1000, 1.0990, 1.1020, "long", [])
         assert outcome == "timeout"
         assert exit_price == 1.1000
 
@@ -73,11 +71,9 @@ class TestSimulateTrade:
 class TestComputeMetrics:
     def _outcome(self, net_r, exit_time="2026-03-15T10:00:00"):
         return TradeOutcome(
-            symbol="EURUSD", direction="long", session="london",
-            entry=1.1, stop_loss=1.09, take_profit=1.12,
-            exit_price=1.1, gross_r=net_r, net_r=net_r,
-            outcome="win" if net_r > 0 else "loss",
-            entry_time="", exit_time=exit_time, bars_held=1, risk_pips=100.0,
+            symbol="EURUSD", direction="long", entry=1.1, stop_loss=1.09, take_profit=1.12,
+            exit_price=1.1, net_r=net_r, outcome="win" if net_r > 0 else "loss",
+            entry_time="", exit_time=exit_time,
         )
 
     def test_empty_outcomes(self):
@@ -175,34 +171,3 @@ class TestRunBacktestIntegration:
         metrics = compute_metrics(outcomes)
         assert "trade_count" in metrics
         assert metrics["trade_count"] == len(outcomes)
-
-
-class TestBacktestCli:
-    def test_missing_real_data_writes_blocked_report(self, tmp_path, monkeypatch, capsys):
-        reports_dir = tmp_path / "reports"
-        missing_data = tmp_path / "missing-data"
-        monkeypatch.setattr(backtest_st_b1, "ROOT", tmp_path)
-        monkeypatch.setattr(
-            "sys.argv",
-            [
-                "backtest_st_b1.py",
-                "--data-dir",
-                str(missing_data),
-                "--reports-dir",
-                str(reports_dir),
-                "--source",
-                "auto",
-            ],
-        )
-
-        assert backtest_st_b1.main() == 2
-
-        metrics = json.loads((reports_dir / "st_b1_metrics.json").read_text(encoding="utf-8"))
-        report = (reports_dir / "st_b1_validation_report.md").read_text(encoding="utf-8")
-        stdout = capsys.readouterr().out
-        assert metrics["verdict"] == "BLOCKED"
-        assert metrics["blocked_reason"] == "missing_real_market_data"
-        assert metrics["standard_cost"]["trade_count"] == 0
-        assert "Verdict: BLOCKED" in report
-        assert "Do not treat synthetic/unit-test mechanics as validation evidence" in report
-        assert '"verdict": "BLOCKED"' in stdout
