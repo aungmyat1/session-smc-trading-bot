@@ -13,6 +13,7 @@ from scripts.backtest_session_liquidity import (
     simulate_trade,
     spread_cost_r,
     compute_metrics,
+    compute_sharpe,
     max_drawdown,
     extract_contexts,
     build_time_index,
@@ -279,6 +280,58 @@ class TestComputeMetrics:
         rs = list(range(-5, 6))  # -5..5
         m = compute_metrics(rs)
         assert m["trade_count"] == 11
+
+    def test_sharpe_none_without_trades_per_year(self):
+        """No trades_per_year supplied → sharpe stays None (never silently un-annualized)."""
+        m = compute_metrics([1.0, -1.0, 2.0, -1.0])
+        assert m["sharpe"] is None
+
+    def test_sharpe_populated_when_trades_per_year_given(self):
+        m = compute_metrics([1.0, -1.0, 2.0, -1.0], trades_per_year=40.0)
+        assert m["sharpe"] is not None
+        assert isinstance(m["sharpe"], float)
+
+    def test_empty_has_none_sharpe(self):
+        m = compute_metrics([], trades_per_year=40.0)
+        assert m["sharpe"] is None
+
+
+# ── compute_sharpe ────────────────────────────────────────────────────────────
+
+class TestComputeSharpe:
+
+    def test_none_without_trades_per_year(self):
+        assert compute_sharpe([1.0, -1.0, 2.0]) is None
+
+    def test_none_with_fewer_than_two_trades(self):
+        assert compute_sharpe([1.0], trades_per_year=40.0) is None
+        assert compute_sharpe([], trades_per_year=40.0) is None
+
+    def test_zero_stdev_returns_zero(self):
+        # Constant series → population stdev = 0 → defined as 0.0, not division by zero.
+        assert compute_sharpe([1.0, 1.0, 1.0], trades_per_year=40.0) == 0.0
+
+    def test_positive_mean_gives_positive_sharpe(self):
+        s = compute_sharpe([2.0, -1.0, 2.0, -1.0, 2.0], trades_per_year=40.0)
+        assert s > 0
+
+    def test_negative_mean_gives_negative_sharpe(self):
+        s = compute_sharpe([-2.0, 1.0, -2.0, 1.0, -2.0], trades_per_year=40.0)
+        assert s < 0
+
+    def test_higher_trades_per_year_scales_up_magnitude(self):
+        rs = [2.0, -1.0, 2.0, -1.0]
+        s_low  = compute_sharpe(rs, trades_per_year=10.0)
+        s_high = compute_sharpe(rs, trades_per_year=100.0)
+        assert abs(s_high) > abs(s_low)
+
+    def test_matches_manual_formula(self):
+        rs = [1.0, -1.0, 2.0, -0.5, 1.5]
+        trades_per_year = 20.0
+        mean = sum(rs) / len(rs)
+        sd = (sum((r - mean) ** 2 for r in rs) / len(rs)) ** 0.5
+        expected = (mean / sd) * (trades_per_year ** 0.5)
+        assert abs(compute_sharpe(rs, trades_per_year) - expected) < 1e-9
 
 
 # ── max_drawdown ──────────────────────────────────────────────────────────────
