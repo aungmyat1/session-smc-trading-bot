@@ -653,6 +653,29 @@ Day-to-day operator readiness for the current demo scope:
   unretired pending the actual pipeline port above.
 - Acceptance: exactly one execution engine has a systemd unit; crash-mid-order test resolves
   automatically on restart. **Not met yet.**
+- [x] **Sprint 2.4 — 2026-07-05**: `RiskFirewall` — the "real, non-allow-all risk gate" Sprint 2.1
+  explicitly left out of scope — landed as `production.engine.EmergencyStopRiskGate`, wrapping
+  `AllowAllRiskGate` in `scripts/run_st_a2_demo.py`'s `CanonicalExecutionPipeline`. It reads
+  `dashboard/control_state.py`'s `load_control_state()` fresh on every `pipeline.submit()` call
+  (never cached, so a stop activated or cleared mid-run takes effect on the very next intent) and
+  rejects before the adapter — and therefore the broker — is ever reached whenever an emergency
+  stop is active. This is defense-in-depth, not a behavior change for the deployed runner: `_tick()`
+  already returns before reaching signal generation while blocked (Phase 1), so `AllowAllRiskGate`
+  alone was already safe in practice; this gate protects any *future* caller of `pipeline.submit()`
+  that doesn't replicate that early-return exactly — including whatever this Phase 2 port eventually
+  produces. Also added a per-tick structured log line explaining the pause (reason/source/
+  activated_at) — previously only the first tick of a new activation logged anything, every
+  blocked tick now does. Deliberately does **not** touch `run_portfolio.py`: extending that file
+  independently of this port would recreate the exact two-runner drift this phase exists to close
+  (confirmed against this file's own recorded decision above before starting). Dashboard/monitoring
+  exposure needed no new work — `control_state.json`'s `emergency_stop` was already surfaced via
+  `/api/operations/health`, `/overview`, and the control endpoints. Evidence:
+  `tests/production/test_canonical_execution_pipeline.py` (7 new: gate unit tests, full-pipeline
+  rejection/approval, fresh-state-not-cached regression), `tests/execution/test_emergency_stop_integration.py`
+  (4 new: active-at-startup, cleared-during-runtime-resumes-normal-processing, broker-disconnect-
+  while-active graceful degradation, structured pause logging). 11 new tests (20 total across both
+  files), all passing; `run_portfolio.py`'s own known gaps (this table's Phase 2 row above) are
+  unchanged.
 
 ### Phase 3 — Consolidate Dashboard, API, and Strategy-Loader Duplication
 - Merge `app.py`/`live_app.py`/`status_server.py` into one backend serving both operational and
