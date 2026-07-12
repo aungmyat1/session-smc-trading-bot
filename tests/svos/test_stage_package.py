@@ -246,7 +246,7 @@ def test_write_stage_report_package_audit_fail_blocks_downstream(tmp_path):
     # Downstream stages should be BLOCKED
     statuses = {a["stage"]: a["status"] for a in result.stage_artifacts}
     assert statuses["strategy_audit"] == "FAIL"
-    assert statuses.get("historical_replay") in ("BLOCKED", "NOT_RUN")
+    assert statuses.get("historical_replay") == "BLOCKED"
 
 
 def test_write_stage_report_package_creates_supporting_reports(tmp_path):

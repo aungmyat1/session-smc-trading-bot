@@ -266,5 +266,5 @@ def test_pg_collect_evidence_ids_with_bindings(tmp_path):
             stage="ROBUSTNESS_VALIDATION",
         )
 
-    # Just verify it ran without error (binding iteration may vary by mock)
     assert isinstance(result, tuple)
+    assert binding_id in result

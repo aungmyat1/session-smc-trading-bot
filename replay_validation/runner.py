@@ -82,7 +82,11 @@ def _compute_metrics(
 
     net_pnls: list[float] = []
     for t in trades:
-        gross = float(t.get("gross_pnl") or t.get("pnl_pips") or t.get("pnl_r") or 0.0)
+        gross = 0.0
+        for _key in ("gross_pnl", "pnl_pips", "pnl_r"):
+            if t.get(_key) is not None:
+                gross = float(t[_key])
+                break
         spread_cost = applied_spread * 2  # round-trip
         net = gross - spread_cost
         net_pnls.append(net)
@@ -105,13 +109,13 @@ def _compute_metrics(
 
     # Max drawdown
     equity = 0.0
-    peak = 0.0
+    peak = net_pnls[0] if net_pnls else 0.0
     max_dd = 0.0
     for p in net_pnls:
         equity += p
         if equity > peak:
             peak = equity
-        dd = (peak - equity) / abs(peak) * 100 if peak > 0 else 0.0
+        dd = (peak - equity) / abs(peak) * 100 if peak != 0 else abs(equity) * 100
         if dd > max_dd:
             max_dd = dd
 
