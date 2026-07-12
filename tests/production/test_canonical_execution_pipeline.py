@@ -7,9 +7,11 @@ import pytest
 
 from production.engine.execution_pipeline import (
     AdapterResult,
+    AllowAllRiskGate,
     CallbackExecutionAdapter,
     CanonicalExecutionPipeline,
     DemoExecutionAdapter,
+    EmergencyStopRiskGate,
     ExecutionIntent,
     ExecutionMode,
     ReplayExecutionAdapter,
@@ -152,3 +154,132 @@ async def test_runtime_validates_package_before_pipeline_construction(tmp_path: 
     with pytest.raises(PermissionError):
         await authority.run_pipeline(factory, workload)
     assert constructed is False
+
+
+class _CountingAdapter(CallbackExecutionAdapter):
+    def __init__(self) -> None:
+        self.calls = 0
+
+        async def _execute(_intent: ExecutionIntent) -> AdapterResult:
+            self.calls += 1
+            return AdapterResult("SUBMITTED", reference="order-1")
+
+        super().__init__(ExecutionMode.DEMO, _execute)
+
+
+def test_emergency_stop_gate_rejects_when_active() -> None:
+    gate = EmergencyStopRiskGate(
+        AllowAllRiskGate(),
+        state_loader=lambda: {"emergency_stop": {"active": True, "reason": "manual pause", "activated_at": "t1", "source": "control_pause"}},
+    )
+
+    decision = gate.evaluate(_intent())
+
+    assert decision.approved is False
+    assert decision.reason == "emergency stop active"
+    assert decision.details["reason"] == "manual pause"
+    assert decision.details["source"] == "control_pause"
+
+
+def test_emergency_stop_gate_delegates_to_inner_when_inactive() -> None:
+    inner = _RiskGate(approved=True)
+    gate = EmergencyStopRiskGate(inner, state_loader=lambda: {"emergency_stop": {"active": False}})
+
+    decision = gate.evaluate(_intent())
+
+    assert decision.approved is True
+    assert inner.calls == 1
+
+
+def test_emergency_stop_gate_rejects_even_when_inner_would_approve() -> None:
+    inner = _RiskGate(approved=True)
+    gate = EmergencyStopRiskGate(inner, state_loader=lambda: {"emergency_stop": {"active": True, "reason": "close-all"}})
+
+    decision = gate.evaluate(_intent())
+
+    assert decision.approved is False
+    assert inner.calls == 0  # inner gate never consulted once emergency stop is active
+
+
+def test_emergency_stop_gate_reads_state_fresh_on_every_call_not_cached() -> None:
+    """Regression: a stop activated or cleared mid-run must take effect on
+    the very next intent, not just at gate construction time."""
+    active = {"emergency_stop": {"active": True, "reason": "manual pause"}}
+    gate = EmergencyStopRiskGate(AllowAllRiskGate(), state_loader=lambda: active)
+
+    first = gate.evaluate(_intent())
+    active["emergency_stop"] = {"active": False}
+    second = gate.evaluate(_intent())
+
+    assert first.approved is False
+    assert second.approved is True
+
+
+def test_emergency_stop_gate_does_not_forward_context_to_a_single_arg_inner_gate() -> None:
+    """Regression: AllowAllRiskGate (and any other RiskGate declaring only
+    evaluate(self, intent)) must not receive a context arg it can't accept —
+    previously this raised TypeError whenever a context was supplied."""
+    gate = EmergencyStopRiskGate(AllowAllRiskGate(), state_loader=lambda: {"emergency_stop": {"active": False}})
+
+    decision = gate.evaluate(_intent(), context={"some": "context"})
+
+    assert decision.approved is True
+
+
+def test_emergency_stop_gate_forwards_context_to_a_context_aware_inner_gate() -> None:
+    class _ContextAwareGate:
+        def __init__(self) -> None:
+            self.received_context = None
+
+        def evaluate(self, _intent: ExecutionIntent, context: object = None) -> RiskDecision:
+            self.received_context = context
+            return RiskDecision(True, "approved with context")
+
+    inner = _ContextAwareGate()
+    gate = EmergencyStopRiskGate(inner, state_loader=lambda: {"emergency_stop": {"active": False}})
+
+    gate.evaluate(_intent(), context={"some": "context"})
+
+    assert inner.received_context == {"some": "context"}
+
+
+@pytest.mark.asyncio
+async def test_emergency_stop_gate_blocks_submission_through_the_full_pipeline() -> None:
+    """End-to-end: with the gate wired into the pipeline exactly as
+    run_st_a2_demo.py wires it, an active emergency stop must reject the
+    intent before the adapter (and therefore the broker) is ever reached."""
+    adapter = _CountingAdapter()
+    gate = EmergencyStopRiskGate(
+        AllowAllRiskGate(),
+        state_loader=lambda: {"emergency_stop": {"active": True, "reason": "manual pause"}},
+    )
+    pipeline = CanonicalExecutionPipeline(mode="demo", risk_gate=gate, adapter=adapter)
+
+    async def workload(active_pipeline: CanonicalExecutionPipeline) -> None:
+        result = await active_pipeline.submit(_intent())
+        assert result.status == "REJECTED"
+
+    await pipeline.run(_context(), workload)
+
+    assert adapter.calls == 0
+    rejection = next(e for e in pipeline.events if e.event_type == "risk_decision")
+    assert rejection.approved is False
+    assert rejection.reason == "emergency stop active"
+
+
+@pytest.mark.asyncio
+async def test_emergency_stop_gate_allows_submission_when_inactive() -> None:
+    adapter = _CountingAdapter()
+    gate = EmergencyStopRiskGate(
+        AllowAllRiskGate(),
+        state_loader=lambda: {"emergency_stop": {"active": False}},
+    )
+    pipeline = CanonicalExecutionPipeline(mode="demo", risk_gate=gate, adapter=adapter)
+
+    async def workload(active_pipeline: CanonicalExecutionPipeline) -> None:
+        result = await active_pipeline.submit(_intent())
+        assert result.status == "SUBMITTED"
+
+    await pipeline.run(_context(), workload)
+
+    assert adapter.calls == 1
