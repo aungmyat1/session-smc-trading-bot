@@ -7,6 +7,7 @@ There is deliberately no live adapter in this build.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import AsyncIterable, Awaitable, Callable, Mapping
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
@@ -249,6 +250,54 @@ class AllowAllRiskGate:
 
     def evaluate(self, intent: ExecutionIntent) -> RiskDecision:
         return RiskDecision(True, "risk policy approved")
+
+
+class EmergencyStopRiskGate:
+    """Rejects every intent while a control-state emergency stop is active;
+    otherwise delegates to `inner`. SYSTEM2_MASTER_PLAN.md Phase 2's
+    documented "RiskFirewall" gap: a real, non-allow-all gate so the
+    emergency stop is enforced structurally at the point of submission, not
+    only by a caller remembering to check control_state before calling
+    pipeline.submit() at all.
+
+    `state_loader` is called fresh on every evaluate() — never cached — so a
+    stop activated or cleared mid-run takes effect on the very next intent.
+    """
+
+    def __init__(
+        self,
+        inner: RiskGate,
+        *,
+        state_loader: Callable[[], Mapping[str, Any]],
+    ) -> None:
+        self.inner = inner
+        self.state_loader = state_loader
+        # Determined once, not per-call: does `inner.evaluate` accept a
+        # second (context) positional argument? Forwarding context to a
+        # gate that only declares evaluate(self, intent) raises TypeError —
+        # checked here via signature inspection rather than relying on
+        # exception handling as control flow at call time.
+        try:
+            self._inner_accepts_context = len(inspect.signature(inner.evaluate).parameters) >= 2
+        except (TypeError, ValueError):
+            self._inner_accepts_context = False
+
+    def evaluate(self, intent: ExecutionIntent, context: Any = None) -> RiskDecision | Awaitable[RiskDecision]:
+        state = self.state_loader() or {}
+        emergency = state.get("emergency_stop") or {}
+        if emergency.get("active"):
+            return RiskDecision(
+                False,
+                "emergency stop active",
+                details={
+                    "reason": str(emergency.get("reason", "")),
+                    "activated_at": str(emergency.get("activated_at", "")),
+                    "source": str(emergency.get("source", "")),
+                },
+            )
+        if context is not None and self._inner_accepts_context:
+            return self.inner.evaluate(intent, context)
+        return self.inner.evaluate(intent)
 
 
 async def submit_all(
