@@ -1,0 +1,92 @@
+# Strategy Portfolio Configuration
+# execution_mode: demo = live demo orders | shadow = signal-only, no order
+# Risk tiers: tier1=0.30%, tier2=0.20%, tier3=0.10%
+#
+# Containment policy (2026-07-12): config/strategy_catalog.yaml is the approval
+# source of truth. Only ST-A2 has completed backtest evidence and is currently
+# deployed (smc-demo-runner.service, single-strategy runner). Every strategy
+# without completed replay+backtest evidence per strategy_catalog.yaml runs in
+# shadow (signal-only, no broker orders) until it clears validation. ST-A2
+# itself remains demo — do not disable it here; its DEFERRED_REVALIDATION
+# SVOS status is a separate, tracked governance gap (CLAUDE.md §6), not a
+# reason to stop the currently-running, currently-monitored demo instance.
+
+portfolio:
+  max_trades_per_day:      4        # Target 2-3 trades/day, allow a small buffer
+  max_open_positions:      3
+  daily_loss_limit_pct:    2.0
+  weekly_loss_limit_pct:   5.0
+  monthly_loss_limit_pct:  8.0
+  min_confidence:          0.65
+
+correlation_groups:
+  - [EURUSD, GBPUSD, EURGBP]       # EUR group
+  - [GBPUSD, GBPJPY, EURGBP]       # GBP group
+  - [USDJPY, EURJPY, GBPJPY]       # JPY group
+
+strategies:
+
+  ST-A2:
+    enabled:        true
+    execution_mode: demo            # tier1 — backtest validated
+    risk:           0.30
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
+    min_confidence: 0.70
+    description:    "Session sweep + 15M CHoCH + BOS + FVG entry"
+
+  LondonBreakout:
+    enabled:        true
+    execution_mode: shadow          # contained 2026-07-12 — replay/backtest still pending in strategy_catalog.yaml
+    risk:           0.20
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
+    min_confidence: 0.60
+    description:    "Asian range breakout + London retest"
+
+  NYMomentum:
+    enabled:        true
+    execution_mode: shadow          # contained 2026-07-12 — replay/backtest still pending in strategy_catalog.yaml
+    risk:           0.20
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
+    min_confidence: 0.60
+    description:    "NY sweep of London H/L + retest"
+
+  AdaptiveSMC:
+    enabled:        true
+    execution_mode: shadow          # tier3 — observe only until validated
+    risk:           0.10
+    pairs:          [EURUSD, GBPUSD]
+    min_confidence: 0.80
+    description:    "Adaptive SMC session strategy (shadow)"
+
+  VWAPMeanReversion:
+    enabled:        true
+    execution_mode: shadow          # tier3 — observe only until validated
+    risk:           0.10
+    pairs:          [EURUSD, GBPUSD, XAUUSD]
+    min_confidence: 0.65
+    description:    "VWAP fade + liquidity sweep + reclaim (shadow)"
+    parameters:
+      default:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.35
+        extreme_atr_mult: 1.0
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      EURUSD:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.35
+        extreme_atr_mult: 0.95
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      GBPUSD:
+        min_session_bars: 8
+        sweep_buffer_mult: 0.40
+        extreme_atr_mult: 0.95
+        reclaim_atr_mult: 0.6
+        tp_rr: 1.8
+      XAUUSD:
+        min_session_bars: 12
+        sweep_buffer_mult: 0.55
+        extreme_atr_mult: 1.2
+        reclaim_atr_mult: 0.7
+        tp_rr: 1.7
