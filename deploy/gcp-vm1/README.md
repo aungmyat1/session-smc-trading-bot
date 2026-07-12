@@ -54,6 +54,14 @@ To keep the journal reflected in PostgreSQL, enable
 [`systemd/d2e3-journal-sync.timer`](systemd/d2e3-journal-sync.timer) and its
 paired service.
 
+To run `scripts/vps_health_check.sh` on a schedule instead of manually (see
+`docs/vps/OPERATOR_RUNBOOK.md` #1), install
+[`systemd/vps-health-check.timer`](systemd/vps-health-check.timer) and its
+paired service — runs every 15 minutes, logs PASS/WARN/FAIL output to the
+journal (`journalctl -u vps-health-check.service`), exit code 2 (DEGRADED) is
+treated as a non-failure by the unit so the known demo-mode `health_score`
+baseline doesn't spam `systemctl --failed`.
+
 ## Standalone live dashboard
 
 The live trading dashboard is now a separate Flask app from SVOS.

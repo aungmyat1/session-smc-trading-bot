@@ -34,6 +34,16 @@ packages and read reports; VPS 2 cannot call the broker.
 - PostgreSQL 16 is active locally.
 - The existing bot and spread-capture processes are active and must not be
   interrupted during platform construction.
+- Operational note (2026-07-05): VPS 1's 3.8 GiB RAM is shared between
+  production (PostgreSQL, `smc-demo-runner`, dashboard) and the permitted
+  "source development" workload (VS Code Remote-SSH + Claude Code + MCP
+  servers). The dev-tooling side can spike to several GB RSS and repeatedly
+  triggers the kernel OOM killer against the remote extension host — this
+  does not affect production, which runs at `OOMScoreAdjust=-500`/`-900`
+  (see `/etc/systemd/system/{postgresql@16-main,smc-demo-runner}.service.d/oom.conf`).
+  Use `scripts/ops/dev_process_audit.py`, `scripts/ops/mem_monitor.py`, and
+  `scripts/ops/dev_cleanup.py` to audit/monitor/clean up orphaned dev
+  processes that accumulate across extension-host restarts.
 
 ### VPS 2
 

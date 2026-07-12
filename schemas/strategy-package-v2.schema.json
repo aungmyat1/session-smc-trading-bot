@@ -29,7 +29,7 @@
     "adapter_id": {"type": "string", "minLength": 1},
     "adapter_version": {"type": "string", "minLength": 1},
     "adapter_code_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "runtime_api_version": {"const": "system2-runtime/v1"},
+    "runtime_api_version": {"const": "system2-runtime/v2"},
     "instruments": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "timeframes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "parameter_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
@@ -38,7 +38,7 @@
     "live_trading_enabled": {"const": false},
     "members": {
       "type": "object",
-      "minProperties": 6,
+      "minProperties": 7,
       "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
     }
   }

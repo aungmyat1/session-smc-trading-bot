@@ -1,6 +1,11 @@
 # System 2 — Roadmap
 
-- Last updated: 2026-07-04
+- Last updated: 2026-07-07
+- **Feature Expansion: FROZEN as of 2026-07-07** (SYS2-T014 closure) — new execution
+  features, broker integrations, execution abstractions, and dashboard expansion require a
+  new, explicitly-scoped milestone decision. Bug/security/reliability fixes (and production
+  blockers) remain allowed.
+  Rationale and lift criteria: `docs/governance/releases/SYS2-T014-CLOSURE.md`.
 - Platform-level roadmap (execution engine consolidation, risk ledger, restart recovery,
   observability): `SYSTEM2_MASTER_PLAN.md` Phases 1-4 at the repo root — authoritative, status
   summarized below, not duplicated in full.
@@ -19,6 +24,7 @@
 | 5 | Real-Time Operations Layer (backend) | **Done, 2026-07-04** — `dashboard/events.py` (unified event schema + in-process broadcaster/poller), `GET /ws`, and 5 new REST endpoints landed in `status_server.py`; no Redis, no new services, per owner decision. Load-tested: 0 event loss, 25 concurrent subscribers. Frontend integration not started |
 | 6 | Authentication & RBAC (FastAPI backend) | **Done, 2026-07-04** — `dashboard/rbac.py` reuses `dashboard/auth.py`'s role model; gates `/api/emergency-stop[/clear]` and all `/api/control/*`. Flask backend's other mutation routes and any frontend login UI remain open |
 | 7 | Operator Controls (backend) | **Done, 2026-07-04** — `/api/control/{pause,resume,close-all,toggle-strategy}`, RBAC + CONFIRM-token gated, delegating to the existing `activate_emergency_stop`/`clear_emergency_stop` state machine. Frontend wiring (`SocketContext.tsx`) not started |
+| SYS2-T014 | Periodic execution-record reconciliation | **Done, 2026-07-07 (PR #27)** — `ExecutionRecord`s stuck at `BROKER_ACKNOWLEDGED`/`RECOVERY_PENDING` (risk-register #14) previously only resolved at process startup; `reconcile_pending_executions()` (unmodified) now also runs mid-session on a configurable cadence with a minimum pending-age gate. No execution-state-machine, `TradeManager`, or database changes. Design record: `docs/systems/system2/SYS2-T014-DESIGN.md`. Follow-ups tracked as SYS2-T015–T018 (CI matrix coverage, logging clarity, scheduler docs, integration test), not blocking |
 
 ### Next implementation milestones (in order)
 

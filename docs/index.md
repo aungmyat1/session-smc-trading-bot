@@ -115,6 +115,27 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
 - [DASHBOARD_READINESS_INTERFACES.md](systems/system2/DASHBOARD_READINESS_INTERFACES.md) — backend interfaces the dashboard can consume
 - [SMC_DEMO_RUNNER_ANALYSIS.md](systemd/SMC_DEMO_RUNNER_ANALYSIS.md) — root-cause analysis of the deployed `smc-demo-runner.service`
 
+## GitHub Repository Governance (2026-07-05)
+
+PR/branch audit trail and the 2026-07-05 repository stabilization pass:
+
+- [PR_AUDIT.md](github/PR_AUDIT.md) — every PR, state, purpose, recommendation
+- [BRANCH_AUDIT.md](github/BRANCH_AUDIT.md) — every branch, merge status, recommendation
+- [BRANCH_DELETE_VERIFICATION.md](github/BRANCH_DELETE_VERIFICATION.md) — verified-safe-to-delete branches
+- [DRAFT_PR_REVIEW.md](github/DRAFT_PR_REVIEW.md) — stale draft PR closure evidence
+- [DEPENDABOT_REVIEW.md](github/DEPENDABOT_REVIEW.md) — dependency PR audit
+- [LOCAL_MAIN_AUDIT.md](github/LOCAL_MAIN_AUDIT.md) — local `main` divergence investigation
+- [CLEANUP_PLAN.md](github/CLEANUP_PLAN.md) — proposed cleanup execution order
+- [PR21_PR22_INTEGRATION_REPORT.md](github/PR21_PR22_INTEGRATION_REPORT.md) — merge conflict/sequencing analysis
+- [PR22_FIX_REPORT.md](github/PR22_FIX_REPORT.md) — safety-critical review findings fixed before PR #22 merged
+- [REPOSITORY_HEALTH_REPORT.md](github/REPOSITORY_HEALTH_REPORT.md) — cleanup Phase 2 execution outcome
+- [REPOSITORY_CLEANUP_REPORT.md](github/REPOSITORY_CLEANUP_REPORT.md) — 2026-07-05 root-doc reorganization + branch deletion
+- [CI_CD_HEALTH_REPORT.md](audit/CI_CD_HEALTH_REPORT.md) — CI/CD workflow coverage audit
+- [DEPENDENCY_UPDATE_PLAN.md](audit/DEPENDENCY_UPDATE_PLAN.md) — dependency maintenance plan
+- [EXECUTION_LAYER_GAP_ANALYSIS.md](audit/EXECUTION_LAYER_GAP_ANALYSIS.md) — System 2 completeness gap analysis
+- [STABILIZATION_ROADMAP.md](audit/STABILIZATION_ROADMAP.md) — prioritized implementation roadmap
+- [DEMO_TRADING_RISK_ASSESSMENT.md](audit/DEMO_TRADING_RISK_ASSESSMENT.md) — risk register for proceeding toward demo trading
+
 ## Dashboard Integration (2026-07-04)
 
 - [DASHBOARD_STATUS.md](dashboard/DASHBOARD_STATUS.md) — assessment of the deployed dashboard backend

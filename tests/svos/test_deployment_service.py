@@ -72,6 +72,12 @@ def test_build_strategy_package_creates_immutable_archive_and_manifest(tmp_path:
     assert "approval.json" in names
     assert "strategy_spec.md" in names
     assert "evidence_manifest.json" in names
+    assert "governance_snapshot.json" in names
+
+    with tarfile.open(Path(package["archive_path"]), "r:gz") as archive:
+        snapshot_payload = json.loads(archive.extractfile("governance_snapshot.json").read().decode("utf-8"))
+    assert "ST-A2" in snapshot_payload.get("strategies", {})
+    assert manifest["runtime_api_version"] == "system2-runtime/v2"
 
 
 def test_build_strategy_package_requires_system1_private_key(tmp_path: Path, monkeypatch) -> None:

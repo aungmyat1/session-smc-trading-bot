@@ -49,6 +49,7 @@ def _canonical_package(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             parameters={"symbols": ["EURUSD"], "session": "London"},
             risk_policy={"policy_id": "demo-v1"},
             evidence={"virtual_demo": {"status": "PASS"}},
+            governance_snapshot={"strategies": {"ST-A2": {"latest_version": "2.1.0", "evidence_count": 1, "decision_count": 1, "approval_count": 1, "latest_approval": None}}},
             approval={"decision": "APPROVED", "approved_at": "2026-01-01T00:00:00+00:00", "expires_at": "2099-01-01T00:00:00+00:00", "revoked": False},
             signing_key=private_key,
         ).archive_path

@@ -134,6 +134,7 @@ async def test_runtime_validates_package_before_pipeline_construction(tmp_path: 
         parameters={"symbols": ["EURUSD"]},
         risk_policy={"policy_id": "demo", "live_trading_enabled": False},
         evidence={"replay": {"status": "PASS"}},
+        governance_snapshot={"strategies": {"ST-A2": {"latest_version": "2.1", "evidence_count": 1, "decision_count": 1, "approval_count": 1, "latest_approval": None}}},
         approval={"decision": "APPROVED", "approved_at": "2026-01-01T00:00:00+00:00", "expires_at": "2099-01-01T00:00:00+00:00", "revoked": False},
         signing_key=PRIVATE_KEY,
     )
