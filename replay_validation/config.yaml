@@ -17,7 +17,7 @@ spread_config:
 stress_test:
   enabled: true
   multiplier: 2.0              # Stress spread = standard * multiplier
-  minimum_profit_factor: 1.0   # PF gate at stress spread (lower than standard gate)
+  minimum_profit_factor: 1.25  # PF gate at stress spread — same as standard gate (§0.3)
 
 output:
   save_json: true

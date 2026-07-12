@@ -39,11 +39,19 @@ The trading bot is strictly downstream. It executes only strategies that hold a 
 
 ## Current Strategy Status
 
-**No strategy is currently active.**
+**No strategy holds Production Approval (live capital).** `LIVE_TRADING=false` / `DEMO_ONLY=true` are enforced.
 
-- ST-A2 (Session Liquidity Reversal) is **DEFERRED_REVALIDATION** — preserved but not qualified.
-- ST-A: FAIL (2× spread stress failure on GBPUSD)
-- EXP05: FAIL (no variant clears all 4 gates)
+Five strategies are running in demo/shadow execution via `config/strategy_portfolio.yaml` — this is a tracked governance gap, not evidence of SVOS approval:
+
+| Strategy | Mode | SVOS Lifecycle |
+|---|---|---|
+| ST-A2 (Session Liquidity Reversal) | demo, tier1 | DEFERRED_REVALIDATION |
+| LondonBreakout | demo, tier2 | not registered |
+| NYMomentum | demo, tier2 | not registered |
+| AdaptiveSMC | shadow, tier3 | not registered |
+| VWAPMeanReversion | shadow, tier3 | not registered |
+
+Prior qualification results: ST-A FAIL (2× spread stress), EXP05 FAIL (no variant clears all 4 gates).
 
 ---
 
