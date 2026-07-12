@@ -1,18 +1,13 @@
 # System 2 — Roadmap
 
-- Last updated: 2026-07-07
-- Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
-  single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
-  at the repo root is the current System 2 readiness implementation plan. This roadmap is
-  subordinate and must not be used to authorize strategy approval, paper/demo execution, or live
-  trading.
-- Current invariant: System 2 may proceed to package-ready disabled/shadow readiness with signed
-  synthetic or fixture packages only. No strategy currently has Production Approval.
+- Last updated: 2026-07-12
 - **Feature Expansion: FROZEN as of 2026-07-07** (SYS2-T014 closure) — new execution
   features, broker integrations, execution abstractions, and dashboard expansion require a
   new, explicitly-scoped milestone decision. Bug/security/reliability fixes (and production
   blockers) remain allowed.
   Rationale and lift criteria: `docs/governance/releases/SYS2-T014-CLOSURE.md`.
+  (The Emergency-Stop RiskFirewall row below is a reliability/safety fix — permitted under
+  this freeze, not a feature-expansion exception.)
 - Platform-level roadmap (execution engine consolidation, risk ledger, restart recovery,
   observability): `SYSTEM2_MASTER_PLAN.md` Phases 1-4 at the repo root — authoritative, status
   summarized below, not duplicated in full.
@@ -26,6 +21,7 @@
 | 2.3 | Transactional persistence | **Done** — `operations.*` Postgres schema (migration 004) applied, ORM added, best-effort recorder wired into the deployed runner's pipeline events and recovery checkpoints (2026-07-04) |
 | 2.x | Deployment fix: `smc-demo-runner.service` | **Done, 2026-07-04** — was crash-looping since creation on an unapproved strategy name, never actually running anything in production; fixed to run `ST-A2`, verified stable (0 restarts, broker connected, clean tick cycles). See `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md` |
 | 2.y | Execution Pipeline Consolidation, Tier 1 | **Done, 2026-07-04** — one canonical lifecycle confirmed and documented; 411-line dead "Production Platform v2" cluster removed; two dormant-but-real stacks (`bot.py`, `adaptive/run_shadow.py`) documented, deliberately not touched (Tier 3, owner decision needed). See `EXECUTION_PIPELINE_INVENTORY.md`, `CANONICAL_EXECUTION_PIPELINE.md`, `PIPELINE_CONSOLIDATION_PLAN.md` |
+| 2.z | Emergency-Stop RiskFirewall (PR #24) | **Done, 2026-07-05** — `production.engine.EmergencyStopRiskGate` closes the "RiskFirewall — out of scope for Sprint 2.1" gap for the deployed runner: wired into `run_st_a2_demo.py`'s `CanonicalExecutionPipeline`, rejects any submission at the pipeline level while `control_state.json`'s emergency stop is active (defense-in-depth on top of `_tick()`'s existing early-return). Deliberately does not touch `run_portfolio.py` — that stays gated on the Tier 2/3 retirement/feature-port decision above. See `docs/github/PR22_FIX_REPORT.md` for the related resume-scoping fix (`emergency_stop.source` tracking) this builds on. |
 | 3 | Consolidate dashboard/API/strategy-loader duplication | **Backend done, frontend integrated (LIVE tab)** — 8 `/api/operations/*` endpoints (Phase 5) plus `/api/new-dashboard/live-state` (Phase 6) now on `status_server.py`, the only deployed backend; the Gai dashboard's LIVE tab consumes the latter end-to-end, browser-verified (2026-07-04). `app.py`/`live_app.py` themselves not yet retired; SVOS/Suggestions tabs and Operator Controls remain unwired |
 | 4 | Observability and deployment hygiene | **Partial** — `operations.*` Postgres tables (Sprint 2.3) have a read path (Phase 5), now also a real-time push path (`/ws`, below), but the LIVE tab doesn't surface either yet (console-logs panel still empty); `/api/v1/production/health` heartbeat-file gap remains |
 | 5 | Real-Time Operations Layer (backend) | **Done, 2026-07-04** — `dashboard/events.py` (unified event schema + in-process broadcaster/poller), `GET /ws`, and 5 new REST endpoints landed in `status_server.py`; no Redis, no new services, per owner decision. Load-tested: 0 event loss, 25 concurrent subscribers. Frontend integration not started |

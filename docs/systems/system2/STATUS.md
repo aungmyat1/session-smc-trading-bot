@@ -1,12 +1,10 @@
 # System 2 — Status
 
-- Last updated: 2026-07-04
-- Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
-  single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
-  at the repo root is the current System 2 readiness implementation plan. This file is a dated
-  status index and must not be used to authorize paper/demo/live execution or strategy approval.
-- Current invariant: no strategy has Production Approval. Any references below to a deployed
-  strategy runner describe historical/demo infrastructure state only, not SVOS approval evidence.
+- Last updated: 2026-07-05
+- Authoritative platform document: `SYSTEM2_MASTER_PLAN.md` at the repo root — "supersede, don't
+  fork" per its own Definition of Done. This file is a shorter status index across both the
+  platform (execution/risk) and dashboard-integration workstreams, updated at the end of each
+  implementation milestone.
 
 ## Platform (execution / risk engine) — current state
 
@@ -121,6 +119,33 @@
     endpoints, WebSocket delivery), `tests/core/test_trade_journal_db.py::test_summary_by_strategy_*`.
   - Not yet done: no frontend widget subscribes to `/ws`; the remaining Flask-side mutation routes
     (position close/protect/cancel, activation) are not yet ported to `dashboard/rbac.py`.
+- **PR #22 safety-critical review fixes, 2026-07-05:** lifecycle-transition DB commit/rollback
+  correctness, kill-switch routed to the real `/api/emergency-stop` control path, bearer-auth
+  role-escalation hole closed, `/ws`/read-endpoint RBAC, stale-close-price scoring, a critical
+  `_last_positions`-ordering bug, event-payload double-wrapping, and a blank-`broker_order_id`
+  journal lookup bug — see `docs/github/PR22_FIX_REPORT.md`. Includes a targeted follow-up fixing
+  `/api/control/toggle-strategy`'s resume from clearing an emergency stop it didn't create
+  (`emergency_stop.source` now tracks which control path created a stop).
+- **PR #24 — Emergency-Stop RiskFirewall, 2026-07-05:** the `SYSTEM2_MASTER_PLAN.md`-documented
+  "RiskFirewall (a real, non-allow-all risk gate) — out of scope for Sprint 2.1" gap is now closed
+  for the deployed runner. New `production.engine.EmergencyStopRiskGate` wraps `AllowAllRiskGate`
+  in `scripts/run_st_a2_demo.py`'s `CanonicalExecutionPipeline`: reads `control_state.json` fresh on
+  every `pipeline.submit()` call (never cached) and rejects the intent before the adapter — and
+  therefore the broker — is ever reached, whenever an emergency stop is active. This is
+  defense-in-depth, not a behavior change to the deployed runner: `_tick()` already returns before
+  reaching signal generation while blocked, so this gate protects any *future* caller of
+  `pipeline.submit()` that doesn't replicate that early-return exactly (e.g. if `run_portfolio.py`'s
+  pipeline usage is ever merged in per the Phase 2 decision below). Also added a per-tick structured
+  log line (`"Trading paused: emergency stop active (reason=..., source=..., activated_at=...)"`)
+  — previously only the *first* tick of a new activation logged anything; every blocked tick now
+  does. Dashboard/monitoring exposure needed no new work — `control_state.json`'s `emergency_stop`
+  was already surfaced via `/api/operations/health`, `/overview`, and the control endpoints.
+  **Deliberately not touched**: `run_portfolio.py` itself — per the Phase 2 decision immediately
+  below, extending that file independently would recreate the two-runner drift Phase 2 exists to
+  close. Tests: `tests/production/test_canonical_execution_pipeline.py` (7 new — gate unit tests +
+  full-pipeline rejection/approval), `tests/execution/test_emergency_stop_integration.py` (4 new —
+  active at startup, cleared during runtime resumes normal processing, broker-disconnect-while-
+  active graceful degradation, structured pause logging).
 - **Still open, unchanged from `SYSTEM2_MASTER_PLAN.md`:** durable/transactional risk *ledger for
   risk_state/portfolio_state specifically* (JSON persistence remains a mitigation, not this item —
   Sprint 2.3 covers order/event/recovery durability, not this), real broker-truth reconciliation
@@ -199,7 +224,9 @@ substantial, separately-scoped piece of work.
    "Production Candidate Definition of Done" section.
 7. **Execution Pipeline Consolidation, Tier 2/3** — `run_portfolio.py`'s full retirement or
    feature-port decision, and the `bot.py`/`adaptive/run_shadow.py` disposition (both deferred,
-   `PIPELINE_CONSOLIDATION_PLAN.md`), remain open, lower priority than the above.
+   `PIPELINE_CONSOLIDATION_PLAN.md`), remain open, lower priority than the above. (The emergency-stop
+   RiskFirewall gap specifically was closed independently — see PR #24 above — since the deployed
+   runner already has working emergency-stop wiring and didn't need to wait on this decision.)
 
 **Cross-cutting, started now rather than deferred to the end (owner feedback 2026-07-04):**
 `docs/vps/OPERATOR_RUNBOOK.md` — daily checks, monitoring routines, broker-disconnect/VPS-reboot/
