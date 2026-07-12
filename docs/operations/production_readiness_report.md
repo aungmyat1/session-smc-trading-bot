@@ -6,9 +6,16 @@ Owner: Platform Operations
 Verdict: ready for controlled disabled infrastructure rehearsal; not ready for
 paper execution or live trading
 
-Readiness is assessed against the Original Truth: the SVOS eight-stage research
-and validation lifecycle and the simple six-component Production execution
-machine.
+Governing truth: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+single source of truth for System 1/SVOS, System 2/Execution, readiness order,
+and the approved-strategy handoff. This readiness report is a dated operational
+snapshot and is subordinate to that architecture truth and to the current System
+2 implementation plan in `SYSTEM2_MASTER_PLAN.md`.
+
+Readiness is assessed against the Original Truth: SVOS owns strategy research,
+validation, and approval; System 2 is a simple execution machine that may be
+hardened with disabled/synthetic package rehearsals but cannot paper/demo/live
+trade without a valid approved strategy package and the execution gate.
 
 ## Scores
 

@@ -1,10 +1,12 @@
 # System 2 — Status
 
 - Last updated: 2026-07-04
-- Authoritative platform document: `SYSTEM2_MASTER_PLAN.md` at the repo root — "supersede, don't
-  fork" per its own Definition of Done. This file is a shorter status index across both the
-  platform (execution/risk) and dashboard-integration workstreams, updated at the end of each
-  implementation milestone.
+- Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+  single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
+  at the repo root is the current System 2 readiness implementation plan. This file is a dated
+  status index and must not be used to authorize paper/demo/live execution or strategy approval.
+- Current invariant: no strategy has Production Approval. Any references below to a deployed
+  strategy runner describe historical/demo infrastructure state only, not SVOS approval evidence.
 
 ## Platform (execution / risk engine) — current state
 

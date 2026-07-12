@@ -6,6 +6,12 @@ runner (`scripts/run_st_a2_demo.py`, deployed as `smc-demo-runner.service`). Thi
 future design; per `docs/systems/system2/EXECUTION_PIPELINE_INVENTORY.md`, this runner is already
 the canonical path — every stage below appears exactly once, in exactly one module.
 
+Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
+at the repo root is the current System 2 readiness implementation plan. This file describes an
+existing transitional runner and must not be used to authorize strategy approval, paper/demo
+execution, or live trading. No strategy currently has Production Approval.
+
 ---
 
 ## Lifecycle stages

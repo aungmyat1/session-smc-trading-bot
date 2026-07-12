@@ -21,7 +21,7 @@ repository. It is a **navigation layer**, not a new authority source.
 Before touching any code, strategy, or governance decision:
 
 1. [DOC_AUTHORITY.md](00_Project/DOC_AUTHORITY.md) — conflict resolution and authority hierarchy
-2. [TWO_SYSTEM_ARCHITECTURE_TRUTH.md](00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md) — original SVOS and Production scope
+2. [TWO_SYSTEM_ARCHITECTURE_TRUTH.md](00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md) — single source of truth for System 1/SVOS, System 2/Execution, readiness order, and approved-strategy handoff
 3. [GLOSSARY.md](00_Project/GLOSSARY.md) — canonical term definitions
 4. [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) — platform-level design
 5. [DEVELOPER_HANDBOOK.md](DEVELOPER_HANDBOOK.md) — coding standards, workflow, branch policy
@@ -106,6 +106,7 @@ the `2026-06-29` date in their filenames as a snapshot anchor, not live truth:
 
 ## System 2 — Execution Platform (Production, 2026-07-04)
 
+- [SYSTEM2_MASTER_PLAN.md](../SYSTEM2_MASTER_PLAN.md) — current System 2 readiness implementation plan, subordinate to the two-system architecture truth
 - [CANONICAL_EXECUTION_PIPELINE.md](systems/system2/CANONICAL_EXECUTION_PIPELINE.md) — the one canonical execution lifecycle
 - [STATUS.md](systems/system2/STATUS.md) — living status index (execution/risk + dashboard integration workstreams)
 - [ROADMAP.md](systems/system2/ROADMAP.md) — phased roadmap, platform + dashboard integration

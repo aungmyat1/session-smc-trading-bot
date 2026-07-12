@@ -4,6 +4,8 @@
 - Status: Current master plan for System 2 readiness
 - Scope: System 2, the production execution layer. System 1/SVOS appears here
   only as the upstream approval/package handoff.
+- Governing authority: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`.
+  If this plan conflicts with that document, the architecture truth wins.
 - Safety invariant: this document does not authorize live trading, strategy
   approval, or broker-write configuration changes. `LIVE_TRADING=false` and
   `DEMO_ONLY=true` remain mandatory until the owner explicitly changes them

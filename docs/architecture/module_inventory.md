@@ -3,6 +3,11 @@
 Date: 2026-07-01
 Scope: active repository packages and operational module roots
 
+Governing truth: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` defines the
+System 1/SVOS and System 2/Execution boundary. This inventory classifies modules
+under that boundary and must not be used to broaden Production into research or
+SVOS into broker execution.
+
 Classification rule:
 
 - `Production` = live/demo runtime, broker, order, risk, position, monitoring, production dashboard

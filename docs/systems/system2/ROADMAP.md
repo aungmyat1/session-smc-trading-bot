@@ -1,6 +1,13 @@
 # System 2 — Roadmap
 
 - Last updated: 2026-07-07
+- Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+  single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
+  at the repo root is the current System 2 readiness implementation plan. This roadmap is
+  subordinate and must not be used to authorize strategy approval, paper/demo execution, or live
+  trading.
+- Current invariant: System 2 may proceed to package-ready disabled/shadow readiness with signed
+  synthetic or fixture packages only. No strategy currently has Production Approval.
 - **Feature Expansion: FROZEN as of 2026-07-07** (SYS2-T014 closure) — new execution
   features, broker integrations, execution abstractions, and dashboard expansion require a
   new, explicitly-scoped milestone decision. Bug/security/reliability fixes (and production
