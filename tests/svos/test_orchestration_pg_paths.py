@@ -93,8 +93,11 @@ def test_bootstrap_pg_calls_session_factory(tmp_path):
 
     platform.pg_control_plane.session_factory = MagicMock(return_value=mock_session)
 
-    # Just verify _pg_active is true and bootstrap dispatches to _bootstrap_pg
     assert platform._pg_active
+
+    # Invoke bootstrap and verify the session factory is called
+    platform.bootstrap()
+    assert platform.pg_control_plane.session_factory.called
 
 
 def test_pg_record_evidence_path(tmp_path):
