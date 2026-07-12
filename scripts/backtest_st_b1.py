@@ -249,6 +249,50 @@ def write_outputs(args, gross, standard, stress, wf, costs, source: str) -> dict
     return metrics
 
 
+def write_blocked_outputs(args, exc: FileNotFoundError, source: str) -> dict:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    reports_dir = args.reports_dir
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    missing_path = str(exc.filename or exc)
+    metrics = {
+        "generated_at": generated_at,
+        "strategy": "ST-B1",
+        "version": "1",
+        "source": source,
+        "symbols": list(args.symbols),
+        "verdict": "BLOCKED",
+        "blocked_reason": "missing_real_market_data",
+        "missing_path": missing_path,
+        "standard_cost": compute_metrics([]),
+        "stress_2x_cost": compute_metrics([]),
+        "walk_forward": {
+            "training_months": 24,
+            "testing_months": 6,
+            "window_count": 0,
+            "passed_windows": 0,
+            "windows": [],
+        },
+    }
+    (reports_dir / "st_b1_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    lines = [
+        "# ST-B1 Validation Report",
+        "",
+        f"Generated: {generated_at}",
+        "",
+        "## Verdict: BLOCKED",
+        "",
+        "Historical validation and walk-forward validation could not run because "
+        "real EURUSD/GBPUSD H1+M15 data was unavailable.",
+        "",
+        f"- Missing path: `{missing_path}`",
+        f"- Requested source: `{source}`",
+        "- No trades, Profit Factor, Sharpe, drawdown or walk-forward verdict were produced.",
+        "- Do not treat synthetic/unit-test mechanics as validation evidence.",
+    ]
+    (reports_dir / "st_b1_validation_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return metrics
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="ST-B1 historical and walk-forward validation")
     parser.add_argument("--data-dir", type=Path, default=ROOT / "data" / "processed")
@@ -259,12 +303,17 @@ def main() -> int:
     args = parser.parse_args()
     args.symbols = tuple(args.symbols)
 
-    source = "parquet" if args.source == "auto" else args.source
+    source = args.source
     costs = load_costs(args.costs_json)
-    gross = run_window(args.symbols, args.data_dir, source, None, None)
+    try:
+        gross = run_window(args.symbols, args.data_dir, source, None, None)
+        wf = walk_forward(args.symbols, args.data_dir, source, costs)
+    except FileNotFoundError as exc:
+        metrics = write_blocked_outputs(args, exc, source)
+        print(json.dumps({"verdict": metrics["verdict"], "blocked_reason": metrics["blocked_reason"], "missing_path": metrics["missing_path"]}, indent=2))
+        return 2
     standard = apply_costs(gross, {symbol: costs[symbol]["standard"] for symbol in args.symbols}, "standard")
     stress = apply_costs(gross, {symbol: costs[symbol]["stress2x"] for symbol in args.symbols}, "stress2x")
-    wf = walk_forward(args.symbols, args.data_dir, source, costs)
     metrics = write_outputs(args, gross, standard, stress, wf, costs, source)
     print(json.dumps({"verdict": metrics["verdict"], "standard_cost": metrics["standard_cost"], "stress_2x_cost": metrics["stress_2x_cost"], "walk_forward_windows": metrics["walk_forward"]["window_count"]}, indent=2))
     return 0 if metrics["verdict"] == "PASS" else 1

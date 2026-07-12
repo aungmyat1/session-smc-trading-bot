@@ -11,9 +11,11 @@ could not be used in this environment.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
 
 import pytest
 
+from scripts import backtest_st_b1
 from strategies.st_b1_backtest import TradeOutcome, compute_metrics, run_backtest, simulate_trade
 
 _UTC = timezone.utc
@@ -173,3 +175,34 @@ class TestRunBacktestIntegration:
         metrics = compute_metrics(outcomes)
         assert "trade_count" in metrics
         assert metrics["trade_count"] == len(outcomes)
+
+
+class TestBacktestCli:
+    def test_missing_real_data_writes_blocked_report(self, tmp_path, monkeypatch, capsys):
+        reports_dir = tmp_path / "reports"
+        missing_data = tmp_path / "missing-data"
+        monkeypatch.setattr(backtest_st_b1, "ROOT", tmp_path)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "backtest_st_b1.py",
+                "--data-dir",
+                str(missing_data),
+                "--reports-dir",
+                str(reports_dir),
+                "--source",
+                "auto",
+            ],
+        )
+
+        assert backtest_st_b1.main() == 2
+
+        metrics = json.loads((reports_dir / "st_b1_metrics.json").read_text(encoding="utf-8"))
+        report = (reports_dir / "st_b1_validation_report.md").read_text(encoding="utf-8")
+        stdout = capsys.readouterr().out
+        assert metrics["verdict"] == "BLOCKED"
+        assert metrics["blocked_reason"] == "missing_real_market_data"
+        assert metrics["standard_cost"]["trade_count"] == 0
+        assert "Verdict: BLOCKED" in report
+        assert "Do not treat synthetic/unit-test mechanics as validation evidence" in report
+        assert '"verdict": "BLOCKED"' in stdout
