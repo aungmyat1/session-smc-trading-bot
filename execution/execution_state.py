@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -10,6 +11,59 @@ from uuid import uuid4
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _time_bucket(timestamp: str | None, bucket_seconds: int) -> str:
+    """Floor an ISO timestamp to a `bucket_seconds`-wide window, expressed as
+    a stable string. Two intent identities built from timestamps in the same
+    bucket collide by design (they're treated as the same underlying signal);
+    a timestamp in the next bucket gets a distinct identity. Missing/
+    unparseable timestamps fall back to a fixed sentinel bucket rather than
+    "now" — using wall-clock time here would make two calls for the exact
+    same signal collide or not collide depending on when each call happened,
+    which defeats the purpose of a deterministic identity."""
+    if not timestamp:
+        return "no-timestamp"
+    try:
+        dt = datetime.fromisoformat(str(timestamp))
+    except ValueError:
+        return f"unparseable:{timestamp}"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    epoch = dt.timestamp()
+    bucket_start = int(epoch // bucket_seconds) * bucket_seconds
+    return str(bucket_start)
+
+
+def build_intent_identity(
+    *,
+    strategy_id: str,
+    symbol: str,
+    direction: str,
+    signal_timestamp: str | None,
+    trading_session: str = "",
+    time_bucket_seconds: int = 60,
+) -> str:
+    """Deterministic identity for a trading intent.
+
+    Same underlying signal (same strategy/symbol/direction/timestamp bucket/
+    session), called any number of times, produces the same identity — this
+    is what `ExecutionStateStore.find_active_by_identity()` matches on to
+    detect a duplicate submission before a broker order is placed. Two
+    genuinely different signals (different bucket, different direction,
+    etc.) always produce different identities, so this never blocks a
+    legitimate new trade.
+
+    `trading_session` is the trading session label (e.g. "asian", "london",
+    "ny_overlap"), not a process/run identifier — a process restart must
+    produce the *same* identity for the same signal, otherwise duplicate
+    detection would not survive a restart.
+    """
+    bucket = _time_bucket(signal_timestamp, time_bucket_seconds)
+    direction_norm = (direction or "").strip().lower()
+    raw = f"{strategy_id}|{symbol}|{direction_norm}|{bucket}|{trading_session}"
+    signal_hash = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+    return f"{strategy_id}:{symbol}:{direction_norm}:{bucket}:{signal_hash}"
 
 
 TERMINAL_STATES = {"COMPLETED", "FAILED_TERMINAL", "CANCELLED", "REJECTED"}
@@ -169,6 +223,34 @@ class ExecutionStateStore:
             if record.state not in TERMINAL_STATES:
                 records.append(record)
         return records
+
+    def find_active_by_identity(self, intent_identity: str) -> ExecutionRecord | None:
+        """Return the non-terminal record whose `signal_id` equals
+        `intent_identity`, or None if no such record exists.
+
+        This is the duplicate-order gate: it is disk-backed (survives
+        process restarts, same as `recover_incomplete()`) and matches
+        regardless of which non-terminal state the record is in —
+        `SUBMISSION_PENDING` (an order still in flight), `RECOVERY_PENDING`
+        (ambiguous after an interruption), or `BROKER_ACKNOWLEDGED`/
+        `PARTIALLY_FILLED`/`FILLED`/`JOURNALED`/`RECONCILED` (an order the
+        broker has already seen) are all treated the same way here: an
+        active record already exists for this exact intent, so a caller
+        must not create a second one. If more than one non-terminal record
+        somehow matches (should not happen under correct operation — this
+        method itself is what prevents it), the most recently updated one is
+        returned, since it is the most likely to reflect the current
+        broker-truth state.
+        """
+        matches: list[ExecutionRecord] = []
+        for path in sorted(self.store_root.glob("*.json")):
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            record = ExecutionRecord(**payload)
+            if record.state not in TERMINAL_STATES and record.signal_id == intent_identity:
+                matches.append(record)
+        if not matches:
+            return None
+        return max(matches, key=lambda r: r.updated_at)
 
     def advance_to_terminal(
         self,
