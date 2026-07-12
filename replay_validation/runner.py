@@ -210,20 +210,32 @@ def run_replay_validation(
     rows = load_dataset(dataset_path)
     logger.info("Loaded %d rows", len(rows))
 
-    # Build market feed from historical rows
-    from execution_simulator.replay_engine.market_feed import MarketFeed
+    # Synthesise bid/ask from OHLCV close + half-spread so MarketFeed.from_records
+    # can index each bar.  The strategy's on_tick hook is responsible for producing
+    # the actual trade journal; we never count raw candles as completed trades.
+    spread_pips = spread_cfg.get("eurusd_pips", 1.0)
+    half_spread = spread_pips / 20_000  # pips → price units (5-decimal pair)
+    feed_rows = []
+    for r in rows:
+        close = float(r.get("close") or r.get("bid") or 0.0)
+        feed_rows.append({**r, "bid": close - half_spread, "ask": close + half_spread})
 
-    # Build feed for future use by strategy on_tick hooks
-    MarketFeed.from_records(rows, symbol=strategy.upper())
+    try:
+        from execution_simulator.replay_engine.market_feed import MarketFeed
+        MarketFeed.from_records(feed_rows, symbol=strategy.upper())
+    except Exception as exc:
+        logger.warning("MarketFeed unavailable (%s) — skipping feed construction", exc)
 
-    # Collect ticks into a trade journal
-    # In a real integration, a strategy hook would be provided to on_tick.
-    # Here we treat each row as a completed "trade" for validation purposes
-    # and compute metrics directly from the dataset rows.
-    trades = rows  # Each row = one candle/tick as the minimal trade unit
+    # Trade journal must come from the strategy/VirtualBroker, not from raw rows.
+    # Without a live strategy hook the runner has no completed trades to evaluate;
+    # the result is a structural PASS/FAIL stub only.
+    trades: list[dict[str, Any]] = []
+    logger.info(
+        "No strategy hook provided — trade journal is empty. "
+        "Pass completed trade records via the programmatic API to evaluate gates."
+    )
 
     # Compute standard metrics
-    spread_pips = spread_cfg.get("eurusd_pips", 1.0)
     standard_metrics = _compute_metrics(trades, spread_pips=spread_pips, spread_multiplier=1.0)
 
     # Compute stress metrics
