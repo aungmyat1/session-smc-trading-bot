@@ -26,7 +26,9 @@ Measures only. No broker execution. No live trading.
 import argparse
 import csv
 import json
+import math
 import re
+import statistics
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -60,6 +62,14 @@ CSV_FILES = {
 
 PHASE0_MIN_TRADES = 100
 PHASE0_MIN_PF     = 1.0
+
+# Current CLAUDE.md §0.6/§7 gate (effective 2026-07-01) also requires Sharpe >
+# this value, on top of n>200 / PF>1.25 / MaxDD<15%. Reported below (see
+# compute_sharpe()) for evidence purposes. NOT wired into the PHASE0_* gate
+# check in main() — reconciling the two gate definitions is tracked
+# separately (docs/audit/SYSTEM2_VALIDATION_GATE_REPORT.md) and deliberately
+# out of scope here to avoid silently changing what PASS/FAIL means today.
+STAT_GATE_MIN_SHARPE = 1.2
 
 
 # ── Pure simulation functions (importable for tests) ──────────────────────────
@@ -117,18 +127,21 @@ def spread_cost_r(spread_pips_rt, sl_pips):
     return spread_pips_rt / sl_pips
 
 
-def compute_metrics(net_rs):
+def compute_metrics(net_rs, trades_per_year=None):
     """
     Compute backtest statistics from a list of net-R trade outcomes.
 
+    trades_per_year (optional): if supplied, also computes an annualized
+    Sharpe ratio (see compute_sharpe()). Omit to leave "sharpe" as None.
+
     Returns a dict with: trade_count, win_count, loss_count,
-    win_rate, avg_r, net_pf, total_net_r, max_dd.
+    win_rate, avg_r, net_pf, total_net_r, max_dd, sharpe.
     """
     if not net_rs:
         return {
             "trade_count": 0, "win_count": 0, "loss_count": 0,
             "win_rate": 0.0, "avg_r": 0.0, "net_pf": 0.0,
-            "total_net_r": 0.0, "max_dd": 0.0,
+            "total_net_r": 0.0, "max_dd": 0.0, "sharpe": None,
         }
 
     wins   = [r for r in net_rs if r > 0]
@@ -153,6 +166,7 @@ def compute_metrics(net_rs):
         "net_pf":      net_pf,
         "total_net_r": sum(net_rs),
         "max_dd":      max_drawdown(net_rs),
+        "sharpe":      compute_sharpe(net_rs, trades_per_year),
     }
 
 
@@ -167,6 +181,26 @@ def max_drawdown(net_rs):
         if dd > max_dd:
             max_dd = dd
     return max_dd
+
+
+def compute_sharpe(net_rs, trades_per_year=None):
+    """
+    Annualized Sharpe ratio from per-trade net-R outcomes.
+
+    Formula: mean(R) / population_stdev(R) * sqrt(trades_per_year)
+
+    R-based (not equity-based) because trades in this runner are not
+    timestamped into a compounding equity curve. trades_per_year must be
+    supplied by the caller (trade_count / years_covered_by_the_dataset) to
+    produce a genuinely annualized figure — without it, this returns None
+    rather than silently computing a misleading un-annualized ratio.
+    """
+    if trades_per_year is None or len(net_rs) < 2:
+        return None
+    sd = statistics.pstdev(net_rs)
+    if sd == 0:
+        return 0.0
+    return (statistics.mean(net_rs) / sd) * math.sqrt(trades_per_year)
 
 
 # ── Data helpers ──────────────────────────────────────────────────────────────
@@ -338,6 +372,11 @@ def _pf(v):
     return f"{v:.3f}"
 
 
+def _f(v):
+    """Format an optional float (e.g. Sharpe, which may be None)."""
+    return "n/a" if v is None else f"{v:.3f}"
+
+
 def write_results(run_id, all_rr_data, best_rr, today_utc):
     """Generate docs/BACKTEST_RESULTS.md."""
     lines = [
@@ -350,8 +389,8 @@ def write_results(run_id, all_rr_data, best_rr, today_utc):
         "## Summary Table",
         "(ranked by Net PF std, then Trade Count)",
         "",
-        "| RR | Trades | Win% | Avg R | Gross PF | Net PF (std) | Net PF (2×) | Max DD (R) | Verdict |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| RR | Trades | Win% | Avg R | Gross PF | Net PF (std) | Net PF (2×) | Sharpe (std, annualized) | Max DD (R) | Verdict |",
+        "|---|---|---|---|---|---|---|---|---|---|",
     ]
 
     sorted_rrs = sorted(
@@ -370,6 +409,7 @@ def write_results(run_id, all_rr_data, best_rr, today_utc):
             f"| {rr:.0f} | {sm['trade_count']} | {_pct(sm['win_rate'])} "
             f"| {sm['avg_r']:.3f} | {_pf(d['gross_pf'])} "
             f"| {_pf(sm['net_pf'])} | {_pf(d['stress_metrics']['net_pf'])} "
+            f"| {_f(sm['sharpe'])} "
             f"| {sm['max_dd']:.2f} | {verdict} |"
         )
 
@@ -732,6 +772,18 @@ def main():
     total_signals = sum(len(v) for v in signals_by_sym.values())
     print(f"    Total signals: {total_signals}")
 
+    # Years covered by the combined dataset (widest span across symbols),
+    # used to annualize Sharpe. See compute_sharpe() docstring — this is a
+    # portfolio-level approximation, not a per-symbol figure.
+    all_starts = [d for d in data_start.values() if d]
+    all_ends   = [d for d in data_end.values() if d]
+    years_covered = None
+    if all_starts and all_ends:
+        span_days = (
+            datetime.fromisoformat(max(all_ends)) - datetime.fromisoformat(min(all_starts))
+        ).days
+        years_covered = span_days / 365.25 if span_days > 0 else None
+
     # ── Simulate for each RR variant ──────────────────────────────────────────
     print("\n[+] Simulating trades ...")
     all_rr_data = {}
@@ -744,8 +796,9 @@ def main():
         stress_rs = [t["stress_net_r"] for t in trades]
         gross_rs  = [t["gross_r"]      for t in trades]
 
-        std_m    = compute_metrics(std_rs)
-        stress_m = compute_metrics(stress_rs)
+        trades_per_year = len(trades) / years_covered if years_covered else None
+        std_m    = compute_metrics(std_rs, trades_per_year)
+        stress_m = compute_metrics(stress_rs, trades_per_year)
         gross_m  = compute_metrics(gross_rs)
 
         gate = (
@@ -837,6 +890,8 @@ def main():
                     "max_drawdown": d["std_metrics"]["max_dd"],
                     "net_return": d["std_metrics"]["total_net_r"],
                     "stress_profit_factor": d["stress_metrics"]["net_pf"],
+                    "sharpe": d["std_metrics"]["sharpe"],
+                    "stress_sharpe": d["stress_metrics"]["sharpe"],
                     "gate": d["gate"],
                 }
                 for rr, d in all_rr_data.items()
