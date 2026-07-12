@@ -1,11 +1,18 @@
 """Tests for execution/trade_manager.py (mocked executor — no broker)"""
 
+import tempfile
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
+from execution.execution_state import ExecutionStateStore
 from execution.trade_manager import TradeManager, _MAGIC
 
 
 def _make_manager(simulated=True):
+    # Each test gets its own isolated, disk-backed execution store (fresh
+    # temp dir) rather than the class default (ExecutionStateStore(".")),
+    # which would otherwise be shared — and therefore leak duplicate-order
+    # state — across every test in this module/run.
     executor = MagicMock()
     executor.place_order   = AsyncMock(return_value={"order_id": "SIM-001", "simulated": simulated})
     executor.close_position = AsyncMock(return_value=True)
@@ -18,7 +25,8 @@ def _make_manager(simulated=True):
          "lots": 0.01, "entry": 1.2700, "sl": 1.2750, "tp": 1.2600,
          "profit": -5.0, "magic": 99999},   # different magic — should be filtered
     ])
-    return TradeManager(executor), executor
+    store = ExecutionStateStore(tempfile.mkdtemp())
+    return TradeManager(executor, execution_store=store), executor
 
 
 def _signal_ns(side="long"):
@@ -104,7 +112,7 @@ class TestTradeManager:
         telegram = MagicMock()
         telegram.send_error = AsyncMock(return_value=None)
         mgr, ex = _make_manager()
-        mgr = TradeManager(ex, telegram=telegram)
+        mgr = TradeManager(ex, telegram=telegram, execution_store=mgr._store)
         ex.place_order = AsyncMock(side_effect=RuntimeError("timeout"))
         with pytest.raises(RuntimeError):
             await mgr.open_position(_signal_ns("long"), 0.02)
