@@ -47,6 +47,7 @@ PULLBACK_EMA_PERIOD = 20
 NEUTRAL_THRESHOLD_PIPS_DEFAULT = 3.0
 XAUUSD_ATR_PERIOD = 14
 XAUUSD_ATR_MULTIPLIER = 0.5
+ALLOWED_SESSIONS = frozenset({"london", "new_york"})
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -302,6 +303,9 @@ def generate_orders(
         return None  # one position per symbol
     if not validate_entry(setup, next_candle):
         return None
+    session = str((next_candle or {}).get("session", "")).lower()
+    if session and session not in ALLOWED_SESSIONS:
+        return None
 
     entry_price = next_candle["open"]
     stop_loss, take_profit = compute_stop_and_target(
@@ -335,7 +339,7 @@ def generate_orders(
         risk_percent=min(risk_pct, 0.50),
         confidence=1.0,
         metadata={
-            "session": next_candle.get("session", ""),
+            "session": session,
             "trend": trend,
             "lots": lots,
             "ema20_at_rejection": setup.ema20_at_rejection,

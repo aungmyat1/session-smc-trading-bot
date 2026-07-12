@@ -22,6 +22,29 @@ strategies:
       replay: pass
       backtest: pass
       walk_forward: pending
+  ST-B1:
+    status: research
+    svos_stage: STATISTICAL_VALIDATION
+    approved: false
+    current: false
+    execution_allowed: false
+    version: '1.0'
+    owner: quant
+    adapter_type: ST-B1
+    backtest_script: scripts/backtest_st_b1.py
+    strategy_spec_path: config/strategies/ST-B1_v1.yaml
+    symbols:
+    - EURUSD
+    - GBPUSD
+    timeframes:
+    - H1
+    - M15
+    deployment_target: research
+    description: Simple H1 EMA200 trend plus M15 EMA20 pullback baseline.
+    requirements:
+      replay: pending
+      backtest: pending
+      walk_forward: pending
   LondonBreakout:
     status: research
     approved: false

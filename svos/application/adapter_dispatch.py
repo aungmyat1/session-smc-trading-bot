@@ -46,6 +46,7 @@ class StrategyAdapterRegistry:
         "NYMomentum": "strategies.adapters.ny_momentum_adapter.NYMomentumAdapter",
         "SMCOrderBlockFVGSession": "strategies.adapters.smc_ob_fvg_session_adapter.SMCOrderBlockFVGSessionAdapter",
         "ST-A2": "strategies.adapters.st_a2_adapter.ST2Adapter",
+        "ST-B1": "strategies.adapters.st_b1_adapter.STB1Adapter",
         "VWAPBreakout": "strategies.adapters.vwap_adapter.VWAPBreakoutAdapter",
         "VWAPMeanReversion": "strategies.adapters.vwap_adapter.VWAPMeanReversionAdapter",
     }
@@ -53,6 +54,7 @@ class StrategyAdapterRegistry:
     # Aliases: catalog strategy name → adapter_type key
     _NAME_ALIASES: dict[str, str] = {
         "ST-A2": "ST-A2",
+        "ST-B1": "ST-B1",
         "LondonBreakout": "LondonBreakout",
         "NYMomentum": "NYMomentum",
         "AdaptiveSMC": "AdaptiveSMC",

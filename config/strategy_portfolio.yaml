@@ -17,6 +17,14 @@ correlation_groups:
 
 strategies:
 
+  ST-B1:
+    enabled:        false
+    execution_mode: shadow          # blocked until historical + walk-forward validation pass
+    risk:           0.25
+    pairs:          [EURUSD, GBPUSD]
+    min_confidence: 0.70
+    description:    "H1 EMA200 trend + M15 EMA20 pullback baseline"
+
   ST-A2:
     enabled:        true
     execution_mode: demo            # tier1 — backtest validated
