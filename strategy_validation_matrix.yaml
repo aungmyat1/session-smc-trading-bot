@@ -61,7 +61,7 @@ categories:
           description: "H4 trend is bullish when H4 creates HH-HL sequence; trade only longs on M15"
           example: "H4 bias: last two swings form HH-HL = bullish, HH-LH = range/neutral"
         fail_scenario:
-          description: "Trade with the trend" without defining what constitutes trend on which timeframe
+          description: '"Trade with the trend" without defining what constitutes trend on which timeframe'
           example: "Use HTF context for direction"
         edge_scenario:
           description: Bias defined on multiple timeframes with conflicting conditions
@@ -99,7 +99,7 @@ categories:
           description: "Sweep = price wicks ≥3 pips beyond equal highs/lows and closes back within range within same candle"
           example: "M15 candle wick extends ≥3 pip beyond EQH/EQL, candle closes back below/above"
         fail_scenario:
-          description: "Enter after a sweep" without wick distance, level definition, or close-back rule
+          description: '"Enter after a sweep" without wick distance, level definition, or close-back rule'
           example: "Look for liquidity grabs at key levels"
         edge_scenario:
           description: Close-back required on M15 but allowed on M5 — must specify per timeframe
@@ -114,7 +114,7 @@ categories:
           description: "EQH/EQL: two or more swing highs/lows within 3 pip tolerance over last 20 candles"
           example: "EQH tolerance = 3 pips; lookback = 20 M15 candles"
         fail_scenario:
-          description: "Equal highs are when price touches the same level twice" with no tolerance
+          description: '"Equal highs are when price touches the same level twice" with no tolerance'
           example: "Mark where price hit twice"
         edge_scenario:
           description: Tolerance defined in pips only — should also define max time between touches
@@ -129,7 +129,7 @@ categories:
           description: Stop hunt = wick beyond level within session; sweep = full candle close beyond
           example: "Stop hunt: wick only. Sweep: if candle closes beyond, invalidate setup"
         fail_scenario:
-          description: "Sweep and stop hunt mean the same thing" used without consistent definition
+          description: '"Sweep and stop hunt mean the same thing" used without consistent definition'
           example: "Enter on sweep/stop hunt"
         edge_scenario:
           description: Strategy does not distinguish — explicitly state they are treated identically. PASS.
@@ -144,7 +144,7 @@ categories:
           description: "London session high = highest price from 07:00–08:00 UTC; adjusts for DST per IANA schedule"
           example: "Asian range: 00:00–07:00 UTC; London IB: 07:00–08:00 UTC"
         fail_scenario:
-          description: "Use London session high" without UTC times or DST specification
+          description: '"Use London session high" without UTC times or DST specification'
           example: "Trade off London open high/low"
         edge_scenario:
           description: Session defined in broker local time — FIX to convert to UTC
@@ -166,7 +166,7 @@ categories:
           description: "FVG: gap between candle[0].high and candle[2].low (bullish) ≥5 pip; mitigated when price enters gap ≥50%"
           example: "Bullish FVG: C1.high < C3.low, gap ≥5 pip. Mitigated: price touches 50% level"
         fail_scenario:
-          description: "Trade from FVGs" without gap size, direction rule, or mitigation definition
+          description: '"Trade from FVGs" without gap size, direction rule, or mitigation definition'
           example: "Look for imbalances and trade from them"
         edge_scenario:
           description: FVG on multiple timeframes — must specify which timeframe's FVG takes priority
@@ -182,7 +182,7 @@ categories:
           description: "Bullish OB: last bearish candle before bullish BOS; zone = candle high to low; valid for 48H; mitigated on re-entry"
           example: "OB high = candle high, OB low = candle low or open (whichever lower)"
         fail_scenario:
-          description: "Trade from order blocks at key levels" without boundary or validity rules
+          description: '"Trade from order blocks at key levels" without boundary or validity rules'
           example: "Mark OBs where institutions would have ordered"
         edge_scenario:
           description: OB formed by multiple candles — spec must define which candle defines the zone
@@ -197,7 +197,7 @@ categories:
           description: "Discount: below 50% of H4 swing range; Premium: above 50%. Only buy in discount, sell in premium."
           example: "50% level of current H4 range; below = discount, above = premium"
         fail_scenario:
-          description: "Only enter from discount zones" without defining the range or threshold
+          description: '"Only enter from discount zones" without defining the range or threshold'
           example: "Buy low, sell high in premium/discount"
         edge_scenario:
           description: Uses Fibonacci levels (e.g., 61.8%) instead of 50% — must state the exact level
@@ -233,7 +233,7 @@ categories:
           description: "London Kill Zone: 07:00–09:00 UTC (winter), 06:00–08:00 UTC (summer DST)"
           example: "NY Kill Zone: 12:00–14:00 UTC; London: 07:00–10:00 UTC"
         fail_scenario:
-          description: "Trade during London open" without UTC times
+          description: '"Trade during London open" without UTC times'
           example: "Enter during London or New York sessions"
         edge_scenario:
           description: Spec uses EST/EDT without UTC conversion — FIX required
@@ -263,7 +263,7 @@ categories:
           description: "London IB High = max(high) of M15 candles from 07:00–08:00 UTC inclusive"
           example: "Asian range = H1 OHLC from 00:00–07:00 UTC; first and last candles included"
         fail_scenario:
-          description: "Use the London session range" without specifying candle type or boundary inclusion
+          description: '"Use the London session range" without specifying candle type or boundary inclusion'
           example: "Mark the London session high and low"
         edge_scenario:
           description: Strategy uses M5 for range but M15 for signals — must specify each separately
@@ -278,7 +278,7 @@ categories:
           description: "After London sweep of Asian range, trade reversal in NY session targeting Asian midpoint"
           example: "Reversal: fade London sweep. Continuation: follow London BOS into NY"
         fail_scenario:
-          description: "Trade in the direction of the market" without specifying relative to session structure
+          description: '"Trade in the direction of the market" without specifying relative to session structure'
           example: "Follow price action signals during session"
         edge_scenario:
           description: Strategy does both depending on pre-conditions — each condition must be exhaustively specified
@@ -299,7 +299,7 @@ categories:
           description: "Lots = (Account * RiskPct) / (SL_pips * pip_value_per_lot); RiskPct = 1.0%"
           example: "1% risk per trade; SL in pips used to back-calculate lot size"
         fail_scenario:
-          description: "Risk 1% per trade" without specifying how lots are calculated from the SL distance
+          description: '"Risk 1% per trade" without specifying how lots are calculated from the SL distance'
           example: "Risk 1% on each trade"
         edge_scenario:
           description: Fixed lot size specified — must document minimum account size and max drawdown implications
@@ -314,7 +314,7 @@ categories:
           description: "SL = 2 pips below bullish OB low; minimum SL = 8 pips, maximum SL = 25 pips"
           example: "SL = OB low - 2 pips buffer; skip trade if SL > 25 pips"
         fail_scenario:
-          description: "SL below the order block" without buffer or min/max constraints
+          description: '"SL below the order block" without buffer or min/max constraints'
           example: "Place SL at structure"
         edge_scenario:
           description: SL defined relative to candle wick — must specify which candle and which part of the wick
@@ -329,7 +329,7 @@ categories:
           description: "TP1 = 1:1 R (50% close); TP2 = next swing high / session high; trail remainder"
           example: "Single TP at 2R; or TP1 = 1R (move SL to BE), TP2 = 3R"
         fail_scenario:
-          description: "Take profit at the next resistance" without R-multiple or specific level calculation
+          description: '"Take profit at the next resistance" without R-multiple or specific level calculation'
           example: "Exit at logical target"
         edge_scenario:
           description: TP defined as next liquidity pool — must specify calculation method for replays
@@ -374,7 +374,7 @@ categories:
           description: "Minimum RR = 1:2; skip trade if TP distance / SL distance < 2"
           example: "1:2 minimum; if TP1 at 1R, only take trade if TP2 at ≥3R exists"
         fail_scenario:
-          description: "Take high probability setups" without a minimum RR floor
+          description: '"Take high probability setups" without a minimum RR floor'
           example: "Enter when setup is clear regardless of RR"
         edge_scenario:
           description: RR defined as "at least 1:1" — must justify against fee-adjusted profitability requirement

@@ -43,7 +43,7 @@ def test_record_version_idempotent(tmp_path):
     reg.record_version("ST-TEST", actor="a", reason="sync2")
     versions = reg.versions("ST-TEST")
     # First version from ensure + two explicit = 3
-    assert len(versions) >= 2
+    assert len(versions) == 3
 
 
 def test_record_evidence_stores_and_retrieves(tmp_path):

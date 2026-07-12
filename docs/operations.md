@@ -95,7 +95,7 @@ A strategy in production must re-enter the qualification pipeline if:
 
 ## Contact & Escalation
 
-- **Owner:** aung.pro1@gmail.com
+- **Owner:** platform-owner (configure in `.env` or Telegram bot)
 - **Telegram bot:** Configured via `TELEGRAM_BOT_TOKEN` in `.env`
 - **Incident log:** `docs/INCIDENT_RESPONSE.md`
 - **Verdict log:** `docs/VERDICT_LOG.md`

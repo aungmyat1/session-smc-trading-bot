@@ -17,7 +17,7 @@ All production readiness phases have been completed. The SVOS platform is ready 
 | Phase | Task | Result | Notes |
 |-------|------|--------|-------|
 | Phase 3 | Coverage ≥ 90% | **PASS** | 90.62% (target: 90%) |
-| Phase 4 | Strategy Validation Matrix | **PASS** | `strategy_validation_matrix.yaml` — 22 rules across 5 categories |
+| Phase 4 | Strategy Validation Matrix | **PASS** | `strategy_validation_matrix.yaml` — 23 rules across 5 categories |
 | Phase 5 | Replay Validation Integration | **PASS** | Runner implemented; status report at `reports/replay_validation_status.md` |
 | Phase 6 | Documentation | **PASS** | 8 new docs created in `docs/` |
 | Phase 7 | Production Approval Agent | **PASS** | Fully implemented (pre-existing) |

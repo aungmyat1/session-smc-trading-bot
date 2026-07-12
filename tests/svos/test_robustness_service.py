@@ -70,10 +70,8 @@ def test_normalize_trades_uses_fallbacks():
 
 
 def test_run_walk_forward_handles_import_error():
-    with patch("svos.application.robustness.RobustnessIntegrationService._run_walk_forward") as mock_wf:
-        mock_wf.return_value = {"passed": False, "reason": "module not found"}
-        result = mock_wf([])
-        assert result["passed"] is False
+    result = RobustnessIntegrationService._run_walk_forward([])
+    assert result["passed"] is False
 
 
 def test_run_monte_carlo_handles_error():
