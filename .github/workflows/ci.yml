@@ -127,7 +127,3 @@ jobs:
             echo "One or more required gates failed"
             exit 1
           fi
-          if [[ "$RESULTS" == *"cancelled"* ]]; then
-            echo "Run was superseded by a newer push — skipping as non-failure"
-            exit 0
-          fi
