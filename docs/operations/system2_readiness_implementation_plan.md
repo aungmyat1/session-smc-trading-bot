@@ -133,4 +133,5 @@ Exit criteria:
 - Do not enable live trading.
 - Do not mark any unapproved strategy current or approved.
 - Do not tune strategy parameters as part of System 2 readiness.
-- Do not use ST-B1 validation failure artifacts as approval evidence.
+- Do not use ST-B1 as approval evidence; its real-data validation is BLOCKED
+  by Dukascopy 403/no reachable EURUSD/GBPUSD H1+M15 data, not failed.

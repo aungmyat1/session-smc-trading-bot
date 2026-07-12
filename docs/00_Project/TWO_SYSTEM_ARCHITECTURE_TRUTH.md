@@ -34,9 +34,9 @@ Current project truth:
    without a valid SVOS-approved package and the separate execution gate.**
 4. **System 1/SVOS is the only place where strategies are searched, created,
    optimized, validated, failed, frozen, or approved.**
-5. **No strategy currently has Production Approval.** Failed or deferred
-   strategy work, including ST-B1 failure evidence and ST-A2 legacy/deferred
-   evidence, remains research history only.
+5. **No strategy currently has Production Approval.** Failed, blocked, deferred
+   or synthetic-only strategy work, including ST-B1's Dukascopy-403 blocked
+   validation and ST-A2 legacy/deferred evidence, remains research history only.
 6. **`LIVE_TRADING=false` and `DEMO_ONLY=true` remain mandatory platform
    invariants.** Changing them is outside normal implementation work and
    requires the explicit owner authorization defined by repository policy.

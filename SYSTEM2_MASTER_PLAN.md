@@ -25,7 +25,8 @@ Local evidence collected on 2026-07-12:
   `READY (shadow mode)`, with warnings for stale runner activity and no restart
   recovery state.
 - Focused package/deployment readiness tests passed: `39 passed`.
-- ST-B1 historical validation failed and is not approval evidence.
+- ST-B1 historical validation is BLOCKED, not failed: Dukascopy returned 403
+  and no real EURUSD/GBPUSD H1+M15 data was reachable from this environment.
 - No strategy currently has Production Approval.
 
 The next work is not to enable more execution. The next work is to close the
@@ -55,8 +56,8 @@ before any paper execution discussion.
 1. No live trading changes are permitted from this plan.
 2. No strategy may be marked current, approved, paper-enabled or demo-enabled
    unless SVOS Production Approval exists and the execution gate is satisfied.
-3. A failed strategy validation result, including ST-B1, may not be used as
-   approval evidence.
+3. A failed, blocked, deferred or synthetic-only strategy result may not be used
+   as approval evidence.
 4. Disabled deployment rehearsal must reach `STAGED_DISABLED`; `activated` and
    `live_trading_enabled` must remain false.
 5. Every broker-write or activation-class action must retain exact-match
@@ -70,8 +71,10 @@ before any paper execution discussion.
 ### Strategy and Governance
 
 - No catalog strategy is approved for release.
-- ST-B1 failed historical validation: PF, Sharpe and MaxDD failed at standard
-  and 2x cost stress, and 0/6 walk-forward windows passed.
+- ST-B1 historical validation and walk-forward validation are BLOCKED, not
+  failed. Real Dukascopy data was unreachable from this environment
+  (`403 Forbidden`), so no real-data trades, PF, Sharpe, MaxDD or walk-forward
+  verdict exists. See `docs/audit/ST_B1_VALIDATION_REPORT.md`.
 - ST-A2 remains legacy/deferred from the SVOS perspective unless revalidated
   through the current gate.
 
@@ -271,11 +274,45 @@ The last recorded local run produced `39 passed`.
 
 - Treat offline `READY (shadow mode)` as a narrow result, not paper readiness.
 - Broker, DB and data-feed skips are blockers for paper evidence.
-- Do not deploy ST-B1; it failed validation.
+- Do not deploy ST-B1; its real-data validation is blocked and it has no PASS
+  verdict.
 - Do not silently resolve registry/config mismatches by editing YAML directly.
 - Do not bypass confirmation tokens for broker-write or activation-class
   actions.
 - Preserve all failed validation and rehearsal evidence.
+
+---
+
+## Governance Documentation Verification
+
+Before merging automated documentation cleanup or branch-stack adoption work,
+new claims in governance-facing docs must be checked against evidence before
+merge.
+
+Required check:
+
+1. Diff all changed governance/status docs, including `SYSTEM2_MASTER_PLAN.md`,
+   `docs/00_Project/*.md`, `docs/operations/*.md`, and `docs/VERDICT_LOG.md`.
+2. For each new strategy-status claim such as PASS, FAIL, BLOCKED, approved,
+   deployed, frozen, paper-enabled or demo-enabled, compare the claim against
+   `docs/VERDICT_LOG.md`, `docs/audit/`, `reports/`, and the pre-merge base
+   branch.
+3. If evidence conflicts, fix the higher-visibility doc before merge. Do not
+   smooth over the conflict with generalized wording.
+4. BLOCKED is not FAIL. Missing real data, broker access, credentials or network
+   access must be recorded as BLOCKED unless a real validation run produced a
+   valid net-of-fees result.
+5. Do not merge a branch that introduces a strategy PASS/FAIL claim without the
+   corresponding evidence artifact and verdict-log entry.
+
+Mechanical helper:
+
+```bash
+python3 scripts/check_governance_doc_claims.py --base origin/develop
+```
+
+The helper intentionally returns non-zero when new claims are found; that result
+means "review required," not "code broken."
 
 ---
 
