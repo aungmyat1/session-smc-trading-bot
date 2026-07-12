@@ -111,6 +111,12 @@ jobs:
       - run: python scripts/lint_docs.py --root docs --index docs/index.md
       - run: python scripts/check_docs_drift.py --root .
       - run: python scripts/validate_strategy_package.py --self-test
+      - name: Governance-doc claim review
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: >-
+          python scripts/check_governance_doc_claims.py
+          --base origin/${{ github.base_ref }}
 
   required:
     name: Required CI
