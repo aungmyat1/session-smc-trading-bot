@@ -4,7 +4,11 @@ Date: 2026-07-01
 Status: proposed migration target
 
 Governing truth: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`. If this
-document conflicts with that authority, the original truth wins.
+document conflicts with that authority, the original truth wins. As of
+2026-07-12, System 2 may be implemented to package-ready disabled/shadow
+readiness without an approved strategy by using signed synthetic or fixture
+packages only; strategy search, validation, freezing, and approval remain
+exclusive SVOS responsibilities.
 
 ## Objective
 

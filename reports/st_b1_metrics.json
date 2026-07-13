@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-07-12T00:00:00+00:00",
+  "strategy": "ST-B1",
+  "version": "1",
+  "source": "blocked",
+  "symbols": [
+    "EURUSD",
+    "GBPUSD"
+  ],
+  "verdict": "BLOCKED",
+  "blocked_reason": "missing_real_market_data",
+  "missing_path": "Dukascopy returned 403 Forbidden; no real EURUSD/GBPUSD H1+M15 dataset was reachable in the validation environment.",
+  "standard_cost": {
+    "trade_count": 0,
+    "win_count": 0,
+    "loss_count": 0,
+    "win_rate": 0.0,
+    "profit_factor": 0.0,
+    "sharpe_ratio": 0.0,
+    "expectancy_r": 0.0,
+    "max_drawdown_r": 0.0,
+    "max_drawdown_pct": 0.0,
+    "total_net_r": 0.0,
+    "monthly_returns_r": {}
+  },
+  "stress_2x_cost": {
+    "trade_count": 0,
+    "win_count": 0,
+    "loss_count": 0,
+    "win_rate": 0.0,
+    "profit_factor": 0.0,
+    "sharpe_ratio": 0.0,
+    "expectancy_r": 0.0,
+    "max_drawdown_r": 0.0,
+    "max_drawdown_pct": 0.0,
+    "total_net_r": 0.0,
+    "monthly_returns_r": {}
+  },
+  "walk_forward": {
+    "training_months": 24,
+    "testing_months": 6,
+    "window_count": 0,
+    "passed_windows": 0,
+    "windows": []
+  }
+}

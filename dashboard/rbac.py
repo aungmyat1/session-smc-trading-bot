@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import hmac
 import os
+import secrets
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,6 +32,8 @@ from fastapi import HTTPException, Request
 from dashboard.auth import _ROLE_ACTIONS, _permitted_actions
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_WS_TICKET_TTL_S = 30.0
+_WS_TICKETS: dict[str, tuple[float, dict[str, str]]] = {}
 
 
 def _same_origin(request: Request) -> bool:
@@ -120,6 +124,45 @@ def session_payload(request: Request) -> dict[str, Any]:
         "mutation_allowed": role in _ROLE_ACTIONS,
         "trading_mode": trading_mode, "demo_only": demo_only, "live_trading_enabled": live_trading_enabled,
     }
+
+
+def _purge_expired_ws_tickets(now: float) -> None:
+    expired = [ticket for ticket, (expires_at, _) in _WS_TICKETS.items() if expires_at <= now]
+    for ticket in expired:
+        _WS_TICKETS.pop(ticket, None)
+
+
+def mint_ws_ticket(identity: dict[str, Any], ttl_seconds: float = _WS_TICKET_TTL_S) -> str:
+    """Create a short-lived, single-use WebSocket auth ticket.
+
+    Browsers cannot attach Authorization headers to WebSocket upgrades, so the
+    authenticated HTTP endpoint mints this opaque ticket and /ws consumes it.
+    """
+    now = time.time()
+    _purge_expired_ws_tickets(now)
+    ticket = secrets.token_urlsafe(32)
+    _WS_TICKETS[ticket] = (
+        now + ttl_seconds,
+        {"actor": str(identity.get("actor", "")), "role": str(identity.get("role", "")), "auth_mode": "ticket"},
+    )
+    return ticket
+
+
+def validate_ws_ticket(ticket: str) -> dict[str, str] | None:
+    """Consume and validate a WebSocket ticket."""
+    if not ticket:
+        return None
+    now = time.time()
+    _purge_expired_ws_tickets(now)
+    record = _WS_TICKETS.pop(ticket, None)
+    if record is None:
+        return None
+    expires_at, identity = record
+    if expires_at <= now:
+        return None
+    if not identity.get("actor") or not identity.get("role"):
+        return None
+    return identity
 
 
 def _require_authenticated_payload(request: Request) -> dict[str, Any]:

@@ -5,9 +5,11 @@ Status: Current
 Owner: Platform Operations  
 Scope: Fresh repository and GitHub audit performed before Phase 2 changes
 
-Architecture truth: SVOS is the Strategy Research and Validating System;
-Production is the simple six-component execution machine. Operational services
-described here surround that machine and do not broaden its responsibility.
+Architecture truth: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+single source of truth for the System 1/SVOS and System 2/Execution split,
+readiness order, and approved-strategy handoff. This report is a dated
+operational snapshot and is subordinate to that document and to the current
+System 2 implementation plan in `SYSTEM2_MASTER_PLAN.md`.
 
 ## Executive status
 
@@ -16,6 +18,11 @@ live-disabled artifact handoff. It is not a live-ready production platform.
 No catalog strategy is currently approved, remote infrastructure has not been
 rehearsed, and the production runtime is still a facade over legacy execution
 modules.
+
+As of 2026-07-12, System 2 may continue toward package-ready disabled/shadow
+readiness without an approved strategy by using signed synthetic or fixture
+packages only. That work must not become paper/demo/live execution and must not
+create strategy approval evidence.
 
 ## Verified inventory
 

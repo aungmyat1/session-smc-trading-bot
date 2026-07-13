@@ -1,8 +1,8 @@
 ---
 Date: 2026-07-02
 Status: Authoritative
-Version: 1.1
-Updated: 2026-07-03
+Version: 1.2
+Updated: 2026-07-12
 Owner: Lead Architect
 Authority: Level 1 — Product Architecture Truth
 Supersedes: Conflicting descriptions of SVOS and Production scope
@@ -14,6 +14,35 @@ Related: DOC_AUTHORITY.md, ../SYSTEM_ARCHITECTURE.md, ../architecture/target_arc
 This document records the original architectural truth supplied by the project
 owner. Every implementation plan, migration, dashboard, deployment workflow,
 and future architecture document must preserve this separation.
+
+## Current Single Source of Truth — 2026-07-12
+
+This document is the highest project authority for the split between System 1
+and System 2, the readiness order, and the strategy handoff contract.
+
+Current project truth:
+
+1. **System 2 is implemented first to readiness, not to trading.** It may be
+   hardened through controlled disabled rehearsals, package loading tests,
+   shadow-only signal paths, broker read-only/demo telemetry, recovery drills,
+   journaling, dashboard status, and rollback evidence.
+2. **System 2 does not need an approved strategy to become package-ready.** It
+   may use signed synthetic or fixture packages to prove that the execution
+   machine can safely import, verify, stage, observe, and refuse activation.
+   Those fixtures are never approval evidence.
+3. **System 2 must not paper trade, demo trade, or live trade any strategy
+   without a valid SVOS-approved package and the separate execution gate.**
+4. **System 1/SVOS is the only place where strategies are searched, created,
+   optimized, validated, failed, frozen, or approved.**
+5. **No strategy currently has Production Approval.** Failed, blocked, deferred
+   or synthetic-only strategy work, including ST-B1's Dukascopy-403 blocked
+   validation and ST-A2 legacy/deferred evidence, remains research history only.
+6. **`LIVE_TRADING=false` and `DEMO_ONLY=true` remain mandatory platform
+   invariants.** Changing them is outside normal implementation work and
+   requires the explicit owner authorization defined by repository policy.
+
+`SYSTEM2_MASTER_PLAN.md` is the current implementation plan for making System 2
+package-ready under these constraints. It is subordinate to this document.
 
 ## Delivery Priority — System 2 First
 
@@ -125,6 +154,45 @@ Production Strategy Package Loader
 
 Production consumes the package. It does not import SVOS research internals or
 reproduce SVOS validation work.
+
+## How an Approved Strategy Is Created
+
+Approved strategies are created only through SVOS. The execution engine cannot
+search for, tune, or approve a strategy.
+
+The strategy creation/search loop is:
+
+1. Define a candidate strategy with explicit symbols, sessions, timeframes,
+   signal rules, stop logic, take-profit logic, risk model, and trade limits.
+2. Pre-register the trial in `docs/VERDICT_LOG.md` before running validation.
+   Every parameter change creates a new trial ID; no mid-trial tuning.
+3. Run SVOS intake and audit. Ambiguous, contradictory, or lookahead-prone specs
+   must return FIX or FAIL before replay.
+4. Run historical replay with chronological candle access only.
+5. Run statistical validation net of spread and commission.
+6. Run robustness validation, including walk-forward validation and 2x spread
+   stress.
+7. Run offline virtual demo through the intended order, risk, and position
+   interfaces without broker writes.
+8. Freeze and package the strategy only if all gates pass.
+
+The current statistical gate is:
+
+```text
+trades > 200
+net Profit Factor > 1.25 at standard spread
+net Profit Factor > 1.25 at 2x spread stress
+Sharpe > 1.20
+Max Drawdown < 15%
+```
+
+Walk-forward validation uses 24-month training and 6-month testing windows, with
+four or more rolling windows when enough history exists. Parameter sets that
+materially degrade out of sample are rejected.
+
+If a candidate fails, SVOS produces a failure analysis report and keeps the
+strategy contained. A failed candidate must not be promoted, frozen, imported as
+an approved package, or used to justify System 2 paper/demo execution.
 
 ## Non-Negotiable Rules
 

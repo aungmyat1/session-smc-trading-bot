@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SMC Trading Checklist - Accurate Version</title>
+<style>
+  :root {
+    --ink:#111827; --muted:#6b7280; --line:#d1d5db; --soft:#f3f4f6;
+    --accent:#0f766e; --accent2:#1d4ed8; --bad:#b91c1c; --good:#166534;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff;color:var(--ink)}
+  .page{width:210mm;min-height:297mm;margin:0 auto;padding:11mm}
+  h1{margin:0 0 4px;font-size:24px}
+  .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .field{border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-height:42px}
+  .label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;break-inside:avoid}
+  .full{grid-column:1/-1}
+  h2{margin:0 0 7px;font-size:15px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:5px}
+  h3{margin:8px 0 6px;font-size:13px;color:var(--accent2)}
+  ul{margin:0;padding:0;list-style:none}
+  li{display:flex;gap:8px;align-items:flex-start;margin:5px 0;font-size:12.6px;line-height:1.35}
+  .box{width:14px;height:14px;border:1.4px solid #374151;border-radius:3px;flex:0 0 14px;margin-top:2px}
+  .tiny{font-size:11px;color:var(--muted)}
+  .note{background:var(--soft);border-left:4px solid var(--accent2);padding:8px 10px;font-size:12px;border-radius:6px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}
+  th{background:var(--soft)}
+  .good{color:var(--good);font-weight:bold}
+  .bad{color:var(--bad);font-weight:bold}
+  .refs a{color:#1d4ed8;text-decoration:none}
+  .footer{margin-top:10px;text-align:center;color:var(--muted);font-size:11px}
+  @media print{
+    .page{width:auto;min-height:auto;margin:0;padding:9mm}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>SMC Trading Checklist</h1>
+  <div class="sub">Accurate version: refined from the video model using external SMC references on FVG, order blocks, structure, and entry rules.</div>
+
+  <div class="bar">
+    <div class="field"><span class="label">Date</span></div>
+    <div class="field"><span class="label">Pair / Market</span></div>
+    <div class="field"><span class="label">Session</span></div>
+    <div class="field"><span class="label">Direction</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1) Hard Filter: Market Context</h2>
+      <ul>
+        <li><span class="box"></span><span>Start on <b>1H or 4H</b>. Structure first, entry tool second.</span></li>
+        <li><span class="box"></span><span>Bias is clear: trending, or a <b>confirmed CHoCH</b> has already shifted bias.</span></li>
+        <li><span class="box"></span><span>I know the external swing high/low that matters.</span></li>
+        <li><span class="box"></span><span>I am not trading random internal chop.</span></li>
+      </ul>
+      <div class="note">If structure is unclear, there is no trade.</div>
+    </div>
+
+    <div class="card">
+      <h2>2) Premium / Discount Filter</h2>
+      <ul>
+        <li><span class="box"></span><span>Dealing range is drawn from the relevant external swing low to high.</span></li>
+        <li><span class="box"></span><span><b>Buy only in discount</b> (below 50%).</span></li>
+        <li><span class="box"></span><span><b>Sell only in premium</b> (above 50%).</span></li>
+        <li><span class="box"></span><span>I am not buying high or selling low in the middle of the range.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>3) Valid HTF POI</h2>
+      <h3>Order Block checklist</h3>
+      <ul>
+        <li><span class="box"></span><span>The OB aligns with a meaningful <b>BOS or CHoCH</b>.</span></li>
+        <li><span class="box"></span><span>The move away showed <b>displacement</b> / urgency.</span></li>
+        <li><span class="box"></span><span>The OB is still <b>fresh / unmitigated</b>.</span></li>
+        <li><span class="box"></span><span>The OB has extra confluence: nearby liquidity and/or FVG.</span></li>
+      </ul>
+      <h3>FVG checklist</h3>
+      <ul>
+        <li><span class="box"></span><span>The FVG formed from a move that caused a meaningful <b>external</b> BOS or CHoCH.</span></li>
+        <li><span class="box"></span><span>The FVG is with trend or with a confirmed reversal.</span></li>
+        <li><span class="box"></span><span>The FVG is still unmitigated.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>4) Liquidity Story</h2>
+      <ul>
+        <li><span class="box"></span><span>Liquidity is marked clearly: equal highs/lows, prior session high/low, swing points.</span></li>
+        <li><span class="box"></span><span>I know what price is likely to sweep <b>before</b> the move.</span></li>
+        <li><span class="box"></span><span>I know what liquidity I am targeting <b>after</b> entry.</span></li>
+        <li><span class="box"></span><span>The target pool is large enough to justify the risk.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>5) Lower-Timeframe Confirmation</h2>
+      <ul>
+        <li><span class="box"></span><span>Price reached the HTF POI first.</span></li>
+        <li><span class="box"></span><span>A <b>liquidity sweep</b> occurred inside or just before the zone.</span></li>
+        <li><span class="box"></span><span>A valid <b>5M CHoCH / MSS / BOS</b> formed after the sweep.</span></li>
+        <li><span class="box"></span><span>The displacement leg created a new 5M OB and/or FVG.</span></li>
+        <li><span class="box"></span><span>I am waiting for retrace into the execution zone, not chasing the impulse candle.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>6) Entry Model</h2>
+      <table>
+        <tr><th>Type</th><th>When to use</th><th>Entry</th></tr>
+        <tr><td>Confirmation</td><td>Default model</td><td>Retest of 5M OB / FVG after sweep + CHoCH/BOS</td></tr>
+        <tr><td>Refined</td><td>Very clean setup</td><td>Midpoint / 50% of impulse, OB midpoint, or FVG midpoint</td></tr>
+        <tr><td>Aggressive</td><td>Only strong confluence</td><td>Direct touch of HTF POI with predefined invalidation</td></tr>
+      </table>
+      <div class="tiny">Default choice: Confirmation. Aggressive entries are lower quality unless the confluence is exceptional.</div>
+    </div>
+
+    <div class="card">
+      <h2>7) Stop Loss Rules</h2>
+      <ul>
+        <li><span class="box"></span><span>SL goes <b>beyond invalidation</b>, not at a random tight distance.</span></li>
+        <li><span class="box"></span><span>For buys: below the sweep low or below the OB/FVG invalidation.</span></li>
+        <li><span class="box"></span><span>For sells: above the sweep high or above the OB/FVG invalidation.</span></li>
+        <li><span class="box"></span><span>If stop is too wide, I reduce size or skip the trade.</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>8) Take Profit Rules</h2>
+      <ul>
+        <li><span class="box"></span><span>TP1 = nearest internal liquidity / first logical reaction point.</span></li>
+        <li><span class="box"></span><span>TP2 = structural high/low or external liquidity.</span></li>
+        <li><span class="box"></span><span>Exit plan is defined <b>before</b> entry.</span></li>
+        <li><span class="box"></span><span>Minimum planned R:R is acceptable for the setup type.</span></li>
+      </ul>
+      <table>
+        <tr><th>Setup</th><th>Minimum planned R:R</th></tr>
+        <tr><td>Confirmation</td><td>1:2 preferred, 1:3 ideal</td></tr>
+        <tr><td>Refined</td><td>1:3 preferred</td></tr>
+        <tr><td>Aggressive</td><td>1:2 minimum</td></tr>
+      </table>
+    </div>
+
+    <div class="card full">
+      <h2>9) Session / Timing Filter</h2>
+      <ul>
+        <li><span class="box"></span><span>Prefer high-volume windows: <b>London</b> and <b>New York</b> for forex-style SMC execution.</span></li>
+        <li><span class="box"></span><span>Avoid forcing entries in low-volume chop or right into major news.</span></li>
+        <li><span class="box"></span><span>If trading crypto/indices, adapt timing to the market's active session instead of copying forex times blindly.</span></li>
+      </ul>
+    </div>
+
+    <div class="card full">
+      <h2>10) Automatic No-Trade Conditions</h2>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <ul>
+            <li><span class="box"></span><span>No clear HTF bias.</span></li>
+            <li><span class="box"></span><span>POI already mitigated.</span></li>
+            <li><span class="box"></span><span>FVG did not cause external BOS/CHoCH.</span></li>
+            <li><span class="box"></span><span>OB has no displacement / no intent.</span></li>
+          </ul>
+        </div>
+        <div>
+          <ul>
+            <li><span class="box"></span><span>No sweep.</span></li>
+            <li><span class="box"></span><span>No lower-timeframe shift.</span></li>
+            <li><span class="box"></span><span>R:R below plan.</span></li>
+            <li><span class="box"></span><span>Trade is driven by FOMO.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>11) Final Grade</h2>
+      <table>
+        <tr><th>Grade</th><th>Requirements</th><th>Action</th></tr>
+        <tr><td class="good">A Setup</td><td>Clear HTF bias + premium/discount + fresh POI + liquidity sweep + 5M confirmation + clean R:R</td><td>Take normal risk</td></tr>
+        <tr><td>B Setup</td><td>One non-critical weakness, but structure still clean</td><td>Reduce risk or be selective</td></tr>
+        <tr><td class="bad">C Setup</td><td>Missing structure, confirmation, or clean target</td><td>No trade</td></tr>
+      </table>
+    </div>
+
+    <div class="card full refs">
+      <h2>12) Source Notes Used for This Version</h2>
+      <div class="tiny">
+        <p><b>Daily Price Action - FVG guide:</b> trend first, FVG must trigger BOS/CHoCH, use premium/discount, fresh unmitigated zones, then confirm on lower timeframe.</p>
+        <p><b>Daily Price Action - Order block guide:</b> OB must align with structure, show displacement, and remain unmitigated.</p>
+        <p><b>HowToTrade SMC guide:</b> high-probability OB usually changes character or breaks structure and often has liquidity or FVG confluence; entry above bullish OB, SL below zone, TP at structural high.</p>
+        <p><b>Session filter:</b> used only as a practical add-on, not as a hard rule from the original video.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Open in preview or print to PDF from your browser.</div>
+</div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1997dbb28fdcc88',t:'MTc4Mzc5MDU1NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

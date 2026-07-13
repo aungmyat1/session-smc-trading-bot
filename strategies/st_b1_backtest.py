@@ -13,6 +13,8 @@ duplicating the ~15-line walk-forward loop here was judged lower-risk than
 importing a private function from an unrelated strategy's script).
 
 Public API:
+    session_for_timestamp(ts) -> str | None
+    normalize_bars(raw_bars) -> list[dict]
     simulate_trade(entry, sl, tp, direction, future_bars, max_bars) -> TradeOutcome
     run_backtest(h1_candles, m15_candles, *, symbol, equity, risk_pct, ...) -> list[TradeOutcome]
     compute_metrics(outcomes) -> dict  (trade_count, win_rate, profit_factor,
@@ -40,8 +42,45 @@ from strategies.st_b1_simple_pullback import (
     detect_pullback,
     generate_orders,
 )
+from strategy.session_liquidity.session_builder import classify_session
 
 MAX_TRADE_BARS = 96  # 24h on M15, matches scripts/backtest_session_liquidity.py's convention
+
+
+def session_for_timestamp(ts) -> str | None:
+    """Classify a bar timestamp (ISO string or UTC datetime) into a trading
+    session label ('london' | 'new_york' | None). Thin wrapper around the
+    existing, tested killzone classifier in
+    strategy/session_liquidity/session_builder.py — not reimplemented here,
+    same reuse discipline as st_b1_simple_pullback.py's wilder_atr()."""
+    if not ts:
+        return None
+    try:
+        return classify_session(ts)
+    except (TypeError, ValueError):
+        return None
+
+
+def normalize_bars(raw_bars: list[dict]) -> list[dict]:
+    """Coerce live market-data candles (execution/market_data.py's
+    `{"time", "open", "high", "low", "close", "volume"}` shape, as returned
+    by VantageDemoExecutor.get_candles()) into the dict shape
+    compute_trend()/detect_pullback()/generate_orders()/run_backtest()
+    expect: `timestamp` (renamed from `time`) plus a `session` label
+    computed from it. Already-normalized bars (e.g. backtest CSV rows that
+    already carry `timestamp`/`session`) pass through unchanged."""
+    normalized: list[dict] = []
+    for bar in raw_bars:
+        ts = bar.get("timestamp", bar.get("time"))
+        normalized.append({
+            "timestamp": ts,
+            "open": bar.get("open"),
+            "high": bar.get("high"),
+            "low": bar.get("low"),
+            "close": bar.get("close"),
+            "session": bar.get("session") or session_for_timestamp(ts) or "",
+        })
+    return normalized
 
 
 @dataclass

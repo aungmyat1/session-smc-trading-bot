@@ -2,6 +2,19 @@
 # Manifest-driven jobs for replay/backtest/report workflows.
 
 jobs:
+  - job_id: ST-B1-validate
+    strategy: ST-B1
+    symbol: EURUSD,GBPUSD
+    notes: "Validate ST-B1 Simple Trend Pullback on all available local EURUSD/GBPUSD H1+M15 history."
+    steps:
+      - name: replay-backtest-walk-forward
+        command:
+          - python3
+          - scripts/backtest_st_b1.py
+          - --source
+          - parquet
+      - name: report
+
   - job_id: ST-A2-validate
     strategy: ST-A2
     symbol: EURUSD

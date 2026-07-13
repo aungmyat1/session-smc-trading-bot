@@ -14,13 +14,80 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from strategies.st_b1_backtest import TradeOutcome, compute_metrics, run_backtest, simulate_trade
+from strategies.st_b1_backtest import (
+    TradeOutcome,
+    compute_metrics,
+    normalize_bars,
+    run_backtest,
+    session_for_timestamp,
+    simulate_trade,
+)
 
 _UTC = timezone.utc
 
 
 def _bar(ts, o, hi, lo, c):
     return {"timestamp": ts, "open": o, "high": hi, "low": lo, "close": c}
+
+
+class TestSessionForTimestamp:
+    """session_for_timestamp() must be a thin wrapper around the existing,
+    tested killzone classifier (strategy/session_liquidity/session_builder.py)
+    — not a reimplementation. These pin its behavior against concrete UTC
+    times so a future change to the underlying classifier is caught here too."""
+
+    def test_london_window(self):
+        assert session_for_timestamp(datetime(2026, 1, 15, 7, 0, tzinfo=_UTC)) == "london"
+
+    def test_new_york_window(self):
+        assert session_for_timestamp(datetime(2026, 1, 15, 12, 0, tzinfo=_UTC)) == "new_york"
+
+    def test_outside_any_window_is_none(self):
+        assert session_for_timestamp(datetime(2026, 1, 15, 20, 0, tzinfo=_UTC)) is None
+
+    def test_iso_string_input_accepted(self):
+        assert session_for_timestamp("2026-01-15T07:00:00+00:00") == "london"
+
+    def test_missing_timestamp_is_none(self):
+        assert session_for_timestamp(None) is None
+        assert session_for_timestamp("") is None
+
+
+class TestNormalizeBars:
+    """normalize_bars() must coerce execution/market_data.py's live candle
+    shape ({"time", "open", "high", "low", "close", "volume"}) into the
+    {"timestamp", "open", "high", "low", "close", "session"} shape
+    compute_trend()/detect_pullback()/generate_orders()/run_backtest()
+    expect — this is exactly the gap that broke strategies/adapters/
+    st_b1_adapter.py's import (normalize_bars/session_for_timestamp didn't
+    exist yet)."""
+
+    def test_renames_time_to_timestamp_and_fills_session(self):
+        raw = [{"time": datetime(2026, 1, 15, 7, 0, tzinfo=_UTC),
+                "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 100}]
+        normalized = normalize_bars(raw)
+        assert normalized == [{
+            "timestamp": datetime(2026, 1, 15, 7, 0, tzinfo=_UTC),
+            "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15,
+            "session": "london",
+        }]
+
+    def test_already_normalized_bars_pass_through_session(self):
+        """A bar that already carries `timestamp`/`session` (e.g. a backtest
+        CSV row) must not have its session overwritten by recomputing it."""
+        raw = [{"timestamp": "2026-01-15T20:00:00+00:00", "open": 1.0, "high": 1.0,
+                "low": 1.0, "close": 1.0, "session": "london"}]
+        normalized = normalize_bars(raw)
+        assert normalized[0]["session"] == "london"
+
+    def test_out_of_session_bar_gets_empty_string_not_none(self):
+        raw = [{"time": datetime(2026, 1, 15, 20, 0, tzinfo=_UTC),
+                "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0}]
+        normalized = normalize_bars(raw)
+        assert normalized[0]["session"] == ""
+
+    def test_empty_input_returns_empty_list(self):
+        assert normalize_bars([]) == []
 
 
 class TestSimulateTrade:

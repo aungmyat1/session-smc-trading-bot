@@ -2,9 +2,14 @@
 
 Date: 2026-07-04
 Status: Assessment only
-Authoritative platform document: `SYSTEM2_MASTER_PLAN.md` (repo root) — this file assesses
-*infrastructure* readiness for the next milestone against it; it does not re-derive platform status
-from scratch (see that document's own Phase 1-4 tracking, current through Sprint 2.3 as of this pass).
+Authority note, updated 2026-07-12: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md` is the
+single source of truth for the System 1/SVOS and System 2/Execution split. `SYSTEM2_MASTER_PLAN.md`
+at the repo root is the current System 2 readiness implementation plan. This file is a dated
+infrastructure assessment and must not be used to authorize strategy approval, paper/demo
+execution, or live trading.
+
+Current invariant: System 2 may proceed to package-ready disabled/shadow readiness with signed
+synthetic or fixture packages only. No strategy currently has Production Approval.
 
 ---
 

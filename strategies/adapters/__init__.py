@@ -6,6 +6,7 @@ from core.base_strategy import BaseStrategy
 from strategies.adapters.adaptive_smc_adapter import AdaptiveSMCAdapter
 from strategies.adapters.london_breakout_adapter import LondonBreakoutAdapter
 from strategies.adapters.ny_momentum_adapter import NYMomentumAdapter
+from strategies.adapters.st_b1_adapter import STB1Adapter
 from strategies.adapters.st_a2_adapter import ST2Adapter
 from strategies.adapters.vwap_adapter import VWAPBreakoutAdapter, VWAPMeanReversionAdapter
 
@@ -13,6 +14,7 @@ ADAPTER_TYPES: dict[str, type[BaseStrategy]] = {
     "AdaptiveSMC": AdaptiveSMCAdapter,
     "LondonBreakout": LondonBreakoutAdapter,
     "NYMomentum": NYMomentumAdapter,
+    "ST-B1": STB1Adapter,
     "ST-A2": ST2Adapter,
     "VWAPBreakout": VWAPBreakoutAdapter,
     "VWAPMeanReversion": VWAPMeanReversionAdapter,
@@ -32,6 +34,7 @@ __all__ = [
     "AdaptiveSMCAdapter",
     "LondonBreakoutAdapter",
     "NYMomentumAdapter",
+    "STB1Adapter",
     "ST2Adapter",
     "VWAPBreakoutAdapter",
     "VWAPMeanReversionAdapter",

@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from core.trade_journal_db import TradeJournalDB
 from dashboard import live_dashboard_service, live_state_adapter, strategy_service
@@ -2149,7 +2150,7 @@ async def api_validation_recovery(limit: int = 20, identity: dict = Depends(requ
 
 
 @app.get("/api/system2/readiness")
-async def api_system2_readiness():
+async def api_system2_readiness(identity: dict = Depends(require_authenticated())):
     """Fail-closed System 2 readiness report — the single source of truth for
     the dashboard's readiness summary panel. See _system2_readiness() for the
     10-point checklist; any unproven check fails closed to NOT_READY."""
@@ -2253,7 +2254,7 @@ def _system2_monitoring() -> dict:
 
 
 @app.get("/api/system2/monitoring")
-async def api_system2_monitoring():
+async def api_system2_monitoring(identity: dict = Depends(require_authenticated())):
     """Consolidated operational monitoring — platform health, broker,
     runner, database, risk engine, dashboard backend, WebSocket
     subscribers, execution latency (honestly null if no data exists yet),

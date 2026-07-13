@@ -1,399 +1,272 @@
-# SYSTEM 2 MASTER PLAN — Production Live Trading Platform
+# SYSTEM 2 MASTER PLAN — Production Execution Readiness
 
-- Date: 2026-07-04
-- Status: **Authoritative — single source of truth for System 2**
-- Scope: System 2 (Production Execution Layer) only. System 1 (SVOS research) is referenced
-  only where it forms an interface into System 2 (package handoff, approval gate).
-- Safety: This document does not authorize live trading, does not change `LIVE_TRADING`/
-  `DEMO_ONLY`, and does not implement code. It is a review and plan only.
-- Method: Direct, read-only, file:line-anchored inspection of the current repository state
-  (`/home/aungp/session-smc-trading-bot`) as of 2026-07-04, including uncommitted changes and the
-  most recent System-2 commits (`c9203a1` "Address execution safety review findings", `d8e0a59`
-  "Use static operations queries", `e009d5f` "Complete disabled System 2 execution platform").
-  Cross-checked against `ARCHITECTURE_STABILIZATION_ROADMAP.md`, `docs/architecture/*`,
-  `docs/svos/ADR-000{2,3,4}-*.md`, and `docs/audit/*` (2026-07-04 audit pass).
-- **Update 2026-07-04, later same day (Phase 3 stabilization + this pass):** Sprints 2.1-2.3 landed
-  (canonical pipeline, legacy-runner block, durable Postgres operations recording — see the
-  Implementation Roadmap below). A VPS stabilization pass then discovered `smc-demo-runner.service`
-  had been crash-looping since its creation on an unapproved, `INTAKE`-stage strategy name and had
-  **never actually executed ST-A2 (or any strategy) in production** — see
-  `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md`. This has now been fixed and verified: the wrapper
-  (`deploy/gcp-vm1/run_smc_demo.sh`) now runs `--strategy ST-A2`; the service has been stable
-  (0 restarts) with a healthy broker connection and clean tick cycles since 2026-07-04T17:01:32Z.
-  Everything in this document describing the deployed runner's behavior was accurate for the
-  *code path* throughout, but had not, until this fix, been exercised by the actually-running
-  production process.
+- Date: 2026-07-12
+- Status: Current master plan for System 2 readiness
+- Scope: System 2, the production execution layer. System 1/SVOS appears here
+  only as the upstream approval/package handoff.
+- Governing authority: `docs/00_Project/TWO_SYSTEM_ARCHITECTURE_TRUTH.md`.
+  If this plan conflicts with that document, the architecture truth wins.
+- Safety invariant: this document does not authorize live trading, strategy
+  approval, or broker-write configuration changes. `LIVE_TRADING=false` and
+  `DEMO_ONLY=true` remain mandatory until the owner explicitly changes them
+  after all gates pass.
 
 ---
 
 ## Executive Summary
 
-System 2 is a demo-only (`LIVE_TRADING=false`, `DEMO_ONLY=true`), single-broker
-(MetaAPI → Vantage MT5 demo) forex execution layer. It is **not one system today — it is two,
-running in parallel, and only one of them is actually deployed.**
+System 2 is ready for controlled shadow/disabled rehearsals. It is not ready
+for paper execution and not ready for live trading.
 
-- The **deployed** process on the live host is `scripts/run_st_a2_demo.py` (systemd unit
-  `smc-demo-runner.service`), a "legacy" runner that has real governance/recovery wiring
-  (`TradingPermissionService`, emergency-stop handling, startup recovery counting) but does not
-  use the newer `CanonicalExecutionPipeline`.
-- The **canonical** runner, `scripts/run_portfolio.py`, does use the newer
-  `CanonicalExecutionPipeline` / `RiskFirewall` architecture built in ADR-0002/0003/0004, but
-  **has no systemd unit at all** — it is not deployed anywhere. It also lacks the emergency-stop
-  wiring, permission-service check, and startup recovery step the deployed legacy runner has.
+Local evidence collected on 2026-07-12:
 
-Layered on top of this split-brain, three independent findings compound each other into the
-platform's most consequential open risk:
+- `python3 scripts/validate_runtime_config.py` passed.
+- `python3 scripts/health_check.py --no-broker --no-db --json` reported
+  `READY (shadow mode)`, with warnings for stale runner activity and no restart
+  recovery state.
+- Focused package/deployment readiness tests passed: `39 passed`.
+- ST-B1 historical validation is BLOCKED, not failed: Dukascopy returned 403
+  and no real EURUSD/GBPUSD H1+M15 data was reachable from this environment.
+- No strategy currently has Production Approval.
 
-1. **~~The risk-halt feedback loop is dead code in both runners.~~ Fixed in the deployed runner,
-   2026-07-04.** `execution/demo_risk_manager.py::record_result()` and
-   `core/portfolio_manager.py::record_close()` are now called from a real trade-close event in
-   `scripts/run_st_a2_demo.py` (see Phase 1 below) — daily/weekly/monthly loss limits and
-   consecutive-loss halts can now fire from real P&L in the runner that's actually deployed.
-   **Still dead code in `run_portfolio.py`** (the undeployed canonical runner) pending the Phase 2
-   decision recorded below.
-2. **~~That same risk/portfolio state is held only in memory~~ Partially addressed 2026-07-04**
-   (`core/portfolio_manager.py`, `execution/demo_risk_manager.py`'s `risk_state` dict) — both are
-   now persisted to JSON (`logs/risk_state.json`/`logs/portfolio_state.json`) every tick and
-   reloaded at process start in `run_st_a2_demo.py`, so a restart no longer silently resets them to
-   zero. This is a plain JSON file, not the transactional/durable ledger this document originally
-   called for — that remains open.
-3. **~~Restart recovery is informational-only in the deployed runner.~~ Fixed in the deployed
-   runner, 2026-07-04.** `execution/startup_recovery.py::reconcile_pending_executions()` now
-   performs real broker-truth reconciliation — for each non-terminal `ExecutionRecord` left by an
-   interrupted run it either confirms the broker order and backfills the journal (recovered) or
-   finds no broker evidence and marks it `FAILED_TERMINAL` without ever resubmitting (lost) — and
-   is called from `scripts/run_st_a2_demo.py::run()` before the tick loop starts accepting new
-   signals. It never calls an order-placement API, so re-running it against the same state is a
-   verified no-op (`tests/execution/test_startup_recovery.py`,
-   `tests/scripts/test_run_st_a2_demo_e2e_recovery.py`). **Still `run_portfolio.py`:**
-   `ExecutionStateStore.recover_incomplete()` is never called there at all — unchanged, pending the
-   Phase 2 decision recorded below.
-
-None of this blocks the platform from being useful for demo-scope observation today — broker
-connectivity, order placement, retry/backoff, logging, and Telegram alerting are all genuinely
-implemented and working. But **an operator pressing "emergency stop" on the canonical runner, or
-relying on daily-loss halts to protect the demo account during a losing streak, or trusting the
-dashboard's `/api/v1/production/health` endpoint as a liveness signal, would all be wrong today** —
-each of those controls exists in code but is disconnected from the path that is actually running.
-
-This plan is sequenced to close the split-brain and the disconnected-safety-mechanism gaps first
-(Phase 1-2), then consolidate duplicated surfaces (dashboard backends, strategy loader pipelines,
-APIs) (Phase 3), then complete deployment/observability hygiene (Phase 4). No phase enables live
-trading; that remains gated behind SVOS Production Approval per `CLAUDE.md` §0.1, which no
-strategy currently holds.
+The next work is not to enable more execution. The next work is to close the
+remaining System 2 safety gaps, rehearse disabled deployment on the real host,
+bind imported packages to the runtime, and prove broker telemetry/recovery
+before any paper execution discussion.
 
 ---
 
-## Architecture
+## Current Readiness Verdict
 
-### Current (as observed, not as documented)
-
-```
-┌──────────────────────────────────────────────────────────────────────────────────┐
-│  VPS 1 — auto-trade-vps (confirmed live)                                          │
-│                                                                                     │
-│  ENTRYPOINT A — DEPLOYED                    ENTRYPOINT B — NOT DEPLOYED           │
-│  ┌────────────────────────────┐             ┌────────────────────────────────┐   │
-│  │ scripts/run_st_a2_demo.py   │             │ scripts/run_portfolio.py        │   │
-│  │ systemd: smc-demo-runner.   │             │ systemd: NONE                   │   │
-│  │ service (real, active)      │             │ (canonical architecture, never  │   │
-│  │                              │             │  actually run in production)    │   │
-│  │ ✓ TradingPermissionService   │             │ ✓ CanonicalExecutionPipeline    │   │
-│  │ ✓ StrategyExecutionGuard     │             │ ✓ RiskFirewall / _PortfolioRisk-│   │
-│  │ ✓ emergency-stop check/tick  │             │   Gate                          │   │
-│  │ ✓ recover_incomplete() at    │             │ ✗ no permission/guard check      │   │
-│  │   startup (informational)    │             │ ✗ no emergency-stop check per    │   │
-│  │ ✗ no CanonicalExecutionPipe- │             │   tick                           │   │
-│  │   line layer                 │             │ ✗ no recover_incomplete() call   │   │
-│  └──────────────┬───────────────┘             └───────────────┬────────────────┘   │
-│                 │                                              │                    │
-│                 └───────────────┬──────────────────────────────┘                    │
-│                                 ▼                                                    │
-│                  execution/trade_manager.py  (the REAL order path, both runners)     │
-│                  → execution/execution_state.py (durable per-order JSON state)       │
-│                  → execution/mt5_connector.py → MetaAPI → Vantage MT5 DEMO           │
-│                                                                                       │
-│                  core/portfolio_manager.py (in-memory only: _open_symbols,           │
-│                  _daily/_weekly/_monthly_pnl_pct — record_close() never called)      │
-│                  execution/demo_risk_manager.py (in-memory risk_state —              │
-│                  record_result() never called)                                       │
-│                                                                                       │
-│  DASHBOARD — 3 backend processes, fragmented routes:                                │
-│  ┌───────────────────┐  ┌───────────────────┐  ┌────────────────────────────────┐  │
-│  │ status_server.py   │  │ app.py             │  │ live_app.py                     │  │
-│  │ FastAPI :8090       │  │ Flask               │  │ Flask                           │  │
-│  │ systemd: live-      │  │ systemd: EXAMPLE    │  │ own systemd unit (per docs;     │  │
-│  │ dashboard.service   │  │ ONLY — not          │  │ superseded in practice by       │  │
-│  │ — CONFIRMED         │  │ confirmed running   │  │ status_server for the live      │  │
-│  │ DEPLOYED            │  │                     │  │ deployment)                     │  │
-│  │ NO /new-dashboard   │  │ serves New Dashboard│  │ duplicate /api/live-dashboard/* │  │
-│  │ routes              │  │ (dist/, /api/new-   │  │ routes vs app.py                │  │
-│  │                     │  │ dashboard/*) — real  │  │                                 │  │
-│  │                     │  │ data IF this process │  │                                 │  │
-│  │                     │  │ were running         │  │                                 │  │
-│  └───────────────────┘  └───────────────────┘  └────────────────────────────────┘  │
-│                                                                                       │
-│  Net effect: New Dashboard frontend is wired to real SVOS/strategy data through      │
-│  app.py, but app.py is not confirmed deployed — the frontend is unreachable on the   │
-│  live host today.                                                                    │
-└──────────────────────────────────┬────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-                    Postgres `vmassit` (control-plane, VPS 1 loopback)
-                    + JSON/JSONL flat files (data/execution/*.json,
-                      data/production/runtime/runtime-state.json,
-                      reports/control_state.json, data/production/heartbeat.json)
-
-  SVOS → PRODUCTION HANDOFF (two disconnected pipelines):
-  ┌─────────────────────────────────┐        ┌────────────────────────────────────┐
-  │ Pipeline A — packaging/staging   │        │ Pipeline B — what runners actually  │
-  │ production/importer.py           │   ✗    │ load                                │
-  │ production/verifier.py           │  NOT   │ --strategy-package / APPROVED_      │
-  │ production/activation.py         │ CONN-  │ STRATEGY_PACKAGE env var →           │
-  │ (checksum/signature verified,    │ ECTED  │ approval_package.package_validator   │
-  │  STAGED_DISABLED only)            │        │ → config/strategy_portfolio.yaml →   │
-  │                                   │        │ strategies/adapters/*.py (hardcoded) │
-  └─────────────────────────────────┘        └────────────────────────────────────┘
-```
-
-### Target (end state for this master plan — still demo-only)
-
-```
-                     ┌───────────────────────────────────────────┐
-                     │  ONE canonical runner, ONE systemd unit     │
-                     │  (merges Entrypoint A's governance/recovery │
-                     │   wiring into Entrypoint B's pipeline       │
-                     │   architecture, or vice versa — Phase 2     │
-                     │   decides which survives)                   │
-                     │  - TradingPermissionService + emergency-stop │
-                     │    check every tick                          │
-                     │  - CanonicalExecutionPipeline / RiskFirewall │
-                     │  - recover_incomplete() at startup, WITH     │
-                     │    automatic broker-truth reconciliation      │
-                     │  - record_result()/record_close() called on  │
-                     │    every trade close, persisted durably       │
-                     └───────────────────────┬───────────────────────┘
-                                             ▼
-                     execution/trade_manager.py → execution_state.py
-                     (durable) → mt5_connector.py → MetaAPI → Vantage DEMO
-                                             │
-                     Risk/portfolio state persisted to Postgres or a
-                     durable JSON store keyed by day/week/month — survives
-                     restart, feeds the SAME halts the runner checks.
-                                             │
-                     ┌───────────────────────▼───────────────────────┐
-                     │  ONE dashboard backend, serving BOTH the        │
-                     │  operations/live-position views AND the New     │
-                     │  Dashboard SPA, with a single CONFIRM-token      │
-                     │  contract applied consistently to every          │
-                     │  mutation route (activate, position close/       │
-                     │  protect/cancel, emergency-stop, promote/demote) │
-                     └─────────────────────────────────────────────────┘
-                     One strategy-loading path: the runner loads ONLY
-                     from a verified import (Pipeline A above), retiring
-                     Pipeline B's separate config-driven adapter loading.
-```
-
----
-
-## Current Status — Component Classification
-
-Legend: **Implemented** (works end-to-end, correctly wired) · **Partial** (real code exists but
-incomplete or only partially wired) · **Missing** (no implementation) · **Broken** (implementation
-exists but does not function as intended in the path that matters) · **Deprecated** (superseded,
-should be retired) · **Duplicate** (two+ implementations of the same concern coexist)
-
-| Component | Classification | Summary |
+| Capability | Readiness | Notes |
 |---|---|---|
-| Execution Engine | **Duplicate** | `CanonicalExecutionPipeline` (used by undeployed `run_portfolio.py`) vs. direct `TradeManager` calls (used by deployed `run_st_a2_demo.py`, no pipeline layer) — two real architectures, only the weaker one is live |
-| Broker Integration | **Implemented** (demo scope) | Real MetaAPI/Vantage SDK usage, confirmed live account/candle data; live-mode code paths exist below the CLI entrypoint (WS3, open) |
-| Order Management | **Partial** | Real retry/backoff/state-machine (`execution_state.py`); `production/engine/orders.py` idempotency layer built but unused (**Duplicate** sub-finding) |
-| Position Management | **Partial** (2026-07-04) | `record_close()` is now called from a real trade-close event in the deployed legacy runner (`scripts/run_st_a2_demo.py::_process_closed_positions`, via new `execution/position_close_detector.py`), releasing the one-per-symbol dedup guard on actual broker close. Still **not durably persisted across a crash mid-tick** beyond the once-per-tick JSON snapshot (see Persistence row), and matching is by `(symbol, position.id == journal.broker_order_id)` — the same convention `scripts/reconcile_positions.py` already used, inherited limitation since MetaAPI order placement never captures a separate `positionId` |
-| Risk Engine | **Partial** (2026-07-04) | `record_result()` is now called from the same real close event in the deployed legacy runner, so daily/weekly/monthly loss halts and consecutive-loss halts **can** fire from real P&L (verified by `tests/scripts/test_run_st_a2_demo_close_detection.py::test_losing_streak_halts_via_real_close_events`). `risk_state` and `PortfolioManager`'s counters are now persisted to `logs/risk_state.json` / `logs/portfolio_state.json` and reloaded at process start, so a restart no longer silently zeroes them. **Still open**: this wiring exists only in the legacy runner (`run_st_a2_demo.py`), not `run_portfolio.py`; a JSON file is not the durable, transactional ledger this plan's Phase 1 originally called for (no atomic write, no Postgres option evaluated); unmatched broker closes (no matching journal row) are alerted via Telegram but not auto-resolved |
-| Account Monitoring | **Partial** | Real broker account/balance snapshot exists (`live_dashboard_service.py`) but is a separate ad hoc connection, decoupled from the tick loop and not feeding the risk engine |
-| Health Monitoring | **Partial** | `/api/v1/production/health` heartbeat source is never fed by the canonical runner — will read stale/UNKNOWN; a separate, real broker-connectivity check exists but is disconnected from the actual tick-loop's own connection |
-| Logging | **Implemented** | Real gzip-rotating handler, daily rotation, dual-layer (app + OS logrotate), live evidence through 2026-07-04 |
-| Alerting | **Partial** | `TelegramAlerter` is comprehensive and wired into `bot.py`/`run_st_a2_demo.py`; not confirmed wired into the canonical `run_portfolio.py` |
-| Strategy Package Loader | **Duplicate** | Pipeline A (`production/importer.py`/`verifier.py`, checksum+signature verified) and Pipeline B (`config/strategy_portfolio.yaml` + hardcoded adapters, what runners actually load) are entirely disconnected |
-| Strategy Activation | **Partial** | `production/activation.py` correctly dead-ends at `STAGED_DISABLED`/`BLOCKED` (live categorically unreachable — good); its own activate API endpoint lacks the CONFIRM-token pattern the emergency-stop endpoints use |
-| Execution Workflow | **Partial / Broken** | Real signal→risk-gate→order→journal flow exists but diverges between the two runners; risk-halt dead code (see Risk Engine) sits inside this flow |
-| Dashboard Backend | **Duplicate** | 3 backend processes with overlapping routes (`/api/live-dashboard/*` duplicated verbatim in `app.py` and `live_app.py`; `/api/status` and `/api/emergency-stop*` duplicated in `app.py` and `status_server.py`) |
-| Dashboard Frontend | **Partial** | New Dashboard SPA is genuinely wired to real data via `app.py`, but `app.py` is not confirmed deployed — frontend is unreachable on the live host today |
-| APIs | **Duplicate** | Route duplication across the 3 backends; inconsistent auth — only emergency-stop routes enforce a CONFIRM token, other real mutations (activate, position close/protect/cancel, promote/demote) rely on role auth alone |
-| WebSocket | **Implemented** (2026-07-04) | Real-Time Operations Layer: `dashboard/status_server.py`'s `/ws` endpoint, in-process `EventBroadcaster`/`EventPoller` (`dashboard/events.py`) — no Redis, no new services. Server-side collection is poll-based against durable stores (`operations.*`, `control_state.json`, runner state file) every 2s since the runner and dashboard are separate OS processes; the browser connection itself is genuine push. Load-tested: 0 events lost across 25 concurrent subscribers × 2000 events |
-| Persistence | **Partial** | Order state (`ExecutionStateStore`) and process lifecycle (`RuntimeAuthority`) are durable; risk/portfolio accounting is in-memory only; `TradeManager`'s default store-root path diverges from the root the dashboard reads |
-| Restart Recovery | **Implemented** (legacy/deployed, 2026-07-04) / **Broken** (canonical) | `execution/startup_recovery.py` performs real broker-truth reconciliation before the deployed runner's tick loop starts, never resubmitting; `recover_incomplete()` is still never called by the undeployed canonical `run_portfolio.py` |
-| Operator Controls | **Partial** | Emergency-stop, pause/resume, close-all, and toggle-strategy (`/api/control/*`, 2026-07-04) are fully wired end-to-end for the legacy runner and now RBAC + CONFIRM-token gated (see Authentication row); manual position close/modify/cancel work via a separate, functioning broker connection regardless of which runner is active; activation/position mutations elsewhere still lack a CONFIRM token |
-| Authentication | **Partial** | Real HMAC/CSRF/role-based auth on dashboard mutation routes; `dashboard/rbac.py` (2026-07-04) brings the same role model to the FastAPI backend (`status_server.py`) — `/api/emergency-stop[/clear]` and all new `/api/control/*` routes now require `Depends(require_role(...))` in addition to their CONFIRM token. Still missing: a frontend login/session UI, and the CONFIRM-token layer on several other real mutations (activation, position close/protect/cancel) that this repo's own CLAUDE.md §4 implies should have one |
-| Secrets | **Implemented** | `.env` gitignored and CI-enforced; no tracked secrets; GCP Secret Manager adapter exists (used by SVOS deployment/signing, not confirmed wired to broker credential loading) |
-| Cloud Deployment | **Broken** (for the canonical architecture) / **Partial** (overall) | The canonical runner has no systemd unit anywhere — the architecture this plan should be built around is not deployed; only the legacy runner + `status_server.py` dashboard are live on VPS 1 |
+| Runtime configuration safety | PASS locally | Runtime validator passes. |
+| Strategy package validation | PASS locally | Package/import/handoff tests pass. |
+| Disabled package staging | Partial PASS | Code paths and tests pass; remote rehearsal still required. |
+| Shadow-mode health | Conditional PASS | Offline health says shadow-ready but reports stale runner activity and missing recovery state. |
+| Broker/data-feed evidence | BLOCKED | Skipped in local run; must be proven against demo broker only. |
+| Cloud release/deploy path | BLOCKED | GitHub environments, WIF, GCS, KMS, Secret Manager and host install need proof. |
+| Paper execution | BLOCKED | Requires approved package, broker evidence, durable recovery/journal proof and owner approval. |
+| Live trading | BLOCKED | Out of scope; requires separate explicit approval after all production gates. |
 
 ---
 
-## Missing Components
+## Non-Negotiable Gates
 
-Nothing in System 2 is entirely absent from a *code-exists* standpoint — every gap above is a
-wiring/consolidation/persistence gap, not a blank page. The closest things to true "missing"
-components are:
-
-1. **A durable, restart-safe risk/portfolio ledger.** No component today persists
-   `daily_loss_pct`/`weekly_loss_pct`/`monthly_loss_pct`/`consecutive_losses`/`_open_symbols`
-   anywhere durable. This needs to be designed, not just wired — there is no existing schema or
-   file format to reuse.
-2. **~~A broker-truth reconciliation routine.~~ Implemented for the deployed runner, 2026-07-04**
-   (`execution/startup_recovery.py`) — resolves each ambiguous `ExecutionRecord` against actual
-   broker positions before the tick loop starts, never resubmits. **Still missing for
-   `run_portfolio.py`**, which never calls `recover_incomplete()` at all.
-3. **~~Real-time push (WebSocket/SSE).~~ Implemented 2026-07-04** as the Real-Time Operations
-   Layer — see WebSocket row above. Remaining gap: no frontend widget subscribes to `/ws` yet
-   (backend/transport only; frontend integration is separate, unscoped work).
-4. **A single systemd unit for the canonical execution architecture.** `run_portfolio.py` has
-   zero deployment footprint — this is a deployment gap, not a code gap.
+1. No live trading changes are permitted from this plan.
+2. No strategy may be marked current, approved, paper-enabled or demo-enabled
+   unless SVOS Production Approval exists and the execution gate is satisfied.
+3. A failed, blocked, deferred or synthetic-only strategy result may not be used
+   as approval evidence.
+4. Disabled deployment rehearsal must reach `STAGED_DISABLED`; `activated` and
+   `live_trading_enabled` must remain false.
+5. Every broker-write or activation-class action must retain exact-match
+   confirmation-token control where applicable.
+6. Broker credentials and tokens stay outside git.
 
 ---
 
-## Execution Flow
+## Open Blockers
 
-### As currently deployed (`run_st_a2_demo.py` via `smc-demo-runner.service`)
+### Strategy and Governance
 
-1. Tick fires → `TradingPermissionService`/`StrategyExecutionGuard` checked → if `emergency_stop.active`
-   is set in `reports/control_state.json`, decision is `emergency_stop_active` and no new orders open.
-2. Strategy adapters (`strategies/adapters/*.py`, loaded per `config` at process start) generate signals.
-3. `core/portfolio_manager.py` gate: rejects if symbol already in `_open_symbols` (never released —
-   see Position Management finding).
-4. `execution/demo_risk_manager.py::check_limits()` evaluated against **in-memory** `risk_state`
-   (never updated from real closes — see Risk Engine finding).
-5. `execution/trade_manager.py::open_position()` → `_place_order_with_retry()` (exponential backoff,
-   3 attempts, error classified transient/ambiguous/terminal).
-6. State transitions recorded durably in `execution/execution_state.py`
-   (`SIGNAL_RECEIVED → RISK_APPROVED → SUBMISSION_PENDING → BROKER_ACKNOWLEDGED → FILLED`, or
-   `→ RECOVERY_PENDING` on ambiguous broker response).
-7. Trade journaled (`monitoring/metrics.py::TradeJournal`), Telegram alert sent
-   (`monitoring/telegram.py`).
-8. **No step anywhere calls `record_result()` or `record_close()`** — steps 3-4's guards never
-   reflect this trade's eventual outcome.
-9. On process restart: `recover_incomplete()` runs and **logs** a count of
-   `RECOVERY_PENDING`/`SUBMISSION_PENDING` records — no automatic action is taken on them.
+- No catalog strategy is approved for release.
+- ST-B1 historical validation and walk-forward validation are BLOCKED, not
+  failed. Real Dukascopy data was unreachable from this environment
+  (`403 Forbidden`), so no real-data trades, PF, Sharpe, MaxDD or walk-forward
+  verdict exists. See `docs/audit/ST_B1_VALIDATION_REPORT.md`.
+- ST-A2 remains legacy/deferred from the SVOS perspective unless revalidated
+  through the current gate.
 
-### As architected but not deployed (`run_portfolio.py`)
+### Local System 2 Safety
 
-Same steps 2-7, except step 1's permission/emergency-stop check does not exist, and step 3-4's
-gate is wrapped in `_PortfolioRiskGate` → `CanonicalExecutionPipeline.submit()`
-(`production/engine/execution_pipeline.py`), which additionally validates package/symbol scope
-before calling `TradeManager`. Step 9 (recovery) does not run at all — the process starts a fresh
-`risk_state`/`TradeManager` unconditionally.
+- Offline health reports stale runner activity.
+- Offline health reports no restart recovery state.
+- Phase 1 local safety issues from risk-register rows #15, #17, #19, #20 and
+  #21 were fixed on 2026-07-12 with regression coverage.
 
-### Target flow (Phase 1-2 of the roadmap below)
+### Runtime and Execution
 
-1. Tick fires → single runner checks `TradingPermissionService` + emergency-stop **and** runs
-   through `CanonicalExecutionPipeline`.
-2. Signal → gate checks against **durably persisted** risk/portfolio state.
-3. Order submitted, retried, journaled — unchanged (already correct).
-4. On close (win or loss): `record_result()` and `record_close()` are called, updating both the
-   in-memory guard state **and** the durable ledger in the same transaction/write.
-5. On restart: `recover_incomplete()` lists ambiguous orders, then a reconciliation step queries
-   the broker for each one's true status and resolves the local record before the tick loop
-   accepts new signals.
+- Imported packages are not yet fully bound to an executable production runtime
+  with immutable package identity visible at signal/order time.
+- Execution contracts remain split across existing order/trade/demo executor
+  surfaces and need one normalized behavior for success, rejection, timeout and
+  recovery.
+- Broker latency, rejection, slippage, stale-feed and close-event telemetry need
+  retained evidence from the actual demo path.
+
+### Infrastructure
+
+- GitHub protected environments and required variables need owner-side
+  provisioning/proof.
+- GCP Workload Identity, GCS, KMS, Secret Manager, IAM and production-host
+  installation need a disabled rehearsal.
+- Backup/restore, rollback, restart and network-partition drills are not yet
+  complete.
 
 ---
 
-## Dashboard Requirements
+## Target Architecture
 
-Target state for a single, consolidated System 2 dashboard backend (replacing the current 3):
+System 2 remains deliberately simple:
 
-1. **One process, one systemd unit.** Serve both the operations/live-position views and the New
-   Dashboard SPA from the same backend — eliminates the `app.py`/`live_app.py`/`status_server.py`
-   split and the route duplication it causes.
-2. **Consistent mutation auth.** Every mutation route (emergency-stop, activation, position
-   close/protect/cancel, strategy promote/demote) must require the same CONFIRM-token pattern
-   already used by `/api/emergency-stop`, not role-auth-only.
-3. **Health endpoint that reflects the actual running tick loop**, not a heartbeat file the runner
-   never writes to — either the runner posts its own heartbeat, or the health check directly
-   queries the runner's own liveness (e.g. a Unix socket or PID + last-tick-timestamp file), not a
-   second, independent broker connection.
-4. **Freshness indicators on every widget** — the earlier full-repo audit found the deployed
-   dashboard showing a stale system log (~10h24m stale) and reading the wrong trades journal file;
-   every data widget should surface its own last-updated timestamp so this class of bug is visible
-   to the operator instead of silent.
-5. **Execution-state visibility**: surface `RECOVERY_PENDING`/ambiguous orders prominently, not as
-   a buried counter — this is exactly the state an operator needs to see first after an incident.
-6. **Retain polling (no WebSocket requirement)** at the current trade frequency — but document
-   this as a deliberate decision, and revisit if trade frequency or operator headcount increases.
+```text
+Approved Strategy Package
+  -> package import + checksum/signature preflight
+  -> STAGED_DISABLED runtime binding
+  -> permission/risk/position gates
+  -> execution manager
+  -> broker adapter
+  -> trade journal + execution state + telemetry
+  -> dashboard/alerts/reconciliation
+```
+
+The production runtime must not audit, optimize, backtest or approve
+strategies. It only stages, verifies, observes and executes approved packages
+inside the allowed mode.
 
 ---
 
-## Deployment Architecture
+## Implementation Plan
 
-**Current (VPS 1 — `auto-trade-vps`, the only confirmed-live host for System 2):**
+### Phase 1 — Close Local Safety Gaps
 
-- `smc-demo-runner.service` → `scripts/run_st_a2_demo.py` (the deployed execution engine)
-- `live-dashboard.service` → `uvicorn dashboard.status_server:app` (the deployed dashboard)
-- `deploy/gcp-vm1/systemd/` also contains `d2e3.service`, `d2e3-journal-sync.*`,
-  `reconcile-positions.*` as **files only** — not enabled, a separate/legacy demo path
-- `deploy/dashboard/dashboard.service.example` — an example unit for `dashboard/app.py`, not
-  installed; this is the process the New Dashboard frontend actually needs to be reachable
-- Postgres `vmassit` on VPS 1 loopback (control plane; not node-separated from VPS 2's intended
-  research role, out of System 2's scope to fix — tracked separately in the SVOS-side roadmap)
+Status: completed for in-repo fixes on 2026-07-12.
 
-**Target for this plan (still demo-only, still VPS 1):**
+Tasks:
 
-- One systemd unit for the consolidated canonical runner (Phase 2 below), replacing
-  `smc-demo-runner.service`'s current target.
-- One systemd unit for the consolidated dashboard backend (Phase 3 below), replacing both
-  `live-dashboard.service` and the never-installed `dashboard.service.example`.
-- Durable risk/portfolio ledger location decided and provisioned (Phase 1) — either a Postgres
-  table under the existing `vmassit` control-plane schema, or a dedicated JSON store with the
-  same durability guarantees `execution_state.py` already has.
-- No new hosts, no live-mode changes, no broker/account changes — this plan operates entirely
-  within the existing demo-only VPS 1 footprint.
+1. Completed: `scripts/vps_health_check.sh` passes `last_tick_at` via argv.
+2. Completed: `vps-health-check.service` no longer loads dashboard secrets.
+3. Completed: System 2 operational JSON endpoints require authentication.
+4. Completed: health-check/dashboard stale-tick thresholds are aligned at 180s.
+5. Completed: the invalid `strategy-release` GitHub CLI action was removed.
+6. Completed: regression tests cover the above.
+7. Completed: `docs/operations/risk-register.md` records the evidence.
+
+Exit criteria:
+
+- Focused System 2 tests pass: 26 passed.
+- Runtime config validator passes.
+- Risk-register rows are updated.
+
+### Phase 2 — Remote Disabled Deployment Rehearsal
+
+Priority: after Phase 1.
+
+Tasks:
+
+1. Configure GitHub environments:
+   `strategy-release`, `paper`, `production-disabled`.
+2. Apply required reviewer and trusted-branch/tag protections.
+3. Set and verify required release variables:
+   `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_RELEASE_SERVICE_ACCOUNT`,
+   `SVOS_KMS_KEY_VERSION`, `SVOS_GCS_BUCKET`.
+4. Provision/verify WIF, GCS, KMS, Secret Manager, IAM and production VM access.
+5. Install the deployment poller on the target host under a non-login
+   `agtrade` service account.
+6. Run a fake approved-package disabled deployment rehearsal.
+
+Exit criteria:
+
+- Deployment status is `STAGED_DISABLED`.
+- On-host policy confirms `LIVE_TRADING=false` and `DEMO_ONLY=true`.
+- Health, heartbeat and `/metrics` are reachable locally on the host.
+- Rollback record can be created without mutating package bytes.
+
+### Phase 3 — Runtime Package Binding
+
+Priority: after disabled rehearsal proves the deployment path.
+
+Tasks:
+
+1. Bind imported package metadata to runtime signal/order records:
+   package ID, strategy ID, version, checksum and signature verification result.
+2. Ensure runtime strategy loading uses verified package identity rather than
+   ungoverned config defaults.
+3. Normalize execution behavior across order placement paths:
+   success, broker rejection, ambiguous timeout, retry, recovery and terminal
+   failure.
+4. Prove one-position-per-symbol, max-open-position, duplicate-order and daily
+   loss controls in tests.
+
+Exit criteria:
+
+- A staged-disabled package can produce shadow-only signals with immutable
+  package identity in journal/telemetry.
+- No broker write can occur from an unapproved package.
+- Execution contract tests pass for success, rejection, timeout and recovery.
+
+### Phase 4 — Broker, Recovery and Telemetry Evidence
+
+Priority: before paper execution.
+
+Tasks:
+
+1. Run broker connectivity and data-feed checks in demo mode only.
+2. Add or verify telemetry for:
+   - broker connection state;
+   - tick freshness;
+   - order latency;
+   - broker rejection;
+   - slippage;
+   - close-event feedback;
+   - reconciliation status;
+   - non-terminal execution records.
+3. Prove periodic reconciliation resolves or escalates non-terminal execution
+   records mid-session.
+4. Reconcile journal, broker state and execution-state store after a controlled
+   restart drill.
+
+Exit criteria:
+
+- Broker/data-feed checks pass without live trading.
+- Health and dashboard report the same freshness status.
+- Reconciliation evidence is retained.
+- Restart drill leaves no unexplained open, orphaned or non-terminal records.
+
+### Phase 5 — Paper Execution Gate
+
+Priority: only after Phases 1-4 pass and a strategy has Production Approval.
+
+Tasks:
+
+1. Use only an approved strategy package.
+2. Stage the package disabled.
+3. Verify exact environment policy and owner approval.
+4. Enable paper/demo execution only; never live.
+5. Run a minimum observation window with retained broker, journal, telemetry,
+   risk and reconciliation evidence.
+
+Exit criteria:
+
+- No critical execution failures.
+- Journal, broker and execution-state records reconcile.
+- Risk limits are proven from real close events.
+- Operator runbook covers pause, emergency stop, restart, rollback and
+  recovery.
 
 ---
 
-## Production Safety Checklist
+## Current Test Commands
 
-Use before considering ANY future live-trading discussion (not applicable until Production
-Approval per `CLAUDE.md` §0.1 — this checklist documents what "safe to even discuss live" would
-require, it does not authorize working toward it):
+Use these as the local readiness smoke set:
 
-- [x] Risk-halt feedback loop (`record_result()`/`record_close()`) wired into the deployed legacy
-      runner and verified (unit-level) to actually halt on a simulated losing streak — 2026-07-04.
-      **Not yet**: wired into the canonical runner too (pending Phase 2), or verified against a
-      live/real broker connection end-to-end.
-- [~] Risk/portfolio state persisted to a JSON file and verified to survive a simulated reload —
-      2026-07-04. **Not yet**: a durable/transactional ledger (this checklist item's original
-      intent), or a real forced-process-kill test.
-- [x] Restart recovery performs real broker reconciliation, not just logging, verified via a
-      simulated crash-during-submission test — 2026-07-04
-      (`tests/execution/test_startup_recovery.py`,
-      `tests/scripts/test_run_st_a2_demo_e2e_recovery.py::test_full_open_close_restart_recovery_resume_cycle`).
-      **Not yet**: wired into `run_portfolio.py` (pending Phase 2), or verified against a real
-      broker connection end-to-end (fixtures use fake positions, not a live MetaAPI session).
-- [ ] Emergency-stop verified to halt the actual deployed runner (not just the legacy one) within
-      one tick interval.
-- [ ] Default-deny broker-write boundary enforced at every layer (not just the CLI entrypoint) —
-      WS3/ADR-0012.
-- [ ] Every mutation-class API endpoint (activate, position close/protect/cancel, promote/demote)
-      requires an exact-match CONFIRM token, consistent with emergency-stop's existing pattern.
-- [ ] Single canonical execution engine deployed — no second, competing implementation on the same host.
-- [ ] Health endpoint verified to actually reflect tick-loop liveness (kill the tick loop only,
-      leave the process running if applicable, and confirm health reports unhealthy).
+```bash
+python3 scripts/validate_runtime_config.py
+python3 scripts/health_check.py --no-broker --no-db --json
+python3 -m pytest -o addopts='' \
+  tests/production/test_system2_demo_readiness.py \
+  tests/production/test_deployment_agent.py \
+  tests/production/test_deployment_importer.py \
+  tests/integration/test_canonical_package_handoff.py \
+  tests/portfolio/test_strategy_package_cli.py \
+  tests/portfolio/test_demo_smoke_test.py \
+  tests/test_execution_validation_example_payload.py \
+  tests/test_validate_strategy_package.py \
+  tests/shared/test_strategy_package.py -q
+```
 
-## Operational Checklist
-
-Day-to-day operator readiness for the current demo scope:
-
-- [ ] Confirm which runner is actually active before relying on any control (today: `run_st_a2_demo.py`
-      via `smc-demo-runner.service` — not `run_portfolio.py`).
-- [ ] Do not rely on `/api/v1/production/health` as a liveness signal until it is fed by the
-      canonical runner's own heartbeat.
-- [ ] Treat the New Dashboard SPA as unreachable in production until `dashboard/app.py` (or its
-      consolidated successor) has a real, installed systemd unit.
-- [ ] After any incident, manually inspect `data/execution/*.json` for `RECOVERY_PENDING` records —
-      do not assume the dashboard counter surfaces them promptly.
-- [ ] Verify Telegram alerting is actually being received from whichever runner is deployed
-      (confirmed wired for `run_st_a2_demo.py`/`bot.py`; not confirmed for `run_portfolio.py`).
-- [ ] Periodically confirm `_open_symbols`/loss accounting reflects reality by cross-checking
-      against the broker directly — known to drift over a trading day (Position Management finding).
+The last recorded local run produced `39 passed`.
 
 ---
 
@@ -698,108 +571,12 @@ Day-to-day operator readiness for the current demo scope:
 
 ---
 
-## Acceptance Criteria (platform-level, all phases)
+## References
 
-1. Exactly one execution engine is deployed via systemd; `grep` across `deploy/gcp-vm1/systemd/`
-   and any future unit files confirms no second competing unit exists.
-2. A simulated losing streak past the configured threshold halts new order submission, verified
-   by an automated test.
-3. A simulated process kill mid-order-submission results in automatic, correct reconciliation on
-   restart — no manual JSON inspection required.
-4. Every mutation-class API endpoint requires the same CONFIRM-token contract; a test asserts a
-   request without the token is rejected for each such endpoint.
-5. Exactly one dashboard backend is deployed; the New Dashboard SPA is reachable on the live host.
-6. `/api/v1/production/health` (or its successor) returns unhealthy within one heartbeat interval
-   of the tick loop stopping, verified by an automated test that kills only the tick loop.
-7. `LIVE_TRADING=false`/`DEMO_ONLY=true` remain enforced throughout — no phase of this plan
-   changes, weakens, or adds a bypass for this gate.
-
-## Definition of Done
-
-System 2 is "done" for the purposes of this master plan (still demo-only — this is not a
-live-trading readiness bar) when:
-
-- All four roadmap phases have landed and their acceptance criteria pass.
-- The Current Status table in this document has been re-run and every row reads **Implemented**
-  or **Deprecated** (for anything intentionally retired) — no row remains **Partial**, **Missing**,
-  **Broken**, or **Duplicate**.
-- This document has been updated in place to reflect the new state (it remains the single source
-  of truth — supersede, don't fork, a new report).
-- A follow-on decision (explicitly out of this plan's scope) is made by the owner on whether to
-  pursue SVOS Production Approval for any strategy, which is the only path that could ever make
-  live trading a legitimate subsequent discussion.
-
-### Production Candidate Checklist (added 2026-07-04, Phase 6 — the detailed gate the bullets above summarize)
-
-This is the authoritative, itemized Definition of Done for reaching "Production Candidate" status
-(still demo-only — Production Candidate is a review gate, not a live-trading authorization).
-Updated in place as items land; do not fork a second copy of this checklist elsewhere.
-
-**Execution Platform**
-- [x] Single canonical runner — `run_st_a2_demo.py`, confirmed the only one with a systemd unit,
-  actually trading ST-A2 (fixed 2026-07-04, `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md`).
-- [x] Stable broker connection — verified, 0 restarts across multiple sessions this pass.
-- [x] Recovery validated — `execution/startup_recovery.py`, tested end-to-end (Phase 1).
-- [x] Risk feedback operational — real close events feed `record_result()`/`record_close()`/
-  `CircuitBreaker.record_trade()` (Phase 1).
-- [ ] Durable *risk/portfolio* ledger (transactional, not JSON-file) — still open.
-- [ ] `run_portfolio.py` Tier 2/3 disposition (retire or feature-port) — still open.
-
-**Dashboard**
-- [x] No mock data on integrated widgets — LIVE tab confirmed browser-verified against real
-  backend data (Phase 6); mock `server.ts` simulation retained only as an offline fallback for
-  the SVOS/Suggestions tabs, not the LIVE tab's actual data path.
-- [ ] All widgets consume production APIs — per the Phase 6 coverage matrix
-  (`docs/dashboard/DASHBOARD_BACKEND_MAPPING.md`), roughly half; the rest are "Backend Ready"
-  (real data exists, e.g. `/api/operations/events`, full health grid) but not yet bound to a widget.
-- [x] Backend contracts documented — `docs/dashboard/DASHBOARD_BACKEND_MAPPING.md`, per-endpoint
-  and per-widget.
-- [ ] Health dashboard operational — `state.health`/`/api/operations/health` are real but no LIVE
-  tab widget renders the health grid yet (Backend Ready, not connected).
-
-**Security**
-- [~] Authentication implemented — `dashboard/rbac.py` (2026-07-04) brings `dashboard/auth.py`'s
-  bearer-token/trusted-proxy identity model to the FastAPI backend; `status_server.py`'s
-  emergency-stop and all `/api/control/*` mutation routes now enforce it (`Depends(require_role
-  (...))`, verified live: unauthenticated POST returns 401). Still missing: a frontend
-  session/login UI, and other Flask-side mutations (position close/protect/cancel, activation)
-  are not yet ported to the same FastAPI dependency.
-- [~] RBAC implemented — same role model (`research_operator`/`incident_operator`/
-  `risk_operator`/`admin`) now enforced on both backends; `strategy:toggle`/`trading:pause`/
-  `trading:resume` added to `_ROLE_ACTIONS` (`dashboard/auth.py`) for the new controls. Not yet
-  wired onto the remaining unauthenticated Flask mutation routes noted above.
-- [x] Audit logging enabled — `operations.execution_event`/`recovery_checkpoint` (Sprint 2.3),
-  `TradeJournalDB`, dashboard control-state changes.
-- [x] Operator confirmations enforced (2026-07-04) — `/api/emergency-stop[/clear]` plus the new
-  `/api/control/pause`, `/api/control/resume`, `/api/control/close-all`,
-  `/api/control/toggle-strategy` all require an exact-match CONFIRM token in addition to RBAC.
-  Other mutation-class endpoints outside this family (activation, position close/protect/cancel)
-  still lack one.
-
-**Observability**
-- [x] Monitoring available — `/api/operations/*` (Phase 5), `/metrics` (Prometheus format).
-- [x] Alerts operational — Telegram, real, wired into the live runner.
-- [~] Event history accessible — real and durable via Postgres (`/api/operations/events`,
-  Phase 5), but not yet surfaced in the dashboard UI (Phase 6 coverage matrix).
-- [ ] Health endpoints complete — `/api/v1/production/health` still reads a heartbeat file the
-  canonical runner never writes to; `/api/operations/health` is real but runner-adjacent, not the
-  same endpoint referenced elsewhere in this document's own acceptance criteria (§ above, item 6).
-
-**Operations**
-- [x] Deployment documented — `docs/systemd/SMC_DEMO_RUNNER_ANALYSIS.md`,
-  `docs/vps/STABILIZATION_REPORT.md`, this document's own Deployment Architecture section.
-- [x] Rollback documented — every change this pass included a one-line/`git checkout` rollback path
-  (the runner fix, the removed dead-code cluster via `git status`, the dashboard changes).
-- [~] Runbook available — **started 2026-07-04** (owner feedback: begin alongside implementation,
-  not deferred to the end): `docs/vps/OPERATOR_RUNBOOK.md` covers daily checks, monitoring routines,
-  broker-disconnect/VPS-reboot/risk-trigger/emergency-stop response, deployment rollback, and backup
-  restore. Update it every remaining sprint, not just once at the end.
-- [ ] Disaster recovery documented — backup/restore exists (`docs/database_authority_stabilization.md`
-  §8 rollback plan for the DB authority model specifically, and `docs/vps/OPERATOR_RUNBOOK.md`'s
-  restore-from-backup procedure) but no full-platform DR *rehearsal evidence* exists yet.
-
-**Status: not yet a Production Candidate.** Roughly two-thirds of the Execution Platform and
-Dashboard sections are done; Security is now partially closed (Real-Time Operations Layer,
-2026-07-04 — RBAC + CONFIRM tokens on the emergency-stop/control family, WebSocket event
-streaming) but a frontend login UI and the remaining unauthenticated Flask mutation routes are
-still open, alongside most of Operations.
+- `docs/operations/system2_readiness_implementation_plan.md`
+- `docs/operations/production_readiness_report.md`
+- `docs/operations/current_operational_status.md`
+- `docs/operations/deployment_runbook.md`
+- `docs/operations/risk-register.md`
+- `docs/operations/monitoring_endpoints.md`
+- `docs/VERDICT_LOG.md`
