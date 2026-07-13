@@ -76,7 +76,7 @@ def resolve_metaapi_account_id(raw: str) -> str:
 
 
 class MT5Connector:
-    def __init__(self, mode: str = "demo", broker: str = "vantage") -> None:
+    def __init__(self, mode: str = "demo", broker: str = "vtmarkets") -> None:
         self._mode         = mode
         self._broker       = broker.lower().replace("-", "").replace("_", "")
         self._token        = os.environ.get("METAAPI_TOKEN", "")

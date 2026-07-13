@@ -69,7 +69,7 @@ def test_resolve_metaapi_account_id_extracts_uuid_from_setup_url():
     assert resolve_metaapi_account_id(url) == _ID_A
 
 
-def test_connector_uses_sanitized_demo_account_id(monkeypatch):
+def test_vantage_compatibility_uses_sanitized_demo_account_id(monkeypatch):
     monkeypatch.setenv("METAAPI_TOKEN", "token")
     monkeypatch.setenv(
         "VANTAGE_DEMO_METAAPI_ID",
@@ -77,17 +77,17 @@ def test_connector_uses_sanitized_demo_account_id(monkeypatch):
         f"{_ID_A}/setup-token-value",
     )
 
-    connector = MT5Connector(mode="demo")
+    connector = MT5Connector(mode="demo", broker="vantage")
 
     assert connector._account_id == _ID_A
 
 
-def test_vtmarkets_demo_uses_legacy_metaapi_account_id(monkeypatch):
+def test_default_demo_uses_vtmarkets_legacy_metaapi_account_id(monkeypatch):
     monkeypatch.setenv("METAAPI_TOKEN", "token")
     monkeypatch.setenv("VANTAGE_DEMO_METAAPI_ID", _ID_B)
     monkeypatch.setenv("METAAPI_ACCOUNT_ID", _ID_C)
 
-    connector = MT5Connector(mode="demo", broker="vtmarkets")
+    connector = MT5Connector(mode="demo")
 
     assert connector._account_env_key == "METAAPI_ACCOUNT_ID"
     assert connector._account_id == _ID_C
