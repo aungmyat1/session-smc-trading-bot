@@ -1,0 +1,122 @@
+# SMC-LSS_v0 — Liquidity Sweep System
+#
+# Experimental strategy specification. This file is the ONLY registration
+# surface for SMC-LSS_v0. It is intentionally NOT referenced from
+# config/strategy_portfolio.yaml (no execution) or config/strategy_catalog.yaml
+# (no approval-evidence tracking) — this strategy has no deployment target
+# and no lifecycle registry entry until it earns one by passing Phase 0-5
+# on its own evidence (CLAUDE.md §2, §9).
+#
+# SVOS system: research (gcp-vm1). Research never trades — see CLAUDE.md §1.
+# Lifecycle stage: HISTORICAL_REPLAY is the ceiling this file declares;
+# svos/lifecycle/manager.py is the only mutation authority for the real
+# lifecycle registry, and no registry entry exists for this strategy yet.
+
+strategy_id: SMC-LSS_v0
+name: "SMC Liquidity Sweep System"
+version: 0.1.0
+status: experimental
+stage: historical_replay
+owner: quant_research
+deployment_target: none
+
+description: >
+  Objective, deterministic Smart Money Concepts (SMC) liquidity-sweep
+  strategy. Detects liquidity sweeps of prior swing highs/lows, confirms
+  a Change of Character (CHoCH), requires an inducement sweep ahead of the
+  CHoCH, validates an institutional displacement candle, and evaluates
+  three independent entry models (gap fill reaction, POI reaction, direct
+  liquidity-sweep entry) plus their OR-combination. No parameter
+  optimization is performed inside this spec — every parameter change is a
+  new trial per CLAUDE.md §7.
+
+symbols:
+  - EURUSD
+  - GBPUSD
+  - XAUUSD
+
+timeframes:
+  - D1
+  - H1
+  - M5
+
+# ── Component configuration (frozen for this trial; a parameter change = new trial) ──
+components:
+  liquidity_sweep:
+    swing_lookback: 10
+    sweep_atr_threshold: 0.25   # min wick penetration, in ATR(14) units
+    atr_period: 14
+
+  structure:
+    structure_lookback: 10
+
+  inducement:
+    inducement_window: 3        # bars before CHoCH confirmation
+
+  displacement:
+    displacement_body_atr: 1.5
+    atr_period: 14
+    close_quartile: 0.25        # top/bottom 25% of candle range
+
+# ── Cost model (isolated placeholder — NOT config/costs.json) ──
+# config/costs.json's active_profile is a placeholder pending real Vantage
+# measurement (see its _comment) and does not currently define XAUUSD.
+# SMC-LSS_v0 is experimental and reports its own assumption so it never
+# silently borrows or corrupts the shared production cost profile.
+# Net-of-fees is mandatory per CLAUDE.md §0.3 even at this stage.
+cost_model:
+  source: isolated_placeholder
+  note: >
+    Not measured against a live Vantage account. Replace with a
+    vantage_measured profile (see config/costs.json convention) before this
+    strategy's evidence can be trusted for any gate.
+  spread_pips:
+    EURUSD: { standard: 1.4, stress2x: 2.8 }
+    GBPUSD: { standard: 1.8, stress2x: 3.6 }
+    XAUUSD: { standard: 30.0, stress2x: 60.0 }   # XAUUSD "pip" = 0.01 price units
+
+# ── Required metrics gate (Phase-3-style; this strategy's own bar, not the
+# platform default gate in CLAUDE.md §0.6 — see docs/VERDICT_LOG.md entry) ──
+required_metrics:
+  trades_min: 300
+  profit_factor_min: 1.25
+  profit_factor_2x_min: 1.0
+  sharpe_min: 1.2
+  max_drawdown_pct_max: 15.0
+  expectancy_min: 0.0
+  oos_profit_factor_min: 1.15
+
+# ── Walk-forward split (frozen; no parameter changes permitted after IS) ──
+walk_forward:
+  in_sample:
+    start: "2021-01-01"
+    end: "2023-12-31"
+  out_of_sample:
+    start: "2024-01-01"
+    end: "2024-12-31"
+  forward:
+    start: "2025-01-01"
+    end: "2025-12-31"
+  rule: "No parameter changes after in_sample. Configuration frozen before out_of_sample."
+
+entry_models:
+  - id: E1
+    name: gap_fill_reaction
+    path: research/experiments/smc_lss_e1.py
+  - id: E2
+    name: poi_reaction
+    path: research/experiments/smc_lss_e2.py
+  - id: E3
+    name: liquidity_sweep
+    path: research/experiments/smc_lss_e3.py
+  - id: combined
+    name: "E1 OR E2 OR E3"
+    path: research/experiments/smc_lss_combined.py
+
+output_dir: reports/backtest/SMC-LSS_v0/
+
+pass_decision: >
+  PASS only if combined-model results meet ALL of: trades >= 300,
+  profit_factor > 1.25, sharpe > 1.2, max_drawdown_pct < 15.0,
+  oos_profit_factor > 1.15. Otherwise this strategy remains `experimental`
+  and does not advance stage.
