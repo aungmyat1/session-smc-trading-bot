@@ -1,0 +1,17 @@
+version: 1
+provider: metaapi
+brokers:
+  vt_markets:
+    account_environment: demo
+    symbols:
+      EURUSD:
+        broker_symbol: EURUSD
+        source: metaapi_get_symbols_exact_match
+      GBPUSD:
+        broker_symbol: GBPUSD
+        source: metaapi_get_symbols_exact_match
+      XAUUSD:
+        broker_symbol: XAUUSD-VIP
+        source: metaapi_symbol_specification
+        base_currency: XAU
+        quote_or_profit_currency: USD

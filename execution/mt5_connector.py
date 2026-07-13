@@ -1,13 +1,16 @@
 """
-MT5 Connector — MetaAPI connection for Vantage demo OR live account.
+MT5 Connector — MetaAPI connection for MT5 demo accounts.
 
 Env vars resolved from .env (actual keys found in project):
     METAAPI_TOKEN              — MetaAPI platform token (shared)
-    VANTAGE_DEMO_METAAPI_ID    — MetaAPI account ID for Vantage DEMO
+    VTMARKETS_DEMO_METAAPI_ID  — MetaAPI account ID for VT Markets DEMO
+    VT_MARKETS_DEMO_METAAPI_ID — compatibility spelling for VT Markets DEMO
+    METAAPI_ACCOUNT_ID         — legacy VT Markets demo account ID
+    VANTAGE_DEMO_METAAPI_ID    — legacy compatibility account ID
                                   (provision once via MetaAPI dashboard using
-                                   VANTAGE_MT5_DEMO_LOGIN / VANTAGE_MT5_DEMO_PASSWORD
-                                   / VANTAGE_MT5_DEMO-SERVER, then paste the UUID here)
-    VANTAGE-LIVE-METAAPI-ID    — MetaAPI account ID for Vantage LIVE
+                                   the selected demo MT5 login / password / server,
+                                   then paste the UUID here)
+    VANTAGE-LIVE-METAAPI-ID    — legacy live key; live is not configured for agents
     DEMO_ONLY                  — true (default) = no write orders sent
 
 Public API:
@@ -25,8 +28,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 _log = logging.getLogger("strategy_demo.mt5_connector")
 
@@ -36,19 +41,48 @@ _HB_TIMEOUT_S      = 10   # fast ping timeout before deciding to reconnect
 _LATENCY_PATH = Path("logs") / "latency_timeseries.jsonl"
 _LATENCY_RETENTION = 1000
 
-# Env var names as found in .env
+# Env var names as found in .env. The first present key wins.
 _ACCOUNT_ID_VARS = {
-    "demo": "VANTAGE_DEMO_METAAPI_ID",
-    "live": "VANTAGE-LIVE-METAAPI-ID",
+    ("vantage", "demo"): ("VANTAGE_DEMO_METAAPI_ID",),
+    ("vantage", "live"): ("VANTAGE-LIVE-METAAPI-ID", "VANTAGE_LIVE_METAAPI_ID"),
+    ("vtmarkets", "demo"): (
+        "VTMARKETS_DEMO_METAAPI_ID",
+        "VT_MARKETS_DEMO_METAAPI_ID",
+        "METAAPI_ACCOUNT_ID",
+    ),
 }
+
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def resolve_metaapi_account_id(raw: str) -> str:
+    """Return a MetaAPI account UUID from either a UUID or setup URL."""
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    if _UUID_RE.match(value):
+        return value
+
+    parsed = urlparse(value)
+    if parsed.netloc.lower() != "app.metaapi.cloud":
+        return value
+    parts = [part for part in parsed.path.split("/") if part]
+    for part in parts:
+        if _UUID_RE.match(part):
+            return part
+    return value
 
 
 class MT5Connector:
-    def __init__(self, mode: str = "demo") -> None:
+    def __init__(self, mode: str = "demo", broker: str = "vantage") -> None:
         self._mode         = mode
+        self._broker       = broker.lower().replace("-", "").replace("_", "")
         self._token        = os.environ.get("METAAPI_TOKEN", "")
-        env_key            = _ACCOUNT_ID_VARS.get(mode, "VANTAGE_DEMO_METAAPI_ID")
-        self._account_id   = os.environ.get(env_key, "")
+        env_keys           = self._account_env_keys()
+        self._account_env_key, raw_account_id = self._first_env_value(env_keys)
+        self._account_id   = resolve_metaapi_account_id(raw_account_id)
         self._api          = None
         self._account      = None
         self._connection   = None
@@ -60,23 +94,24 @@ class MT5Connector:
     # ── Connection ─────────────────────────────────────────────────────────
 
     async def connect(self) -> None:
-        env_key = _ACCOUNT_ID_VARS.get(self._mode, "VANTAGE_DEMO_METAAPI_ID")
+        import asyncio
+
         if not self._token:
             raise RuntimeError("METAAPI_TOKEN not set in .env")
         if not self._account_id:
             raise RuntimeError(
-                f"{env_key} not set in .env.\n"
+                f"{' or '.join(self._account_env_keys())} not set in .env.\n"
                 f"Steps to get it:\n"
                 f"  1. Go to https://app.metaapi.cloud → Accounts → Add account\n"
-                f"  2. Enter VANTAGE_MT5_DEMO_LOGIN / VANTAGE_MT5_DEMO_PASSWORD / VANTAGE_MT5_DEMO-SERVER\n"
-                f"  3. Copy the account UUID → add to .env as VANTAGE_DEMO_METAAPI_ID=<uuid>"
+                f"  2. Enter the selected demo MT5 login / password / server\n"
+                f"  3. Copy the account UUID → add it to .env"
             )
         try:
             from metaapi_cloud_sdk import MetaApi
         except ImportError:
             raise RuntimeError("pip install metaapi-cloud-sdk>=29")
 
-        _log.info("Connecting to Vantage demo (account=%s)…", self._account_id)
+        _log.info("Connecting to %s %s (account=%s)…", self._broker, self._mode, self._account_id)
         self._api     = MetaApi(self._token)
         self._account = await self._api.metatrader_account_api.get_account(self._account_id)
 
@@ -84,12 +119,14 @@ class MT5Connector:
             _log.info("Deploying account…")
             await self._account.deploy()
 
-        await self._account.wait_connected()
+        await asyncio.wait_for(self._account.wait_connected(), timeout=_SYNC_TIMEOUT_S)
         self._connection = self._account.get_rpc_connection()
         await self._connection.connect()
-        await self._connection.wait_synchronized(_SYNC_TIMEOUT_S)  # int, not dict
+        await asyncio.wait_for(
+            self._connection.wait_synchronized(_SYNC_TIMEOUT_S), timeout=_SYNC_TIMEOUT_S + 5
+        )
         self._last_hb = datetime.now(timezone.utc)
-        _log.info("Connected to Vantage MT5 demo.")
+        _log.info("Connected to %s MT5 %s.", self._broker, self._mode)
 
     async def disconnect(self) -> None:
         if self._connection:
@@ -190,6 +227,20 @@ class MT5Connector:
     @property
     def last_reconnect_at(self) -> str:
         return self._last_reconnect_at
+
+    def _account_env_keys(self) -> tuple[str, ...]:
+        return _ACCOUNT_ID_VARS.get(
+            (self._broker, self._mode),
+            _ACCOUNT_ID_VARS[("vantage", "demo")],
+        )
+
+    @staticmethod
+    def _first_env_value(env_keys: tuple[str, ...]) -> tuple[str, str]:
+        for env_key in env_keys:
+            value = os.environ.get(env_key, "")
+            if value:
+                return env_key, value
+        return env_keys[0], ""
 
     def _append_latency_sample(self, payload: dict) -> None:
         _LATENCY_PATH.parent.mkdir(parents=True, exist_ok=True)
