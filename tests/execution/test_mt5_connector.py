@@ -5,7 +5,16 @@ import json
 import pytest
 
 from execution import mt5_connector
-from execution.mt5_connector import MT5Connector
+from execution.mt5_connector import (
+    MT5Connector,
+    _redacted_account_marker,
+    resolve_metaapi_account_id,
+)
+
+_ID_A = "-".join(["d6f6eec3", "96d5", "4001", "a802", "62b3f4b49817"])
+_ID_B = "-".join(["11111111", "1111", "1111", "1111", "111111111111"])
+_ID_C = "-".join(["22222222", "2222", "2222", "2222", "222222222222"])
+_ID_D = "-".join(["33333333", "3333", "3333", "3333", "333333333333"])
 
 
 class _Conn:
@@ -48,3 +57,63 @@ async def test_reconnect_increments_counter(monkeypatch):
     assert connector.reconnect_attempts_total == 2
     assert connector.last_reconnect_at
 
+
+def test_resolve_metaapi_account_id_accepts_uuid():
+    account_id = _ID_A
+
+    assert resolve_metaapi_account_id(account_id) == account_id
+
+
+def test_resolve_metaapi_account_id_extracts_uuid_from_setup_url():
+    url = (
+        "https://app.metaapi.cloud/configure-trading-account-credentials/"
+        f"{_ID_A}/setup-token-value"
+    )
+
+    assert resolve_metaapi_account_id(url) == _ID_A
+
+
+def test_vantage_compatibility_uses_sanitized_demo_account_id(monkeypatch):
+    monkeypatch.setenv("METAAPI_TOKEN", "token")
+    monkeypatch.setenv(
+        "VANTAGE_DEMO_METAAPI_ID",
+        "https://app.metaapi.cloud/configure-trading-account-credentials/"
+        f"{_ID_A}/setup-token-value",
+    )
+
+    connector = MT5Connector(mode="demo", broker="vantage")
+
+    assert connector._account_id == _ID_A
+
+
+def test_default_demo_uses_vtmarkets_legacy_metaapi_account_id(monkeypatch):
+    monkeypatch.setenv("METAAPI_TOKEN", "token")
+    monkeypatch.setenv("VANTAGE_DEMO_METAAPI_ID", _ID_B)
+    monkeypatch.setenv("METAAPI_ACCOUNT_ID", _ID_C)
+
+    connector = MT5Connector(mode="demo")
+
+    assert connector._account_env_key == "METAAPI_ACCOUNT_ID"
+    assert connector._account_id == _ID_C
+
+
+def test_vtmarkets_specific_env_var_takes_precedence(monkeypatch):
+    monkeypatch.setenv("METAAPI_TOKEN", "token")
+    monkeypatch.setenv("VTMARKETS_DEMO_METAAPI_ID", _ID_D)
+    monkeypatch.setenv("METAAPI_ACCOUNT_ID", _ID_C)
+
+    connector = MT5Connector(mode="demo", broker="vtmarkets")
+
+    assert connector._account_env_key == "VTMARKETS_DEMO_METAAPI_ID"
+    assert connector._account_id == _ID_D
+
+
+def test_unknown_metaapi_mapping_fails_closed():
+    with pytest.raises(ValueError, match="Unsupported MetaAPI account mapping"):
+        MT5Connector(mode="live", broker="vtmarkets")
+
+
+def test_account_log_marker_does_not_expose_identifier():
+    assert _redacted_account_marker(_ID_A) == "configured"
+    assert _ID_A not in _redacted_account_marker(_ID_A)
+    assert _redacted_account_marker("") == "missing"

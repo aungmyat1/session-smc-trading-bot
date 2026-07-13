@@ -1,5 +1,9 @@
 """
-Vantage Demo Executor — market data + order execution for Vantage MT5 demo.
+MetaAPI Demo Executor — market data + order execution for MT5 demo accounts.
+
+The class name is retained for compatibility with existing imports. The active
+broker identity is resolved by MT5Connector; current demo work targets VT
+Markets through MetaAPI.
 
 DEMO_ONLY=true (env default): write operations are logged but NOT sent.
 Set DEMO_ONLY=false only after safety checklist passes.
@@ -35,6 +39,10 @@ _PIP: dict[str, float] = {
     "XAUUSD": 0.1,    # Gold: 1 pip = $0.10 (price quoted to 2 decimals, e.g. 2340.50)
 }
 
+_BROKER_SYMBOL_TO_CANONICAL = {
+    "XAUUSD-VIP": "XAUUSD",
+}
+
 _TF_MAP = {
     "M5": "5m", "M15": "15m", "H1": "1h", "H4": "4h",
     "m5": "5m", "m15": "15m", "h1": "1h", "h4": "4h",
@@ -66,11 +74,18 @@ class VantageDemoExecutor:
         tf = _TF_MAP.get(timeframe, timeframe)
         return await self._market_data.get_candles(symbol, tf, count)
 
-    async def get_price(self, symbol: str) -> dict:
+    async def get_symbols(self) -> list[str]:
+        return await self._rpc().get_symbols()
+
+    async def get_symbol_specification(self, symbol: str) -> dict:
+        return await self._rpc().get_symbol_specification(symbol)
+
+    async def get_price(self, symbol: str, canonical_symbol: str | None = None) -> dict:
         p = await self._rpc().get_symbol_price(symbol)
         bid = float(p.get("bid", 0))
         ask = float(p.get("ask", 0))
-        pip = _PIP.get(symbol, 0.0001)
+        pip_symbol = canonical_symbol or _BROKER_SYMBOL_TO_CANONICAL.get(symbol, symbol)
+        pip = _PIP.get(pip_symbol, 0.0001)
         return {
             "bid":         bid,
             "ask":         ask,

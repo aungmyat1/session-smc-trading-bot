@@ -26,6 +26,13 @@
       "_note": "FILL THIS from scripts/capture_spreads.py output (killzone-hour average RT cost), then set active_profile to 'vantage_measured'. This is the only profile whose verdict means anything for your live account.",
       "EURUSD": { "standard": null, "stress2x": null },
       "GBPUSD": { "standard": null, "stress2x": null }
+    },
+
+    "vtmarkets_demo_measured": {
+      "_note": "Candidate only. DEMO-account VT Markets measurements via MetaAPI. Do not use as live-trading cost evidence and do not activate from a short snapshot.",
+      "EURUSD": { "standard": null, "stress2x": null },
+      "GBPUSD": { "standard": null, "stress2x": null },
+      "XAUUSD": { "standard": null, "stress2x": null }
     }
   }
 }

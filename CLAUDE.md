@@ -6,7 +6,7 @@
 ## §0 — HARD RULES (violation = stop and ask)
 
 1. **Never enable live trading** until a strategy holds a valid Production Approval package
-   AND the Vantage bot has passed its own execution gate.
+   AND the VT Markets bot has passed its own execution gate.
    `LIVE_TRADING=false` and `DEMO_ONLY=true` until the owner flips them manually.
 
 2. **Never tune parameters mid-trial.** Every parameter change = a new trial with a new
@@ -14,11 +14,11 @@
    ag-auto-trade graveyard. Do not repeat it.
 
 3. **Net-of-fees only.** A backtest result without spread + commission applied is not a
-   result. Vantage Standard: EURUSD ~0.8–1.2 pip, GBPUSD ~1.2–1.8 pip RT.
+   result. VT Markets Standard: EURUSD ~0.8–1.2 pip, GBPUSD ~1.2–1.8 pip RT.
    Robust PASS = net PF > 1.25 AND Sharpe > 1.2 AND MaxDD < 15% at BOTH standard AND
    2× spread stress (see §0.6 for the full gate).
 
-4. **Never commit secrets.** MetaAPI tokens, Vantage credentials, and Telegram tokens
+4. **Never commit secrets.** MetaAPI tokens, VT Markets credentials, and Telegram tokens
    live in `.env` (gitignored). Never in code.
 
 5. **Read `docs/` before writing new code.** The governing implementation plan is
@@ -57,10 +57,10 @@ This is not just a trading bot — it is a two-system quantitative trading platf
                             ▼
              ┌───────────────────────────┐
              │  Production Execution      │   auto-trade-vps
-             │  (Vantage Forex Bot)       │
+             │  (VT Markets Forex Bot)       │
              └─────────────┬──────────────┘
                             ▼
-                    Broker Execution (MetaAPI / Vantage)
+                    Broker Execution (MetaAPI / VT Markets)
 ```
 
 **Governing principle: research never trades.** SVOS discovers, backtests, and
@@ -83,7 +83,7 @@ Strategy Input
   → Offline Virtual Demo
   → Production Approval
   → Approved Strategy Package
-  → Simple Vantage Forex Bot
+  → Simple VT Markets Forex Bot
   → Monitoring & Revalidation
 ```
 
@@ -151,7 +151,7 @@ Phase 5  Offline Virtual Demo
          interfaces intended for the live bot. No broker connection. No network.
          Fully deterministic. Drift detection: compares virtual execution vs
          backtest expectations. Part of SVOS research qualification.
-         NOT the same as a live Vantage demo account (that is post-approval only).
+         NOT the same as a live VT Markets demo account (that is post-approval only).
          Output: PASS / FAIL
 
 Phase 6  Production Approval  [RECORD ONLY — do not build]
@@ -160,7 +160,7 @@ Phase 6  Production Approval  [RECORD ONLY — do not build]
          Scope: understand and document only. Do not implement toward this.
 ```
 
-**Implementation ceiling: Phase 5.** Build Phases 0–5 and the Vantage bot that runs
+**Implementation ceiling: Phase 5.** Build Phases 0–5 and the VT Markets bot that runs
 under a Phase 5 virtual demo. Phase 6 is out of scope until explicitly unlocked.
 
 ---
@@ -178,7 +178,7 @@ DRAFT → INTAKE → AUDIT → REFINEMENT → HISTORICAL_REPLAY
 → PRODUCTION → MONITORING → REVALIDATION → RETIRED
 ```
 
-Note: LIVE_DEMO (online Vantage demo) is post-approval, not Phase 5.
+Note: LIVE_DEMO (online VT Markets demo) is post-approval, not Phase 5.
 Phase 5 VIRTUAL_DEMO is OFFLINE — no broker, no network.
 
 Failure at any phase loops back to REFINEMENT (for Phases 0–4) or blocks (Phase 5).
@@ -206,16 +206,46 @@ exact-match CONFIRM token. Agent must never self-execute. Always propose, wait f
 
 ## §5 — BROKER / AUTH
 
-- Broker: **Vantage** (MT5, standard account)
+- Broker: **VT Markets** (MT5 demo account for the active System 2 demo path)
 - Connection: **MetaAPI Cloud SDK** (`metaapi-cloud-sdk>=29`)
-- Demo: `VANTAGE_DEMO_METAAPI_ID` (from `.env`)
-- Live: `VANTAGE-LIVE-METAAPI-ID` (from `.env`)
+- Demo: `VTMARKETS_DEMO_METAAPI_ID` or legacy `METAAPI_ACCOUNT_ID` (from `.env`)
+- Live: not configured for agent use; `LIVE_TRADING=false` remains mandatory
 - Historical data: Dukascopy public feed via `scripts/fetch_data.py`
 - Telegram alerts: `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` (from `.env`)
 - Magic number: flat `21099` for the demo execution path (`config/demo.yaml`, `execution/trade_manager.py`)
 - Live-traded pairs: EURUSD, GBPUSD, XAUUSD (`scripts/run_st_a2_demo.py`)
 - Config ceiling: `config/demo.yaml` also lists USDJPY as an allowed pair, but it is not currently traded by the deployed ST-A2 demo runner.
 - Never use raw REST for signed endpoints — always use the SDK.
+
+### Broker Identity Correction
+
+The active demo account is a VT Markets MT5 demo account connected through MetaAPI.
+It is not a Vantage account.
+
+Authoritative path:
+
+```text
+System 2 -> MetaAPI ExecutionAdapter -> VT Markets MT5 demo
+```
+
+Requirements:
+
+- Replace Vantage assumptions in current broker/cost work with VT Markets.
+- Verify broker/server/account-environment metadata through read-only MetaAPI
+  account information before collecting measurements.
+- Never write VT Markets measurements into the existing `vantage_measured` profile.
+- Leave `vantage_measured` inactive and unchanged.
+- If a new candidate profile is needed later, use `vtmarkets_demo_measured`,
+  subject to the existing config schema and naming conventions.
+- Mark all output explicitly as DEMO-account evidence.
+- Do not claim that demo costs represent VT Markets live-account costs.
+- If an existing report incorrectly labels this account as Vantage, preserve the
+  raw observations but regenerate the report with correct broker provenance and
+  flag the old report as `BROKER_IDENTITY_MISMATCH`.
+- Resolve XAUUSD using the VT Markets account's actual MetaAPI symbol
+  specifications. Do not guess names such as XAUUSD.a, XAUUSDm or GOLD.
+- Preserve XAUUSD as the canonical project symbol and store any exact broker
+  symbol separately in the broker-symbol mapping.
 
 ---
 
