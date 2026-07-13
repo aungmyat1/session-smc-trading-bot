@@ -5,7 +5,11 @@ import json
 import pytest
 
 from execution import mt5_connector
-from execution.mt5_connector import MT5Connector, resolve_metaapi_account_id
+from execution.mt5_connector import (
+    MT5Connector,
+    _redacted_account_marker,
+    resolve_metaapi_account_id,
+)
 
 _ID_A = "-".join(["d6f6eec3", "96d5", "4001", "a802", "62b3f4b49817"])
 _ID_B = "-".join(["11111111", "1111", "1111", "1111", "111111111111"])
@@ -102,3 +106,14 @@ def test_vtmarkets_specific_env_var_takes_precedence(monkeypatch):
 
     assert connector._account_env_key == "VTMARKETS_DEMO_METAAPI_ID"
     assert connector._account_id == _ID_D
+
+
+def test_unknown_metaapi_mapping_fails_closed():
+    with pytest.raises(ValueError, match="Unsupported MetaAPI account mapping"):
+        MT5Connector(mode="live", broker="vtmarkets")
+
+
+def test_account_log_marker_does_not_expose_identifier():
+    assert _redacted_account_marker(_ID_A) == "configured"
+    assert _ID_A not in _redacted_account_marker(_ID_A)
+    assert _redacted_account_marker("") == "missing"

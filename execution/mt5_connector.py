@@ -75,6 +75,10 @@ def resolve_metaapi_account_id(raw: str) -> str:
     return value
 
 
+def _redacted_account_marker(account_id: str) -> str:
+    return "configured" if account_id else "missing"
+
+
 class MT5Connector:
     def __init__(self, mode: str = "demo", broker: str = "vtmarkets") -> None:
         self._mode         = mode
@@ -111,7 +115,12 @@ class MT5Connector:
         except ImportError:
             raise RuntimeError("pip install metaapi-cloud-sdk>=29")
 
-        _log.info("Connecting to %s %s (account=%s)…", self._broker, self._mode, self._account_id)
+        _log.info(
+            "Connecting to %s %s (account=%s)…",
+            self._broker,
+            self._mode,
+            _redacted_account_marker(self._account_id),
+        )
         self._api     = MetaApi(self._token)
         self._account = await self._api.metatrader_account_api.get_account(self._account_id)
 
@@ -229,10 +238,10 @@ class MT5Connector:
         return self._last_reconnect_at
 
     def _account_env_keys(self) -> tuple[str, ...]:
-        return _ACCOUNT_ID_VARS.get(
-            (self._broker, self._mode),
-            _ACCOUNT_ID_VARS[("vantage", "demo")],
-        )
+        key = (self._broker, self._mode)
+        if key not in _ACCOUNT_ID_VARS:
+            raise ValueError(f"Unsupported MetaAPI account mapping for broker={self._broker!r} mode={self._mode!r}")
+        return _ACCOUNT_ID_VARS[key]
 
     @staticmethod
     def _first_env_value(env_keys: tuple[str, ...]) -> tuple[str, str]:
